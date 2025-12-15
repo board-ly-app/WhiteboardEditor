@@ -1,0 +1,290 @@
+# Automatically rebuilds and restarts the EC2 instance when a push to the
+# master branch occurs.
+# Derived from https://www.baeldung.com/ops/github-actions-deploy-ec2
+name: Deploy Production EC2 Instance
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+  workflow_call:
+    secrets:
+      EC2_PRODUCTION_PRIVATE_KEY:
+        description: "The key to use to ssh into the ec2 instance"
+        required: true
+      EC2_PRODUCTION_USER:
+        description: "User on the EC2 instance"
+        required: true
+      EC2_PRODUCTION_HOST:
+        description: "Hostname of the EC2 instance"
+        required: true
+      EC2_PRODUCTION_DEPLOYMENT_DIR:
+        description: "Location of the git repository on the EC2 instance"
+        required: true
+      EC2_PRODUCTION_ENV_FILE:
+        description: ".env file to be placed in .env"
+        required: true
+      EC2_PRODUCTION_SSL_KEY:
+        description: "Private SSL key to be placed in ReverseProxy/key.pem"
+        required: true
+      EC2_PRODUCTION_SSL_CERT:
+        description: "Certificate to be placed in ReverseProxy/cert.pem"
+        required: true
+
+env:
+  CURRENT_VERSION_TAG: 0.1.0
+
+jobs:
+  build_and_push_frontend:
+    name: Build and Push Frontend
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        id: checkout-repo
+        uses: actions/checkout@v5
+
+      - name: Set up Docker
+        id: docker-setup
+        uses: docker/setup-docker-action@v4
+        with:
+          daemon-config: |
+            {
+              "debug": true,
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
+
+      - name: Log into Github Container Registry
+        id: login-ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        id: build-and-push-image
+        uses: docker/build-push-action@v6
+        with:
+          context: Frontend
+          target: release
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/frontend:${{ env.CURRENT_VERSION_TAG }}
+
+          # cache settings
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/frontend:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/frontend:buildcache,mode=max
+
+  # rest_api
+  build_and_push_rest_api:
+    name: Build and Push RestAPI
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+        with:
+          daemon-config: |
+            {
+              "debug": true,
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
+
+      - name: Log into Github Container Registry
+        id: login-ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        id: build-and-push-image
+        uses: docker/build-push-action@v6
+        with:
+          context: RestAPI
+          target: release
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/rest_api:${{ env.CURRENT_VERSION_TAG }}
+
+          # cache settings
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/rest_api:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/rest_api:buildcache,mode=max
+
+  # web_socket_server
+  build_and_push_web_socket_server:
+    name: Build and Push Web Socket Server
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+        with:
+          daemon-config: |
+            {
+              "debug": true,
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
+
+      - name: Log into Github Container Registry
+        id: login-ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        id: build-and-push-image
+        uses: docker/build-push-action@v6
+        with:
+          context: WebSocketServer
+          target: release
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/web_socket_server:${{ env.CURRENT_VERSION_TAG }}
+
+          # cache settings
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/web_socket_server:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/web_socket_server:buildcache,mode=max
+
+  build_and_push_reverse_proxy:
+    name: Build and Push Reverse Proxy
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+        with:
+          daemon-config: |
+            {
+              "debug": true,
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
+
+      - name: Log into Github Container Registry
+        id: login-ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        id: build-and-push-image
+        uses: docker/build-push-action@v6
+        with:
+          context: ReverseProxy
+          target: release
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/reverse_proxy:${{ env.CURRENT_VERSION_TAG }}
+
+          # cache settings
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/reverse_proxy:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/reverse_proxy:buildcache,mode=max
+
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+    needs:
+      - build_and_push_frontend
+      - build_and_push_frontend
+      - build_and_push_web_socket_server
+      - build_and_push_reverse_proxy
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Write SSH Key
+        id: write-ssh-key
+        run: |
+          eval `ssh-agent -s`
+          cat > "${{ runner.temp }}/github-ec2.pem" << _EOF_
+          ${{ secrets.EC2_PRODUCTION_PRIVATE_KEY }}
+          _EOF_
+          chmod 400 "${{ runner.temp }}/github-ec2.pem"
+          ssh-keygen -y -f "${{ runner.temp }}/github-ec2.pem" > "${{ runner.temp }}/github-ec2.pem.pub"
+          ssh-add "${{ runner.temp }}/github-ec2.pem"
+
+      - name: Copy docker-compose.yml to remote host
+        id: copy-docker-compose-to-remote-host
+        run: |
+          REMOTE_HOST="${{ secrets.EC2_PRODUCTION_USER }}@${{ secrets.EC2_PRODUCTION_HOST }}"
+          scp -v \
+            -i "${{ runner.temp }}/github-ec2.pem" \
+            -o StrictHostKeyChecking=no \
+            docker-compose.yml "${REMOTE_HOST}:${{ secrets.EC2_PRODUCTION_DEPLOYMENT_DIR }}"
+
+      - name: Deploy via SSH
+        id: deploy-ssh
+        env:
+          # Enclose entire script to run on remote host here
+          SSH_SCRIPT: |
+            # === cd to deployment directory ===================================
+            cd ${{ secrets.EC2_PRODUCTION_DEPLOYMENT_DIR }}
+
+            # === deploy secret files ==========================================
+            cat > .env << _EOF_
+            ${{ secrets.EC2_PRODUCTION_ENV_FILE }}
+            _EOF_
+
+            mkdir -p .secrets
+
+            cat > .secrets/key.pem << _EOF_
+            ${{ secrets.EC2_PRODUCTION_SSL_KEY }}
+            _EOF_
+
+            cat > .secrets/cert.pem << _EOF_
+            ${{ secrets.EC2_PRODUCTION_SSL_CERT }}
+            _EOF_
+
+            # === Pull images from container registry ==========================
+            export WHITEBOARD_EDITOR_CR_URI="ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}"
+            export WHITEBOARD_EDITOR_TAG="${{ env.CURRENT_VERSION_TAG }}"
+
+            docker login --username ${{ github.actor }} --password-stdin ghcr.io << _EOF_
+            ${{ secrets.GITHUB_TOKEN }}
+            _EOF_
+            docker compose pull
+
+            # === Restart containers ===========================================
+            docker compose down
+            docker compose up --detach
+        run: |
+          # Write script to a tempfile
+          printenv SSH_SCRIPT > "${{ runner.temp }}/script.sh"
+          unset SSH_SCRIPT
+
+          ssh -v \
+            -i "${{ runner.temp }}/github-ec2.pem" \
+            -o StrictHostKeyChecking=no \
+            "${{ secrets.EC2_PRODUCTION_USER }}@${{ secrets.EC2_PRODUCTION_HOST }}" \
+            bash -ve - < "${{ runner.temp }}/script.sh"
