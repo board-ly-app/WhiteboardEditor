@@ -4,9 +4,6 @@
 name: Deploy Production EC2 Instance
 
 on:
-  push:
-    branches:
-      - master
   workflow_dispatch:
   workflow_call:
     secrets:
