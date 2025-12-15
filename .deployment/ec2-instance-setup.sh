@@ -27,4 +27,4 @@ sudo usermod -aG docker ubuntu
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 # Create directory for WhiteboardEditor
-mkdir WhiteboardEditor
+mkdir -p /home/ubuntu/WhiteboardEditor
