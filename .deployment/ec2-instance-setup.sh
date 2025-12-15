@@ -28,3 +28,7 @@ sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin d
 
 # Create directory for WhiteboardEditor
 mkdir -p /home/ubuntu/WhiteboardEditor
+
+# Change ownership to user ubuntu
+chmod 700 /home/ubuntu/WhiteboardEditor
+chown ubuntu:ubuntu /home/ubuntu/WhiteboardEditor
