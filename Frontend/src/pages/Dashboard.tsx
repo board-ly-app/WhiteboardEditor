@@ -64,7 +64,22 @@ const Dashboard = (): React.JSX.Element => {
       const res : AxiosResponse<Whiteboard[]> = await api.get('/whiteboards/own');
 
       return res.data;
-    }
+    },
+    retry: (failureCount, error) => {
+      if (failureCount >= 3) {
+        return false;
+      } else {
+        switch (error.status) {
+          case 403:
+          case 404:
+            // -- We can be sure that the whiteboard either doesn't exist or we
+            // don't have permission to access it.
+            return false;
+          default:
+            return true;
+        }// -- end switch error.
+      }
+    },
   });
 
   const {
@@ -82,7 +97,22 @@ const Dashboard = (): React.JSX.Element => {
       } else {
         return res.data;
       }
-    }
+    },
+    retry: (failureCount, error) => {
+      if (failureCount >= 3) {
+        return false;
+      } else {
+        switch (error.status) {
+          case 403:
+          case 404:
+            // -- We can be sure that the whiteboard either doesn't exist or we
+            // don't have permission to access it.
+            return false;
+          default:
+            return true;
+        }// -- end switch error.
+      }
+    },
   });
 
   const handleCreateWhiteboard = async (data: CreateWhiteboardFormData) => {
