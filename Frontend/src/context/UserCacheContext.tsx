@@ -11,6 +11,11 @@ import React, {
   type PropsWithChildren,
 } from 'react';
 
+import {
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+
 // -- local imports
 import {
   type User,
@@ -38,6 +43,9 @@ const UserCacheContext = createContext<UserCacheContextType | undefined>(undefin
 export const UserCacheProvider = ({
   children
 }: PropsWithChildren<object>): React.JSX.Element => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const usersByIdRef = useRef<Record<string, User>>({});
 
   const getUserById = async (userId: string): Promise<User | null> => {
@@ -64,6 +72,12 @@ export const UserCacheProvider = ({
     const res : AxiosResponse<User> = await api.get(`/users/${userId}`);
 
     if (res.status >= 400) {
+      if (res.status === 403) {
+        const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
+
+        navigate(`/login?redirect=${locationEncoded}`);
+      }
+
       console.error('Could not fetch user', userId, `- received ${res.status} (${res.statusText})`);
       // no change
       return null;
