@@ -6,8 +6,17 @@ import {
 } from 'react';
 
 import {
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+
+import {
   useSelector,
 } from 'react-redux';
+
+import {
+  type AxiosError,
+} from 'axios';
 
 import {
   Stage,
@@ -63,16 +72,17 @@ export interface CanvasCardProps {
   onSelectCanvasDimensions: (canvasId: CanvasIdType, dimensions: NewCanvasDimensions) => void;
 }
 
-function CanvasCard(props: CanvasCardProps) {
-  const {
-    whiteboardId,
-    rootCanvasId,
-    shapeAttributes,
-    childCanvasesByCanvas,
-    canvasesById,
-    currentTool,
-    onSelectCanvasDimensions,
-  } = props;
+function CanvasCard({
+  whiteboardId,
+  rootCanvasId,
+  shapeAttributes,
+  childCanvasesByCanvas,
+  canvasesById,
+  currentTool,
+  onSelectCanvasDimensions,
+}: CanvasCardProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const userCacheContext = useContext(UserCacheContext);
 
@@ -159,8 +169,16 @@ function CanvasCard(props: CanvasCardProps) {
           thumbnailUrl: dataUrl,
         });
         console.log("Thumbnail captured");
-      } catch (err) {
+      } catch (err: unknown) {
         console.error("Error updating thumbnail:", err);
+
+        const apiErr = err as AxiosError;
+
+        if (apiErr.status === 403) {
+          const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
+
+          navigate(`/login?redirect=${locationEncoded}`);
+        }
       }
     }, waitTime);
 
