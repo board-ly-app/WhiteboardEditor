@@ -1,5 +1,8 @@
 // -- std imports
-import { useNavigate } from 'react-router-dom';
+import {
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
 
 // -- third-party imports
 
@@ -42,6 +45,7 @@ import Footer from '@/components/Footer';
 
 const Dashboard = (): React.JSX.Element => {
   const navigate = useNavigate();
+  const location = useLocation();
   const pageTitle = `Your Dashboard | ${APP_NAME}`;
   const user: User | null = useUser().user;
 
@@ -50,7 +54,7 @@ const Dashboard = (): React.JSX.Element => {
   }
 
   const {
-    isError: isOwnWhiteboardsError,
+    error: ownWhiteboardsError,
     isLoading: isOwnWhiteboardsLoading,
     isFetching: isOwnWhiteboardsFetching,
     data: ownWhiteboards,
@@ -59,16 +63,12 @@ const Dashboard = (): React.JSX.Element => {
     queryFn: async () => {
       const res : AxiosResponse<Whiteboard[]> = await api.get('/whiteboards/own');
 
-      if (axiosResponseIsError(res)) {
-        throw res;
-      } else {
-        return res.data;
-      }
+      return res.data;
     }
   });
 
   const {
-    isError: isSharedWhiteboardsError,
+    error: sharedWhiteboardsError,
     isLoading: isSharedWhiteboardsLoading,
     isFetching: isSharedWhiteboardsFetching,
     data: sharedWhiteboards,
@@ -106,6 +106,15 @@ const Dashboard = (): React.JSX.Element => {
     }
   };
 
+  // -- redirect to login on 403 (forbidden)
+  const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
+
+  if (ownWhiteboardsError && ownWhiteboardsError.status === 403) {
+    navigate(`/login?redirect=${locationEncoded}`);
+  } else if (sharedWhiteboardsError && sharedWhiteboardsError.status === 403) {
+    navigate(`/login?redirect=${locationEncoded}`);
+  }
+
   return (
     <Page
       title={pageTitle}
@@ -131,11 +140,11 @@ const Dashboard = (): React.JSX.Element => {
               Your Whiteboards
             </h1>
             {(() => {
-              if (isOwnWhiteboardsError) {
+              if (ownWhiteboardsError) {
                 return (
                   <WhiteboardList
                     status="error"
-                    message={`${isOwnWhiteboardsError}`}
+                    message={`${ownWhiteboardsError}`}
                   />
                 );
               } else if (isOwnWhiteboardsLoading || isOwnWhiteboardsFetching) {
@@ -156,11 +165,11 @@ const Dashboard = (): React.JSX.Element => {
               Shared Whiteboards
             </h1>
             {(() => {
-              if (isSharedWhiteboardsError) {
+              if (sharedWhiteboardsError) {
                 return (
                   <WhiteboardList
                     status="error"
-                    message={`${isSharedWhiteboardsError}`}
+                    message={`${sharedWhiteboardsError}`}
                   />
                 );
               } else if (isSharedWhiteboardsLoading || isSharedWhiteboardsFetching) {
