@@ -8,6 +8,7 @@
 import React, {
   useRef,
   createContext,
+  useCallback,
   type PropsWithChildren,
 } from 'react';
 
@@ -68,31 +69,37 @@ export const UserCacheProvider = ({
     }
   };// end getUserById
 
-  const fetchUserById = async (userId: string): Promise<User | null> => {
-    const res : AxiosResponse<User> = await api.get(`/users/${userId}`);
+  const fetchUserById = useCallback(
+    async (userId: string): Promise<User | null> => {
+      const res : AxiosResponse<User> = await api.get(`/users/${userId}`);
 
-    if (res.status >= 400) {
-      if (res.status === 403) {
-        const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
+      if (res.status >= 400) {
+        if (res.status === 403) {
+          const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
 
-        navigate(`/login?redirect=${locationEncoded}`);
+          navigate(`/login?redirect=${locationEncoded}`);
+        }
+
+        console.error('Could not fetch user', userId, `- received ${res.status} (${res.statusText})`);
+        // no change
+        return null;
+      } else {
+        const user = res.data;
+
+        usersByIdRef.current[userId] = user;
+
+        return user;
       }
+    },
+    [api, location, navigate, usersByIdRef]
+  );// -- end fetchUserById
 
-      console.error('Could not fetch user', userId, `- received ${res.status} (${res.statusText})`);
-      // no change
-      return null;
-    } else {
-      const user = res.data;
-
+  const setUserById = useCallback(
+    (userId: string, user: User) => {
       usersByIdRef.current[userId] = user;
-
-      return user;
-    }
-  };// end fetchUserById
-
-  const setUserById = (userId: string, user: User) => {
-    usersByIdRef.current[userId] = user;
-  };// end fetchUserById
+    },
+    [usersByIdRef]
+  );// -- end setUserById
 
   return (
     <UserCacheContext.Provider value={{

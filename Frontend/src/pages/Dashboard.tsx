@@ -1,5 +1,9 @@
 // -- std imports
 import {
+  useCallback,
+} from 'react';
+
+import {
   useNavigate,
   useLocation,
 } from 'react-router-dom';
@@ -10,6 +14,11 @@ import {
   useQuery,
   // useQueryClient,
 } from '@tanstack/react-query';
+
+import {
+  Bounce,
+  toast,
+} from 'react-toastify';
 
 // -- local imports
 
@@ -115,26 +124,49 @@ const Dashboard = (): React.JSX.Element => {
     },
   });
 
-  const handleCreateWhiteboard = async (data: CreateWhiteboardFormData) => {
-    const res : AxiosResponse<Whiteboard> = await api.post('/whiteboards', data);
+  const handleCreateWhiteboard = useCallback(
+    async (data: CreateWhiteboardFormData) => {
+      try {
+        const res : AxiosResponse<Whiteboard> = await api.post('/whiteboards', data);
 
-    if (res.status >= 400) {
-      alert(`Create whiteboard failed: ${res.data}`);
-      console.error('Create whiteboard failed:', res.data);
-    } else {
-      const {
-        id,
-      } = res.data;
+        const {
+          id,
+        } = res.data;
 
-      if (! id) {
-        throw new Error('Received no Whiteboard ID from API response');
+        if (! id) {
+          throw new Error('Received no Whiteboard ID from API response');
+        }
+
+        const redirectUrl = `/whiteboard/${id}`;
+
+        navigate(redirectUrl);
+      } catch (err: unknown) {
+        const apiErr = err as AxiosError;
+
+        console.error('Create whiteboard failed:', apiErr.message);
+
+        if (apiErr.status === 403) {
+          // -- redirect to login
+          const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
+
+          navigate(`/login?redirect=${locationEncoded}`);
+        } else {
+          toast.error(`Create whiteboard failed: ${apiErr.message}`, {
+            position: "bottom-center",
+            autoClose: 10000,
+            hideProgressBar: false,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+        }
       }
-
-      const redirectUrl = `/whiteboard/${id}`;
-
-      navigate(redirectUrl);
-    }
-  };
+    },
+    [navigate, location]
+  );// -- end handleCreateWhiteboard
 
   // -- redirect to login on 403 (forbidden)
   const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
