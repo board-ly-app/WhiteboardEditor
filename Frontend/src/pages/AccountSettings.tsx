@@ -1,13 +1,29 @@
-import { useContext } from "react";
-import { useForm } from "@tanstack/react-form";
+import {
+  useContext,
+  useCallback,
+} from "react";
+
+import {
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+
+import {
+  useForm,
+} from "@tanstack/react-form";
+
+import {
+  useModal,
+} from "@/components/Modal";
+
 import AuthContext from "@/context/AuthContext";
-import { useModal } from "@/components/Modal";
 import HeaderAuthed from "@/components/HeaderAuthed";
 import Page from '@/components/Page';
 import api from '@/api/axios';
 
 import {
   type AxiosResponse,
+  type AxiosError,
 } from 'axios';
 
 import {
@@ -19,15 +35,31 @@ import {
 } from '@/types/APIProtocol';
 import Footer from "@/components/Footer";
 
+// -- type definitions
+type ProfileType = Pick<User, 'username'>;
+type SecureFieldsType = Pick<User, 'email'> & {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+};
+type DeleteFormFieldsType = {
+  password: string;
+};
+
 export default function AccountSettings() {
+  const location = useLocation();
+  const locationEncoded = encodeURIComponent(`${location.pathname}${location.search}`);
+  const navigate = useNavigate();
+
   const { user, setUser } = useContext(AuthContext)!;
   const { Modal, openModal, closeModal } = useModal();
 
-  const profileForm = useForm({
-    defaultValues: {
-      username: user?.username || "",
-    },
-    onSubmit: async ({ value }) => {
+  const onSubmitProfile = useCallback(
+    async ({
+      value,
+    }: {
+      value: ProfileType,
+    }) => {
       try {
         const res : AxiosResponse<User> = await api.patch("/users/me", {
           username: value.username,
@@ -38,20 +70,33 @@ export default function AccountSettings() {
           setUser(updated);
           alert("Profile updated successfully!");
         }
-      } catch (err) {
+      } catch (err: unknown) {
+        const apiErr = err as AxiosError;
+
         console.error(err);
+
+        if (apiErr.status === 403) {
+          // redirect to login
+          navigate(`/login?redirect=${locationEncoded}`);
+        }
       }
     },
+    [api, navigate, locationEncoded]
+  );
+
+  const profileForm = useForm({
+    defaultValues: {
+      username: user?.username || "",
+    },
+    onSubmit: onSubmitProfile,
   });
 
-  const securityForm = useForm({
-    defaultValues: {
-      email: user?.email || "",
-      currentPassword: "",
-      newPassword: "",
-      confirmNewPassword: "",
-    },
-    onSubmit: async ({ value }) => {
+  const onSubmitSecureFields = useCallback(
+    async ({
+      value,
+    }: {
+      value: SecureFieldsType,
+    }) => {
       try {
         const res : AxiosResponse<User> = await api.patch("/users/me", {
             email: value.email,
@@ -64,15 +109,36 @@ export default function AccountSettings() {
           setUser(updated);
           alert("Security settings updated successfully!");
         }
-      } catch (err) {
+      } catch (err: unknown) {
+        const apiErr = err as AxiosError;
+
         console.error(err);
+
+        if (apiErr.status === 403) {
+          // redirect to login
+          navigate(`/login?redirect=${locationEncoded}`);
+        }
       }
     },
+    [api, setUser, navigate, locationEncoded]
+  );
+
+  const securityForm = useForm({
+    defaultValues: {
+      email: user?.email || "",
+      currentPassword: "",
+      newPassword: "",
+      confirmNewPassword: "",
+    },
+    onSubmit: onSubmitSecureFields,
   });
 
-  const deleteForm = useForm({
-    defaultValues: { password: "" },
-    onSubmit: async ({ value }) => {
+  const onSubmitDeleteProfile = useCallback(
+    async ({
+      value,
+    }: {
+      value: DeleteFormFieldsType,
+    }) => {
       try {
         const res : AxiosResponse<User> = await api.patch("/users/me", {
           password: value.password
@@ -83,10 +149,23 @@ export default function AccountSettings() {
           localStorage.removeItem("user");
           alert("Account deleted successfully");
         }
-      } catch (err) {
+      } catch (err: unknown) {
+        const apiErr = err as AxiosError;
+
         console.error(err);
+
+        if (apiErr.status === 403) {
+          // -- redirect to login
+          navigate(`/login?redirect=${locationEncoded}`);
+        }
       }
     },
+    [api, setUser, navigate, locationEncoded]
+  );
+
+  const deleteForm = useForm({
+    defaultValues: { password: "" },
+    onSubmit: onSubmitDeleteProfile,
   });
 
   const title = "Account Settings";
