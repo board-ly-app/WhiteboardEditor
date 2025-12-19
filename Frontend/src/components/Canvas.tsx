@@ -266,6 +266,158 @@ const Canvas = (props: CanvasProps) => {
     [canvasGroupRefsByIdRef, groupRef, canvasId]
   );
 
+  useEffect(() => {
+  const group = groupRef.current;
+  if (!group) return;
+
+  const layer = group.getLayer();
+  if (!layer) return;
+
+  const stage = layer.getStage();
+  if (!stage) return;
+
+  const GUIDELINE_OFFSET = 5;
+
+  // -------------------------------------
+  // TypeScript-safe helpers
+  // -------------------------------------
+
+  function getLineGuideStops(skipNode: Konva.Node): {
+    vertical: number[];
+    horizontal: number[];
+  } {
+    const vertical = [0, stage.width() / 2, stage.width()];
+    const horizontal = [0, stage.height() / 2, stage.height()];
+
+    const nodes = group?.find((n: any) => n !== skipNode && (n as any).draggable && (n as any).draggable());
+
+    nodes?.forEach((node: Konva.Node) => {
+      const box = node.getClientRect();
+      vertical.push(box.x, box.x + box.width, box.x + box.width / 2);
+      horizontal.push(box.y, box.y + box.height, box.y + box.height / 2);
+    });
+
+    return { vertical, horizontal };
+  }
+
+  function getObjectSnappingEdges(node: Konva.Node): {
+    vertical: { guide: number; offset: number }[];
+    horizontal: { guide: number; offset: number }[];
+  } {
+    const box = node.getClientRect();
+    const absPos = node.absolutePosition();
+
+    return {
+      vertical: [
+        { guide: box.x, offset: absPos.x - box.x },
+        { guide: box.x + box.width / 2, offset: absPos.x - box.x - box.width / 2 },
+        { guide: box.x + box.width, offset: absPos.x - box.x - box.width },
+      ],
+      horizontal: [
+        { guide: box.y, offset: absPos.y - box.y },
+        { guide: box.y + box.height / 2, offset: absPos.y - box.y - box.height / 2 },
+        { guide: box.y + box.height, offset: absPos.y - box.y - box.height },
+      ],
+    };
+  }
+
+  type GuideResult = {
+    orientation: "V" | "H";
+    lineGuide: number;
+    offset: number;
+    diff: number;
+  };
+
+  function getGuides(
+    stops: ReturnType<typeof getLineGuideStops>,
+    edges: ReturnType<typeof getObjectSnappingEdges>
+  ): GuideResult[] {
+    const resultsV: GuideResult[] = [];
+    const resultsH: GuideResult[] = [];
+
+    stops.vertical.forEach((line) => {
+      edges.vertical.forEach((edge) => {
+        const diff = Math.abs(line - edge.guide);
+        if (diff < GUIDELINE_OFFSET) {
+          resultsV.push({ orientation: "V", lineGuide: line, offset: edge.offset, diff });
+        }
+      });
+    });
+
+    stops.horizontal.forEach((line) => {
+      edges.horizontal.forEach((edge) => {
+        const diff = Math.abs(line - edge.guide);
+        if (diff < GUIDELINE_OFFSET) {
+          resultsH.push({ orientation: "H", lineGuide: line, offset: edge.offset, diff });
+        }
+      });
+    });
+
+    const guides: GuideResult[] = [];
+    if (resultsV.length > 0) guides.push(resultsV.sort((a, b) => a.diff - b.diff)[0]);
+    if (resultsH.length > 0) guides.push(resultsH.sort((a, b) => a.diff - b.diff)[0]);
+
+    return guides;
+  }
+
+  function drawGuides(guides: GuideResult[]) {
+    guides.forEach((g) => {
+      const line = new Konva.Line({
+        points: g.orientation === "H" ? [-6000, 0, 6000, 0] : [0, -6000, 0, 6000],
+        stroke: "rgb(0,161,255)",
+        dash: [4, 6],
+        name: "guide-line",
+      });
+
+      layer?.add(line);
+
+      if (g.orientation === "H") {
+        line.absolutePosition({ x: 0, y: g.lineGuide });
+      } else {
+        line.absolutePosition({ x: g.lineGuide, y: 0 });
+      }
+    });
+  }
+
+  // -------------------------------------
+  // Konva drag events (typed)
+  // -------------------------------------
+
+  const onDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
+    layer.find(".guide-line").forEach((n) => n.destroy());
+
+    const node = e.target;
+    const stops = getLineGuideStops(node);
+    const edges = getObjectSnappingEdges(node);
+
+    const guides = getGuides(stops, edges);
+    if (guides.length === 0) return;
+
+    drawGuides(guides);
+
+    const absPos = node.absolutePosition();
+    guides.forEach((g) => {
+      if (g.orientation === "V") absPos.x = g.lineGuide + g.offset;
+      if (g.orientation === "H") absPos.y = g.lineGuide + g.offset;
+    });
+
+    node.absolutePosition(absPos);
+  };
+
+  const onDragEnd = () => {
+    layer.find(".guide-line").forEach((n) => n.destroy());
+  };
+
+  layer.on("dragmove", onDragMove);
+  layer.on("dragend", onDragEnd);
+
+  return () => {
+    layer.off("dragmove", onDragMove);
+    layer.off("dragend", onDragEnd);
+  };
+}, [groupRef]);
+
+
   const {
     getPreview,
     getTooltipText
