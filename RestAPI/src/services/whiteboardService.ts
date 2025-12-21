@@ -27,6 +27,12 @@ export type GetWhiteboardRes =
   | { status: 'server_error'; message: string; }
 ;
 
+export const removeDanglingUserPermissions = (populatedUserPermissions: IWhiteboardUserPermission<IUser>[]): IWhiteboardUserPermission<IUser>[] => {
+  const filteredPermissions = populatedUserPermissions.filter(perm => perm.type !== 'user' || perm.user.id);
+
+  return filteredPermissions;
+};// -- end removeDanglingUserPermissions
+
 export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteboardRes> => {
   try {
     if (! Types.ObjectId.isValid(whiteboardId)) {
