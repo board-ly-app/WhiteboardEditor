@@ -11,6 +11,8 @@ import {
 
 import {
   useParams,
+  useLocation,
+  useNavigate,
   Link,
 } from 'react-router-dom';
 
@@ -157,6 +159,9 @@ interface WhiteboardProps {
 const Whiteboard = ({
   query,
 }: WhiteboardProps) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   // -- references
   const whiteboardContext = useContext(WhiteboardContext);
   const authContext = useContext(AuthContext);
@@ -202,7 +207,7 @@ const Whiteboard = ({
   // alert user of any errors fetching whiteboard
   useEffect(
     () => {
-      if (whiteboardError) {
+      if (whiteboardError && whiteboardError.status !== 403) {
         console.error('Error fetching whiteboard', whiteboardId, ':', whiteboardError);
         toast.error(`Error fetching whiteboard: ${whiteboardError}`, {
           position: "bottom-center",
@@ -272,6 +277,15 @@ const Whiteboard = ({
   let status : ComponentStatus;
 
   if (whiteboardError) {
+    if (whiteboardError.status === 403) {
+      // -- Redirect to login on receipt of 403 error
+      if (whiteboardError && whiteboardError.status === 403) {
+        const redirectUrl : string = encodeURIComponent(`${location.pathname}${location.search}`);
+
+        navigate(`/login?redirect=${redirectUrl}`);
+      }
+    }
+
     status = { status: 'error', error: whiteboardError };
   } else if (isWhiteboardLoading || isWhiteboardFetching || (! currWhiteboard)) {
     status = { status: 'pending' };
@@ -651,7 +665,6 @@ const Whiteboard = ({
 };// end Whiteboard
 
 const WrappedWhiteboard = () => {
-  console.log('!! Rendering Wrapped Whiteboard');// TODO: remove debug
   const authContext = useContext(AuthContext);
   const clientMessengerContext = useContext(ClientMessengerContext);
   const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);

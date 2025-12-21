@@ -1,5 +1,12 @@
 // -- std imports
-import { useNavigate } from 'react-router-dom';
+import {
+  useCallback,
+} from 'react';
+
+import {
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
 
 // -- third-party imports
 
@@ -7,6 +14,11 @@ import {
   useQuery,
   // useQueryClient,
 } from '@tanstack/react-query';
+
+import {
+  Bounce,
+  toast,
+} from 'react-toastify';
 
 // -- local imports
 
@@ -42,6 +54,7 @@ import Footer from '@/components/Footer';
 
 const Dashboard = (): React.JSX.Element => {
   const navigate = useNavigate();
+  const location = useLocation();
   const pageTitle = `Your Dashboard | ${APP_NAME}`;
   const user: User | null = useUser().user;
 
@@ -50,7 +63,7 @@ const Dashboard = (): React.JSX.Element => {
   }
 
   const {
-    isError: isOwnWhiteboardsError,
+    error: ownWhiteboardsError,
     isLoading: isOwnWhiteboardsLoading,
     isFetching: isOwnWhiteboardsFetching,
     data: ownWhiteboards,
@@ -59,16 +72,27 @@ const Dashboard = (): React.JSX.Element => {
     queryFn: async () => {
       const res : AxiosResponse<Whiteboard[]> = await api.get('/whiteboards/own');
 
-      if (axiosResponseIsError(res)) {
-        throw res;
+      return res.data;
+    },
+    retry: (failureCount, error) => {
+      if (failureCount >= 3) {
+        return false;
       } else {
-        return res.data;
+        switch (error.status) {
+          case 403:
+          case 404:
+            // -- We can be sure that the whiteboard either doesn't exist or we
+            // don't have permission to access it.
+            return false;
+          default:
+            return true;
+        }// -- end switch error.
       }
-    }
+    },
   });
 
   const {
-    isError: isSharedWhiteboardsError,
+    error: sharedWhiteboardsError,
     isLoading: isSharedWhiteboardsLoading,
     isFetching: isSharedWhiteboardsFetching,
     data: sharedWhiteboards,
@@ -82,29 +106,76 @@ const Dashboard = (): React.JSX.Element => {
       } else {
         return res.data;
       }
-    }
+    },
+    retry: (failureCount, error) => {
+      if (failureCount >= 3) {
+        return false;
+      } else {
+        switch (error.status) {
+          case 403:
+          case 404:
+            // -- We can be sure that the whiteboard either doesn't exist or we
+            // don't have permission to access it.
+            return false;
+          default:
+            return true;
+        }// -- end switch error.
+      }
+    },
   });
 
-  const handleCreateWhiteboard = async (data: CreateWhiteboardFormData) => {
-    const res : AxiosResponse<Whiteboard> = await api.post('/whiteboards', data);
+  const handleCreateWhiteboard = useCallback(
+    async (data: CreateWhiteboardFormData) => {
+      try {
+        const res : AxiosResponse<Whiteboard> = await api.post('/whiteboards', data);
 
-    if (res.status >= 400) {
-      alert(`Create whiteboard failed: ${res.data}`);
-      console.error('Create whiteboard failed:', res.data);
-    } else {
-      const {
-        id,
-      } = res.data;
+        const {
+          id,
+        } = res.data;
 
-      if (! id) {
-        throw new Error('Received no Whiteboard ID from API response');
+        if (! id) {
+          throw new Error('Received no Whiteboard ID from API response');
+        }
+
+        const redirectUrl = `/whiteboard/${id}`;
+
+        navigate(redirectUrl);
+      } catch (err: unknown) {
+        const apiErr = err as AxiosError;
+
+        console.error('Create whiteboard failed:', apiErr.message);
+
+        if (apiErr.status === 403) {
+          // -- redirect to login
+          const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
+
+          navigate(`/login?redirect=${locationEncoded}`);
+        } else {
+          toast.error(`Create whiteboard failed: ${apiErr.message}`, {
+            position: "bottom-center",
+            autoClose: 10000,
+            hideProgressBar: false,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+        }
       }
+    },
+    [navigate, location]
+  );// -- end handleCreateWhiteboard
 
-      const redirectUrl = `/whiteboard/${id}`;
+  // -- redirect to login on 403 (forbidden)
+  const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
 
-      navigate(redirectUrl);
-    }
-  };
+  if (ownWhiteboardsError && ownWhiteboardsError.status === 403) {
+    navigate(`/login?redirect=${locationEncoded}`);
+  } else if (sharedWhiteboardsError && sharedWhiteboardsError.status === 403) {
+    navigate(`/login?redirect=${locationEncoded}`);
+  }
 
   return (
     <Page
@@ -131,11 +202,11 @@ const Dashboard = (): React.JSX.Element => {
               Your Whiteboards
             </h1>
             {(() => {
-              if (isOwnWhiteboardsError) {
+              if (ownWhiteboardsError) {
                 return (
                   <WhiteboardList
                     status="error"
-                    message={`${isOwnWhiteboardsError}`}
+                    message={`${ownWhiteboardsError}`}
                   />
                 );
               } else if (isOwnWhiteboardsLoading || isOwnWhiteboardsFetching) {
@@ -156,11 +227,11 @@ const Dashboard = (): React.JSX.Element => {
               Shared Whiteboards
             </h1>
             {(() => {
-              if (isSharedWhiteboardsError) {
+              if (sharedWhiteboardsError) {
                 return (
                   <WhiteboardList
                     status="error"
-                    message={`${isSharedWhiteboardsError}`}
+                    message={`${sharedWhiteboardsError}`}
                   />
                 );
               } else if (isSharedWhiteboardsLoading || isSharedWhiteboardsFetching) {
