@@ -80,15 +80,20 @@ const WhiteboardList = (props: WhiteboardListProps): React.JSX.Element => {
               className="flex flex-col md:flex-row justify-center flex-wrap content-center"
             >
             {
-                whiteboardsAttribs.map(attribs => (
+              whiteboardsAttribs
+                .map(attribs => (
                   <li
                     key={attribs.id}
                   >
                     <WhiteboardCard
                       {...attribs}
+                      user_permissions={attribs.user_permissions.filter(up =>
+                        up != null &&
+                        ("user" in up ? up.user !== null : up.email !== null)
+                      )}
                     />
                   </li>
-                ))
+              ))
             }
             </ul>
           );
