@@ -87,6 +87,7 @@ const WhiteboardList = (props: WhiteboardListProps): React.JSX.Element => {
                   >
                     <WhiteboardCard
                       {...attribs}
+                      // Filter out null users
                       user_permissions={attribs.user_permissions.filter(up =>
                         up != null &&
                         ("user" in up ? up.user !== null : up.email !== null)
