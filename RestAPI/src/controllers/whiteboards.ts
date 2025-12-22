@@ -177,10 +177,12 @@ export const handleGetOwnWhiteboards = async (
   // -- filter out dangling user permissions (user permissions for users who no
   // longer exist)
   const ownWhiteboards = (await getWhiteboardsByOwner(ownerId))
-    .map(whiteboard => ({
-      ...whiteboard,
-      user_permissions: removeDanglingUserPermissions(whiteboard.user_permissions)
-    }));
+    .map(whiteboard => {
+      const permissionsFiltered = removeDanglingUserPermissions(whiteboard.user_permissions);
+
+      whiteboard.user_permissions = permissionsFiltered;
+      return whiteboard;
+  });
 
   res.status(200).json(ownWhiteboards);
 };// -- end handleGetOwnWhiteboards
