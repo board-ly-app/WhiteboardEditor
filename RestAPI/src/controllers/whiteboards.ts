@@ -27,6 +27,7 @@ import {
   setSharedUsers,
   getWhiteboardById,
   getWhiteboardsByOwner,
+  removeDanglingUserPermissions,
 } from '../services/whiteboardService';
 
 export interface CreateWhiteboardRequest extends AuthorizedRequestBody {
@@ -68,7 +69,12 @@ export const handleGetWhiteboardById = async (
               message: 'You are not authorized to view this resource'
             });
           } else {
-            return res.status(200).json(whiteboard.toAttribView());
+            const wbAttribView = whiteboard.toAttribView();
+
+            return res.status(200).json({
+              ...wbAttribView,
+              user_permissions: removeDanglingUserPermissions(wbAttribView.user_permissions)
+            });
           }
       }
       default:
@@ -168,7 +174,15 @@ export const handleGetOwnWhiteboards = async (
   const {
     id: ownerId,
   } = authUser;
-  const ownWhiteboards = await getWhiteboardsByOwner(ownerId);
+  // -- filter out dangling user permissions (user permissions for users who no
+  // longer exist)
+  const ownWhiteboards = (await getWhiteboardsByOwner(ownerId))
+    .map(whiteboard => {
+      const permissionsFiltered = removeDanglingUserPermissions(whiteboard.user_permissions);
+
+      whiteboard.user_permissions = permissionsFiltered;
+      return whiteboard;
+  });
 
   res.status(200).json(ownWhiteboards);
 };// -- end handleGetOwnWhiteboards
@@ -198,7 +212,12 @@ export const handleShareWhiteboard = async (
 
     switch (result.status) {
       case "success":
-        return res.status(200).json(result.whiteboard.toAttribView());
+        const wbAttribView = result.whiteboard.toAttribView();
+
+        return res.status(200).json({
+          ...wbAttribView,
+          user_permissions: removeDanglingUserPermissions(wbAttribView.user_permissions)
+        });
       case "no_whiteboard":
         return res.status(404).json({ error: "Whiteboard not found" });
       case "invalid_users":
@@ -253,11 +272,11 @@ export const handlePutThumbnail = async (
 
     whiteboard.thumbnail_url = thumbnailUrl;
 
-    await whiteboard.save();
+    const wbAttribView = (await whiteboard.save()).toAttribView();
 
     return res.status(200).json({
-      message: "Thumbnail updated successfully",
-      whiteboard: whiteboard.toAttribView()
+      ...wbAttribView,
+      user_permissions: removeDanglingUserPermissions(wbAttribView.user_permissions)
     });
   } catch (err) {
     console.error("Error updating thumbnail", err);
