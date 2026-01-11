@@ -59,6 +59,7 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
       // permissions
       let haveSharedUsersChanged = false;
       const sharedUsers: IWhiteboardUserPermissionModel<Types.ObjectId>[] = await Promise.all(whiteboard.user_permissions
+          .filter(perm => (perm.type !== 'user') || ((!! perm.user) && (!! perm.user._id)))
           .map(async perm => {
         switch (perm.type) {
           case 'user':
