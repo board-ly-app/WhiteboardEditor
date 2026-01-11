@@ -27,6 +27,22 @@ export type GetWhiteboardRes =
   | { status: 'server_error'; message: string; }
 ;
 
+// === removeDanglingUserPermissions ===========================================
+//
+// Filters out user permissions for users who no longer exist.
+//
+// =============================================================================
+export const removeDanglingUserPermissions = (
+  populatedUserPermissions: IWhiteboardUserPermission<Partial<IUser> | null>[]
+): IWhiteboardUserPermission<IUser>[] => {
+  const filterPermission = (perm: IWhiteboardUserPermission<Partial<IUser> | null>): perm is IWhiteboardUserPermission<IUser> => (
+    perm.type !== 'user' || (perm.user !== null && perm.user.id)
+  );
+  const permissionsFiltered = populatedUserPermissions.filter(filterPermission);
+
+  return permissionsFiltered;
+};// -- end removeDanglingUserPermissions
+
 export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteboardRes> => {
   try {
     if (! Types.ObjectId.isValid(whiteboardId)) {

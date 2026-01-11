@@ -4,6 +4,11 @@ import {
   useContext,
  } from "react";
 
+import {
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+
 // -- third-party imports
 import { 
   useQuery 
@@ -45,6 +50,7 @@ import api from '@/api/axios';
 
 import {
   type AxiosResponse,
+  type AxiosError,
 } from 'axios';
 
 interface AllowedUsersPopoverProps {
@@ -59,6 +65,9 @@ type EnumComponentStatus =
 ;
 
 const AllowedUsersPopover = ({ selected, onChange }: AllowedUsersPopoverProps) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [open, setOpen] = useState(false);
 
   const context = useContext(WhiteboardContext);
@@ -72,19 +81,28 @@ const AllowedUsersPopover = ({ selected, onChange }: AllowedUsersPopoverProps) =
     error: whiteboardError,
     isLoading: isWhiteboardLoading,
     isFetching: isWhiteboardFetching,
-  } = useQuery<APIWhiteboard>({
+  } = useQuery<APIWhiteboard, AxiosError>({
     queryKey: ["whiteboard", whiteboardId, 'user_permissions'],
     queryFn: async () => {
       const res : AxiosResponse<APIWhiteboard> = await api.get(`/whiteboards/${whiteboardId}`);
 
-      if (res.status >= 400) {
-        throw new Error(
-          `GET /whiteboards/${whiteboardId} failed with status ${res.status} (${res.statusText}): ${res.data}`
-        );
+      return res.data;
+    },
+    retry: (failureCount, error) => {
+      if (failureCount >= 3) {
+        return false;
       } else {
-        return res.data;
+        switch (error.status) {
+          case 403:
+          case 404:
+            // -- We can be sure that the whiteboard either doesn't exist or we
+            // don't have permission to access it.
+            return false;
+          default:
+            return true;
+        }// -- end switch error.
       }
-    }
+    },
   });
 
   // -- derived state
@@ -106,6 +124,13 @@ const AllowedUsersPopover = ({ selected, onChange }: AllowedUsersPopoverProps) =
       : [...selected, user];
     onChange(next);
   };
+
+  if (whiteboardError && whiteboardError.status === 403) {
+    // -- redirect to login
+    const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
+
+    navigate(`/login?redirect=${locationEncoded}`);
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

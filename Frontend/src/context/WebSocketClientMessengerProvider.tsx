@@ -342,7 +342,7 @@ const WebSocketClientMessengerProvider = ({
 
   useEffect(
     () => {
-      const wsUriScheme : 'ws' | 'wss' = window.location.protocol === 'https' ? 'wss' : 'ws';
+      const wsUriScheme : 'ws' | 'wss' = window.location.protocol === 'https:' ? 'wss' : 'ws';
       const wsUri = `${wsUriScheme}://${window.location.host}/ws/${whiteboardId}`;
       const ws : WebSocket = new WebSocket(wsUri);
 
