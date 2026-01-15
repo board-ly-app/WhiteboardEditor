@@ -197,7 +197,7 @@ describe("Whiteboards API", () => {
     const whiteboardsExpect = [
       {
         // -- Project Alpha
-        id: '68d5e8d4829da666aece5f56',
+        id: '68d5e8d4829da666aece0400',
       }
     ];
 
@@ -719,5 +719,53 @@ describe("Whiteboards API", () => {
         userPermissions: userPermissionsReq
       })
       .expect(400);
+  });
+
+  it("should ignore invalid user ids (i.e. from deleted users) in permissions when fetching a whiteboard", async () => {
+    const jwtSecret = process.env.JWT_SECRET;
+    const userCollection = mongoose.connection.collection('users');
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Delta"});
+    const owner = await userCollection.findOne({ username: 'carol' });
+
+    expect(jwtSecret).not.toBeNull();
+    expect(owner).not.toBeNull();
+    expect(whiteboard).not.toBeNull();
+
+    // to please TypeScript
+    if ((! jwtSecret) || (! owner) || (! whiteboard)) {
+      return;
+    }
+
+    const targetUrl = `/api/v1/whiteboards/${whiteboard._id.toString()}`;
+
+    // Generate signed JWT
+    const authToken = jwt.sign(
+      { sub: owner._id.toString() },   // sub = subject claim
+      jwtSecret,
+      { expiresIn: 999999999 }
+    );
+
+    // -- Get whiteboard
+    const wbRes = await request(app)
+      .get(targetUrl)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send()
+      .expect(200);
+
+    validateWhiteboardAttribView(wbRes.body, {
+      user_permissions: [
+        {
+          type: 'user',
+          user: {
+            id: owner._id.toString(),
+            username: 'carol',
+            email: 'carol@example.com',
+          },
+          permission: 'own',
+        },
+      ],
+    });
   });
 });

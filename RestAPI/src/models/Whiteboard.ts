@@ -456,6 +456,7 @@ const whiteboardSchema = new Schema<IWhiteboard<Types.ObjectId, Types.ObjectId>,
           ...fields,
           user_permissions: (this as unknown as IWhiteboard <IUser, ICanvas<IUser>>)
             .user_permissions
+            .filter(perm => ((perm.type !== 'user') || ((!! perm.user) && (!! perm.user.id))))
             .map(perm => perm.toPublicView()),
         });
       },
@@ -471,6 +472,7 @@ const whiteboardSchema = new Schema<IWhiteboard<Types.ObjectId, Types.ObjectId>,
           ...fields,
           user_permissions: (this as unknown as IWhiteboard <IUser, ICanvas<IUser>>)
             .user_permissions
+            .filter(perm => ((perm.type !== 'user') || ((!! perm.user) && (!! perm.user.id))))
             .map(perm => perm.toAttribView()),
         });
       }
@@ -533,6 +535,8 @@ sharedUsersArraySchema?.discriminator('user', new Schema<IWhiteboardUserPermissi
           user: _user,
           ...fields
         } = obj;
+
+        console.log('!! perm (toAttribView):', this);// TODO: remove debug
 
         return ({
           ...fields,
