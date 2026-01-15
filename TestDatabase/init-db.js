@@ -12,35 +12,35 @@ db = db.getSiblingDB("testdb"); // create/use "testdb"
 // --- Create Users ---
 const users = [
   {
-    _id: new ObjectId('68d5e8cf829da666aece5f47'),
+    _id: new ObjectId('68d5e8cf829da666aece0101'),
     username: "alice",
     email: "alice@example.com",
     // password: password123
     passwordHashed: "$2b$10$lE4PvWzGiI.hKlq98/EFW.9QSKDDkq.O/WHvMjeMvheUiDxE2pzgW",
   },
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f48'),
+    _id: new ObjectId('68d5e8d4829da666aece0102'),
     username: "bob",
     email: "bob@example.com",
     // password: password456
     passwordHashed: "$2b$10$uLkhrYaddxeki7BymA4MdeqLtWgIRKjcQvgJvSbNhx1FQrWTJO8/2",
   },
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f49'),
+    _id: new ObjectId('68d5e8d4829da666aece0103'),
     username: "carol",
     email: "carol@example.com",
     // password: password789
     passwordHashed: "$2b$10$DQXE2KyaqWw3xS6wf.tdn.BRh0s7MXrhpHhibzFZ0fUqsnowBYcGq",
     },
   {
-    _id: new ObjectId('68d5e8d5829da666aece5f4a'),
+    _id: new ObjectId('68d5e8d4829da666aece0104'),
     username: "dave",
     email: "dave@example.com",
     // password: password101
     passwordHashed: "$2b$10$cGyV5HrtmrLGBr/6tU32/OsfmIFbPu28EzV6td0C9aRHfVCNs5d2e",
   },
   {
-    _id: new ObjectId('68d5e8d6829da666aece5f4b'),
+    _id: new ObjectId('68d5e8d4829da666aece0105'),
     username: "eve",
     email: "eve@example.com",
     // password: weakpassword
@@ -55,7 +55,7 @@ const insertedUsers = db.users.find().toArray();
 // --- Create Canvases ---
 const canvases = [
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f4e'),
+    _id: new ObjectId('68d5e8d4829da666aece0200'),
     width: 3000,
     height: 3000,
     name: "Canvas Alpha",
@@ -65,7 +65,7 @@ const canvases = [
     // allowed_users: [],
   },
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f4f'),
+    _id: new ObjectId('68d5e8d4829da666aece0201'),
     width: 1024,
     height: 1024,
     name: "Canvas Beta",
@@ -76,13 +76,13 @@ const canvases = [
   },
   // -- children of first two canvases
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f50'),
+    _id: new ObjectId('68d5e8d4829da666aece0202'),
     width: 200,
     height: 200,
     name: "Canvas Alpha - One",
     parent_canvas: {
       // Canvas Alpha
-      canvas_id: new ObjectId('68d5e8d4829da666aece5f4e'),
+      canvas_id: new ObjectId('68d5e8d4829da666aece0200'),
       origin_x: 100,
       origin_y: 100,
     },
@@ -92,13 +92,13 @@ const canvases = [
     // allowed_users: [],
   },
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f51'),
+    _id: new ObjectId('68d5e8d4829da666aece0203'),
     width: 600,
     height: 200,
     name: "Canvas Alpha - Two",
     parent_canvas: {
       // Canvas Alpha
-      canvas_id: new ObjectId('68d5e8d4829da666aece5f4e'),
+      canvas_id: new ObjectId('68d5e8d4829da666aece0200'),
       origin_x: 300,
       origin_y: 300,
     },
@@ -108,13 +108,13 @@ const canvases = [
     // allowed_users: [],
   },
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f52'),
+    _id: new ObjectId('68d5e8d4829da666aece0204'),
     width: 100,
     height: 100,
     name: "Canvas Alpha - Three",
     parent_canvas: {
       // Canvas Alpha - One
-      canvas_id: new ObjectId('68d5e8d4829da666aece5f50'),
+      canvas_id: new ObjectId('68d5e8d4829da666aece0202'),
       origin_x: 50,
       origin_y: 50,
     },
@@ -124,13 +124,13 @@ const canvases = [
     // allowed_users: [],
   },
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f53'),
+    _id: new ObjectId('68d5e8d4829da666aece0205'),
     width: 800,
     height: 600,
     name: "Canvas Beta - One",
     parent_canvas: {
       // Canvas Beta
-      canvas_id: new ObjectId('68d5e8d4829da666aece5f4f'),
+      canvas_id: new ObjectId('68d5e8d4829da666aece0201'),
       origin_x: 100,
       origin_y: 100,
     },
@@ -140,10 +140,20 @@ const canvases = [
     // allowed_users: [],
   },
   {
-    _id: new ObjectId('68d5e8d4829da666aece6000'),
+    _id: new ObjectId('68d5e8d4829da666aece0206'),
     width: 3000,
     height: 3000,
     name: "Canvas Gamma",
+    time_created: new Date("2025-08-01T12:10:00.000Z"),
+    time_last_modified: new Date("2025-08-10T12:10:00.000Z"),
+    // null allowed_users = all users allowed
+    // allowed_users: [],
+  },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece0207'),
+    width: 3000,
+    height: 3000,
+    name: "Canvas Delta",
     time_created: new Date("2025-08-01T12:10:00.000Z"),
     time_last_modified: new Date("2025-08-10T12:10:00.000Z"),
     // null allowed_users = all users allowed
@@ -158,9 +168,9 @@ const insertedCanvases = db.canvases.find().toArray();
 // --- Create shapes/canvas objects ---
 const shapes = [
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f54'),
+    _id: new ObjectId('68d5e8d4829da666aece0300'),
     // Canvas Alpha - Three
-    canvas_id: new ObjectId('68d5e8d4829da666aece5f52'),
+    canvas_id: new ObjectId('68d5e8d4829da666aece0204'),
     type: 'rect',
     width: 10,
     height: 10,
@@ -172,9 +182,9 @@ const shapes = [
     strokeWidth: 1.0,
   },
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f55'),
+    _id: new ObjectId('68d5e8d4829da666aece0301'),
     // Canvas Beta - One
-    canvas_id: new ObjectId('68d5e8d4829da666aece5f53'),
+    canvas_id: new ObjectId('68d5e8d4829da666aece0205'),
     type: 'rect',
     width: 10,
     height: 10,
@@ -194,45 +204,63 @@ const insertedShapes = db.shapes.find().toArray();
 // --- Create Whiteboards ---
 const whiteboards = [
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f56'),
+    _id: new ObjectId('68d5e8d4829da666aece0400'),
     name: "Project Alpha",
     time_created: new Date("2025-08-01T12:00:00.000Z"),
     root_canvas: insertedCanvases[0]._id,
     user_permissions: [
       {
         type: 'user',
-        user: new ObjectId('68d5e8cf829da666aece5f47'),  // Alice
+        user: new ObjectId('68d5e8cf829da666aece0101'),  // Alice
         permission: 'own',
       }
     ],
   },
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f57'),
+    _id: new ObjectId('68d5e8d4829da666aece0401'),
     name: "Project Beta",
     time_created: new Date("2025-08-02T12:10:00.000Z"),
     root_canvas: insertedCanvases[1]._id,
     user_permissions: [
       {
         type: 'user',
-        user: new ObjectId('68d5e8d4829da666aece5f48'), // Bob
+        user: new ObjectId('68d5e8d4829da666aece0102'), // Bob
         permission: 'own',
       }
     ],
   },
   {
-    _id: new ObjectId('68d5e8d4829da666aece5f58'),
+    _id: new ObjectId('68d5e8d4829da666aece0402'),
     name: "Project Gamma",
     time_created: new Date("2025-08-02T12:10:00.000Z"),
-    root_canvas: new ObjectId('68d5e8d4829da666aece6000'),
+    root_canvas: new ObjectId('68d5e8d4829da666aece0206'),
     user_permissions: [
       {
         type: 'user',
-        user: new ObjectId('68d5e8d4829da666aece5f49'), // Carol
+        user: new ObjectId('68d5e8d4829da666aece0103'), // Carol
         permission: 'own',
       },
       {
         type: 'user',
-        user: new ObjectId('68d5e8cf829da666aece5f47'),  // Alice
+        user: new ObjectId('68d5e8cf829da666aece0101'),  // Alice
+        permission: 'edit',
+      },
+    ],
+  },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece0403'),
+    name: "Project Delta",
+    time_created: new Date("2025-08-02T12:10:00.000Z"),
+    root_canvas: new ObjectId('68d5e8d4829da666aece0207'),
+    user_permissions: [
+      {
+        type: 'user',
+        user: new ObjectId('68d5e8d4829da666aece0103'), // Carol
+        permission: 'own',
+      },
+      {
+        type: 'user',
+        user: new ObjectId('68d5e8cf829da666aece01ff'),  // Non-existent user
         permission: 'edit',
       },
     ],

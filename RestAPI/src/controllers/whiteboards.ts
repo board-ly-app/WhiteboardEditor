@@ -17,6 +17,7 @@ import {
 
 import {
   User,
+  type IUser,
 } from '../models/User';
 
 import type {
@@ -58,11 +59,17 @@ export const handleGetWhiteboardById = async (
       case 'ok':
       {
           const { whiteboard } = resp;
-          const validUserIdSet: Record<string, boolean> = Object.fromEntries([
-            ...whiteboard.user_permissions.filter(perm => perm.type === 'user').map(perm => [
-              perm.user._id, true 
+          
+          console.log('Received whiteboard:', JSON.stringify(whiteboard, null, 2));
+
+          const isValidUserPerm = (perm: IWhiteboardUserPermissionModel<IUser>): perm is IWhiteboardUserPermissionById <IUser> => {
+            return (perm.type === 'user') && (!! perm.user);
+          };
+          const validUserIdSet: Record<string, boolean> = Object.fromEntries(
+              whiteboard.user_permissions.filter(perm => isValidUserPerm(perm)).map(perm => [
+              perm.user.id, true 
             ])
-          ]);
+          );
 
           if (! (userId.toString() in validUserIdSet)) {
             return res.status(403).json({
@@ -71,10 +78,7 @@ export const handleGetWhiteboardById = async (
           } else {
             const wbAttribView = whiteboard.toAttribView();
 
-            return res.status(200).json({
-              ...wbAttribView,
-              user_permissions: removeDanglingUserPermissions(wbAttribView.user_permissions)
-            });
+            return res.status(200).json(wbAttribView);
           }
       }
       default:

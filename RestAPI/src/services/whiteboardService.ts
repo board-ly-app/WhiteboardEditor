@@ -36,7 +36,7 @@ export const removeDanglingUserPermissions = (
   populatedUserPermissions: IWhiteboardUserPermission<Partial<IUser> | null>[]
 ): IWhiteboardUserPermission<IUser>[] => {
   const filterPermission = (perm: IWhiteboardUserPermission<Partial<IUser> | null>): perm is IWhiteboardUserPermission<IUser> => (
-    perm.type !== 'user' || (perm.user !== null && perm.user.id)
+    perm.type !== 'user' || ((!! perm.user) && (!! perm.user.id))
   );
   const permissionsFiltered = populatedUserPermissions.filter(filterPermission);
 
@@ -59,12 +59,14 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
       // permissions
       let haveSharedUsersChanged = false;
       const sharedUsers: IWhiteboardUserPermissionModel<Types.ObjectId>[] = await Promise.all(whiteboard.user_permissions
+          .filter(perm => (perm.type !== 'user') || ((!! perm.user) && (!! perm.user._id)))
           .map(async perm => {
         switch (perm.type) {
           case 'user':
             return ({
-              ...perm,
+              type: 'user',
               user: perm.user._id,
+              permission: perm.permission,
             }) ;
           case 'email':
             // check if this email now belongs to a registered user
@@ -73,6 +75,7 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
 
             if (user) {
               haveSharedUsersChanged = true;
+
               return ({
                 type: 'user',
                 user: user._id,
@@ -92,10 +95,10 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
         whiteboard.set('user_permissions', sharedUsers);
         whiteboard = await whiteboard.save()
           .then(wb => wb.populateAttribs());
-      }
 
-      if (! whiteboard) {
-        throw new Error(`Whiteboard ${whiteboardId} not properly (re-)fetched`);
+        if (! whiteboard) {
+          throw new Error(`Whiteboard ${whiteboardId} not properly (re-)fetched`);
+        }
       }
 
       console.log("Returning whiteboard:", JSON.stringify(whiteboard, null, 2));

@@ -34,7 +34,7 @@ mod unit_tests {
             client_id: test_client_id.clone(),
             user_summary: Mutex::new(Some(UserSummary{
                 client_id: test_client_id.clone(),
-                user_id: String::from("68d5e8cf829da666aece5f47"),
+                user_id: String::from("68d5e8cf829da666aece0101"),
                 username: String::from("Alice"),
             })),
             jwt_secret: String::from("abcd"),
@@ -173,7 +173,7 @@ mod unit_tests {
             client_id: test_client_id.clone(),
             user_summary: Mutex::new(Some(UserSummary{
                 client_id: test_client_id.clone(),
-                user_id: String::from("68d5e8cf829da666aece5f47"),
+                user_id: String::from("68d5e8cf829da666aece0101"),
                 username: String::from("Alice"),
             })),
             jwt_secret: String::from("abcd"),
@@ -290,17 +290,17 @@ mod unit_tests {
         let db = mongo_client.default_database().unwrap();
 
         // -- call get_whiteboard_by_id; uses ID for "Project Alpha" in TestDatabase/init-db.js
-        let whiteboard_id_s = "68d5e8d4829da666aece5f56";
+        let whiteboard_id_s = "68d5e8d4829da666aece0400";
         let whiteboard_id = ObjectId::parse_str(&whiteboard_id_s).unwrap();
         // -- id for root canvas
-        let root_canvas_id = ObjectId::parse_str("68d5e8d4829da666aece5f4e").unwrap();
+        let root_canvas_id = ObjectId::parse_str("68d5e8d4829da666aece0200").unwrap();
 
         // -- ids for all canvases
         let canvas_ids = vec![
-            ObjectId::parse_str("68d5e8d4829da666aece5f4e").unwrap(),
-            ObjectId::parse_str("68d5e8d4829da666aece5f50").unwrap(),
-            ObjectId::parse_str("68d5e8d4829da666aece5f51").unwrap(),
-            ObjectId::parse_str("68d5e8d4829da666aece5f52").unwrap(),
+            ObjectId::parse_str("68d5e8d4829da666aece0200").unwrap(),
+            ObjectId::parse_str("68d5e8d4829da666aece0202").unwrap(),
+            ObjectId::parse_str("68d5e8d4829da666aece0203").unwrap(),
+            ObjectId::parse_str("68d5e8d4829da666aece0204").unwrap(),
         ];
 
         let whiteboard = get_whiteboard_by_id(&db, &whiteboard_id).await.unwrap().unwrap();
@@ -448,7 +448,7 @@ mod unit_tests {
             client_id: test_client_id.clone(),
             user_summary: Mutex::new(Some(UserSummary{
                 client_id: test_client_id.clone(),
-                user_id: String::from("68d5e8cf829da666aece5f47"),
+                user_id: String::from("68d5e8cf829da666aece0101"),
                 username: String::from("Alice"),
             })),
             jwt_secret: String::from(jwt_secret),
@@ -525,7 +525,7 @@ mod unit_tests {
         );
 
         // -- "alice"
-        let uid = ObjectId::parse_str("68d5e8cf829da666aece5f47")
+        let uid = ObjectId::parse_str("68d5e8cf829da666aece0101")
             .expect("The provided string is a valid ObjectId");
 
         // -- instantiate MongoDBStore
@@ -598,7 +598,7 @@ mod unit_tests {
             client_id: test_client_id.clone(),
             user_summary: Mutex::new(Some(UserSummary{
                 client_id: test_client_id.clone(),
-                user_id: String::from("68d5e8cf829da666aece5f47"),
+                user_id: String::from("68d5e8cf829da666aece0101"),
                 username: String::from("Alice"),
             })),
             jwt_secret: String::from("abcd"),
