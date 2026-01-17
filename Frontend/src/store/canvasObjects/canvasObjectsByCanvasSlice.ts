@@ -12,64 +12,89 @@ import type {
   CanvasObjectIdType
 } from '@/types/CanvasObjectModel';
 
-export type CanvasObjectsByCanvasState = Record<CanvasIdType, CanvasObjectIdType[]>;
+export interface CanvasObjectsByCanvasState {
+  canvasObjectsByCanvas: Record<CanvasIdType, Record<CanvasObjectIdType, CanvasObjectIdType>>;
+  canvasesByCanvasObjects: Record<CanvasObjectIdType, CanvasIdType>;
+}
 
 const canvasObjectsByCanvasSlice = createSlice({
   name: 'canvasObjectsByCanvas',
   initialState: {} as CanvasObjectsByCanvasState,
   reducers: {
     setObjectsByCanvas(state, action: PayloadAction<Record<CanvasIdType, CanvasObjectIdType[]>>) {
-      return {
-        ...state,
-        ...action.payload
+      const out = {
+        canvasObjectsByCanvas: {
+          ...state.canvasObjectsByCanvas,
+        },
+        canvasesByCanvasObjects: {
+          ...state.canvasesByCanvasObjects,
+        },
       };
-    },
-    addObjectsByCanvas(state, action: PayloadAction<Record<CanvasIdType, CanvasObjectIdType[]>>) {
-      const out = { ...state };
 
-      Object.entries(action.payload).forEach(([canvasId, records]) => {
-        if (canvasId in state) {
-          const objectIdSet : Record<CanvasObjectIdType, CanvasObjectIdType> = {};
+      for (const [canvasId, canvasObjectIds] of Object.entries(action.payload)) {
+        out.canvasObjectsByCanvas[canvasId] = Object.fromEntries(canvasObjectIds.map(objId => [objId, objId]));
 
-          // add existing canvasIds to set
-          state[canvasId]?.forEach(objId => {
-            objectIdSet[objId] = objId;
-          });
-
-          // add new canvasIds to set
-          records.forEach(objId => {
-            objectIdSet[objId] = objId;
-          });
-
-          out[canvasId] = Object.values(objectIdSet);
-        } else {
-          out[canvasId] = [...records];
-        }
-      });
+        for (const canvasObjectId of canvasObjectIds) {
+          out.canvasesByCanvasObjects[canvasObjectId] = canvasId;
+        }// -- end for canvasObjectId
+      }// -- end for canvasId, canvasObjectIds
 
       return out;
     },
-    removeObjectsByCanvas(state, action: PayloadAction<CanvasIdType[]>) {
-      const out = { ...state };
+    addObjectsByCanvas(state, action: PayloadAction<Record<CanvasIdType, CanvasObjectIdType[]>>) {
+      const out = {
+        canvasObjectsByCanvas: {
+          ...state.canvasObjectsByCanvas,
+        },
+        canvasesByCanvasObjects: {
+          ...state.canvasesByCanvasObjects,
+        },
+      };
+
+      for (const [canvasId, canvasObjectIds] of Object.entries(action.payload)) {
+        if (canvasId in out.canvasObjectsByCanvas) {
+          out.canvasObjectsByCanvas[canvasId] = {
+            ...out.canvasObjectsByCanvas[canvasId],
+            ...Object.fromEntries(canvasObjectIds.map(objId => [objId, objId]))
+          };
+        }
+
+        for (const canvasObjectId of canvasObjectIds) {
+          out.canvasesByCanvasObjects[canvasObjectId] = canvasId;
+        }// -- end for canvasObjectId
+      }// -- end for canvasId, canvasObjectIds
+
+      return out;
+    },
+    removeCanvasObjectsByCanvas(state, action: PayloadAction<CanvasObjectIdType[]>) {
+      const out = {
+        canvasObjectsByCanvas: {
+          ...state.canvasObjectsByCanvas,
+        },
+        canvasesByCanvasObjects: {
+          ...state.canvasesByCanvasObjects,
+        },
+      };
 
       for (const id of action.payload) {
-        delete out[id];
+        delete out.canvasObjectsByCanvas[out.canvasesByCanvasObjects[id]];
+        delete out.canvasesByCanvasObjects[id];
       }
 
       return out;
-    }
+    },
   },
   selectors: {
     // Entire state is mapping of object ids to objects
     // Objects redundantly store their ids
-    selectObjectsByCanvas: (state, canvasId: CanvasIdType) => state[canvasId]
+    selectObjectsByCanvas: (state, canvasId: CanvasIdType) => Object.keys(state.canvasObjectsByCanvas[canvasId])
   }
 });
 
 export const {
   setObjectsByCanvas,
   addObjectsByCanvas,
-  removeObjectsByCanvas
+  removeCanvasObjectsByCanvas
 } = canvasObjectsByCanvasSlice.actions;
 
 export const {

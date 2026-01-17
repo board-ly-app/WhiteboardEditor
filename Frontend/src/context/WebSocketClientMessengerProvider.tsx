@@ -61,6 +61,7 @@ import {
 import {
   addWhiteboard,
   setCanvasObjects,
+  removeCanvasObjects,
   addCanvas,
   deleteCanvas,
   setCurrentEditorsByCanvas,
@@ -256,6 +257,15 @@ const WebSocketClientMessengerProvider = ({
             } = msg;
 
             dispatch(setAllowedUsersByCanvas({ [canvasId]: allowedUsers }));
+          }
+          break;
+          case 'delete_canvas_objects':
+          {
+              const {
+                canvasObjectIds,
+              } = msg;
+
+              removeCanvasObjects(dispatch, canvasObjectIds);
           }
           break;
           case 'individual_error':

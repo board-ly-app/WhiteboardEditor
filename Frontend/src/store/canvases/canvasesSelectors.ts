@@ -19,9 +19,13 @@ export const selectCanvasesByWhiteboardId = (state: RootState, whiteboardId: Whi
   state.canvasesByWhiteboard[whiteboardId]?.map(canvasId => state.canvases[canvasId]) ?? []
 );
 
-export const selectObjectsForCanvas = (state: RootState, canvasId: CanvasIdType) => (
-  state.canvasObjectsByCanvas[canvasId]?.map(id => state.canvasObjects[id]) ?? []
-);
+export const selectObjectsForCanvas = (state: RootState, canvasId: CanvasIdType) => {
+  if (canvasId in state.canvasObjectsByCanvas.canvasObjectsByCanvas) {
+    return Object.keys(state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId]).map(id => state.canvasObjects[id]);
+  } else {
+    return [];
+  }
+};
 
 export const selectCanvasWithObjects = createSelector(
   [selectCanvasById, selectObjectsForCanvas],
@@ -41,7 +45,7 @@ export const selectCanvasesWithObjectsByWhiteboardId = (
       } else {
         return ({
           ...canvas,
-          shapes: Object.fromEntries(state.canvasObjectsByCanvas[canvasId]
+          shapes: Object.fromEntries(Object.keys(state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId])
             .map(canvasObjectId => {
               if (! (canvasObjectId in state.canvasObjects)) {
                 return null;

@@ -13,10 +13,12 @@ import type {
 
 import {
   setCanvasObjects,
+  removeCanvasObjects,
 } from '@/store/canvasObjects/canvasObjectsSlice';
 
 import {
   addObjectsByCanvas,
+  removeCanvasObjectsByCanvas,
 } from '@/store/canvasObjects/canvasObjectsByCanvasSlice';
 
 const controllerSetCanvasObjects = (
@@ -30,6 +32,15 @@ const controllerSetCanvasObjects = (
   }));
 };
 
+const controllerRemoveCanvasObjects = (
+  dispatch: AppDispatch,
+  canvasObjectIds: CanvasObjectIdType[]
+) => {
+  dispatch(removeCanvasObjects(canvasObjectIds));
+  dispatch(removeCanvasObjectsByCanvas(canvasObjectIds));
+};
+
 export {
-  controllerSetCanvasObjects as setCanvasObjects
+  controllerSetCanvasObjects as setCanvasObjects,
+  controllerRemoveCanvasObjects as removeCanvasObjects,
 };

@@ -2,6 +2,7 @@
 
 import {
   setCanvasObjects,
+  removeCanvasObjects,
 } from './canvasObjects';
 
 import {
@@ -26,6 +27,7 @@ import {
 
 export {
   setCanvasObjects,
+  removeCanvasObjects,
   addCanvas,
   deleteCanvas,
   setCurrentEditorsByCanvas,
