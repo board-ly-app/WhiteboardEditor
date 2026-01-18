@@ -260,6 +260,9 @@ pub enum WhiteboardDiff {
         canvas_id: CanvasIdType,
         shapes: HashMap<CanvasObjectIdType, ShapeModel>,
     },
+    DeleteCanvasObjects {
+        canvas_object_ids: Vec<CanvasObjectIdType>,
+    },
     UpdateCanvasAllowedUsers {
         canvas_id: CanvasIdType,
         allowed_users: Vec<ObjectId>,
@@ -1022,6 +1025,15 @@ pub async fn handle_authenticated_client_message(
                             canvas.shapes.remove(object_id);
                         }// -- end for object_id
                     }// -- end for let mut canvas
+
+                    // Store diffs to trigger deletion in database
+                    {
+                        let mut diffs = client_state.diffs.lock().await;
+                    
+                        diffs.push(WhiteboardDiff::DeleteCanvasObjects{
+                            canvas_object_ids: canvas_object_ids.clone()
+                        });
+                    }
 
                     // Forward message to clients
                     Some(ServerSocketMessage::DeleteCanvasObjects{
