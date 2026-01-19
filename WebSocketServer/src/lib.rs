@@ -352,7 +352,7 @@ pub enum ServerSocketMessage {
     },
     DeleteCanvasObjects {
         client_id: ClientIdType,
-        canvas_object_ids: Vec<CanvasObjectIdType>,
+        canvas_object_ids: Vec<String>,
     },
     CreateCanvas {
         client_id: ClientIdType,
@@ -1038,7 +1038,7 @@ pub async fn handle_authenticated_client_message(
                     // Forward message to clients
                     Some(ServerSocketMessage::DeleteCanvasObjects{
                         client_id: client_state.client_id.clone(),
-                        canvas_object_ids: canvas_object_ids.clone(),
+                        canvas_object_ids: canvas_object_ids.into_iter().map(|oid| oid.to_string()).collect(),
                     })
                 },
                 CreateCanvas { name, width, height, parent_canvas, allowed_users } => {

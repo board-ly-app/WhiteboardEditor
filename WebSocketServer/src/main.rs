@@ -397,14 +397,14 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
                                             }// end for (obj_id, shape) in shapes.iter()
                                         },
                                         WhiteboardDiff::DeleteCanvasObjects { canvas_object_ids } => {
-                                            println!("Deleting canvas objects in database");
+                                            println!("Deleting canvas objects in database: {:?}", canvas_object_ids);
 
                                             let filter = doc! {
                                                 "_id": {
                                                     "$in": canvas_object_ids.clone()
                                                 }
                                             };
-                                            let delete_canvas_objects_res = canvas_coll.delete_many(filter).await;
+                                            let delete_canvas_objects_res = shape_coll.delete_many(filter).await;
 
                                             match delete_canvas_objects_res {
                                                 Err(e) => {
@@ -607,14 +607,14 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
                                             }// end for (obj_id, shape) in shapes.iter()
                                         },
                                         WhiteboardDiff::DeleteCanvasObjects { canvas_object_ids } => {
-                                            println!("Deleting canvas objects in database");
+                                            println!("Deleting canvas objects in database: {:?}", canvas_object_ids);
 
                                             let filter = doc! {
                                                 "_id": {
                                                     "$in": canvas_object_ids.clone()
                                                 }
                                             };
-                                            let delete_canvas_objects_res = canvas_coll.delete_many(filter).await;
+                                            let delete_canvas_objects_res = shape_coll.delete_many(filter).await;
 
                                             match delete_canvas_objects_res {
                                                 Err(e) => {
