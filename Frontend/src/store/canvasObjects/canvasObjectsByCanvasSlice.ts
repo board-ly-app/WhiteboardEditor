@@ -77,7 +77,7 @@ const canvasObjectsByCanvasSlice = createSlice({
       };
 
       for (const id of action.payload) {
-        delete out.canvasObjectsByCanvas[out.canvasesByCanvasObjects[id]];
+        delete out.canvasObjectsByCanvas[out.canvasesByCanvasObjects[id]][id];
         delete out.canvasesByCanvasObjects[id];
       }
 

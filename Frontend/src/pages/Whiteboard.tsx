@@ -100,6 +100,7 @@ import CanvasCard from "@/components/CanvasCard";
 import Sidebar from "@/components/Sidebar";
 import Toolbar from "@/components/Toolbar";
 import ShapeAttributesMenu from "@/components/ShapeAttributesMenu";
+import DeleteShapesButton from '@/components/DeleteShapeButton';
 import HeaderButton from '@/components/HeaderButton';
 import HeaderAuthed from '@/components/HeaderAuthed';
 import shapeAttributesReducer from '@/reducers/shapeAttributesReducer';
@@ -501,6 +502,7 @@ const Whiteboard = ({
                     attributes={shapeAttributesState}
                     dispatch={dispatchShapeAttributes}
                   />
+                  <DeleteShapesButton />
                 </Sidebar>
               )}
       
