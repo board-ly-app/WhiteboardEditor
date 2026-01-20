@@ -73,6 +73,32 @@ export const selectCanvasObjectsByWhiteboard = (
   }
 };
 
+export const selectSelectedCanvasObjectsByWhiteboard = (
+  state: RootState,
+  whiteboardId: WhiteboardIdType
+): CanvasObjectIdType[] => {
+  const canvasIds: CanvasIdType[] | null = state.canvasesByWhiteboard[whiteboardId] || null;
+
+  if (! canvasIds) {
+    return [];
+  } else {
+    const selectedCanvasObjectSet : Record<CanvasObjectIdType, CanvasObjectIdType> = state.selectedCanvasObjects;
+
+    return canvasIds.reduce(
+      (accum: CanvasObjectIdType[], canvasId) => {
+        const objectIds: Record<CanvasObjectIdType, CanvasObjectIdType> | null = state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId] || null;
+
+        if (objectIds) {
+          accum.push(...Object.keys(objectIds).filter(objId => objId in selectedCanvasObjectSet));
+        }
+
+        return accum;
+      },
+      []
+    );
+  }
+};
+
 export const selectCanvasObjectById = (
   state: RootState,
   objectId: CanvasObjectIdType,
