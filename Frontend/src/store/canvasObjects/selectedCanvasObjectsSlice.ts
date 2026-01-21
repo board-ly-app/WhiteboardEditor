@@ -12,7 +12,10 @@ const selectedCanvasObjectsSlice = createSlice({
   name: 'selectedCanvasObjects',
   initialState: {} as Record<CanvasObjectIdType, CanvasObjectIdType>,
   reducers: {
-    setSelectedCanvasObjects(state, action: PayloadAction<CanvasObjectIdType[]>) {
+    setSelectedCanvasObjects(_state, action: PayloadAction<CanvasObjectIdType[]>) {
+      return Object.fromEntries(action.payload.map(objId => [objId, objId]));
+    },
+    addSelectedCanvasObjects(state, action: PayloadAction<CanvasObjectIdType[]>) {
       return ({
         ...state,
         ...Object.fromEntries(action.payload.map(objId => [objId, objId]))
@@ -33,6 +36,7 @@ const selectedCanvasObjectsSlice = createSlice({
 
 export const {
   setSelectedCanvasObjects,
+  addSelectedCanvasObjects,
   removeSelectedCanvasObjects,
 } = selectedCanvasObjectsSlice.actions;
 
