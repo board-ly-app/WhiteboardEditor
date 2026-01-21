@@ -1,7 +1,8 @@
 import Konva from "konva";
 import type { Shape, ShapeConfig } from "konva/lib/Shape";
-import { 
+import React, { 
   useCallback, 
+  useEffect,
   // useRef 
 } from "react";
 
@@ -22,7 +23,7 @@ type SnappingEdges = {
 };
 
 function useSnapping(
-  // groupRef: React.RefObject<Konva.Group>
+  nodeRef: React.RefObject<Konva.Shape | null>
 ) {
   const getLineGuideStops = (skipShape: Konva.Shape) => {
     const stage = skipShape.getStage();
@@ -229,13 +230,24 @@ function useSnapping(
     });
 
     e.target.absolutePosition(absPos);
-  }, [drawGuides, getGuides, getObjectSnappingEdges]);
+  }, [getLineGuideStops, getObjectSnappingEdges, getGuides, drawGuides]);
 
   const onDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
     e.target.getLayer()?.find(".guid-line").forEach(l => l.destroy());
   }, []);
 
-  return { onDragMove, onDragEnd };
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (!node) return;
+
+    node.on("dragmove", onDragMove);
+    node.on("dragend", onDragEnd);
+
+    return () => {
+      node.off("dragmove", onDragMove);
+      node.off("dragEnd", onDragEnd);
+    };
+  }, [nodeRef, onDragMove, onDragEnd]);
 }
 
 export default useSnapping;
