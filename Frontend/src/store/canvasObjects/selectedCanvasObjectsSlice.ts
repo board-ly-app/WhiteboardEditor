@@ -32,6 +32,9 @@ const selectedCanvasObjectsSlice = createSlice({
       );
     },
   },
+  selectors: {
+    selectSelectedCanvasObjects: (state) => state,
+  },
 });// -- end selectedCanvasObjectsSlice
 
 export const {

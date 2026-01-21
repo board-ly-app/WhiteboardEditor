@@ -73,6 +73,12 @@ export const selectCanvasObjectsByWhiteboard = (
   }
 };
 
+export const selectSelectedCanvasObjects = (
+  state: RootState
+): Record<CanvasObjectIdType, CanvasObjectIdType> => {
+  return state.selectedCanvasObjects;
+};
+
 export const selectSelectedCanvasObjectsByWhiteboard = (
   state: RootState,
   whiteboardId: WhiteboardIdType

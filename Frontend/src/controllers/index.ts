@@ -3,6 +3,8 @@
 import {
   setCanvasObjects,
   removeCanvasObjects,
+  setSelectedCanvasObjects,
+  removeSelectedCanvasObjects,
 } from './canvasObjects';
 
 import {
@@ -28,6 +30,8 @@ import {
 export {
   setCanvasObjects,
   removeCanvasObjects,
+  setSelectedCanvasObjects,
+  removeSelectedCanvasObjects,
   addCanvas,
   deleteCanvas,
   setCurrentEditorsByCanvas,
