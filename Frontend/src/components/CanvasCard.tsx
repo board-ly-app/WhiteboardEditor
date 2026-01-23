@@ -183,7 +183,7 @@ function CanvasCard({
     }, waitTime);
 
     return () => clearInterval(interval);
-  }, [whiteboardId]);
+  }, [whiteboardId, canvasGroupRefsByIdRef, location.pathname, location.search, navigate, rootCanvas.id, waitTime]);
 
   // Handle initial scroll to the center of the stage
   const containerRef = useRef<HTMLDivElement>(null);
