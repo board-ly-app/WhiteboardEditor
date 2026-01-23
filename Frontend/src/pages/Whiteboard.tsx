@@ -17,7 +17,7 @@ import {
 } from 'react-router-dom';
 
 import {
-  useSelector
+  useSelector,
 } from 'react-redux';
 
 // -- third-party imports
@@ -62,8 +62,13 @@ import {
 
 // -- program state
 import {
+  store,
   type RootState,
 } from '@/store';
+
+import {
+  setSelectedCanvasObjects,
+} from '@/controllers';
 
 import {
   ClientMessengerContext,
@@ -82,7 +87,7 @@ import {
 } from '@/store/canvases/canvasesSelectors';
 
 import {
-  selectCanvasObjectsByWhiteboard
+  selectCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import WhiteboardContext, {
@@ -163,6 +168,8 @@ const Whiteboard = ({
   const location = useLocation();
   const navigate = useNavigate();
 
+  const dispatch = store.dispatch;
+
   // -- references
   const whiteboardContext = useContext(WhiteboardContext);
   const authContext = useContext(AuthContext);
@@ -187,7 +194,6 @@ const Whiteboard = ({
     ownPermission,
     currentTool,
     setCurrentTool,
-    setSelectedShapeIds,
   } = whiteboardContext;
 
   const {
@@ -273,6 +279,15 @@ const Whiteboard = ({
 
   const [newCanvasDimensions, setNewCanvasDimensions] = useState<NewCanvasDimensions | null>(null);
   const [newCanvasParentId, setNewCanvasParentId] = useState<CanvasIdType | null>(null);
+
+  // Used within Toolbar
+  const handleToolChange = useCallback(
+    (choice : ToolChoice) => {
+      setSelectedCanvasObjects(dispatch, []);
+      setCurrentTool(choice);
+    },
+    [dispatch, setCurrentTool]
+  );
 
   // -- derived state
   let status : ComponentStatus;
@@ -457,7 +472,7 @@ const Whiteboard = ({
           </DropdownMenuContent>
         </DropdownMenu>
       );
-      
+
       return (
         <Page
           title={pageTitle}
@@ -491,10 +506,7 @@ const Whiteboard = ({
                   {/* Toolbar */}
                   <Toolbar
                     toolChoice={currentTool}
-                    onToolChange={(choice) => {
-                      setSelectedShapeIds([]);
-                      setCurrentTool(choice);
-                    }}
+                    onToolChange={handleToolChange}
                   />
       
                   {/** Shape Attributes Menu **/}
@@ -670,7 +682,6 @@ const WrappedWhiteboard = () => {
   const authContext = useContext(AuthContext);
   const clientMessengerContext = useContext(ClientMessengerContext);
   const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);
-  const [selectedShapeIds, setSelectedShapeIds] = useState<CanvasObjectIdType[]>([]);
   const [currentDispatcher, setCurrentDispatcher] = useState<OperationDispatcher | null>(null);
   const [selectedCanvasId, setSelectedCanvasId] = useState<CanvasIdType | null>(null);
   const [tooltipText, setTooltipText] = useState<string>("");
@@ -851,8 +862,6 @@ const WrappedWhiteboard = () => {
       setNewCanvasAllowedUsers={setNewCanvasAllowedUsers}
       ownPermission={ownPermission}
       setOwnPermission={setOwnPermission}
-      selectedShapeIds={selectedShapeIds}
-      setSelectedShapeIds={setSelectedShapeIds}
       currentDispatcher={currentDispatcher}
       setCurrentDispatcher={setCurrentDispatcher}
       selectedCanvasId={selectedCanvasId}

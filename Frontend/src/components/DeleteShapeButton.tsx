@@ -12,7 +12,19 @@ import {
   useCallback,
 } from 'react';
 
+import {
+  useSelector,
+} from 'react-redux';
+
 // --- local imports
+import {
+  type RootState,
+} from '@/store';
+
+import {
+  selectSelectedCanvasObjects,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
+
 import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
@@ -22,6 +34,10 @@ import WhiteboardContext from '@/context/WhiteboardContext';
 import {
   type ClientMessageDeleteCanvasObjects,
 } from '@/types/WebSocketProtocol';
+
+import type { 
+  CanvasObjectIdType, 
+} from "@/types/CanvasObjectModel";
 
 import {
   Button,
@@ -41,28 +57,28 @@ const DeleteShapesButton = () => {
   }
 
   const {
-    selectedShapeIds,
-  } = whiteboardContext;
-
-  const {
     clientMessenger,
   } = clientMessengerContext;
+
+  const selectedCanvasObjectIds : CanvasObjectIdType[] = Object.keys(useSelector(
+    (state: RootState) => selectSelectedCanvasObjects(state)
+  ));
 
   const handleSubmit = useCallback(
     () => {
       if (clientMessenger) {
         const deleteCanvasObjectsMsg : ClientMessageDeleteCanvasObjects = {
           type: 'delete_canvas_objects',
-          canvasObjectIds: selectedShapeIds,
+          canvasObjectIds: selectedCanvasObjectIds,
         };
 
         clientMessenger.sendDeleteCanvasObjects(deleteCanvasObjectsMsg);
       }
     },
-    [clientMessenger, selectedShapeIds]
+    [clientMessenger, selectedCanvasObjectIds]
   );
 
-  if ((! selectedShapeIds) || (selectedShapeIds.length === 0)) {
+  if ((! selectedCanvasObjectIds) || (selectedCanvasObjectIds.length === 0)) {
     // Should not display button
     return null;
   } else {

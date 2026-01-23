@@ -62,6 +62,7 @@ import {
   addWhiteboard,
   setCanvasObjects,
   removeCanvasObjects,
+  removeSelectedCanvasObjects,
   addCanvas,
   deleteCanvas,
   setCurrentEditorsByCanvas,
@@ -80,8 +81,6 @@ export interface WebSocketClientMessengerProviderProps {
 const WebSocketClientMessengerProvider = ({
   children,
 }: WebSocketClientMessengerProviderProps): React.ReactNode => {
-  console.log('!! Rendering WebSocketClientMessengerProvider');// TODO: remove debug
-
   const {
     whiteboard_id: whiteboardId,
   } = useParams();
@@ -265,6 +264,7 @@ const WebSocketClientMessengerProvider = ({
                 canvasObjectIds,
               } = msg;
 
+              removeSelectedCanvasObjects(dispatch, canvasObjectIds);
               removeCanvasObjects(dispatch, canvasObjectIds);
           }
           break;
@@ -320,7 +320,7 @@ const WebSocketClientMessengerProvider = ({
         console.log('Failed to parse message:', e);
       }
     },
-    [dispatch]
+    [dispatch, whiteboardId]
   );// -- end handleServerMessage
 
   const makeHandleWebSocketOpen = useCallback(
