@@ -43,6 +43,10 @@ import {
 import UserCacheContext from '@/context/UserCacheContext';
 
 import {
+  ClientMessengerContext,
+} from '@/context/ClientMessengerContext';
+
+import {
   type ShapeAttributesState,
 } from '@/reducers/shapeAttributesReducer';
 
@@ -106,6 +110,12 @@ function CanvasCard({
     editingText,
     canvasGroupRefsByIdRef,
   } = whiteboardContext;
+
+  const clientMessengerContext = useContext(ClientMessengerContext);
+
+  if (! clientMessengerContext) {
+    throw new Error('No ClientMessengerContext provided to CanvasCard');
+  }
 
   const [selectedCanvasAllowedUsers, setSelectedCanvasAllowedUsers] = useState<User[] | null>(null);
 
@@ -196,7 +206,9 @@ function CanvasCard({
   }, [width, height])
 
   return (
-    <div className="flex flex-col">
+    <div
+      className="flex flex-col"
+    >
       {/* Konva Canvas */}
       <div 
         className="border border-black"
@@ -212,7 +224,8 @@ function CanvasCard({
           width={width}
           height={height}
         >
-          <Layer>
+          <Layer
+          >
             {/** Sub-canvases will be rendered recursively by Canvas component **/}
             <Canvas
               {...{

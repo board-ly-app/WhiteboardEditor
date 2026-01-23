@@ -88,10 +88,11 @@ import {
 
 import {
   selectCanvasObjectsByWhiteboard,
+  selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import WhiteboardContext, {
-  WhiteboardProvider
+  WhiteboardProvider,
 } from "@/context/WhiteboardContext";
 
 import AuthContext from '@/context/AuthContext';
@@ -287,6 +288,34 @@ const Whiteboard = ({
       setCurrentTool(choice);
     },
     [dispatch, setCurrentTool]
+  );
+
+  // Send delete canvas objects message when the delete key is pressed
+  const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
+    (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(state, whiteboardId)
+  );
+
+  useEffect(
+    () => {
+      const handleKeyDown = (ev: KeyboardEvent) => {
+        ev.preventDefault();
+        console.log('!! KEYDOWN:', ev.key);
+
+        switch (ev.key) {
+          case 'Delete':
+            clientMessenger?.sendDeleteCanvasObjects({
+              type: 'delete_canvas_objects',
+              canvasObjectIds: selectedCanvasObjects,
+            });
+            break;
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    },
+    [clientMessenger, selectedCanvasObjects]
   );
 
   // -- derived state
