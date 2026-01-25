@@ -21,7 +21,10 @@ import type {
 } from "@/types/CanvasObjectModel";
 import editableObjectProps from "@/dispatchers/editableObjectProps";
 import WhiteboardContext from "@/context/WhiteboardContext";
-import SnappingMonitor from "@/hooks/useSnapping";
+import {
+  SnappingMonitor,
+  useSnapping,
+} from "@/hooks/useSnapping";
 
 interface EditableShapeProps<ShapeType extends ShapeModel> extends EditableObjectProps {
   id: string;
@@ -41,9 +44,8 @@ const EditableShape = <ShapeType extends ShapeModel> ({
 }: EditableShapeProps<ShapeType>) => {
   const shapeRef = useRef<Konva.Shape>(null);
   const trRef = useRef<Konva.Transformer>(null);
-  const snapping = new SnappingMonitor(shapeRef);
 
-  snapping.useSnapping();
+  useSnapping(shapeRef, new SnappingMonitor());
 
   const whiteboardContext = useContext(WhiteboardContext);
 

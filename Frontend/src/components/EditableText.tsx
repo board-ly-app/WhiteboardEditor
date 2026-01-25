@@ -8,7 +8,10 @@ import TextEditor from "./TextEditor";
 import { type EditableObjectProps } from "@/dispatchers/editableObjectProps";
 import type { CanvasObjectIdType, ShapeModel, TextModel } from "@/types/CanvasObjectModel";
 import WhiteboardContext from "@/context/WhiteboardContext";
-import SnappingMonitor from "@/hooks/useSnapping";
+import {
+  SnappingMonitor,
+  useSnapping,
+} from "@/hooks/useSnapping";
 
 interface EditableTextProps extends EditableObjectProps {
   id: string;
@@ -52,9 +55,7 @@ const EditableText = ({
   const textRef = useRef<Konva.Text>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
-  const snapping = new SnappingMonitor(textRef);
-
-  snapping.useSnapping();
+  useSnapping(textRef, new SnappingMonitor());
 
   const whiteboardContext = useContext(WhiteboardContext);
 

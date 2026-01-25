@@ -54,13 +54,7 @@ export interface UseSnappingInterface {
 // guides while users are editing Canvas Objects.
 //
 // =============================================================================
-class SnappingMonitor {
-  #nodeRef: React.RefObject<SnapObject | null>;
-
-  constructor(nodeRef: React.RefObject<SnapObject | null>) {
-    this.#nodeRef = nodeRef;
-  }// -- end constructor
-
+export class SnappingMonitor {
   getLineGuideStops(skipShape: SnapObject) {
     const stage = skipShape.getStage();
     if (!stage) return { vertical: [], horizontal: [] };
@@ -262,21 +256,23 @@ class SnappingMonitor {
   onDragEnd(e: Konva.KonvaEventObject<DragEvent>): void {
     e.target.getLayer()?.find(".guide-line").forEach(l => l.destroy());
   }// -- end onDragEnd
+}// -- end SnappingMonitor
 
-  useSnapping(): void {
-    useEffect(() => {
-      const node = this.#nodeRef.current;
-      if (!node) return;
+export const useSnapping = (
+  nodeRef: React.RefObject<SnapObject | null>,
+  snappingMonitor: UseSnappingInterface
+): void => {
 
-      node.on("dragmove", this.onDragMove);
-      node.on("dragend", this.onDragEnd);
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (!node) return;
 
-      return () => {
-        node.off("dragmove", this.onDragMove);
-        node.off("dragEnd", this.onDragEnd);
-      };
-    }, [this.#nodeRef, this.onDragMove, this.onDragEnd]);
-  }// -- end useSnapping
-}
+    node.on("dragmove", snappingMonitor.onDragMove);
+    node.on("dragend", snappingMonitor.onDragEnd);
 
-export default SnappingMonitor;
+    return () => {
+      node.off("dragmove", snappingMonitor.onDragMove);
+      node.off("dragEnd", snappingMonitor.onDragEnd);
+    };
+  }, [nodeRef, snappingMonitor.onDragMove, snappingMonitor.onDragEnd]);
+};// -- end useSnapping
