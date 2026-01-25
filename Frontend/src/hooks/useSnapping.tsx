@@ -28,7 +28,29 @@ type SnapObject = (
   Konva.Text
 );
 
+export type LineGuideStopType = {
+  vertical: number[];
+  horizontal: number[];
+};
+
+export type GuideType = {
+  lineGuide: number;
+  offset: number;
+  orientation: "V" | "H";
+  snap: "start" | "center" | "end";
+};
+
+export interface UseSnappingInterface {
+  getLineGuideStops: (skipShape: SnapObject) => { vertical: number[]; horizontal: number[]; };
+  getObjectSnappingEdges: (node: SnapObject) => SnappingEdges;
+  getGuides: (lineGuideStops: Array<LineGuideStopType>, itemBounds: SnappingEdges) => Array<GuideType>;
+  drawGuides: (guides: Array<GuideType>, layer: Konva.Layer) => void;
+  onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => void;
+}
+
 function useSnapping(
+  this: UseSnappingInterface,
   nodeRef: React.RefObject<SnapObject | null>
 ) {
   const getLineGuideStops = (skipShape: SnapObject) => {
