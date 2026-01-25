@@ -9,6 +9,7 @@ import React, {
 const GUIDELINE_OFFSET = 5;
 
 type Snap = "start" | "center" | "end";
+
 type SnappingEdges = {
   vertical: Array<{
     guide: number;
@@ -22,17 +23,22 @@ type SnappingEdges = {
   }>;
 };
 
+type SnapObject = (
+  Konva.Shape |
+  Konva.Text
+);
+
 function useSnapping(
-  nodeRef: React.RefObject<Konva.Shape | null>
+  nodeRef: React.RefObject<SnapObject | null>
 ) {
-  const getLineGuideStops = (skipShape: Konva.Shape) => {
+  const getLineGuideStops = (skipShape: SnapObject) => {
     const stage = skipShape.getStage();
     if (!stage) return { vertical: [], horizontal: [] };
 
     // we can snap to stage borders and the center of the stage
     const vertical = [0, stage.width() / 2, stage.width()];
     const horizontal = [0, stage.height() / 2, stage.height()];
-
+    console.log("stage before: ", stage);
     // and we snap over edges and center of each object on the canvas
     stage.find("Shape").forEach((guideItem) => {
       if (guideItem === skipShape) {
@@ -50,7 +56,7 @@ function useSnapping(
   };
 
   const getObjectSnappingEdges = useCallback(
-    (node: Konva.Shape): SnappingEdges => {
+    (node: SnapObject): SnappingEdges => {
       const box = node.getClientRect();
       const absPos = node.absolutePosition();
 
@@ -182,7 +188,7 @@ function useSnapping(
             points: [-6000, 0, 6000, 0],
             stroke: "rgb(0, 161, 255)",
             strokeWidth: 1,
-            name: "guid-line",
+            name: "guide-line",
             dash: [4, 6]
           });
           layer.add(line);
@@ -195,7 +201,7 @@ function useSnapping(
             points: [0, -6000, 0, 6000],
             stroke: "rgb(0, 161, 255)",
             strokeWidth: 1,
-            name: "guid-line",
+            name: "guide-line",
             dash: [4, 6]
           });
           layer.add(line);
@@ -213,7 +219,7 @@ function useSnapping(
     const layer = e.target.getLayer();
     if (!layer) return;
 
-    layer.find(".guid-line").forEach(l => l.destroy());
+    layer.find(".guide-line").forEach(l => l.destroy());
 
     const lineGuideStops = getLineGuideStops(e.target as Shape<ShapeConfig>);
     const itemBounds = getObjectSnappingEdges(e.target as Shape<ShapeConfig>);
@@ -233,7 +239,7 @@ function useSnapping(
   }, [getLineGuideStops, getObjectSnappingEdges, getGuides, drawGuides]);
 
   const onDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
-    e.target.getLayer()?.find(".guid-line").forEach(l => l.destroy());
+    e.target.getLayer()?.find(".guide-line").forEach(l => l.destroy());
   }, []);
 
   useEffect(() => {
