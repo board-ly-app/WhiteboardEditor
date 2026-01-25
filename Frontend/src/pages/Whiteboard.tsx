@@ -303,6 +303,7 @@ const Whiteboard = ({
 
         switch (ev.key) {
           case 'Delete':
+          case 'Backspace':
             clientMessenger?.sendDeleteCanvasObjects({
               type: 'delete_canvas_objects',
               canvasObjectIds: selectedCanvasObjects,
