@@ -5,7 +5,7 @@ import type { CanvasObjectIdType, VectorModel } from "@/types/CanvasObjectModel"
 import type { EditableObjectProps } from "@/dispatchers/editableObjectProps";
 import editableObjectProps from "@/dispatchers/editableObjectProps";
 import WhiteboardContext from "@/context/WhiteboardContext";
-import useSnapping from "@/hooks/useSnapping";
+import SnappingMonitor from "@/hooks/useSnapping";
 
 interface EditableVectorProps<VectorType extends VectorModel> extends EditableObjectProps {
   id: string;
@@ -27,7 +27,9 @@ const EditableVector = <VectorType extends VectorModel>({
   const [localPoints, setLocalPoints] = useState(shapeModel.points);
   const vectorRef = useRef<Konva.Shape>(null);
 
-  useSnapping(vectorRef);
+  const snapping = new SnappingMonitor(vectorRef);
+
+  snapping.useSnapping();
 
   const whiteboardContext = useContext(WhiteboardContext);
 
