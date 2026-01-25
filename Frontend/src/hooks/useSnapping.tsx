@@ -55,6 +55,15 @@ export interface UseSnappingInterface {
 //
 // =============================================================================
 export class SnappingMonitor {
+  constructor() {
+    this.getLineGuideStops = this.getLineGuideStops.bind(this);
+    this.getObjectSnappingEdges = this.getObjectSnappingEdges.bind(this);
+    this.getGuides = this.getGuides.bind(this);
+    this.drawGuides = this.drawGuides.bind(this);
+    this.onDragMove = this.onDragMove.bind(this);
+    this.onDragEnd = this.onDragEnd.bind(this);
+  }
+
   getLineGuideStops(skipShape: SnapObject) {
     const stage = skipShape.getStage();
     if (!stage) return { vertical: [], horizontal: [] };
