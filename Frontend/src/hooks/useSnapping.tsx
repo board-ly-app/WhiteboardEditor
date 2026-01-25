@@ -38,9 +38,12 @@ function useSnapping(
     // we can snap to stage borders and the center of the stage
     const vertical = [0, stage.width() / 2, stage.width()];
     const horizontal = [0, stage.height() / 2, stage.height()];
-    console.log("stage before: ", stage);
+
     // and we snap over edges and center of each object on the canvas
     stage.find("Shape").forEach((guideItem) => {
+      if (guideItem.getParent() instanceof Konva.Transformer) {
+        return;
+      }
       if (guideItem === skipShape) {
         return;
       }
@@ -57,41 +60,41 @@ function useSnapping(
 
   const getObjectSnappingEdges = useCallback(
     (node: SnapObject): SnappingEdges => {
-      const box = node.getClientRect();
+      const selfRect = node.getSelfRect();
       const absPos = node.absolutePosition();
 
       return {
         vertical: [
           {
-            guide: Math.round(box.x),
-            offset: Math.round(absPos.x - box.x),
+            guide: Math.round(absPos.x),
+            offset: 0,
             snap: "start"
           },
           {
-            guide: Math.round(box.x + box.width / 2),
-            offset: Math.round(absPos.x - box.x - box.width / 2),
+            guide: Math.round(absPos.x + selfRect.width / 2),
+            offset: -selfRect.width / 2,
             snap: "center"
           },
           {
-            guide: Math.round(box.x + box.width),
-            offset: Math.round(absPos.x - box.x - box.width),
+            guide: Math.round(absPos.x + selfRect.width),
+            offset: -selfRect.width,
             snap: "end"
           }
         ],
         horizontal: [
           {
-            guide: Math.round(box.y),
-            offset: Math.round(absPos.y - box.y),
+            guide: Math.round(absPos.y),
+            offset: 0,
             snap: "start"
           },
           {
-            guide: Math.round(box.y + box.height / 2),
-            offset: Math.round(absPos.y - box.y - box.height / 2),
+            guide: Math.round(absPos.y + selfRect.height / 2),
+            offset: -selfRect.height / 2,
             snap: "center"
           },
           {
-            guide: Math.round(box.y + box.height),
-            offset: Math.round(absPos.y - box.y - box.height),
+            guide: Math.round(absPos.y + selfRect.height),
+            offset: -selfRect.height,
             snap: "end"
           }
         ]
