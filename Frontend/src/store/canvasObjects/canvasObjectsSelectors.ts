@@ -12,16 +12,24 @@ import type {
   CanvasObjectModel
 } from '@/types/CanvasObjectModel';
 
+// === selectCanvasObjectsByCanvas =============================================
+//
+// Selects canvas objects belonging to a particular canvas.
+//
+// Returns a mapping of canvas object IDs to canvas objects, or null if there
+// are no objects belonging to the given canvas.
+//
+// =============================================================================
 export const selectCanvasObjectsByCanvas = (
   state: RootState,
   canvasId: CanvasIdType
 ): Record<CanvasObjectIdType, CanvasObjectModel> | null => {
-  const objectsIds: CanvasObjectIdType[] | null = state.canvasObjectsByCanvas[canvasId] || null;
+  const objectIds: Record<CanvasObjectIdType, CanvasObjectIdType> | null = state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId] || null;
 
-  if (! objectsIds) {
+  if (! objectIds) {
     return null;
   } else {
-    return Object.fromEntries(objectsIds.map((objectId: CanvasObjectIdType) => {
+    return Object.fromEntries(Object.keys(objectIds).map((objectId: CanvasObjectIdType) => {
       const canvasObject = state.canvasObjects[objectId] || null;
 
       if (! canvasObject) {
@@ -43,14 +51,14 @@ export const selectCanvasObjectsByWhiteboard = (
     return {};
   } else {
     return Object.fromEntries(canvasIds.map((canvasId: CanvasIdType) => {
-      const objectIds = state.canvasObjectsByCanvas[canvasId] || null;
+      const objectIds: Record<CanvasObjectIdType, CanvasObjectIdType> | null = state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId] || null;
 
       if (! objectIds) {
         return null;
       } else {
         return [
           canvasId,
-          Object.fromEntries(objectIds.map(objId => {
+          Object.fromEntries(Object.keys(objectIds).map(objId => {
             const objModel = state.canvasObjects[objId];
 
             if (! objModel) {
@@ -62,6 +70,38 @@ export const selectCanvasObjectsByWhiteboard = (
         ];
       }
     }).filter(entry => !!entry));
+  }
+};
+
+export const selectSelectedCanvasObjects = (
+  state: RootState
+): Record<CanvasObjectIdType, CanvasObjectIdType> => {
+  return state.selectedCanvasObjects;
+};
+
+export const selectSelectedCanvasObjectsByWhiteboard = (
+  state: RootState,
+  whiteboardId: WhiteboardIdType
+): CanvasObjectIdType[] => {
+  const canvasIds: CanvasIdType[] | null = state.canvasesByWhiteboard[whiteboardId] || null;
+
+  if (! canvasIds) {
+    return [];
+  } else {
+    const selectedCanvasObjectSet : Record<CanvasObjectIdType, CanvasObjectIdType> = state.selectedCanvasObjects;
+
+    return canvasIds.reduce(
+      (accum: CanvasObjectIdType[], canvasId) => {
+        const objectIds: Record<CanvasObjectIdType, CanvasObjectIdType> | null = state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId] || null;
+
+        if (objectIds) {
+          accum.push(...Object.keys(objectIds).filter(objId => objId in selectedCanvasObjectSet));
+        }
+
+        return accum;
+      },
+      []
+    );
   }
 };
 

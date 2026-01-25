@@ -1,13 +1,39 @@
-import { useRef, useState, useEffect, useCallback, useContext } from "react";
+import {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 
-import { Group, Text, Transformer } from 'react-konva';
+import {
+  useSelector,
+} from 'react-redux';
+
+import {
+  Group,
+  Text,
+  Transformer,
+} from 'react-konva';
 
 import Konva from "konva";
+
+import {
+  store,
+  type RootState,
+} from '@/store';
+
+import {
+  selectSelectedCanvasObjects,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
+
+import {
+  setSelectedCanvasObjects,
+} from '@/controllers';
+
 import TextEditor from "./TextEditor";
 
 import { type EditableObjectProps } from "@/dispatchers/editableObjectProps";
 import type { CanvasObjectIdType, ShapeModel, TextModel } from "@/types/CanvasObjectModel";
-import WhiteboardContext from "@/context/WhiteboardContext";
 
 interface EditableTextProps extends EditableObjectProps {
   id: string;
@@ -45,26 +71,20 @@ const EditableText = ({
   onTransform,
   onTransformEnd,
 }: EditableTextProps) => {
-  const [isSelected, setIsSelected] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const dispatch = store.dispatch;
+  const [isSelected, setIsSelected] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
 
   const textRef = useRef<Konva.Text>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
-  const whiteboardContext = useContext(WhiteboardContext);
-
-  if (! whiteboardContext) {
-    throw new Error('No whiteboard context');
-  }
-
-  const {
-    selectedShapeIds,
-    setSelectedShapeIds,
-  } = whiteboardContext;
+  const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
+    (state: RootState) => selectSelectedCanvasObjects(state)
+  );
 
   useEffect(() => {
-    setIsSelected(selectedShapeIds.includes(id));
-  }, [selectedShapeIds, id]);
+    setIsSelected(id in selectedCanvasObjectIds);
+  }, [selectedCanvasObjectIds, setIsSelected, id]);
 
   // attach Transformer for editing when selected
   useEffect(() => {
@@ -81,11 +101,11 @@ const EditableText = ({
   const handleSelect = useCallback((ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     ev.cancelBubble = true;
 
-    if (!isEditing) {
+    if (! isEditing) {
       setIsSelected(true);
-      setSelectedShapeIds([id]);
+      setSelectedCanvasObjects(dispatch, [id]);
     }
-  }, [isEditing, setSelectedShapeIds, id]);
+  }, [isEditing, dispatch, id]);
 
   // deselect when clicking outside of text node
   useEffect(() => {
@@ -97,7 +117,7 @@ const EditableText = ({
       }
       if (e.target !== textRef.current) {
         setIsSelected(false);
-        setSelectedShapeIds([]);
+        setSelectedCanvasObjects(dispatch, []);
       }
     };
 
@@ -107,7 +127,7 @@ const EditableText = ({
     return () => {
       stage.off("click", handleStageClick);
     };
-  }, [isEditing, setSelectedShapeIds]);
+  }, [isEditing, dispatch]);
 
 
   const handleTextDblClick = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {

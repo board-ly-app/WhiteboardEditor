@@ -17,7 +17,7 @@ import {
 } from 'react-router-dom';
 
 import {
-  useSelector
+  useSelector,
 } from 'react-redux';
 
 // -- third-party imports
@@ -62,8 +62,13 @@ import {
 
 // -- program state
 import {
+  store,
   type RootState,
 } from '@/store';
+
+import {
+  setSelectedCanvasObjects,
+} from '@/controllers';
 
 import {
   ClientMessengerContext,
@@ -82,11 +87,12 @@ import {
 } from '@/store/canvases/canvasesSelectors';
 
 import {
-  selectCanvasObjectsByWhiteboard
+  selectCanvasObjectsByWhiteboard,
+  selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import WhiteboardContext, {
-  WhiteboardProvider
+  WhiteboardProvider,
 } from "@/context/WhiteboardContext";
 
 import AuthContext from '@/context/AuthContext';
@@ -100,6 +106,7 @@ import CanvasCard from "@/components/CanvasCard";
 import Sidebar from "@/components/Sidebar";
 import Toolbar from "@/components/Toolbar";
 import ShapeAttributesMenu from "@/components/ShapeAttributesMenu";
+import DeleteShapesButton from '@/components/DeleteShapeButton';
 import HeaderButton from '@/components/HeaderButton';
 import HeaderAuthed from '@/components/HeaderAuthed';
 import shapeAttributesReducer from '@/reducers/shapeAttributesReducer';
@@ -162,6 +169,8 @@ const Whiteboard = ({
   const location = useLocation();
   const navigate = useNavigate();
 
+  const dispatch = store.dispatch;
+
   // -- references
   const whiteboardContext = useContext(WhiteboardContext);
   const authContext = useContext(AuthContext);
@@ -186,7 +195,6 @@ const Whiteboard = ({
     ownPermission,
     currentTool,
     setCurrentTool,
-    setSelectedShapeIds,
   } = whiteboardContext;
 
   const {
@@ -272,6 +280,43 @@ const Whiteboard = ({
 
   const [newCanvasDimensions, setNewCanvasDimensions] = useState<NewCanvasDimensions | null>(null);
   const [newCanvasParentId, setNewCanvasParentId] = useState<CanvasIdType | null>(null);
+
+  // Used within Toolbar
+  const handleToolChange = useCallback(
+    (choice : ToolChoice) => {
+      setSelectedCanvasObjects(dispatch, []);
+      setCurrentTool(choice);
+    },
+    [dispatch, setCurrentTool]
+  );
+
+  // Send delete canvas objects message when the delete key is pressed
+  const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
+    (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(state, whiteboardId)
+  );
+
+  useEffect(
+    () => {
+      const handleKeyDown = (ev: KeyboardEvent) => {
+        ev.preventDefault();
+        console.log('!! KEYDOWN:', ev.key);
+
+        switch (ev.key) {
+          case 'Delete':
+            clientMessenger?.sendDeleteCanvasObjects({
+              type: 'delete_canvas_objects',
+              canvasObjectIds: selectedCanvasObjects,
+            });
+            break;
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    },
+    [clientMessenger, selectedCanvasObjects]
+  );
 
   // -- derived state
   let status : ComponentStatus;
@@ -456,7 +501,7 @@ const Whiteboard = ({
           </DropdownMenuContent>
         </DropdownMenu>
       );
-      
+
       return (
         <Page
           title={pageTitle}
@@ -490,10 +535,7 @@ const Whiteboard = ({
                   {/* Toolbar */}
                   <Toolbar
                     toolChoice={currentTool}
-                    onToolChange={(choice) => {
-                      setSelectedShapeIds([]);
-                      setCurrentTool(choice);
-                    }}
+                    onToolChange={handleToolChange}
                   />
       
                   {/** Shape Attributes Menu **/}
@@ -501,6 +543,7 @@ const Whiteboard = ({
                     attributes={shapeAttributesState}
                     dispatch={dispatchShapeAttributes}
                   />
+                  <DeleteShapesButton />
                 </Sidebar>
               )}
       
@@ -668,7 +711,6 @@ const WrappedWhiteboard = () => {
   const authContext = useContext(AuthContext);
   const clientMessengerContext = useContext(ClientMessengerContext);
   const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);
-  const [selectedShapeIds, setSelectedShapeIds] = useState<CanvasObjectIdType[]>([]);
   const [currentDispatcher, setCurrentDispatcher] = useState<OperationDispatcher | null>(null);
   const [selectedCanvasId, setSelectedCanvasId] = useState<CanvasIdType | null>(null);
   const [tooltipText, setTooltipText] = useState<string>("");
@@ -849,8 +891,6 @@ const WrappedWhiteboard = () => {
       setNewCanvasAllowedUsers={setNewCanvasAllowedUsers}
       ownPermission={ownPermission}
       setOwnPermission={setOwnPermission}
-      selectedShapeIds={selectedShapeIds}
-      setSelectedShapeIds={setSelectedShapeIds}
       currentDispatcher={currentDispatcher}
       setCurrentDispatcher={setCurrentDispatcher}
       selectedCanvasId={selectedCanvasId}

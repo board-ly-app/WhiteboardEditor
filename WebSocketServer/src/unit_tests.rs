@@ -262,6 +262,142 @@ mod unit_tests {
         };
     }
 
+    #[tokio::test]
+    async fn handle_authenticated_client_message_delete_canvas_objects() {
+        let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
+        let canvas_a_id = ObjectId::new();
+        let object_a_id = ObjectId::new();
+        let canvas_objects_initial_kv = vec![
+            (
+                object_a_id,
+                ShapeModel::Rect {
+                    x: 100.0,
+                    y: 100.0,
+                    width: 64.0,
+                    height: 64.0,
+                    stroke_width: 1.0,
+                    stroke_color: String::from("#333333"),
+                    fill_color: String::from("#ff0000"),
+                    rotation: 0.0,
+                }
+            ),
+            (
+                ObjectId::new(),
+                ShapeModel::Rect {
+                    x: 200.0,
+                    y: 200.0,
+                    width: 64.0,
+                    height: 64.0,
+                    stroke_width: 1.0,
+                    stroke_color: String::from("#333333"),
+                    fill_color: String::from("#ff0000"),
+                    rotation: 0.0,
+                }
+            ),
+            (
+                ObjectId::new(),
+                ShapeModel::Rect {
+                    x: 300.0,
+                    y: 300.0,
+                    width: 64.0,
+                    height: 64.0,
+                    stroke_width: 1.0,
+                    stroke_color: String::from("#333333"),
+                    fill_color: String::from("#ff0000"),
+                    rotation: 0.0,
+                }
+            ),
+        ];
+        let canvas_objects_final_kv = Vec::from(&canvas_objects_initial_kv[1..]);
+        let canvas_objects_initial = HashMap::<ObjectId, ShapeModel>::from_iter(canvas_objects_initial_kv.into_iter());
+        let canvas_objects_final_expected = HashMap::<ObjectId, ShapeModel>::from_iter(canvas_objects_final_kv.into_iter());
+        let canvas_obj_ids_expected = vec![ object_a_id.to_string() ];
+        let client_msg_s = format!(r##"
+        {{
+            "type": "delete_canvas_objects",
+            "canvasObjectIds": [
+                "{}"
+            ]
+        }}
+        "##, object_a_id.to_string());
+
+        let whiteboard = Whiteboard {
+            id: ObjectId::new(),
+            metadata: WhiteboardMetadata {
+                name: String::from("Test"),
+                user_permissions: vec![],
+                permissions_by_user_id: HashMap::new(),
+            },
+            root_canvas: canvas_a_id,
+            canvases: HashMap::from([
+                (
+                    canvas_a_id.clone(),
+                    Canvas {
+                        id: canvas_a_id.clone(),
+                        width: 512.0,
+                        height: 512.0,
+                        name: String::from("Canvas A"),
+                        time_created: Utc::now(),
+                        time_last_modified: Utc::now(),
+                        parent_canvas: None,
+                        shapes: canvas_objects_initial.clone(),
+                        allowed_users: None, // None = open to all
+                    }
+                )
+            ]),
+        };
+
+        let client_state = ClientState {
+            client_id: test_client_id.clone(),
+            user_summary: Mutex::new(Some(UserSummary{
+                client_id: test_client_id.clone(),
+                user_id: String::from("68d5e8cf829da666aece0101"),
+                username: String::from("Alice"),
+            })),
+            jwt_secret: String::from("abcd"),
+            user_whiteboard_permission: Mutex::new(
+                Some(WhiteboardPermissionEnum::Own)
+            ),
+            whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
+            active_clients: Arc::new(Mutex::new(HashMap::new())),
+            diffs: Arc::new(Mutex::new(Vec::new())),
+        };
+
+        let resp = handle_authenticated_client_message(
+            &client_state,
+            &client_msg_s
+        ).await;
+
+        match resp {
+            None => panic!("Expected some client message, got None"),
+            // CreateShapes { client_id: ClientIdType, canvas_id: CanvasIdType, shapes: HashMap<CanvasObjectIdType, ShapeModel> },
+            Some(server_msg) => match server_msg {
+                ServerSocketMessage::DeleteCanvasObjects { client_id, canvas_object_ids } => {
+                    if client_id != test_client_id {
+                        panic!("Expected client_id = {}; got {}", test_client_id, client_id);
+                    } else if canvas_object_ids != canvas_obj_ids_expected {
+                        panic!("Expected canvas_object_ids = {:?}; got {:?}", canvas_obj_ids_expected, canvas_object_ids);
+                    } else {
+                        let whiteboard = client_state.whiteboard_ref.lock().await;
+
+                        // Ensure the correct canvas objects remain in the store of canvas objects
+                        if let Some(canvas_a) = whiteboard.canvases.get(&canvas_a_id) {
+                            if canvas_a.shapes != canvas_objects_final_expected {
+                                panic!(
+                                    "Expected final canvas objects to be {:?}; got {:?}",
+                                    canvas_objects_final_expected, canvas_a.shapes
+                                );
+                            }
+                        } else {
+                            panic!("ERROR: could not find canvas {} in final whiteboard", canvas_a_id);
+                        }
+                    }
+                },
+                _ => panic!("Expected ServerSocketMessage::DeleteCanvasObjects, got {:?}", server_msg)
+            }
+        };
+    }
+
     // === fetch_whiteboard_from_mongodb ==========================================================
     //
     // Ensures that data is properly fetched and deserialized from MongoDB into the *MongoDBView
