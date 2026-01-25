@@ -34,7 +34,7 @@ function useSnapping(
     const horizontal = [0, stage.height() / 2, stage.height()];
 
     // and we snap over edges and center of each object on the canvas
-    stage.find(".object").forEach((guideItem) => {
+    stage.find("Shape").forEach((guideItem) => {
       if (guideItem === skipShape) {
         return;
       }
@@ -223,13 +223,13 @@ function useSnapping(
 
     drawGuides(guides, layer);
 
-    const absPos = e.target.absolutePosition();
+    const pos = e.target.position();
     guides.forEach(lg => {
-      if (lg.orientation === "V") absPos.x = lg.lineGuide + lg.offset;
-      if (lg.orientation === "H") absPos.y = lg.lineGuide + lg.offset;
+      if (lg.orientation === "V") pos.x = lg.lineGuide + lg.offset;
+      if (lg.orientation === "H") pos.y = lg.lineGuide + lg.offset;
     });
 
-    e.target.absolutePosition(absPos);
+    e.target.position(pos);
   }, [getLineGuideStops, getObjectSnappingEdges, getGuides, drawGuides]);
 
   const onDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
