@@ -3,6 +3,7 @@ import React,
   useContext,
   useEffect, 
   useRef, 
+  useState,
 } from "react";
 import { 
   Group, 
@@ -44,8 +45,9 @@ const EditableShape = <ShapeType extends ShapeModel> ({
 }: EditableShapeProps<ShapeType>) => {
   const shapeRef = useRef<Konva.Shape>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  const [snappingMonitor] = useState(new SnappingMonitor());
 
-  useSnapping(shapeRef, new SnappingMonitor());
+  useSnapping(shapeRef, snappingMonitor);
 
   const whiteboardContext = useContext(WhiteboardContext);
 

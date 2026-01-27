@@ -1,4 +1,10 @@
-import { useRef, useState, useEffect, useCallback, useContext } from "react";
+import {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  useContext,
+} from "react";
 
 import { Group, Text, Transformer } from 'react-konva';
 
@@ -54,8 +60,9 @@ const EditableText = ({
 
   const textRef = useRef<Konva.Text>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  const [snappingMonitor] = useState(new SnappingMonitor());
 
-  useSnapping(textRef, new SnappingMonitor());
+  useSnapping(textRef, snappingMonitor);
 
   const whiteboardContext = useContext(WhiteboardContext);
 

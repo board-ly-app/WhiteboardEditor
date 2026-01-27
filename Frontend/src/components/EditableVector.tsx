@@ -1,4 +1,9 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import Konva from "konva";
 import { Circle, Group, type KonvaNodeEvents } from "react-konva";
 import type { CanvasObjectIdType, VectorModel } from "@/types/CanvasObjectModel";
@@ -29,8 +34,9 @@ const EditableVector = <VectorType extends VectorModel>({
   // const [isSelected, setIsSelected] = useState(false);
   const [localPoints, setLocalPoints] = useState(shapeModel.points);
   const vectorRef = useRef<Konva.Shape>(null);
+  const [snappingMonitor] = useState(new SnappingMonitor());
 
-  useSnapping(vectorRef, new SnappingMonitor());
+  useSnapping(vectorRef, snappingMonitor);
 
   const whiteboardContext = useContext(WhiteboardContext);
 
