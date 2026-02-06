@@ -66,10 +66,7 @@ export const activeUsersByWhiteboardSlice = createSlice({
         }
       }// -- end for whiteboardId, userSummariesByWhiteboardId
 
-      return {
-        clientsByWhiteboard,
-        whiteboardsByClient,
-      };
+      return state;
     },
     removeActiveUsers(state: ActiveUsersByWhiteboardState, action: PayloadAction<ClientIdType[]>) {
       const {

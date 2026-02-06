@@ -24,7 +24,7 @@ export const store = configureStore({
     canvases: canvasesReducer,
     childCanvasesByCanvas: childCanvasesByCanvasReducer,
     canvasesByWhiteboard: canvasesByWhiteboardReducer,
-    whiteboards: whiteboardsReducer
+    whiteboards: whiteboardsReducer,
   }
 });
 

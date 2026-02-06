@@ -94,7 +94,7 @@ export interface CanvasProps extends CanvasData {
   shapeAttributes: ShapeAttributesState;
   currentTool: ToolChoice;
   // -- should be fetched from selector in root calling component
-  childCanvasesByCanvas: Record<string, CanvasIdType[]>;
+  childCanvasesByCanvas: Record<CanvasIdType, Record<CanvasIdType, CanvasIdType>>;
   // -- should be fetched from selector in root calling component
   canvasesById: Record<CanvasIdType, CanvasData>;
   onSelectCanvasDimensions: (canvasId: CanvasIdType, dimensions: NewCanvasDimensions) => void;
@@ -322,10 +322,10 @@ const Canvas = (props: CanvasProps) => {
     }
   }, [editingText]);
 
-  const childCanvasesData : CanvasData[] = childCanvasesByCanvas[canvasId]
-    ?.map((childCanvasId: CanvasIdType) => canvasesById[childCanvasId] || null)
+  const childCanvasesData : CanvasData[] = childCanvasesByCanvas[canvasId] ?
+    Object.keys(childCanvasesByCanvas[canvasId]).map((childCanvasId: CanvasIdType) => canvasesById[childCanvasId] || null)
     .filter((canvas: CanvasData | null): canvas is CanvasData => !!canvas)
-    ?? [];
+    : [];
 
   const {
     originX,

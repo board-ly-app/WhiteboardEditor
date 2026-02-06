@@ -1,5 +1,5 @@
-import type {
-  AppDispatch
+import {
+  type AppDispatch,
 } from '@/store';
 
 import {
@@ -10,15 +10,19 @@ import {
 } from '@/types/WebSocketProtocol';
 
 import {
-  setCanvasObjects
+  type CanvasObjectIdType,
+} from '@/types/CanvasObjectModel';
+
+import {
+  setCanvasObjects,
 } from '@/store/canvasObjects/canvasObjectsSlice';
 
 import {
-  setObjectsByCanvas
+  setObjectsByCanvas,
 } from '@/store/canvasObjects/canvasObjectsByCanvasSlice';
 
 import {
-  setAllowedUsersByCanvas
+  setAllowedUsersByCanvas,
 } from '@/store/allowedUsers/allowedUsersByCanvasSlice';
 
 import {
@@ -28,7 +32,7 @@ import {
 
 import {
   addCanvasesByWhiteboard,
-  removeCanvasesByWhiteboard
+  removeCanvasesByWhiteboard,
 } from '@/store/canvases/canvasesByWhiteboardSlice';
 
 import {
@@ -36,12 +40,16 @@ import {
 } from '@/store/canvases/childCanvasesByCanvasSlice';
 
 import {
+  addObjectsByCanvas,
+} from '@/store/canvasObjects/canvasObjectsByCanvasSlice';
+
+import {
   setCurrentEditorsByCanvas,
   unsetCurrentEditorsByCanvas,
 } from '@/store/activeUsers/currentEditorsByCanvasSlice';
 
 import {
-  normalizeCanvas
+  normalizeCanvas,
 } from '@/store/canvases/canvasesNormalizers';
 
 export const addCanvas = (
@@ -94,4 +102,31 @@ export const unsetCurrentEditorByCanvas = (
   canvasId: CanvasIdType,
 ) => {
   dispatch(unsetCurrentEditorsByCanvas([ canvasId ]));
+};
+
+// === mergeCanvas =============================================================
+//
+// Merges the canvas indicated by canvasId into its parent canvas, transferring
+// ownership of its shapes to the parent, then removing the canvas as a unique
+// object in the store.
+//
+// =============================================================================
+export const mergeCanvas = (
+  dispatch: AppDispatch,
+  parentCanvasesByCanvas: Record<CanvasIdType, CanvasIdType>,
+  canvasObjectsByCanvas: Record<CanvasIdType, Record<CanvasObjectIdType, CanvasObjectIdType>>,
+  canvasId: CanvasIdType,
+) => {
+  // identify parent canvas
+  // copy all canvas objects into parent canvas
+  // remove original canvas
+  const parentCanvasId : CanvasIdType | undefined = parentCanvasesByCanvas[canvasId];
+
+  if (parentCanvasId) {
+    dispatch(addObjectsByCanvas({
+      [parentCanvasId]: Object.keys(canvasObjectsByCanvas[canvasId]),
+    }));
+    dispatch(removeCanvases([canvasId]));
+    dispatch(removeCanvasesByWhiteboard([canvasId]));
+  }
 };

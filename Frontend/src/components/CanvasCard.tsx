@@ -69,7 +69,7 @@ export interface CanvasCardProps {
   whiteboardId: WhiteboardIdType;
   rootCanvasId: CanvasIdType,
   shapeAttributes: ShapeAttributesState;
-  childCanvasesByCanvas: Record<CanvasIdType, CanvasIdType[]>;
+  childCanvasesByCanvas: Record<CanvasIdType, Record<CanvasIdType, CanvasIdType>>;
   canvasesById: Record<CanvasIdType, CanvasData>;
   // -- editor identified by user id
   currentTool: ToolChoice;

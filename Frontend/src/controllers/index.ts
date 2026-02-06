@@ -10,6 +10,7 @@ import {
 import {
   addCanvas,
   deleteCanvas,
+  mergeCanvas,
 } from './canvases';
 
 import {
@@ -34,6 +35,7 @@ export {
   removeSelectedCanvasObjects,
   addCanvas,
   deleteCanvas,
+  mergeCanvas,
   setCurrentEditorsByCanvas,
   removeCurrentEditorsByCanvas,
   addWhiteboard,

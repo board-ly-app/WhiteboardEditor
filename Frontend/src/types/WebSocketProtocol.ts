@@ -230,6 +230,12 @@ export interface ServerMessageDeleteCanvasObjects {
   canvasObjectIds: CanvasObjectIdType[];
 }
 
+export interface ServerMessageMergeCanvas {
+  type: 'merge_canvas';
+  clientId: ClientIdType;
+  canvasId: string;
+}
+
 export interface ServerMessageIndividualError {
   type: 'individual_error';
   clientId: ClientIdType;
@@ -255,6 +261,7 @@ export type SocketServerMessage =
   | ServerMessageBroadcastError
   | ServerMessageUpdateAllowedUsers
   | ServerMessageDeleteCanvasObjects
+  | ServerMessageMergeCanvas
 ;
 
 // ========================== CLIENT → SERVER ==================================
@@ -319,6 +326,11 @@ export interface ClientMessageDeleteCanvasObjects {
   canvasObjectIds: CanvasObjectIdType[];
 }
 
+export interface ClientMessageMergeCanvas {
+  type: 'merge_canvas';
+  canvasId: CanvasIdType;
+}
+
 // Tagged union of all possible client-server messages
 export type SocketClientMessage =
   | ClientMessageLogin
@@ -329,4 +341,5 @@ export type SocketClientMessage =
   | ClientMessageDeleteCanvases
   | ClientMessageUpdateAllowedUsers
   | ClientMessageDeleteCanvasObjects
+  | ClientMessageMergeCanvas
 ;
