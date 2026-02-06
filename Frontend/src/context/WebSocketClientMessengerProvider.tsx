@@ -19,6 +19,10 @@ import {
   useParams,
 } from 'react-router-dom';
 
+import {
+  useSelector,
+} from 'react-redux';
+
 // -- local imports
 import {
   CURRENT_EDITOR_NUM_MILLIS,
@@ -50,12 +54,17 @@ import {
 } from '@/types/IWhiteboardClientMessenger';
 
 import {
+  type CanvasObjectIdType,
+} from '@/types/CanvasObjectModel';
+
+import {
   WhiteboardSocketMessenger,
 } from '@/services/whiteboardSocketMessenger';
 
 // -- program state
 import {
   store,
+  type RootState,
 } from '@/store';
 
 import {
@@ -65,6 +74,7 @@ import {
   removeSelectedCanvasObjects,
   addCanvas,
   deleteCanvas,
+  mergeCanvas,
   setCurrentEditorsByCanvas,
   removeCurrentEditorsByCanvas,
   setActiveUsersByWhiteboard,
@@ -102,6 +112,14 @@ const WebSocketClientMessengerProvider = ({
   const {
     authToken,
   } = authContext;
+
+  const parentCanvasesByCanvas: Record<CanvasIdType, CanvasIdType> = useSelector(
+    (state: RootState) => state.childCanvasesByCanvas.parentCanvasesByCanvas
+  );
+
+  const canvasObjectsByCanvas: Record<CanvasIdType, Record<CanvasObjectIdType, CanvasObjectIdType>> = useSelector(
+    (state: RootState) => state.canvasObjectsByCanvas.canvasObjectsByCanvas
+  );
 
   const dispatch = store.dispatch;
 
@@ -268,6 +286,15 @@ const WebSocketClientMessengerProvider = ({
               removeCanvasObjects(dispatch, canvasObjectIds);
           }
           break;
+          case 'merge_canvas':
+          {
+              const {
+                canvasId,
+              } = msg;
+
+              mergeCanvas(dispatch, parentCanvasesByCanvas, canvasObjectsByCanvas, canvasId);
+          }
+          break;
           case 'individual_error':
           case 'broadcast_error':
             {
@@ -320,7 +347,7 @@ const WebSocketClientMessengerProvider = ({
         console.log('Failed to parse message:', e);
       }
     },
-    [dispatch, whiteboardId]
+    [dispatch, whiteboardId, canvasObjectsByCanvas, parentCanvasesByCanvas]
   );// -- end handleServerMessage
 
   const makeHandleWebSocketOpen = useCallback(

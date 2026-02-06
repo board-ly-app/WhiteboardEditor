@@ -94,7 +94,7 @@ const canvasObjectsByCanvasSlice = createSlice({
 export const {
   setObjectsByCanvas,
   addObjectsByCanvas,
-  removeCanvasObjectsByCanvas
+  removeCanvasObjectsByCanvas,
 } = canvasObjectsByCanvasSlice.actions;
 
 export const {

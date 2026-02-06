@@ -262,8 +262,8 @@ const Whiteboard = ({
     return selectCanvasesWithObjectsByWhiteboardId(state, whiteboardId)
   });
 
-  const childCanvasesByCanvas : Record<CanvasIdType, CanvasIdType[]> = useSelector(
-    (state: RootState) => state['childCanvasesByCanvas']
+  const childCanvasesByCanvas : Record<CanvasIdType, Record<CanvasIdType, CanvasIdType>> = useSelector(
+    (state: RootState) => state.childCanvasesByCanvas.childCanvasesByCanvas
   );
 
   const {
