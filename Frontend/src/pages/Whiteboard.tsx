@@ -298,9 +298,6 @@ const Whiteboard = ({
   useEffect(
     () => {
       const handleKeyDown = (ev: KeyboardEvent) => {
-        ev.preventDefault();
-        console.log('!! KEYDOWN:', ev.key);
-
         switch (ev.key) {
           case 'Delete':
           case 'Backspace':
