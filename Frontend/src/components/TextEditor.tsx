@@ -63,6 +63,8 @@ const TextEditor = ({ textNode, onClose }: TextEditorProps) => {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      e.stopPropagation();
+
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         performClose(textarea.value);
