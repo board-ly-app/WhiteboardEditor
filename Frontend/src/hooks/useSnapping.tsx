@@ -65,7 +65,7 @@ export class SnappingMonitor {
     this.onDragEnd = this.onDragEnd.bind(this);
   }
 
-  getLineGuideStops(skipShape: SnapObject) {
+  getLineGuideStops(skipShape: SnapObject): LineGuideStopType {
     const stage = skipShape.getStage();
     if (!stage) return { vertical: [], horizontal: [] };
 
@@ -97,8 +97,7 @@ export class SnappingMonitor {
     if (!stage) return { vertical: [], horizontal: [] };
     const selfRect = node.getClientRect({ relativeTo: stage });
     const absPos = { x: selfRect.x, y: selfRect.y };
-console.log("selfRect: ", selfRect);
-console.log("absPos: ", absPos);
+
     return {
       vertical: [
         {
@@ -250,26 +249,42 @@ console.log("absPos: ", absPos);
     layer.find(".guide-line").forEach(l => l.destroy());
 
     const node = e.target;
+    const stage = node.getStage();
+    if (!stage) return;
 
     const lineGuideStops = this.getLineGuideStops(node as SnapObject);
-    console.log("lineGuideStops: ", lineGuideStops);
     const itemBounds = this.getObjectSnappingEdges(node as SnapObject);
-    console.log("itemBounds: ", itemBounds);
     const guides = this.getGuides(lineGuideStops, itemBounds);
-    console.log("guides: ", guides);
 
     if (!guides.length) return;
 
     this.drawGuides(guides, layer);
 
-    const pos = node.position();
+    const box = node.getClientRect({ relativeTo: stage });
+
+    // current node position (transform origin)
+    const nodePos = node.position();
+
+    let dx = 0;
+    let dy = 0;
+
     guides.forEach(lg => {
-      if (lg.orientation === "V") pos.x = lg.lineGuide + lg.offset;
-      if (lg.orientation === "H") pos.y = lg.lineGuide + lg.offset;
+      if (lg.orientation === "V") {
+        const targetX = lg.lineGuide + lg.offset;
+        dx = targetX - box.x;
+      }
+      if (lg.orientation === "H") {
+        const targetY = lg.lineGuide + lg.offset;
+        dy = targetY - box.y;
+      }
     });
 
-    node.position(pos);
-  }
+    node.position({
+      x: nodePos.x + dx,
+      y: nodePos.y + dy
+    });
+  }// -- end onDragMove
+
 
   onDragEnd(e: Konva.KonvaEventObject<DragEvent>): void {
     e.target.getLayer()?.find(".guide-line").forEach(l => l.destroy());
