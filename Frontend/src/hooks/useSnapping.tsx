@@ -1,5 +1,5 @@
 import Konva from "konva";
-import type { Shape, ShapeConfig } from "konva/lib/Shape";
+
 import React, { 
   useEffect,
   // useRef 
@@ -24,7 +24,8 @@ type SnappingEdges = {
 
 type SnapObject = (
   Konva.Shape |
-  Konva.Text
+  Konva.Text |
+  Konva.Line
 );
 
 export type LineGuideStopType = {
@@ -92,9 +93,12 @@ export class SnappingMonitor {
   }// -- end getLineGuideStops
 
   getObjectSnappingEdges(node: SnapObject): SnappingEdges {
-    const selfRect = node.getSelfRect();
-    const absPos = node.absolutePosition();
-
+    const stage = node.getStage();
+    if (!stage) return { vertical: [], horizontal: [] };
+    const selfRect = node.getClientRect({ relativeTo: stage });
+    const absPos = { x: selfRect.x, y: selfRect.y };
+console.log("selfRect: ", selfRect);
+console.log("absPos: ", absPos);
     return {
       vertical: [
         {
@@ -245,22 +249,27 @@ export class SnappingMonitor {
 
     layer.find(".guide-line").forEach(l => l.destroy());
 
-    const lineGuideStops = this.getLineGuideStops(e.target as Shape<ShapeConfig>);
-    const itemBounds = this.getObjectSnappingEdges(e.target as Shape<ShapeConfig>);
+    const node = e.target;
+
+    const lineGuideStops = this.getLineGuideStops(node as SnapObject);
+    console.log("lineGuideStops: ", lineGuideStops);
+    const itemBounds = this.getObjectSnappingEdges(node as SnapObject);
+    console.log("itemBounds: ", itemBounds);
     const guides = this.getGuides(lineGuideStops, itemBounds);
+    console.log("guides: ", guides);
 
     if (!guides.length) return;
 
     this.drawGuides(guides, layer);
 
-    const pos = e.target.position();
+    const pos = node.position();
     guides.forEach(lg => {
       if (lg.orientation === "V") pos.x = lg.lineGuide + lg.offset;
       if (lg.orientation === "H") pos.y = lg.lineGuide + lg.offset;
     });
 
-    e.target.position(pos);
-  }// -- end onDragMove
+    node.position(pos);
+  }
 
   onDragEnd(e: Konva.KonvaEventObject<DragEvent>): void {
     e.target.getLayer()?.find(".guide-line").forEach(l => l.destroy());

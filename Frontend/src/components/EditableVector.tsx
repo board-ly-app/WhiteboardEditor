@@ -23,6 +23,24 @@ interface EditableVectorProps<VectorType extends VectorModel> extends EditableOb
   children: React.ReactElement<Konva.NodeConfig & KonvaNodeEvents>;
 }
 
+// class SnappingVectorMonitor extends SnappingMonitor {
+//   onDragMove(e: Konva.KonvaEventObject<DragEvent>): void {
+//     const layer = e.target.getLayer();
+//     if (!layer) return;
+
+//     const lineGuideStops = this.getLineGuideStops(e.target as Konva.Line);
+//     const itemBounds = this.getObjectSnappingEdges(e.target as Konva.Line);
+//     const guides = this.getGuides(lineGuideStops, itemBounds);
+
+//     if (!guides.length) return;
+
+//     this.drawGuides(guides, layer);
+
+//     const pos = e.target.position();
+//     guides.forEach
+//   }
+// }
+
 const EditableVector = <VectorType extends VectorModel>({
   id,
   shapeModel,
