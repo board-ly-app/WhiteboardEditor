@@ -34,6 +34,10 @@ import TextEditor from "./TextEditor";
 
 import { type EditableObjectProps } from "@/dispatchers/editableObjectProps";
 import type { CanvasObjectIdType, ShapeModel, TextModel } from "@/types/CanvasObjectModel";
+import {
+  SnappingMonitor,
+  useSnapping,
+} from "@/hooks/useSnapping";
 
 interface EditableTextProps extends EditableObjectProps {
   id: string;
@@ -77,6 +81,9 @@ const EditableText = ({
 
   const textRef = useRef<Konva.Text>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  const [snappingMonitor] = useState(new SnappingMonitor());
+
+  useSnapping(textRef, snappingMonitor);
 
   const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
     (state: RootState) => selectSelectedCanvasObjects(state)

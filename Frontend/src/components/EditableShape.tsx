@@ -2,6 +2,7 @@ import React, {
   useEffect, 
   useRef, 
   useCallback,
+  useState,
 } from "react";
 
 import {
@@ -40,6 +41,10 @@ import editableObjectProps from "@/dispatchers/editableObjectProps";
 import {
   setSelectedCanvasObjects,
 } from '@/controllers';
+import {
+  SnappingMonitor,
+  useSnapping,
+} from "@/hooks/useSnapping";
 
 interface EditableShapeProps<ShapeType extends ShapeModel> extends EditableObjectProps {
   id: string;
@@ -60,6 +65,9 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   const dispatch = store.dispatch;
   const shapeRef = useRef<Konva.Shape>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  const [snappingMonitor] = useState(new SnappingMonitor());
+
+  useSnapping(shapeRef, snappingMonitor);
 
   const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
     (state: RootState) => selectSelectedCanvasObjects(state)

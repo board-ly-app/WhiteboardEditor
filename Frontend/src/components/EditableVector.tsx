@@ -29,6 +29,10 @@ import {
 import type { CanvasObjectIdType, VectorModel } from "@/types/CanvasObjectModel";
 import type { EditableObjectProps } from "@/dispatchers/editableObjectProps";
 import editableObjectProps from "@/dispatchers/editableObjectProps";
+import {
+  SnappingMonitor,
+  useSnapping,
+} from "@/hooks/useSnapping";
 
 interface EditableVectorProps<VectorType extends VectorModel> extends EditableObjectProps {
   id: string;
@@ -49,6 +53,9 @@ const EditableVector = <VectorType extends VectorModel>({
   const dispatch = store.dispatch;
   const [localPoints, setLocalPoints] = useState(shapeModel.points);
   const vectorRef = useRef<Konva.Shape>(null);
+  const [snappingMonitor] = useState(new SnappingMonitor());
+
+  useSnapping(vectorRef, snappingMonitor);
 
   const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
     (state: RootState) => selectSelectedCanvasObjects(state)

@@ -144,7 +144,7 @@ const ShareWhiteboardForm = ({
           </h3>
 
           <div
-            className="flex flex-row align-bottom align-text-bottom w-full"
+            className="flex flex-row align-text-bottom w-full"
           >
             <Input
               name="new-email"
