@@ -267,6 +267,9 @@ pub enum WhiteboardDiff {
         canvas_id: CanvasIdType,
         allowed_users: Vec<ObjectId>,
     },
+    MergeCanvas {
+        canvas_id: CanvasIdType,
+    }
 }// -- end enum WhiteboardDiff
 
 // === ClientError ================================================================================
@@ -303,6 +306,9 @@ pub enum ClientError {
     },
     // -- Client attempted to access canvas that doesn't exist
     CanvasNotFound {
+        canvas_id: String,
+    },
+    NoParentCanvas {
         canvas_id: String,
     },
     // -- client doesn't have permission to perform a given action
@@ -367,6 +373,10 @@ pub enum ServerSocketMessage {
         canvas_id: String,
         allowed_users: Vec<String>,
     },
+    MergeCanvas {
+        client_id: ClientIdType,
+        canvas_id: String,
+    },
     IndividualError {
         client_id: ClientIdType,
         error: ClientError,
@@ -414,6 +424,9 @@ pub enum ClientSocketMessage {
     UpdateCanvasAllowedUsers {
         canvas_id: CanvasIdType,
         allowed_users: HashSet<ObjectId>,
+    },
+    MergeCanvas {
+        canvas_id: CanvasIdType,
     },
 }
 
@@ -1172,7 +1185,87 @@ pub async fn handle_authenticated_client_message(
                             })
                         }
                     }
-                }
+                },
+                MergeCanvas { canvas_id } => {
+                    // Merge the given canvas with its parent
+                    let mut whiteboard = client_state.whiteboard_ref.lock().await;
+                    let parent_ref : Option<CanvasParentRef>;
+                    let new_parent_canvas_objects : Vec::<(CanvasObjectIdType, ShapeModel)>;
+
+                    // What to do:
+                    //  - Access child canvas and parent canvas sequentially, not at the same time
+                    //  - Create a new hashmap that contains all the shapes of the parent canvas,
+                    //  then extend it with the shapes from the child canvas, then make it the new
+                    //  parent canvas shapes
+                    if let Some(ref child_canvas) = whiteboard.canvases.get(&canvas_id) {
+                        // Store copy of parent canvas ref, to allow resetting parent canvas refs
+                        // later
+                        parent_ref = child_canvas.parent_canvas.clone();
+
+                        // Copy canvas objects/shapes to new map
+                        new_parent_canvas_objects = child_canvas.shapes.iter()
+                            .map(|(k, v)| (k.clone(), v.clone()))
+                            .collect();
+                    } else {
+                        return Some(ServerSocketMessage::IndividualError {
+                            client_id: client_state.client_id.clone(),
+                            error: ClientError::CanvasNotFound {
+                                canvas_id: canvas_id.to_string()
+                            }
+                        });
+                    }
+
+                    if let Some(ref parent_ref) = parent_ref {
+                        if let Some(parent_canvas) = whiteboard.canvases.get_mut(&parent_ref.canvas_id) {
+                            // extend new canvas objects map with parent canvas' original objects
+                            parent_canvas.shapes.extend(new_parent_canvas_objects.into_iter());
+                        } else {
+                            return Some(ServerSocketMessage::IndividualError {
+                                client_id: client_state.client_id.clone(),
+                                error: ClientError::CanvasNotFound {
+                                    canvas_id: parent_ref.canvas_id.to_string()
+                                }
+                            });
+                        }
+
+                        // Replace all parent refs pointing to child canvas with references parent canvas,
+                        // recalculating offsets accordingly.
+                        for canvas in whiteboard.canvases.values_mut() {
+                            if let Some(ref mut target_parent_ref) = canvas.parent_canvas {
+                                if target_parent_ref.canvas_id == canvas_id {
+                                    target_parent_ref.canvas_id = parent_ref.canvas_id;
+                                    target_parent_ref.origin_x += parent_ref.origin_x;
+                                    target_parent_ref.origin_y += parent_ref.origin_y;
+                                }
+                            }
+                        }// -- end for canvas
+                    } else {
+                        return Some(ServerSocketMessage::IndividualError {
+                            client_id: client_state.client_id.clone(),
+                            error: ClientError::NoParentCanvas {
+                                canvas_id: canvas_id.to_string()
+                            }
+                        });
+                    }
+
+                    // Remove child canvas from canvases map
+                    whiteboard.canvases.remove(&canvas_id);
+
+                    // Leave diff to indicate that canvas should be merged in database
+                    {
+                        let mut diffs = client_state.diffs.lock().await;
+
+                        diffs.push(WhiteboardDiff::MergeCanvas {
+                            canvas_id: canvas_id, 
+                        });
+                    }
+
+                    // Tell clients to merge canvases on their end
+                    Some(ServerSocketMessage::MergeCanvas {
+                        client_id: client_state.client_id.clone(),
+                        canvas_id: canvas_id.to_string(),
+                    })
+                },
             }
         },
         Err(e) => {

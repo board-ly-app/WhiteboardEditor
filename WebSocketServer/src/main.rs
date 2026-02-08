@@ -441,6 +441,9 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
                                                 }
                                             };
                                         },
+                                        WhiteboardDiff::MergeCanvas { .. } => {
+                                            todo!()
+                                        },
                                     }
                                 }// -- end for &diff in diffs
 
@@ -650,6 +653,9 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
                                                     eprintln!("UpdateCanvasAllowedUsers upserted_id: {:?}", update.upserted_id);
                                                 }
                                             };
+                                        },
+                                        WhiteboardDiff::MergeCanvas { .. } => {
+                                            todo!()
                                         },
                                     }
                                 }// -- end for &diff in diffs
