@@ -10,10 +10,6 @@ import {
 } from '@/types/WebSocketProtocol';
 
 import {
-  type CanvasObjectIdType,
-} from '@/types/CanvasObjectModel';
-
-import {
   setCanvasObjects,
 } from '@/store/canvasObjects/canvasObjectsSlice';
 
@@ -31,6 +27,10 @@ import {
 } from '@/store/canvases/canvasesSlice';
 
 import {
+  mergeCanvasAction,
+} from '@/store/canvases/mergeCanvasesReducer';
+
+import {
   addCanvasesByWhiteboard,
   removeCanvasesByWhiteboard,
 } from '@/store/canvases/canvasesByWhiteboardSlice';
@@ -38,10 +38,6 @@ import {
 import {
   addChildCanvasesByCanvas,
 } from '@/store/canvases/childCanvasesByCanvasSlice';
-
-import {
-  addObjectsByCanvas,
-} from '@/store/canvasObjects/canvasObjectsByCanvasSlice';
 
 import {
   setCurrentEditorsByCanvas,
@@ -113,20 +109,7 @@ export const unsetCurrentEditorByCanvas = (
 // =============================================================================
 export const mergeCanvas = (
   dispatch: AppDispatch,
-  parentCanvasesByCanvas: Record<CanvasIdType, CanvasIdType>,
-  canvasObjectsByCanvas: Record<CanvasIdType, Record<CanvasObjectIdType, CanvasObjectIdType>>,
   canvasId: CanvasIdType,
 ) => {
-  // identify parent canvas
-  // copy all canvas objects into parent canvas
-  // remove original canvas
-  const parentCanvasId : CanvasIdType | undefined = parentCanvasesByCanvas[canvasId];
-
-  if (parentCanvasId) {
-    dispatch(addObjectsByCanvas({
-      [parentCanvasId]: Object.keys(canvasObjectsByCanvas[canvasId]),
-    }));
-    dispatch(removeCanvases([canvasId]));
-    dispatch(removeCanvasesByWhiteboard([canvasId]));
-  }
+  dispatch(mergeCanvasAction(canvasId));
 };

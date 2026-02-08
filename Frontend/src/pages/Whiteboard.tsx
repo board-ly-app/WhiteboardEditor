@@ -151,7 +151,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 type ComponentStatus = 
-  | { status: 'ready'; }
+  | { status: 'ready'; currWhiteboard: WhiteboardAttribs; }
   | { status: 'pending'; }
   | { status: 'error'; error: AxiosError; }
 ;
@@ -333,7 +333,7 @@ const Whiteboard = ({
   } else if (isWhiteboardLoading || isWhiteboardFetching || (! currWhiteboard)) {
     status = { status: 'pending' };
   } else {
-    status = { status: 'ready' };
+    status = { status: 'ready', currWhiteboard };
   }
 
   switch (status.status) {
@@ -423,6 +423,9 @@ const Whiteboard = ({
     }
     case 'ready':
     {
+      const {
+        currWhiteboard,
+      } = status;
       const canvasesById : Record<CanvasIdType, CanvasData> = Object.fromEntries(canvases.map(
         canvasData => [ canvasData.id, canvasData ]
       ));

@@ -24,7 +24,9 @@ export const selectCanvasObjectsByCanvas = (
   state: RootState,
   canvasId: CanvasIdType
 ): Record<CanvasObjectIdType, CanvasObjectModel> | null => {
-  const objectIds: Record<CanvasObjectIdType, CanvasObjectIdType> | null = state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId] || null;
+  const objectIds: Record<CanvasObjectIdType, CanvasObjectIdType> | null = (canvasId in state.canvasObjectsByCanvas.canvasObjectsByCanvas) ?
+    state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId]
+    : null;
 
   if (! objectIds) {
     return null;
@@ -45,7 +47,9 @@ export const selectCanvasObjectsByWhiteboard = (
   state: RootState,
   whiteboardId: WhiteboardIdType
 ): Record<CanvasIdType, Record<CanvasObjectIdType, CanvasObjectModel>> => {
-  const canvasIds: CanvasIdType[] | null = state.canvasesByWhiteboard[whiteboardId] || null;
+  const canvasIds: CanvasIdType[] | null = (whiteboardId in state.canvasesByWhiteboard.canvasesByWhiteboard) ?
+    Object.keys(state.canvasesByWhiteboard.canvasesByWhiteboard[whiteboardId])
+    : null;
 
   if (! canvasIds) {
     return {};
@@ -83,7 +87,9 @@ export const selectSelectedCanvasObjectsByWhiteboard = (
   state: RootState,
   whiteboardId: WhiteboardIdType
 ): CanvasObjectIdType[] => {
-  const canvasIds: CanvasIdType[] | null = state.canvasesByWhiteboard[whiteboardId] || null;
+  const canvasIds: CanvasIdType[] | null = (whiteboardId in state.canvasesByWhiteboard.canvasesByWhiteboard) ?
+    Object.keys(state.canvasesByWhiteboard.canvasesByWhiteboard[whiteboardId])
+    : null;
 
   if (! canvasIds) {
     return [];
