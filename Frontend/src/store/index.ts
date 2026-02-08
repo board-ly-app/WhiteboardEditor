@@ -6,6 +6,7 @@ import currentEditorsByCanvasReducer from './activeUsers/currentEditorsByCanvasS
 import canvasObjectsReducer from './canvasObjects/canvasObjectsSlice';
 import allowedUsersByCanvasReducer from './allowedUsers/allowedUsersByCanvasSlice';
 import canvasObjectsByCanvasReducer from './canvasObjects/canvasObjectsByCanvasSlice';
+import selectedCanvasObjectsReducer from './canvasObjects/selectedCanvasObjectsSlice';
 import canvasesReducer from './canvases/canvasesSlice';
 import childCanvasesByCanvasReducer from './canvases/childCanvasesByCanvasSlice';
 import canvasesByWhiteboardReducer from './canvases/canvasesByWhiteboardSlice';
@@ -18,6 +19,7 @@ export const store = configureStore({
     currentEditorsByCanvas: currentEditorsByCanvasReducer,
     canvasObjects: canvasObjectsReducer,
     canvasObjectsByCanvas: canvasObjectsByCanvasReducer,
+    selectedCanvasObjects: selectedCanvasObjectsReducer,
     allowedUsersByCanvas: allowedUsersByCanvasReducer,
     canvases: canvasesReducer,
     childCanvasesByCanvas: childCanvasesByCanvasReducer,

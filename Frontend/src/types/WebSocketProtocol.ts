@@ -224,6 +224,12 @@ export interface ServerMessageUpdateAllowedUsers {
   allowedUsers: string[];
 }
 
+export interface ServerMessageDeleteCanvasObjects {
+  type: 'delete_canvas_objects';
+  clientId: ClientIdType;
+  canvasObjectIds: CanvasObjectIdType[];
+}
+
 export interface ServerMessageIndividualError {
   type: 'individual_error';
   clientId: ClientIdType;
@@ -248,6 +254,7 @@ export type SocketServerMessage =
   | ServerMessageIndividualError
   | ServerMessageBroadcastError
   | ServerMessageUpdateAllowedUsers
+  | ServerMessageDeleteCanvasObjects
 ;
 
 // ========================== CLIENT → SERVER ==================================
@@ -307,6 +314,11 @@ export interface ClientMessageUpdateAllowedUsers {
   allowedUsers: string[];
 }
 
+export interface ClientMessageDeleteCanvasObjects {
+  type: 'delete_canvas_objects';
+  canvasObjectIds: CanvasObjectIdType[];
+}
+
 // Tagged union of all possible client-server messages
 export type SocketClientMessage =
   | ClientMessageLogin
@@ -316,4 +328,5 @@ export type SocketClientMessage =
   | ClientMessageCreateCanvas
   | ClientMessageDeleteCanvases
   | ClientMessageUpdateAllowedUsers
+  | ClientMessageDeleteCanvasObjects
 ;

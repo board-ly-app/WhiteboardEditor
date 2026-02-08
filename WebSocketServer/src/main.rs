@@ -396,6 +396,25 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
                                                 };
                                             }// end for (obj_id, shape) in shapes.iter()
                                         },
+                                        WhiteboardDiff::DeleteCanvasObjects { canvas_object_ids } => {
+                                            println!("Deleting canvas objects in database: {:?}", canvas_object_ids);
+
+                                            let filter = doc! {
+                                                "_id": {
+                                                    "$in": canvas_object_ids.clone()
+                                                }
+                                            };
+                                            let delete_canvas_objects_res = shape_coll.delete_many(filter).await;
+
+                                            match delete_canvas_objects_res {
+                                                Err(e) => {
+                                                    eprintln!("UpdateCanvasAllowedUsers update failed: {}", e);
+                                                },
+                                                Ok(update) => {
+                                                    eprintln!("UpdateCanvasAllowedUsers deleted: {}", update.deleted_count);
+                                                }
+                                            };
+                                        },
                                         WhiteboardDiff::UpdateCanvasAllowedUsers { canvas_id, allowed_users } => {
                                             println!("Updating allowed users in database for canvas {} ...", canvas_id);
 
@@ -586,6 +605,25 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
                                                     }
                                                 };
                                             }// end for (obj_id, shape) in shapes.iter()
+                                        },
+                                        WhiteboardDiff::DeleteCanvasObjects { canvas_object_ids } => {
+                                            println!("Deleting canvas objects in database: {:?}", canvas_object_ids);
+
+                                            let filter = doc! {
+                                                "_id": {
+                                                    "$in": canvas_object_ids.clone()
+                                                }
+                                            };
+                                            let delete_canvas_objects_res = shape_coll.delete_many(filter).await;
+
+                                            match delete_canvas_objects_res {
+                                                Err(e) => {
+                                                    eprintln!("UpdateCanvasAllowedUsers update failed: {}", e);
+                                                },
+                                                Ok(update) => {
+                                                    eprintln!("UpdateCanvasAllowedUsers deleted: {}", update.deleted_count);
+                                                }
+                                            };
                                         },
                                         WhiteboardDiff::UpdateCanvasAllowedUsers { canvas_id, allowed_users } => {
                                             println!("Updating allowed users in database for canvas {} ...", canvas_id);

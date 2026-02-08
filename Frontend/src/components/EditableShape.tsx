@@ -1,27 +1,46 @@
-import React, 
-{ 
-  useContext,
+import React, { 
   useEffect, 
   useRef, 
+  useCallback,
   useState,
 } from "react";
+
+import {
+  useSelector,
+} from 'react-redux';
+
 import { 
   Group, 
   Transformer, 
   type KonvaNodeEvents 
 } from "react-konva";
+
 import type Konva from "konva";
 
 // Local imports
+import {
+  store,
+  type RootState,
+} from '@/store';
+
+import {
+  selectSelectedCanvasObjects,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
+
 import type { 
   EditableObjectProps 
 } from "@/dispatchers/editableObjectProps";
+
 import type { 
   CanvasObjectIdType, 
   ShapeModel, 
 } from "@/types/CanvasObjectModel";
+
 import editableObjectProps from "@/dispatchers/editableObjectProps";
-import WhiteboardContext from "@/context/WhiteboardContext";
+
+import {
+  setSelectedCanvasObjects,
+} from '@/controllers';
 import {
   SnappingMonitor,
   useSnapping,
@@ -43,23 +62,17 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   children,
   ...props
 }: EditableShapeProps<ShapeType>) => {
+  const dispatch = store.dispatch;
   const shapeRef = useRef<Konva.Shape>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
 
   useSnapping(shapeRef, snappingMonitor);
 
-  const whiteboardContext = useContext(WhiteboardContext);
-
-  if (! whiteboardContext) {
-    throw new Error('No whiteboard context');
-  }
-
-  const {
-    selectedShapeIds,
-    setSelectedShapeIds,
-  } = whiteboardContext;
-  const isSelected = selectedShapeIds.includes(id);
+  const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
+    (state: RootState) => selectSelectedCanvasObjects(state)
+  );
+  const isSelected = (id in selectedCanvasObjectIds);
 
   // Transformer attach/detach
   useEffect(() => {
@@ -67,10 +80,13 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     trRef.current.nodes(isSelected ? [shapeRef.current] : []);
   }, [isSelected]);
 
-  const handleSelect = (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-    ev.cancelBubble = true;
-    setSelectedShapeIds([id]);
-  }
+  const handleSelect = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+      ev.cancelBubble = true;
+      setSelectedCanvasObjects(dispatch, [id]);
+    },
+    [dispatch, id]
+  );
 
   // Click outside to deselect
   useEffect(() => {
@@ -78,26 +94,42 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     if (!stage) return;
 
     const listener = (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      if (ev.target !== shapeRef.current) setSelectedShapeIds([]);
+      if (ev.target !== shapeRef.current) {
+        setSelectedCanvasObjects(dispatch, []);
+      }
     };
 
     stage.on("click", listener);
     return () => {
       stage.off("click", listener)
     };
-  }, [setSelectedShapeIds]);
+  }, [dispatch]);
 
   // Override onDragEnd to reselect at end
-  const { onDragEnd } = editableObjectProps(shapeModel, draggable, handleUpdateShapes);
-  const shapeOnDragEnd = (ev: Konva.KonvaEventObject<DragEvent>) => {
-    if (onDragEnd) {
-      onDragEnd(ev);
-    }
-    setSelectedShapeIds([id]);
-  }
+  const {
+    onDragEnd,
+  } = editableObjectProps(shapeModel, draggable, handleUpdateShapes);
+
+  const shapeOnDragStart = useCallback(
+    () => {
+      setSelectedCanvasObjects(dispatch, []);
+    },
+    [dispatch]
+  );
+
+  const shapeOnDragEnd = useCallback(
+    (ev: Konva.KonvaEventObject<DragEvent>) => {
+      if (onDragEnd) {
+        onDragEnd(ev);
+      }
+      setSelectedCanvasObjects(dispatch, [id]);
+    },
+    [dispatch, onDragEnd, id]
+  );
 
   const shapeEditableProps = {
     ...editableObjectProps(shapeModel, draggable, handleUpdateShapes),
+    onDragStart: shapeOnDragStart,
     onDragEnd: shapeOnDragEnd,
   }
 
@@ -109,7 +141,6 @@ const EditableShape = <ShapeType extends ShapeModel> ({
         draggable,
         onClick: handleSelect,
         onTap: handleSelect,
-        onDragStart: () => setSelectedShapeIds([]),
         ...shapeEditableProps,
         ...props
       })}

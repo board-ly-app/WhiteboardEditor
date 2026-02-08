@@ -260,6 +260,9 @@ pub enum WhiteboardDiff {
         canvas_id: CanvasIdType,
         shapes: HashMap<CanvasObjectIdType, ShapeModel>,
     },
+    DeleteCanvasObjects {
+        canvas_object_ids: Vec<CanvasObjectIdType>,
+    },
     UpdateCanvasAllowedUsers {
         canvas_id: CanvasIdType,
         allowed_users: Vec<ObjectId>,
@@ -315,6 +318,9 @@ pub enum ClientError {
     },
 }// -- end ClientError
 
+// === ServerSocketMessage ========================================================================
+//
+// ================================================================================================
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
 pub enum ServerSocketMessage {
@@ -344,6 +350,10 @@ pub enum ServerSocketMessage {
         canvas_id: String,
         shapes: HashMap<String, ShapeModel>,
     },
+    DeleteCanvasObjects {
+        client_id: ClientIdType,
+        canvas_object_ids: Vec<String>,
+    },
     CreateCanvas {
         client_id: ClientIdType,
         canvas: CanvasClientView,
@@ -366,6 +376,11 @@ pub enum ServerSocketMessage {
     },
 }
 
+// === ClientSocketMessage ========================================================================
+//
+// Enumerates all messages sent from the client to the server.
+//
+// ================================================================================================
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
 pub enum ClientSocketMessage {
@@ -378,8 +393,10 @@ pub enum ClientSocketMessage {
     },
     UpdateShapes {
         canvas_id: CanvasIdType,
-        shapes: HashMap<String,
-        ShapeModel>,
+        shapes: HashMap<String, ShapeModel>,
+    },
+    DeleteCanvasObjects {
+        canvas_object_ids: Vec<CanvasObjectIdType>,
     },
     CreateCanvas {
         name: String,
@@ -997,6 +1014,32 @@ pub async fn handle_authenticated_client_message(
                             })
                         }
                     }
+                },
+                DeleteCanvasObjects { canvas_object_ids } => {
+                    let mut whiteboard = client_state.whiteboard_ref.lock().await;
+
+                    // Delete objects locally
+                    for canvas in whiteboard.canvases.values_mut() {
+                        // TODO: refactor to store all canvas objects in one large HashMap
+                        for object_id in canvas_object_ids.iter() {
+                            canvas.shapes.remove(object_id);
+                        }// -- end for object_id
+                    }// -- end for let mut canvas
+
+                    // Store diffs to trigger deletion in database
+                    {
+                        let mut diffs = client_state.diffs.lock().await;
+                    
+                        diffs.push(WhiteboardDiff::DeleteCanvasObjects{
+                            canvas_object_ids: canvas_object_ids.clone()
+                        });
+                    }
+
+                    // Forward message to clients
+                    Some(ServerSocketMessage::DeleteCanvasObjects{
+                        client_id: client_state.client_id.clone(),
+                        canvas_object_ids: canvas_object_ids.into_iter().map(|oid| oid.to_string()).collect(),
+                    })
                 },
                 CreateCanvas { name, width, height, parent_canvas, allowed_users } => {
                     let mut whiteboard = client_state.whiteboard_ref.lock().await;

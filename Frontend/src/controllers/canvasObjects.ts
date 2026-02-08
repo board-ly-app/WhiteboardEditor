@@ -13,11 +13,19 @@ import type {
 
 import {
   setCanvasObjects,
+  removeCanvasObjects,
 } from '@/store/canvasObjects/canvasObjectsSlice';
 
 import {
   addObjectsByCanvas,
+  removeCanvasObjectsByCanvas,
 } from '@/store/canvasObjects/canvasObjectsByCanvasSlice';
+
+import {
+  setSelectedCanvasObjects,
+  addSelectedCanvasObjects,
+  removeSelectedCanvasObjects,
+} from '@/store/canvasObjects/selectedCanvasObjectsSlice';
 
 const controllerSetCanvasObjects = (
   dispatch: AppDispatch,
@@ -30,6 +38,39 @@ const controllerSetCanvasObjects = (
   }));
 };
 
+const controllerRemoveCanvasObjects = (
+  dispatch: AppDispatch,
+  canvasObjectIds: CanvasObjectIdType[]
+) => {
+  dispatch(removeCanvasObjects(canvasObjectIds));
+  dispatch(removeCanvasObjectsByCanvas(canvasObjectIds));
+};
+
+const controllerSetSelectedCanvasObjects = (
+  dispatch: AppDispatch,
+  canvasObjectIds: CanvasObjectIdType[]
+) => {
+  dispatch(setSelectedCanvasObjects(canvasObjectIds));
+};
+
+const controllerAddSelectedCanvasObjects = (
+  dispatch: AppDispatch,
+  canvasObjectIds: CanvasObjectIdType[]
+) => {
+  dispatch(addSelectedCanvasObjects(canvasObjectIds));
+};
+
+const controllerRemoveSelectedCanvasObjects = (
+  dispatch: AppDispatch,
+  canvasObjectIds: CanvasObjectIdType[]
+) => {
+  dispatch(removeSelectedCanvasObjects(canvasObjectIds));
+};
+
 export {
-  controllerSetCanvasObjects as setCanvasObjects
+  controllerSetCanvasObjects as setCanvasObjects,
+  controllerRemoveCanvasObjects as removeCanvasObjects,
+  controllerSetSelectedCanvasObjects as setSelectedCanvasObjects,
+  controllerAddSelectedCanvasObjects as addSelectedCanvasObjects,
+  controllerRemoveSelectedCanvasObjects as removeSelectedCanvasObjects,
 };

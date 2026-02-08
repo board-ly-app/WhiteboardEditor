@@ -1,6 +1,7 @@
 import {
   useContext,
 } from 'react';
+
 import {
   useSelector,
 } from 'react-redux';
@@ -11,22 +12,29 @@ import {
 
 // -- local imports
 import WhiteboardContext from '@/context/WhiteboardContext';
+
 import type {
   ShapeAttributesState,
   ShapeAttributesAction,
 } from '@/reducers/shapeAttributesReducer';
+
 import {
   getShapeType,
   selectCanvasObjectById,
+  selectSelectedCanvasObjects,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
+
 import type {
   RootState,
 } from '@/store';
+
 import {
   getAttributesByShape,
   type AttributeDefinition,
 } from '@/types/Attribute';
+
 import type {
+  CanvasObjectIdType, 
   CanvasObjectModel,
 } from '@/types/CanvasObjectModel';
 
@@ -46,14 +54,17 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
 
   const {
     handleUpdateShapes,
-    selectedShapeIds,
     currentTool,
     currentDispatcher,
     selectedCanvasId,
   } = whiteboardContext;
 
+  const selectedCanvasObjectIds : CanvasObjectIdType[] = Object.keys(useSelector(
+    (state: RootState) => selectSelectedCanvasObjects(state)
+  ));
+
   // TODO: Change this for multiple select, right now only handles one shape
-  const firstShapeId = selectedShapeIds[0];
+  const firstShapeId = selectedCanvasObjectIds[0];
 
   const shapeType = useSelector((state: RootState) => 
     selectedCanvasId && firstShapeId ? getShapeType(state, firstShapeId) : undefined
@@ -79,7 +90,10 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   else {
     // Tool mode
     console.log("tool mode", currentDispatcher, currentTool);
-    if (!currentDispatcher || currentTool == "hand") return null;
+
+    if (!currentDispatcher || currentTool == "hand") {
+      return null;
+    }
     AttributeComponents = currentDispatcher.getAttributes();
   }
 
@@ -95,7 +109,7 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
         {AttributeComponents.map(({ Component, key }) => (
           <Component
             key={key}
-            selectedShapeIds={selectedShapeIds}
+            selectedShapeIds={selectedCanvasObjectIds}
             dispatch={dispatch}
             handleUpdateShapes={handleUpdateShapes}
             canvasId={selectedCanvasId}
