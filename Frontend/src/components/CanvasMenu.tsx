@@ -2,6 +2,7 @@
 import { 
   useState,
   useContext,
+  useCallback,
 } from "react";
 
 // -- third-party imports
@@ -126,46 +127,55 @@ const CanvasMenu = ({
     throw new Error(`Could not find canvas ${canvasId} in application state`);
   }
 
-  const handleUpdateAllowedUsers = (allowedUsers: string[]) => {
-    if (! clientMessenger) {
-      console.error('Could not update allowed users: no ClientMessenger provided');
-    } else {
-      clientMessenger.sendUpdateCanvasAllowedUsers({
-        type: 'update_canvas_allowed_users',
-        canvasId,
-        allowedUsers,
-      });
-    }
-  };
+  const handleUpdateAllowedUsers = useCallback(
+    (allowedUsers: string[]) => {
+      if (! clientMessenger) {
+        console.error('Could not update allowed users: no ClientMessenger provided');
+      } else {
+        clientMessenger.sendUpdateCanvasAllowedUsers({
+          type: 'update_canvas_allowed_users',
+          canvasId,
+          allowedUsers,
+        });
+      }
+    },
+    [canvasId, clientMessenger]
+  );// -- end handleUpdateAllowedUsers
 
-  const handleDelete = () => {
-    if (! clientMessenger) {
-      console.error('Could not update allowed users: no ClientMessenger provided');
-    } else {
-      clientMessenger.sendDeleteCanvases({
-        type: "delete_canvases",
-        canvasIds: [canvasId],
-      });
-    }
-  };
+  const handleDelete = useCallback(
+    () => {
+      if (! clientMessenger) {
+        console.error('Could not update allowed users: no ClientMessenger provided');
+      } else {
+        clientMessenger.sendDeleteCanvases({
+          type: "delete_canvases",
+          canvasIds: [canvasId],
+        });
+      }
+    },
+    [canvasId, clientMessenger]
+  );// -- end handleDelete
 
-  const handleDownload = () => {
-    const imageType: ImageTypeEnum = 'png';
-    const imageQuality: number = 1.0;
+  const handleDownload = useCallback(
+    () => {
+      const imageType: ImageTypeEnum = 'png';
+      const imageQuality: number = 1.0;
 
-    const exportUrl = captureImage(canvasGroupRefsByIdRef, canvasId, imageType, imageQuality);
+      const exportUrl = captureImage(canvasGroupRefsByIdRef, canvasId, imageType, imageQuality);
 
-    // -- create a dummy link that the function can "click"
-    const downloadLink : HTMLAnchorElement = document.createElement('a');
-    const fileName = `${whiteboard.name} - ${canvas.name}.png`;
+      // -- create a dummy link that the function can "click"
+      const downloadLink : HTMLAnchorElement = document.createElement('a');
+      const fileName = `${whiteboard.name} - ${canvas.name}.png`;
 
-    downloadLink.download = fileName;
-    downloadLink.href = exportUrl;
+      downloadLink.download = fileName;
+      downloadLink.href = exportUrl;
 
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-  };
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    },
+    [canvas.name, canvasGroupRefsByIdRef, canvasId, whiteboard.name]
+  );// -- end handleDownload
 
   return (
     <div>
