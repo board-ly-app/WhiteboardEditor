@@ -150,8 +150,6 @@ const CanvasMenu = ({
   };
 
   const handleDownload = () => {
-    console.log("!! Download clicked");// TODO: remove debug
-    
     const imageType: ImageTypeEnum = 'png';
     const imageQuality: number = 1.0;
 
