@@ -1,7 +1,9 @@
-import { createSelector } from '@reduxjs/toolkit';
+import {
+  createSelector,
+} from '@reduxjs/toolkit';
 
-import type {
-  RootState
+import {
+  type RootState,
 } from '@/store';
 
 import {
@@ -74,3 +76,7 @@ export const selectCanvasesWithObjectsByWhiteboardId = (
       .filter((canvas: CanvasData | null) => !!canvas);
   }
 };// -- end selectCanvasesWithObjectsByWhiteboardId
+
+export const selectSelectedCanvasByWhiteboard = (state: RootState, whiteboardId: WhiteboardIdType): CanvasIdType | undefined => {
+  return state.selectedCanvasByWhiteboard.selectedCanvasByWhiteboard[whiteboardId];
+};

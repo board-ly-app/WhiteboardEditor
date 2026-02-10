@@ -13,6 +13,7 @@ import selectedCanvasObjectsReducer from './canvasObjects/selectedCanvasObjectsS
 import canvasesReducer from './canvases/canvasesSlice';
 import childCanvasesByCanvasReducer from './canvases/childCanvasesByCanvasSlice';
 import canvasesByWhiteboardReducer from './canvases/canvasesByWhiteboardSlice';
+import selectedCanvasByWhiteboardReducer from './canvases/selectedCanvasesByWhiteboardSlice';
 import whiteboardsReducer from './whiteboards/whiteboardsSlice';
 
 // root reducers
@@ -33,6 +34,7 @@ const rootReducer = combineReducers({
   canvases: canvasesReducer,
   childCanvasesByCanvas: childCanvasesByCanvasReducer,
   canvasesByWhiteboard: canvasesByWhiteboardReducer,
+  selectedCanvasByWhiteboard: selectedCanvasByWhiteboardReducer,
   whiteboards: whiteboardsReducer,
 });// -- end rootReducer
 
