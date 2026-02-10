@@ -442,7 +442,7 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
                                             };
                                         },
                                         WhiteboardDiff::MergeCanvas { .. } => {
-                                            todo!()
+                                            // todo!()
                                         },
                                     }
                                 }// -- end for &diff in diffs
@@ -655,7 +655,7 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
                                             };
                                         },
                                         WhiteboardDiff::MergeCanvas { .. } => {
-                                            todo!()
+                                            // todo!()
                                         },
                                     }
                                 }// -- end for &diff in diffs

@@ -1190,7 +1190,7 @@ pub async fn handle_authenticated_client_message(
                     // Merge the given canvas with its parent
                     let mut whiteboard = client_state.whiteboard_ref.lock().await;
                     let parent_ref : Option<CanvasParentRef>;
-                    let new_parent_canvas_objects : Vec::<(CanvasObjectIdType, ShapeModel)>;
+                    let mut new_parent_canvas_objects : Vec::<(CanvasObjectIdType, ShapeModel)>;
 
                     // What to do:
                     //  - Access child canvas and parent canvas sequentially, not at the same time
@@ -1217,6 +1217,36 @@ pub async fn handle_authenticated_client_message(
 
                     if let Some(ref parent_ref) = parent_ref {
                         if let Some(parent_canvas) = whiteboard.canvases.get_mut(&parent_ref.canvas_id) {
+                            // change child canvas objects' coordinates to match position on parent
+                            // canvas
+                            for &mut (_, ref mut canvas_obj) in new_parent_canvas_objects.iter_mut() {
+                                match canvas_obj {
+                                    &mut ShapeModel::Rect { ref mut x, ref mut y, .. } => {
+                                        *x += parent_ref.origin_x;
+                                        *y += parent_ref.origin_y;
+                                    },
+                                    &mut ShapeModel::Ellipse { ref mut x, ref mut y, .. } => {
+                                        *x += parent_ref.origin_x;
+                                        *y += parent_ref.origin_y;
+                                    },
+                                    &mut ShapeModel::Vector { ref mut points, .. } => {
+                                        for (idx, ref mut coord) in points.iter_mut().enumerate() {
+                                            if idx % 2 == 0 {
+                                                // even-indexed coordinates are x coordinates
+                                                **coord += parent_ref.origin_x;
+                                            } else {
+                                                // odd-indexed coordinates are y coordinates
+                                                **coord += parent_ref.origin_y;
+                                            }
+                                        }// -- end for idx, point
+                                    },
+                                    &mut ShapeModel::Text { ref mut x, ref mut y, .. } => {
+                                        *x += parent_ref.origin_x;
+                                        *y += parent_ref.origin_y;
+                                    },
+                                };// -- end match canvas_obj
+                            }// -- end for canvas_obj
+
                             // extend new canvas objects map with parent canvas' original objects
                             parent_canvas.shapes.extend(new_parent_canvas_objects.into_iter());
                         } else {
