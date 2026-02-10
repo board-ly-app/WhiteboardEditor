@@ -85,10 +85,7 @@ const childCanvasesByCanvasSlice = createSlice({
         }// -- end for childCanvasId
       }// -- end for parentCanvasId, childCanvasIdSet
 
-      return {
-        childCanvasesByCanvas,
-        parentCanvasesByCanvas,
-      };
+      return state;
     },
     // removes given canvases as both children and parents
     removeCanvases(state, action: PayloadAction<CanvasIdType[]>) {
