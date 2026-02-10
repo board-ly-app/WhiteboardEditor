@@ -142,6 +142,20 @@ const CanvasMenu = ({
     [canvasId, clientMessenger]
   );// -- end handleUpdateAllowedUsers
 
+  const handleMerge = useCallback(
+    () => {
+      if (! clientMessenger) {
+        console.error('Could not merge canvas: no ClientMessenger provided');
+      } else {
+        clientMessenger.sendMergeCanvas({
+          type: 'merge_canvas',
+          canvasId,
+        });
+      }
+    },
+    [clientMessenger, canvasId]
+  );// -- end handleMerge
+
   const handleDelete = useCallback(
     () => {
       if (! clientMessenger) {
@@ -220,6 +234,10 @@ const CanvasMenu = ({
 
           <DropdownMenuItem onSelect={handleDownload}>
             Export to PNG
+          </DropdownMenuItem>
+
+          <DropdownMenuItem onSelect={handleMerge}>
+            Merge Canvas into Parent
           </DropdownMenuItem>
 
           <DropdownMenuItem onSelect={handleDelete}>
