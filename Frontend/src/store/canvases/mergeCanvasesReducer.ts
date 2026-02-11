@@ -196,8 +196,8 @@ export const mergeCanvasReducer = (state: RootState, action: MergeCanvasActionTy
     let canvasesByCurrentEditor = canvasesByCurrentEditorOld;
 
     if (canvasId in currentEditorsByCanvas) {
-      let currentEditorsByCanvas = { ...currentEditorsByCanvasOld };
-      let canvasesByCurrentEditor = { ...canvasesByCurrentEditorOld };
+      currentEditorsByCanvas = { ...currentEditorsByCanvasOld };
+      canvasesByCurrentEditor = { ...canvasesByCurrentEditorOld };
 
       delete canvasesByCurrentEditor[currentEditorsByCanvas[canvasId]];
       delete currentEditorsByCanvas[canvasId];
