@@ -13,9 +13,13 @@ import {
 // -- local imports
 import WhiteboardContext from '@/context/WhiteboardContext';
 
-import type {
-  ShapeAttributesState,
-  ShapeAttributesAction,
+import {
+  type CanvasIdType,
+} from '@/types/WebSocketProtocol';
+
+import {
+  type ShapeAttributesState,
+  type ShapeAttributesAction,
 } from '@/reducers/shapeAttributesReducer';
 
 import {
@@ -24,9 +28,13 @@ import {
   selectSelectedCanvasObjects,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
-import type {
-  RootState,
+import {
+  type RootState,
 } from '@/store';
+
+import {
+  selectSelectedCanvasByWhiteboard,
+} from '@/store/canvases/canvasesSelectors';
 
 import {
   getAttributesByShape,
@@ -53,11 +61,15 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   }
 
   const {
+    whiteboardId,
     handleUpdateShapes,
     currentTool,
     currentDispatcher,
-    selectedCanvasId,
   } = whiteboardContext;
+
+  const selectedCanvasId : CanvasIdType | undefined = useSelector(
+    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)
+  );
 
   const selectedCanvasObjectIds : CanvasObjectIdType[] = Object.keys(useSelector(
     (state: RootState) => selectSelectedCanvasObjects(state)

@@ -65,6 +65,7 @@ import {
   removeSelectedCanvasObjects,
   addCanvas,
   deleteCanvas,
+  mergeCanvas,
   setCurrentEditorsByCanvas,
   removeCurrentEditorsByCanvas,
   setActiveUsersByWhiteboard,
@@ -270,12 +271,11 @@ const WebSocketClientMessengerProvider = ({
           break;
           case 'merge_canvas':
           {
-              // const {
-              //   canvasId,
-              // } = msg;
+              const {
+                canvasId,
+              } = msg;
 
-              // mergeCanvas(dispatch, parentCanvasesByCanvas, canvasObjectsByCanvas, canvasId);
-              // TODO: implement
+              mergeCanvas(dispatch, canvasId);
           }
           break;
           case 'individual_error':

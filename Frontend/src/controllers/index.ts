@@ -11,6 +11,7 @@ import {
   addCanvas,
   deleteCanvas,
   mergeCanvas,
+  setSelectedCanvasByWhiteboard,
 } from './canvases';
 
 import {
@@ -38,6 +39,7 @@ export {
   mergeCanvas,
   setCurrentEditorsByCanvas,
   removeCurrentEditorsByCanvas,
+  setSelectedCanvasByWhiteboard,
   addWhiteboard,
   addActiveUsersByWhiteboard,
   setActiveUsersByWhiteboard,

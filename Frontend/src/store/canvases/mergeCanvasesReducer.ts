@@ -164,6 +164,24 @@ export const mergeCanvasReducer = (state: RootState, action: MergeCanvasActionTy
       ...whiteboardsByCanvas
     } = whiteboardsByCanvasOld;
 
+    // unselect canvas, if necessary
+    const {
+      selectedCanvasByWhiteboard: selectedCanvasByWhiteboardOld,
+      whiteboardBySelectedCanvas: whiteboardBySelectedCanvasOld,
+    } = state.selectedCanvasByWhiteboard;
+
+    let selectedCanvasByWhiteboard = selectedCanvasByWhiteboardOld;
+    let whiteboardBySelectedCanvas = whiteboardBySelectedCanvasOld;
+
+    if (canvasId in whiteboardBySelectedCanvas) {
+      // clone old state, then delete reference to selected canvas
+      selectedCanvasByWhiteboard = { ...selectedCanvasByWhiteboardOld };
+      whiteboardBySelectedCanvas = { ...whiteboardBySelectedCanvasOld };
+
+      delete selectedCanvasByWhiteboard[whiteboardBySelectedCanvas[canvasId]];
+      delete whiteboardBySelectedCanvas[canvasId];
+    }
+
     return {
       ...state,
       childCanvasesByCanvas: {
@@ -183,6 +201,10 @@ export const mergeCanvasReducer = (state: RootState, action: MergeCanvasActionTy
       canvasesByWhiteboard: {
         canvasesByWhiteboard,
         whiteboardsByCanvas,
+      },
+      selectedCanvasByWhiteboard: {
+        selectedCanvasByWhiteboard,
+        whiteboardBySelectedCanvas,
       },
       canvasObjects,
     };

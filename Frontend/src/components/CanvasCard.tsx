@@ -59,6 +59,10 @@ import {
 } from '@/store/allowedUsers/allowedUsersByCanvasSlice';
 
 import {
+  selectSelectedCanvasByWhiteboard,
+} from '@/store/canvases/canvasesSelectors';
+
+import {
   type NewCanvasDimensions,
 } from '@/types/CreateCanvas';
 import WhiteboardContext from '@/context/WhiteboardContext';
@@ -105,11 +109,14 @@ function CanvasCard({
   }
 
   const {
-    selectedCanvasId,
     tooltipText,
     editingText,
     canvasGroupRefsByIdRef,
   } = whiteboardContext;
+
+  const selectedCanvasId : CanvasIdType | undefined = useSelector(
+    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)
+  );
 
   const clientMessengerContext = useContext(ClientMessengerContext);
 

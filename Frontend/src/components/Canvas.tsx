@@ -38,6 +38,7 @@ import {
 } from '@/context/ClientMessengerContext';
 
 import {
+  store,
   type RootState,
 } from '@/store';
 
@@ -48,6 +49,14 @@ import {
 import {
   selectCurrentEditorByCanvas,
 } from '@/store/activeUsers/activeUsersSelectors';
+
+import {
+  selectSelectedCanvasByWhiteboard,
+} from '@/store/canvases/canvasesSelectors';
+
+import {
+  setSelectedCanvasByWhiteboard,
+} from '@/controllers';
 
 import {
   useUser,
@@ -126,18 +135,23 @@ const Canvas = (props: CanvasProps) => {
     throw new Error('No Client Messenger context provided');
   }
 
+  const dispatch = store.dispatch;
+
   const {
+    whiteboardId,
     handleUpdateShapes,
     setCurrentTool,
     ownPermission,
     currentDispatcher,
     setCurrentDispatcher,
-    selectedCanvasId,
-    setSelectedCanvasId,
     canvasGroupRefsByIdRef,
     setTooltipText : setWhiteboardTooltipText,
     setEditingText,
   } = whiteboardContext;
+
+  const selectedCanvasId : CanvasIdType | undefined = useSelector(
+    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)
+  );
 
   const {
     clientMessenger,
@@ -271,31 +285,40 @@ const Canvas = (props: CanvasProps) => {
     getTooltipText
   } = dispatcher;
 
-  const handlePointerDown = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    ev.cancelBubble = true;
+  const handlePointerDown = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      ev.cancelBubble = true;
 
-    if (selectedCanvasId === canvasId) {
-      dispatcher.handlePointerDown(ev);
-    }
+      if (selectedCanvasId === canvasId) {
+        dispatcher.handlePointerDown(ev);
+      }
 
-    setSelectedCanvasId(canvasId);
-  };
+      setSelectedCanvasByWhiteboard(dispatch, canvasId, whiteboardId);
+    },
+    [dispatch, whiteboardId, canvasId, dispatcher, selectedCanvasId]
+  );// -- end handlePointerDown
 
-  const handlePointerMove = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    ev.cancelBubble = true;
+  const handlePointerMove = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      ev.cancelBubble = true;
 
-    dispatcher.handlePointerMove(ev);
-  };
+      dispatcher.handlePointerMove(ev);
+    },
+    [dispatcher]
+  );
 
-  const handlePointerUp = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    ev.cancelBubble = true;
+  const handlePointerUp = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      ev.cancelBubble = true;
 
-    if (selectedCanvasId === canvasId) {
-      dispatcher.handlePointerUp(ev);
-    }
+      if (selectedCanvasId === canvasId) {
+        dispatcher.handlePointerUp(ev);
+      }
 
-    setSelectedCanvasId(canvasId);
-  };
+      setSelectedCanvasByWhiteboard(dispatch, canvasId, whiteboardId);
+    },
+    [dispatch, whiteboardId, canvasId, dispatcher, selectedCanvasId]
+  );
 
   // TODO: delegate draggability to tool definitions
   const areShapesDraggable = ((ownPermission !== 'view') && (currentTool === 'hand') && userHasAccess);
@@ -313,14 +336,17 @@ const Canvas = (props: CanvasProps) => {
     : `${currentEditor?.username} is currently editing`;
 
   // Set editingText in context for main canvas
-  useEffect(() => {
-    if (currentEditor && (! parentCanvas)) {
-      setEditingText(editingText);
-    }
-    else {
-      setEditingText("");
-    }
-  }, [editingText]);
+  useEffect(
+    () => {
+      if (currentEditor && (! parentCanvas)) {
+        setEditingText(editingText);
+      }
+      else {
+        setEditingText("");
+      }
+    },
+    [editingText, currentEditor, setEditingText]
+  );
 
   const childCanvasesData : CanvasData[] = childCanvasesByCanvas[canvasId] ?
     Object.keys(childCanvasesByCanvas[canvasId]).map((childCanvasId: CanvasIdType) => canvasesById[childCanvasId] || null)

@@ -40,6 +40,10 @@ import {
 } from '@/store/canvases/childCanvasesByCanvasSlice';
 
 import {
+  setSelectedCanvasByWhiteboard as setSelectedCanvasByWhiteboardReducer,
+} from '@/store/canvases/selectedCanvasesByWhiteboardSlice';
+
+import {
   setCurrentEditorsByCanvas,
   unsetCurrentEditorsByCanvas,
 } from '@/store/activeUsers/currentEditorsByCanvasSlice';
@@ -98,6 +102,17 @@ export const unsetCurrentEditorByCanvas = (
   canvasId: CanvasIdType,
 ) => {
   dispatch(unsetCurrentEditorsByCanvas([ canvasId ]));
+};
+
+export const setSelectedCanvasByWhiteboard = (
+  dispatch: AppDispatch,
+  canvasId: CanvasIdType,
+  whiteboardId: WhiteboardIdType,
+) => {
+  dispatch(setSelectedCanvasByWhiteboardReducer({
+    canvasId,
+    whiteboardId,
+  }));
 };
 
 // === mergeCanvas =============================================================
