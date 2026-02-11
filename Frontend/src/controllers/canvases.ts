@@ -41,6 +41,7 @@ import {
 
 import {
   setSelectedCanvasByWhiteboard as setSelectedCanvasByWhiteboardReducer,
+  unselectCanvas,
 } from '@/store/canvases/selectedCanvasesByWhiteboardSlice';
 
 import {
@@ -85,6 +86,7 @@ export const deleteCanvas = (
   dispatch: AppDispatch,
   canvasId: CanvasIdType
 ) => {
+  dispatch(unselectCanvas(canvasId));
   dispatch(removeCanvases([canvasId]));
   dispatch(removeCanvasesByWhiteboard([canvasId]));
 };
