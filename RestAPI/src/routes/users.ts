@@ -29,6 +29,20 @@ router.post("/", async (
     await handleCreateUser(req, res);
 });
 
+// === POST /users/temp ======================================================
+//
+// Create a temporary user account for trial whiteboard use.
+//
+// =============================================================================
+router.post("/temp", async (
+  req: Request<{}, {}, CreateUserRequest>,
+  res: Response
+) => {
+    // TODO: secure logging to scrub credentials
+    console.log('Received POST /users:', req.body);
+    await handleCreateUser(req, res);
+});
+
 // --- Routes below are authenticated
 router.use(authenticateJWT);
 
