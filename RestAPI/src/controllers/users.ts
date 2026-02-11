@@ -94,6 +94,41 @@ export const handleCreateUser = async (
   }
 };
 
+// === POST /users/temp ======================================================
+//
+// Create a temporary user account for trial whiteboard use.
+//
+// =============================================================================
+export const handleCreateTempUser = async (
+  res: Response
+) => {
+  try {
+    // --- Generate random username, email, and pw ---
+    const username = "user";
+    const email = "email";
+    const password = "pw";
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    // --- Create temp user ---
+    const tempUser = new User({
+      username,
+      email,
+      passwordHashed: hashed
+    });
+
+    const userFinal = await tempUser.save();
+
+    return res.status(201).json({
+      user: userFinal.toPublicView(),
+      token: "token" // TODO: send access & refresh tokens to browser 
+    })
+  } catch (err) {
+    console.error("Create temp user failed: ", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 // === GET /users/:userId ======================================================
 //
 // Fetch the authenticated user's data.
