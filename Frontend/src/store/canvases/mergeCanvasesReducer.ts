@@ -140,14 +140,20 @@ export const mergeCanvasReducer = (state: RootState, action: MergeCanvasActionTy
     // extract old child entry referencing the target canvas
     const {
       [canvasId]: _childCanvasId,
-      ...childCanvasesSet
+      ...parentChildCanvasesSet
     } = childCanvasesByCanvasOld[parentCanvasId];
+
+    const childCanvasesSet = childCanvasesByCanvasOld[canvasId];
 
     // extract reference from child to parent canvas
     const {
       [canvasId]: _parentCanvasId,
       ...parentCanvasesByCanvas
     } = parentCanvasesByCanvasOld;
+
+    for (const childCanvasId of Object.keys(childCanvasesByCanvasOld[canvasId])) {
+      parentCanvasesByCanvas[childCanvasId] = parentCanvasId;
+    }// -- end for childCanvasId
 
     // TODO: reimplement canvasesByWhiteboardSlice to contain back-mapping of
     // canvases to their parent whiteboards, to reduce this to an O(1)
@@ -203,13 +209,40 @@ export const mergeCanvasReducer = (state: RootState, action: MergeCanvasActionTy
       delete currentEditorsByCanvas[canvasId];
     }
 
+    // Remove target canvas from canvases collection, and remap origin points of
+    // canvases whose parent has been changed from the target canvas to the
+    // parent canvas.
+    const {
+      [canvasId]: _canvas,
+      ...canvases
+    } = canvasesOld;
+
+    // Change origin points of moved canvases
+    for (const childCanvasId of Object.keys(childCanvasesSet)) {
+      const childCanvas = canvases[childCanvasId];
+
+      if (! childCanvas.parentCanvas) {
+        // abort; return original, unaltered state
+        return state;
+      } else {
+        canvases[childCanvasId] = {
+          ...childCanvas,
+          parentCanvas: {
+            canvasId: parentCanvasId,
+            originX: childCanvas.parentCanvas.originX + originX,
+            originY: childCanvas.parentCanvas.originY + originY,
+          },
+        };
+      }
+    }// -- end for childCanvasId
+
     return {
       ...state,
       childCanvasesByCanvas: {
         childCanvasesByCanvas: {
           ...childCanvasesByCanvasOld,
           [parentCanvasId]: {
-            ...childCanvasesSet,
+            ...parentChildCanvasesSet,
             ...childCanvasesByCanvasOld[canvasId],
           },
         },
@@ -231,6 +264,7 @@ export const mergeCanvasReducer = (state: RootState, action: MergeCanvasActionTy
         currentEditorsByCanvas,
         canvasesByCurrentEditor,
       },
+      canvases,
       canvasObjects,
     };
   }
