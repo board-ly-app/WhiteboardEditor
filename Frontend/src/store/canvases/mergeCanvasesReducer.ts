@@ -87,32 +87,36 @@ export const mergeCanvasReducer = (state: RootState, action: MergeCanvasActionTy
     // increase old canvas' objects' coordinates by originX and originY, to
     // represent the objects' locations on the parent canvas
     const canvasObjects : typeof canvasObjectsOld = Object.fromEntries(
-      Object.keys(canvasObjectsByCanvasOld[canvasId]).map(objId => {
-        const objOld = canvasObjectsOld[objId];
-        let obj : CanvasObjectModel;
+      Object.entries(canvasObjectsOld).map(([objId, obj]) => {
+        if (! (objId in canvasObjectsByCanvasOld[canvasId])) {
+          return [objId, obj];
+        } else {
+          const objOld = canvasObjectsOld[objId];
+          let obj : CanvasObjectModel;
 
-        switch (objOld.type) {
-          case 'vector':
-          {
-              obj = {
-                ...objOld,
-                points: objOld.points.map((val, i) => (
-                  (i % 2 == 0) ? val + originX : val + originY
-                )),
-              };
-          }
-          break;
-          default:
-          {
-              obj = {
-                ...objOld,
-                x: objOld.x + originX,
-                y: objOld.y + originY,
-              };
-          }
-        }// -- end switch
+          switch (objOld.type) {
+            case 'vector':
+            {
+                obj = {
+                  ...objOld,
+                  points: objOld.points.map((val, i) => (
+                    (i % 2 == 0) ? val + originX : val + originY
+                  )),
+                };
+            }
+            break;
+            default:
+            {
+                obj = {
+                  ...objOld,
+                  x: objOld.x + originX,
+                  y: objOld.y + originY,
+                };
+            }
+          }// -- end switch
 
-        return [objId, obj];
+          return [objId, obj];
+        }
       })
     );
 
