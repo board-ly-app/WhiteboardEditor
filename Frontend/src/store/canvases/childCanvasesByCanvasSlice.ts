@@ -76,6 +76,10 @@ const childCanvasesByCanvasSlice = createSlice({
             delete childCanvasesByCanvas[parentCanvasesByCanvas[childCanvasId]][childCanvasId];
           }
 
+          if (! childCanvasesByCanvas[parentCanvasId]) {
+            childCanvasesByCanvas[parentCanvasId] = {};
+          }
+
           childCanvasesByCanvas[parentCanvasId][childCanvasId] = childCanvasId;
         }// -- end for childCanvasId
 
