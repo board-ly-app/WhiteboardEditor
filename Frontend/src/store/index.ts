@@ -13,7 +13,7 @@ import selectedCanvasObjectsReducer from './canvasObjects/selectedCanvasObjectsS
 import canvasesReducer from './canvases/canvasesSlice';
 import childCanvasesByCanvasReducer from './canvases/childCanvasesByCanvasSlice';
 import canvasesByWhiteboardReducer from './canvases/canvasesByWhiteboardSlice';
-import selectedCanvasByWhiteboardReducer from './canvases/selectedCanvasesByWhiteboardSlice';
+import selectedCanvasByWhiteboardReducer from './canvases/selectedCanvasByWhiteboardSlice';
 import whiteboardsReducer from './whiteboards/whiteboardsSlice';
 
 // root reducers

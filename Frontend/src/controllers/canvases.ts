@@ -42,7 +42,7 @@ import {
 import {
   setSelectedCanvasByWhiteboard as setSelectedCanvasByWhiteboardReducer,
   unselectCanvas,
-} from '@/store/canvases/selectedCanvasesByWhiteboardSlice';
+} from '@/store/canvases/selectedCanvasByWhiteboardSlice';
 
 import {
   setCurrentEditorsByCanvas,
