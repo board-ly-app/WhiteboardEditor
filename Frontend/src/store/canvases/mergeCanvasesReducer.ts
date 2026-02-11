@@ -186,6 +186,23 @@ export const mergeCanvasReducer = (state: RootState, action: MergeCanvasActionTy
       delete whiteboardBySelectedCanvas[canvasId];
     }
 
+    // remove current editor by canvas mapping, if necessary
+    const {
+      currentEditorsByCanvas: currentEditorsByCanvasOld,
+      canvasesByCurrentEditor: canvasesByCurrentEditorOld,
+    } = state.currentEditorsByCanvas;
+
+    let currentEditorsByCanvas = currentEditorsByCanvasOld;
+    let canvasesByCurrentEditor = canvasesByCurrentEditorOld;
+
+    if (canvasId in currentEditorsByCanvas) {
+      let currentEditorsByCanvas = { ...currentEditorsByCanvasOld };
+      let canvasesByCurrentEditor = { ...canvasesByCurrentEditorOld };
+
+      delete canvasesByCurrentEditor[currentEditorsByCanvas[canvasId]];
+      delete currentEditorsByCanvas[canvasId];
+    }
+
     return {
       ...state,
       childCanvasesByCanvas: {
@@ -209,6 +226,10 @@ export const mergeCanvasReducer = (state: RootState, action: MergeCanvasActionTy
       selectedCanvasByWhiteboard: {
         selectedCanvasByWhiteboard,
         whiteboardBySelectedCanvas,
+      },
+      currentEditorsByCanvas: {
+        currentEditorsByCanvas,
+        canvasesByCurrentEditor,
       },
       canvasObjects,
     };
