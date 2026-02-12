@@ -151,7 +151,7 @@ export const mergeCanvasReducer = (state: RootState, action: MergeCanvasActionTy
       ...parentCanvasesByCanvas
     } = parentCanvasesByCanvasOld;
 
-    for (const childCanvasId of Object.keys(childCanvasesByCanvasOld[canvasId])) {
+    for (const childCanvasId of Object.keys(childCanvasesByCanvasOld[canvasId] || {})) {
       parentCanvasesByCanvas[childCanvasId] = parentCanvasId;
     }// -- end for childCanvasId
 
@@ -218,7 +218,7 @@ export const mergeCanvasReducer = (state: RootState, action: MergeCanvasActionTy
     } = canvasesOld;
 
     // Change origin points of moved canvases
-    for (const childCanvasId of Object.keys(childCanvasesSet)) {
+    for (const childCanvasId of Object.keys(childCanvasesSet || {})) {
       const childCanvas = canvases[childCanvasId];
 
       if (! childCanvas.parentCanvas) {
