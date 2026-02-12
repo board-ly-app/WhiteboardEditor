@@ -146,6 +146,8 @@ const CanvasMenu = ({
     () => {
       if (! clientMessenger) {
         console.error('Could not merge canvas: no ClientMessenger provided');
+      } else if (! canvas.parentCanvas) {
+        console.error(`Could not merge canvas ${canvasId}: canvas has no parent`);
       } else {
         clientMessenger.sendMergeCanvas({
           type: 'merge_canvas',
@@ -153,13 +155,15 @@ const CanvasMenu = ({
         });
       }
     },
-    [clientMessenger, canvasId]
+    [clientMessenger, canvasId, canvas.parentCanvas]
   );// -- end handleMerge
 
   const handleDelete = useCallback(
     () => {
       if (! clientMessenger) {
         console.error('Could not update allowed users: no ClientMessenger provided');
+      } else if (! canvas.parentCanvas) {
+        console.error(`Could not delete canvas ${canvasId}: canvas has no parent`);
       } else {
         clientMessenger.sendDeleteCanvases({
           type: "delete_canvases",
@@ -167,7 +171,7 @@ const CanvasMenu = ({
         });
       }
     },
-    [canvasId, clientMessenger]
+    [canvasId, clientMessenger, canvas.parentCanvas]
   );// -- end handleDelete
 
   const handleDownload = useCallback(
@@ -236,13 +240,22 @@ const CanvasMenu = ({
             Export to PNG
           </DropdownMenuItem>
 
-          <DropdownMenuItem onSelect={handleMerge}>
-            Merge Canvas into Parent
-          </DropdownMenuItem>
+          {
+            // Only display these options if the canvas has a parent
+            (canvas.parentCanvas) && 
+            (
+              <>
+                <DropdownMenuItem onSelect={handleMerge}>
+                  Merge Canvas into Parent
+                </DropdownMenuItem>
 
-          <DropdownMenuItem onSelect={handleDelete}>
-            Delete Canvas
-          </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleDelete}>
+                  Delete Canvas
+                </DropdownMenuItem>
+              </>
+            )
+            || null
+          }
         </DropdownMenuContent>
       </DropdownMenu>
 
