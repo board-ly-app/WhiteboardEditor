@@ -26,7 +26,6 @@ use mongodb::{
     bson::{
         self,
         doc,
-        oid::ObjectId,
     }
 };
 
@@ -441,8 +440,112 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
                                                 }
                                             };
                                         },
-                                        WhiteboardDiff::MergeCanvas { .. } => {
-                                            // todo!()
+                                        WhiteboardDiff::TransferChildCanvases {
+                                            old_parent_id, new_parent_id, translate_x, translate_y,
+                                        } => {
+                                            println!(
+                                                "Transfering child canvases from canvas {} to canvas {} ...",
+                                                old_parent_id, new_parent_id
+                                            );
+
+                                            let query = doc! {
+                                                "parent_canvas.canvas_id": old_parent_id,
+                                            };
+
+                                            let operator = doc! {
+                                                "$set": {
+                                                    "parent_canvas.canvas_id": new_parent_id,
+                                                },
+                                                "$inc": {
+                                                    "parent_canvas.origin_x": translate_x,
+                                                    "parent_canvas.origin_y": translate_y,
+                                                },
+                                            };
+
+                                            let update_canvases_res = canvas_coll.update_many(query, operator).await;
+
+                                            match update_canvases_res {
+                                                Err(e) => {
+                                                    eprintln!("TransferChildCanvases failed: {}", e);
+                                                },
+                                                Ok(update) => {
+                                                    eprintln!("TransferChildCanvases matched_count: {}", update.matched_count);
+                                                    eprintln!("TransferChildCanvases modified_count: {}", update.modified_count);
+                                                    eprintln!("TransferChildCanvases upserted_id: {:?}", update.upserted_id);
+                                                }
+                                            };
+                                        },
+                                        WhiteboardDiff::TransferCanvasObjects {
+                                            old_canvas_id, new_canvas_id, translate_x, translate_y,
+                                        } => {
+                                            println!(
+                                                "Transfering canvas_objects from canvas {} to canvas {} ...",
+                                                old_canvas_id, new_canvas_id
+                                            );
+
+                                            // query for vectors
+                                            let query_vec = doc! {
+                                                "canvas_id": old_canvas_id,
+                                                "type": "vector",
+                                            };
+
+                                            // operator for vectors
+                                            let operator_vec = doc! {
+                                                "$set": {
+                                                    "canvas_id": new_canvas_id,
+                                                },
+                                                "$inc": {
+                                                    "points.0": translate_x,
+                                                    "points.1": translate_y,
+                                                    "points.2": translate_x,
+                                                    "points.3": translate_y,
+                                                },
+                                            };
+
+                                            let update_vectors_res = shape_coll.update_many(query_vec, operator_vec).await;
+
+                                            match update_vectors_res {
+                                                Err(e) => {
+                                                    eprintln!("TransferChildCanvasObjects failed on vectors: {}", e);
+                                                },
+                                                Ok(update) => {
+                                                    eprintln!("TransferChildCanvasObjects on vectors matched_count: {}", update.matched_count);
+                                                    eprintln!("TransferChildCanvasObjects on vectors modified_count: {}", update.modified_count);
+                                                    eprintln!("TransferChildCanvasObjects on vectors upserted_id: {:?}", update.upserted_id);
+                                                }
+                                            };
+
+                                            // query for other canvas objects
+                                            let query = doc! {
+                                                "canvas_id": old_canvas_id,
+                                                "type": {
+                                                    "$ne": "vector",
+                                                },
+                                            };
+
+                                            // operator for other canvas objects
+                                            let operator = doc! {
+                                                "$set": {
+                                                    "canvas_id": new_canvas_id,
+                                                },
+                                                "$inc": {
+                                                    "x": translate_x,
+                                                    "y": translate_y,
+                                                },
+                                            };
+
+                                            let update_objects_res = shape_coll.update_many(query, operator).await;
+
+                                            match update_objects_res {
+                                                Err(e) => {
+                                                    eprintln!("TransferChildCanvasObjects failed on non-vectors: {}", e);
+                                                },
+                                                Ok(update) => {
+                                                    eprintln!("TransferChildCanvasObjects on non-vectors matched_count: {}", update.matched_count);
+                                                    eprintln!("TransferChildCanvasObjects on non-vectors modified_count: {}", update.modified_count);
+                                                    eprintln!("TransferChildCanvasObjects on non-vectors upserted_id: {:?}", update.upserted_id);
+                                                }
+                                            };
                                         },
                                     }
                                 }// -- end for &diff in diffs
@@ -500,7 +603,7 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
 
                                             let now = bson::DateTime::now();
                                             let canvas_doc = CanvasMongoDBView {
-                                                id: ObjectId::new(),
+                                                id: canvas.id.clone(),
                                                 name: canvas.name.clone(),
                                                 width: canvas.width,
                                                 height: canvas.height,
@@ -654,8 +757,112 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
                                                 }
                                             };
                                         },
-                                        WhiteboardDiff::MergeCanvas { .. } => {
-                                            // todo!()
+                                        WhiteboardDiff::TransferChildCanvases {
+                                            old_parent_id, new_parent_id, translate_x, translate_y,
+                                        } => {
+                                            println!(
+                                                "Transfering child canvases from canvas {} to canvas {} ...",
+                                                old_parent_id, new_parent_id
+                                            );
+
+                                            let query = doc! {
+                                                "parent_canvas.canvas_id": old_parent_id,
+                                            };
+
+                                            let operator = doc! {
+                                                "$set": {
+                                                    "parent_canvas.canvas_id": new_parent_id,
+                                                },
+                                                "$inc": {
+                                                    "parent_canvas.origin_x": translate_x,
+                                                    "parent_canvas.origin_y": translate_y,
+                                                },
+                                            };
+
+                                            let update_canvases_res = canvas_coll.update_many(query, operator).await;
+
+                                            match update_canvases_res {
+                                                Err(e) => {
+                                                    eprintln!("TransferChildCanvases failed: {}", e);
+                                                },
+                                                Ok(update) => {
+                                                    eprintln!("TransferChildCanvases matched_count: {}", update.matched_count);
+                                                    eprintln!("TransferChildCanvases modified_count: {}", update.modified_count);
+                                                    eprintln!("TransferChildCanvases upserted_id: {:?}", update.upserted_id);
+                                                }
+                                            };
+                                        },
+                                        WhiteboardDiff::TransferCanvasObjects {
+                                            old_canvas_id, new_canvas_id, translate_x, translate_y,
+                                        } => {
+                                            println!(
+                                                "Transfering canvas_objects from canvas {} to canvas {} ...",
+                                                old_canvas_id, new_canvas_id
+                                            );
+
+                                            // query for vectors
+                                            let query_vec = doc! {
+                                                "canvas_id": old_canvas_id,
+                                                "type": "vector",
+                                            };
+
+                                            // operator for vectors
+                                            let operator_vec = doc! {
+                                                "$set": {
+                                                    "canvas_id": new_canvas_id,
+                                                },
+                                                "$inc": {
+                                                    "points.0": translate_x,
+                                                    "points.1": translate_y,
+                                                    "points.2": translate_x,
+                                                    "points.3": translate_y,
+                                                },
+                                            };
+
+                                            let update_vectors_res = shape_coll.update_many(query_vec, operator_vec).await;
+
+                                            match update_vectors_res {
+                                                Err(e) => {
+                                                    eprintln!("TransferChildCanvases failed on vectors: {}", e);
+                                                },
+                                                Ok(update) => {
+                                                    eprintln!("TransferChildCanvasObjects on vectors matched_count: {}", update.matched_count);
+                                                    eprintln!("TransferChildCanvasObjects on vectors modified_count: {}", update.modified_count);
+                                                    eprintln!("TransferChildCanvasObjects on vectors upserted_id: {:?}", update.upserted_id);
+                                                }
+                                            };
+
+                                            // query for other canvas objects
+                                            let query = doc! {
+                                                "canvas_id": old_canvas_id,
+                                                "type": {
+                                                    "$ne": "vector",
+                                                },
+                                            };
+
+                                            // operator for other canvas objects
+                                            let operator = doc! {
+                                                "$set": {
+                                                    "canvas_id": new_canvas_id,
+                                                },
+                                                "$inc": {
+                                                    "x": translate_x,
+                                                    "y": translate_y,
+                                                },
+                                            };
+
+                                            let update_objects_res = shape_coll.update_many(query, operator).await;
+
+                                            match update_objects_res {
+                                                Err(e) => {
+                                                    eprintln!("TransferChildCanvases failed on non-vectors: {}", e);
+                                                },
+                                                Ok(update) => {
+                                                    eprintln!("TransferChildCanvasObjects on non-vectors matched_count: {}", update.matched_count);
+                                                    eprintln!("TransferChildCanvasObjects on non-vectors modified_count: {}", update.modified_count);
+                                                    eprintln!("TransferChildCanvasObjects on non-vectors upserted_id: {:?}", update.upserted_id);
+                                                }
+                                            };
                                         },
                                     }
                                 }// -- end for &diff in diffs
