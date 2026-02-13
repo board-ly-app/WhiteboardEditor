@@ -12,6 +12,7 @@ import {
   type ClientMessageUpdateAllowedUsers,
   type ClientMessageLogin,
   type ClientMessageDeleteCanvases,
+  type ClientMessageMergeCanvas,
   type ClientMessageCreateShapes,
   type ClientMessageDeleteCanvasObjects,
   type ClientMessageEditingCanvas,
@@ -27,5 +28,6 @@ export interface IWhiteboardClientMessenger {
   sendDeleteCanvasObjects: (msg: ClientMessageDeleteCanvasObjects) => unknown;
   sendEditingCanvas: (msg: ClientMessageEditingCanvas) => unknown;
   sendCreateCanvas: (msg: ClientMessageCreateCanvas) => unknown;
+  sendMergeCanvas: (msg: ClientMessageMergeCanvas) => unknown;
   sendUpdateShapes: (msg: ClientMessageUpdateShapes) => unknown;
 }// -- end interface IWhiteboardClientMessenger

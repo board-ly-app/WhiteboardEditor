@@ -1,7 +1,9 @@
-import { createSelector } from '@reduxjs/toolkit';
+import {
+  createSelector,
+} from '@reduxjs/toolkit';
 
-import type {
-  RootState
+import {
+  type RootState,
 } from '@/store';
 
 import {
@@ -15,9 +17,16 @@ export const selectCanvasById = (state: RootState, canvasId: CanvasIdType): Canv
   state.canvases[canvasId] || null
 );
 
-export const selectCanvasesByWhiteboardId = (state: RootState, whiteboardId: WhiteboardIdType): CanvasAttribs[] => (
-  state.canvasesByWhiteboard[whiteboardId]?.map(canvasId => state.canvases[canvasId]) ?? []
-);
+export const selectCanvasesByWhiteboardId = (state: RootState, whiteboardId: WhiteboardIdType): CanvasAttribs[] => {
+  if (! (whiteboardId in state.canvasesByWhiteboard.canvasesByWhiteboard)) {
+    return [];
+  } else {
+    return Object.keys(
+      state.canvasesByWhiteboard.canvasesByWhiteboard[whiteboardId])
+        .map((canvasId: CanvasIdType) => state.canvases[canvasId]
+    );
+  }
+};
 
 export const selectObjectsForCanvas = (state: RootState, canvasId: CanvasIdType) => {
   if (canvasId in state.canvasObjectsByCanvas.canvasObjectsByCanvas) {
@@ -35,32 +44,39 @@ export const selectCanvasWithObjects = createSelector(
 export const selectCanvasesWithObjectsByWhiteboardId = (
   state: RootState,
   whiteboardId: WhiteboardIdType
-): CanvasData[] => (
-  state.canvasesByWhiteboard[whiteboardId]
-    ?.map((canvasId: CanvasIdType) => {
-      const canvas = state.canvases[canvasId] || null;
+): CanvasData[] => {
+  if (! (whiteboardId in state.canvasesByWhiteboard.canvasesByWhiteboard)) {
+    return [];
+  } else {
+    return Object.keys(state.canvasesByWhiteboard.canvasesByWhiteboard[whiteboardId])
+      .map((canvasId: CanvasIdType) => {
+        const canvas = state.canvases[canvasId] || null;
 
-      if (! canvas) {
-        return null;
-      } else {
-        return ({
-          ...canvas,
-          shapes: Object.fromEntries(Object.keys(state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId])
-            .map(canvasObjectId => {
-              if (! (canvasObjectId in state.canvasObjects)) {
-                return null;
-              } else {
-                const canvasObjectRecord = state.canvasObjects[canvasObjectId];
+        if (! canvas) {
+          return null;
+        } else {
+          return ({
+            ...canvas,
+            shapes: Object.fromEntries(Object.keys(state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId])
+              .map(canvasObjectId => {
+                if (! (canvasObjectId in state.canvasObjects)) {
+                  return null;
+                } else {
+                  const canvasObjectRecord = state.canvasObjects[canvasObjectId];
 
-                return [canvasObjectId, canvasObjectRecord];
-              }
-            })
-            .filter(entry => !!entry)
-          ),
-          allowedUsers: state.allowedUsersByCanvas[canvasId] || []
-        });
-      }
-    })
-    .filter(canvas => !!canvas)
-    ?? []
-);
+                  return [canvasObjectId, canvasObjectRecord];
+                }
+              })
+              .filter(entry => !!entry)
+            ),
+            allowedUsers: state.allowedUsersByCanvas[canvasId] || []
+          });
+        }
+      })
+      .filter((canvas: CanvasData | null) => !!canvas);
+  }
+};// -- end selectCanvasesWithObjectsByWhiteboardId
+
+export const selectSelectedCanvasByWhiteboard = (state: RootState, whiteboardId: WhiteboardIdType): CanvasIdType | undefined => {
+  return state.selectedCanvasByWhiteboard.selectedCanvasByWhiteboard[whiteboardId];
+};

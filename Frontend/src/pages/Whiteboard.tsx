@@ -151,7 +151,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 type ComponentStatus = 
-  | { status: 'ready'; }
+  | { status: 'ready'; currWhiteboard: WhiteboardAttribs; }
   | { status: 'pending'; }
   | { status: 'error'; error: AxiosError; }
 ;
@@ -262,8 +262,8 @@ const Whiteboard = ({
     return selectCanvasesWithObjectsByWhiteboardId(state, whiteboardId)
   });
 
-  const childCanvasesByCanvas : Record<CanvasIdType, CanvasIdType[]> = useSelector(
-    (state: RootState) => state['childCanvasesByCanvas']
+  const childCanvasesByCanvas : Record<CanvasIdType, Record<CanvasIdType, CanvasIdType>> = useSelector(
+    (state: RootState) => state.childCanvasesByCanvas.childCanvasesByCanvas
   );
 
   const {
@@ -333,7 +333,7 @@ const Whiteboard = ({
   } else if (isWhiteboardLoading || isWhiteboardFetching || (! currWhiteboard)) {
     status = { status: 'pending' };
   } else {
-    status = { status: 'ready' };
+    status = { status: 'ready', currWhiteboard };
   }
 
   switch (status.status) {
@@ -423,6 +423,9 @@ const Whiteboard = ({
     }
     case 'ready':
     {
+      const {
+        currWhiteboard,
+      } = status;
       const canvasesById : Record<CanvasIdType, CanvasData> = Object.fromEntries(canvases.map(
         canvasData => [ canvasData.id, canvasData ]
       ));
@@ -710,7 +713,6 @@ const WrappedWhiteboard = () => {
   const clientMessengerContext = useContext(ClientMessengerContext);
   const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);
   const [currentDispatcher, setCurrentDispatcher] = useState<OperationDispatcher | null>(null);
-  const [selectedCanvasId, setSelectedCanvasId] = useState<CanvasIdType | null>(null);
   const [tooltipText, setTooltipText] = useState<string>("");
   const [editingText, setEditingText] = useState<string>("");
 
@@ -891,8 +893,6 @@ const WrappedWhiteboard = () => {
       setOwnPermission={setOwnPermission}
       currentDispatcher={currentDispatcher}
       setCurrentDispatcher={setCurrentDispatcher}
-      selectedCanvasId={selectedCanvasId}
-      setSelectedCanvasId={setSelectedCanvasId}
       canvasGroupRefsByIdRef={canvasGroupRefsByIdRef}
       tooltipText={tooltipText}
       setTooltipText={setTooltipText}
