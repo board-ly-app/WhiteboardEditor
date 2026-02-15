@@ -95,6 +95,41 @@ export type IPermanentUser =
 ;
 // -- End IPermanentUser
 
+// -- Start ITempUser
+export interface ITempUserModel extends IUserModel{
+  tempExpiresAt: Date;
+}
+
+// === Data Transfer Objects ===================================================
+//
+// =============================================================================
+
+// -- User with id and other basic document info
+export type ITempUserDocument = ViewDocument<ITempUserModel>;
+
+// -- User, excluding sensitive fields
+export type TempUserProtectedFields = 
+  | UserProtectedFields
+;
+
+export type ITempUserPublicView = Omit<ITempUserDocument, TempUserProtectedFields>;
+
+// -- Public view, excluding vector attributes
+// -- In this case, there are no vector attributes
+export type ITempUserAttribView = ITempUserPublicView;
+
+export type ITempUserVirtual = DocumentVirtualBase;
+
+export type TempUserModelType = Model<ITempUserDocument, {}, {}, ITempUserVirtual>;
+
+// -- User as a Mongo document
+export type ITempUser = 
+  & ITempUserDocument
+  & DocumentViewMethods<ITempUser, ITempUserPublicView, ITempUserAttribView>
+  & Document <Types.ObjectId>
+;
+// -- End ITempUser
+
 // === REST Request Body Definitions ===========================================
 //
 // Definitions for REST API request bodies.
@@ -145,6 +180,19 @@ const permanentUserToPublicView = (user: IPermanentUser): IPermanentUserPublicVi
 // -- identical to toPublicView, in this case
 const permanentUserToAttribView = permanentUserToPublicView;
 
+// === Data Transfer Mappings ==================================================
+//
+// Maps a temporary User model into various views (i.e. public, attrib)
+//
+// =============================================================================
+
+const tempUserToPublicView = (user: ITempUser): ITempUserPublicView => {
+  return user; // Just return original user, nothing to hide
+};// -- end tempUserToPublicView
+
+// -- identical to toPublicView, in this case
+const tempUserToAttribView = tempUserToPublicView;
+
 // === userSchema ==============================================================
 //
 // Defines how user objects are stored/interacted with.
@@ -171,25 +219,6 @@ const userSchema = new Schema<IUser, UserModelType, {}, {}, IUserVirtual>(
     toJSON: {
       virtuals: true,
     },
-
-    // -- instance methods
-    methods: {
-      // -- Data transfer mappings
-      async populateAttribs(): Promise<IUser> {
-        // nothing to populate
-        return this;
-      },
-      async populateFull(): Promise<IUser> {
-        // nothing to populate
-        return this;
-      },
-      // toPublicView(): IUserPublicView {
-      //   return toPublicView(this.toObject({ virtuals: true }));
-      // },// -- end toPublicView
-      // toAttribView(): IUserAttribView {
-      //   return toAttribView(this.toObject({ virtuals: true }));
-      // }// -- end toAttribView
-    }
   }
 );// -- end userSchema
 
@@ -213,6 +242,61 @@ userSchema.discriminator(
 
         return ret as IPermanentUserPublicView;
       }
+    },
+    // -- instance methods
+    methods: {
+      // -- Data transfer mappings
+      async populateAttribs(): Promise<IPermanentUser> {
+        // nothing to populate
+        return this;
+      },
+      async populateFull(): Promise<IPermanentUser> {
+        // nothing to populate
+        return this;
+      },
+      toPublicView(): IPermanentUserPublicView {
+        return permanentUserToPublicView(this.toObject({ virtuals: true }));
+      },// -- end toPublicView
+      toAttribView(): IPermanentUserAttribView {
+        return permanentUserToAttribView(this.toObject({ virtuals: true }));
+      }// -- end toAttribView
+    },
+  },
+));
+
+// === tempUserSchema ==============================================================
+//
+// Defines how temporary user objects are stored/interacted with.
+//
+// =============================================================================
+userSchema.discriminator(
+  'temp', new Schema<ITempUser, TempUserModelType, {}, {}, ITempUserVirtual>
+  (
+  // -- fields
+  {
+    tempExpiresAt: { type: Date, required: true },
+  },
+  {
+    toJSON: {
+      virtuals: true,
+    },
+    // -- instance methods
+    methods: {
+      // -- Data transfer mappings
+      async populateAttribs(): Promise<ITempUser> {
+        // nothing to populate
+        return this;
+      },
+      async populateFull(): Promise<ITempUser> {
+        // nothing to populate
+        return this;
+      },
+      toPublicView(): ITempUserPublicView {
+        return tempUserToPublicView(this.toObject({ virtuals: true }));
+      },// -- end toPublicView
+      toAttribView(): ITempUserAttribView {
+        return tempUserToAttribView(this.toObject({ virtuals: true }));
+      }// -- end toAttribView
     },
   }
 ));
