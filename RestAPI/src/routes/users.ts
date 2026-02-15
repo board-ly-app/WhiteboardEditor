@@ -8,6 +8,7 @@ import {
   handlePatchOwnUser,
   handleDeleteOwnUser,
   handleGetSharedWhiteboardsByUser,
+  handleCreateTempUser,
 } from "../controllers/users";
 
 import {
@@ -34,14 +35,7 @@ router.post("/", async (
 // Create a temporary user account for trial whiteboard use.
 //
 // =============================================================================
-router.post("/temp", async (
-  req: Request<{}, {}, CreateUserRequest>,
-  res: Response
-) => {
-    // TODO: secure logging to scrub credentials
-    console.log('Received POST /users:', req.body);
-    await handleCreateUser(req, res);
-});
+router.post("/temp", handleCreateTempUser);
 
 // --- Routes below are authenticated
 router.use(authenticateJWT);
