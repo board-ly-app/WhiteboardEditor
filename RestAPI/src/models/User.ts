@@ -18,18 +18,16 @@ import type {
 
 export type UserIdType = Types.ObjectId;
 
-export interface IUserModel {
-  username: string;
-  email: string;
-
-  // -- sensitive fields: ensure they are omitted from public-facing views
-  passwordHashed: string;
-}
-
-// -- define protected fields for later omission from public view
-type UserProtectedFields =
-  | "passwordHashed"
+export type UserTypeEnum = 
+  | "permanent"
+  | "temp"
 ;
+
+// -- Start IUser
+export interface IUserModel {
+  kind: UserTypeEnum;
+  username: string;
+}
 
 // === Data Transfer Objects ===================================================
 //
@@ -39,6 +37,7 @@ type UserProtectedFields =
 export type IUserDocument = ViewDocument<IUserModel>;
 
 // -- User, excluding sensitive fields
+export type UserProtectedFields = "";
 export type IUserPublicView = Omit<IUserDocument, UserProtectedFields>;
 
 // -- Public view, excluding vector attributes
@@ -55,6 +54,46 @@ export type IUser =
   & DocumentViewMethods<IUser, IUserPublicView, IUserAttribView>
   & Document <Types.ObjectId>
 ;
+// -- End IUser
+
+// -- Start IPermanentUser
+export interface IPermanentUserModel extends IUserModel{
+  email: string;
+
+  // -- sensitive fields: ensure they are omitted from public-facing views
+  passwordHashed: string;
+}
+
+// -- define protected fields for later omission from public view
+type PermanentUserProtectedFields =
+  | "passwordHashed"
+;
+
+// === Data Transfer Objects ===================================================
+//
+// =============================================================================
+
+// -- User with id and other basic document info
+export type IPermanentUserDocument = ViewDocument<IPermanentUserModel>;
+
+// -- User, excluding sensitive fields
+export type IPermanentUserPublicView = Omit<IPermanentUserDocument, PermanentUserProtectedFields>;
+
+// -- Public view, excluding vector attributes
+// -- In this case, there are no vector attributes
+export type IPermanentUserAttribView = IPermanentUserPublicView;
+
+export type IPermanentUserVirtual = DocumentVirtualBase;
+
+export type PermanentUserModelType = Model<IPermanentUserDocument, {}, {}, IPermanentUserVirtual>;
+
+// -- User as a Mongo document
+export type IPermanentUser = 
+  & IPermanentUserDocument
+  & DocumentViewMethods<IPermanentUser, IPermanentUserPublicView, IPermanentUserAttribView>
+  & Document <Types.ObjectId>
+;
+// -- End IPermanentUser
 
 // === REST Request Body Definitions ===========================================
 //
@@ -63,37 +102,37 @@ export type IUser =
 // =============================================================================
 
 // -- for POST
-export interface CreateUserRequest extends IUserModel {
+export interface CreatePermanentUserRequest extends IPermanentUserModel {
   password: string;
 }
 
 // -- for PATCH
-export type PatchUserData = Partial<CreateUserRequest>;
+export type PatchPermanentUserData = Partial<CreatePermanentUserRequest>;
 
 // -- (must be authorized)
-export type PatchUserRequest = AuthorizedRequestBody & PatchUserData;
+export type PatchPermanentUserRequest = AuthorizedRequestBody & PatchPermanentUserData;
 
 // -- for PUT
-export type PutUserData = IUserDocument;
+export type PutPermanentUserData = IPermanentUserDocument;
 
-export type PutUserRequest = AuthorizedRequestBody & PutUserData;
+export type PutPermanentUserRequest = AuthorizedRequestBody & PutPermanentUserData;
 
 // -- for DELETE
-export interface DeleteUserData {
+export interface DeletePermanentUserData {
   // requires additional password confirmation
   id: Types.ObjectId;
   password: string;
 }
 
-export type DeleteUserRequest = AuthorizedRequestBody & DeleteUserData;
+export type DeletePermanentUserRequest = AuthorizedRequestBody & DeletePermanentUserData;
 
 // === Data Transfer Mappings ==================================================
 //
-// Maps a full User model into various views (i.e. public, attrib)
+// Maps a full Permanent User model into various views (i.e. public, attrib)
 //
 // =============================================================================
 
-const toPublicView = (user: IUser): IUserPublicView => {
+const permanentUserToPublicView = (user: IPermanentUser): IPermanentUserPublicView => {
   const {
     _id,
     passwordHashed,
@@ -101,10 +140,10 @@ const toPublicView = (user: IUser): IUserPublicView => {
   } = user;
 
   return out;
-};// -- end toPublicView
+};// -- end permanentUserToPublicView
 
 // -- identical to toPublicView, in this case
-const toAttribView = toPublicView;
+const permanentUserToAttribView = permanentUserToPublicView;
 
 // === userSchema ==============================================================
 //
@@ -114,12 +153,12 @@ const toAttribView = toPublicView;
 const userSchema = new Schema<IUser, UserModelType, {}, {}, IUserVirtual>(
   // -- fields
   {
+    kind: { type: String, enum: ['permanent', 'temp'], required: true },
     username: { type: String, required: true, unique: true },
-    email:    { type: String, required: true, unique: true },
-    passwordHashed: { type: String, required: true },
   },
   {
     // -- options
+    discriminatorKey: 'kind',
     // --- do not commit data not defined in schema
     strict: true,
     // --- do not omit empty fields
@@ -130,11 +169,7 @@ const userSchema = new Schema<IUser, UserModelType, {}, {}, IUserVirtual>(
       virtuals: true,
     },
     toJSON: {
-      transform: (_, ret: Partial<IUserDocument>): IUserPublicView => {
-        delete ret.passwordHashed;
-
-        return ret as IUserPublicView;
-      }
+      virtuals: true,
     },
 
     // -- instance methods
@@ -148,15 +183,39 @@ const userSchema = new Schema<IUser, UserModelType, {}, {}, IUserVirtual>(
         // nothing to populate
         return this;
       },
-      toPublicView(): IUserPublicView {
-        return toPublicView(this.toObject({ virtuals: true }));
-      },// -- end toPublicView
-      toAttribView(): IUserAttribView {
-        return toAttribView(this.toObject({ virtuals: true }));
-      }// -- end toAttribView
+      // toPublicView(): IUserPublicView {
+      //   return toPublicView(this.toObject({ virtuals: true }));
+      // },// -- end toPublicView
+      // toAttribView(): IUserAttribView {
+      //   return toAttribView(this.toObject({ virtuals: true }));
+      // }// -- end toAttribView
     }
   }
 );// -- end userSchema
+
+// === permanentUserSchema ==============================================================
+//
+// Defines how permanent user objects are stored/interacted with.
+//
+// =============================================================================
+userSchema.discriminator(
+  'permanent', new Schema<IPermanentUser, PermanentUserModelType, {}, {}, IPermanentUserVirtual>
+  (
+  // -- fields
+  {
+    email:    { type: String, required: false, unique: true },
+    passwordHashed: { type: String, required: false },
+  },
+  {
+    toJSON: {
+      transform: (_, ret: Partial<IPermanentUserDocument>): IPermanentUserPublicView => {
+        delete ret.passwordHashed;
+
+        return ret as IPermanentUserPublicView;
+      }
+    },
+  }
+));
 
 userSchema.virtual('id').get(function() {
   return this._id;
