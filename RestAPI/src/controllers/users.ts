@@ -100,33 +100,39 @@ export const handleCreateUser = async (
 //
 // =============================================================================
 export const handleCreateTempUser = async (
+  req: Request<{}, {}, CreateUserRequest>,
   res: Response
 ) => {
-  try {
-    // --- Generate random username, email, and pw ---
-    const username = "user";
-    const email = "email";
-    const password = "pw";
+  const tempUser = new User({
+    isTemp: true,
+    createdAt: new Date(),
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24) // 24hr
+  });
 
-    const hashed = await bcrypt.hash(password, 10);
+  const saved = await tempUser.save();
 
-    // --- Create temp user ---
-    const tempUser = new User({
-      username,
-      email,
-      passwordHashed: hashed
-    });
+  const accessToken = jwt.sign(
+    { userId: saved._id, isTemp: true },
+    process.env.ACCESS_SECRET!,
+    { expiresIn: "15m" }
+  );
 
-    const userFinal = await tempUser.save();
+  const refreshToken = jwt.sign(
+    { userId: saved._id, isTemp: true },
+    process.env.REFRESH_SECRET!,
+    { expiresIn: "7d" }
+  );
 
-    return res.status(201).json({
-      user: userFinal.toPublicView(),
-      token: "token" // TODO: send access & refresh tokens to browser 
-    })
-  } catch (err) {
-    console.error("Create temp user failed: ", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict"
+  });
+
+  return res.status(201).json({
+    user: saved.toPublicView(),
+    accessToken
+  });
 };
 
 // === GET /users/:userId ======================================================
