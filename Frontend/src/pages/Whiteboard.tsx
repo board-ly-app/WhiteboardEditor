@@ -302,6 +302,38 @@ const Whiteboard = ({
     (state: RootState) => selectWhiteboardStatus(state, whiteboardId)
   );
 
+  // -- display alert if whiteboard enters deleting status
+  useEffect(
+    () => {
+      switch (whiteboardStatus) {
+        case 'deleting':
+        {
+          toast.warning('Whiteboard has been deleted', {
+            position: "bottom-center",
+            autoClose: 10000,
+            hideProgressBar: false,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+        }
+        break;
+        case 'deleted':
+        {
+            // -- redirect to dashboard
+            navigate('/dashboard');
+        }
+        break;
+        default:
+          // -- nothing to do in particular
+      }// -- end switch whiteboardStatus
+    },
+    [whiteboardStatus, navigate]
+  );
+
   useEffect(
     () => {
       const handleKeyDown = (ev: KeyboardEvent) => {
@@ -733,7 +765,7 @@ const Whiteboard = ({
       
       canvasesSorted.sort((a, b) => new Date(a.timeCreated) < new Date(b.timeCreated) ? -1 : 1);
       
-      const title = currWhiteboard.name;
+      const title = `[DELETED] ${currWhiteboard.name}`;
       
       // --- misc functions
       const handleCreateCanvasDimensions = (_parentCanvasId: CanvasIdType, _dimensions: NewCanvasDimensions) => {
