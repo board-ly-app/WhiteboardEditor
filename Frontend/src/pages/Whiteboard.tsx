@@ -79,7 +79,8 @@ import {
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import {
-  selectWhiteboardById
+  selectWhiteboardById,
+  selectWhiteboardStatus,
 } from '@/store/whiteboards/whiteboardsSelectors';
 
 import {
@@ -154,6 +155,8 @@ type ComponentStatus =
   | { status: 'ready'; currWhiteboard: WhiteboardAttribs; }
   | { status: 'pending'; }
   | { status: 'error'; error: AxiosError; }
+  | { status: 'deleting'; currWhiteboard: WhiteboardAttribs; }
+  | { status: 'deleted'; }
 ;
 
 type WhiteboardQueryType = ReturnType<typeof useQuery<APIWhiteboard, AxiosError>>;
@@ -295,6 +298,10 @@ const Whiteboard = ({
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(state, whiteboardId)
   );
 
+  const whiteboardStatus = useSelector(
+    (state: RootState) => selectWhiteboardStatus(state, whiteboardId)
+  );
+
   useEffect(
     () => {
       const handleKeyDown = (ev: KeyboardEvent) => {
@@ -330,8 +337,12 @@ const Whiteboard = ({
     }
 
     status = { status: 'error', error: whiteboardError };
-  } else if (isWhiteboardLoading || isWhiteboardFetching || (! currWhiteboard)) {
+  } else if (isWhiteboardLoading || isWhiteboardFetching || (! currWhiteboard) || (! whiteboardStatus)) {
     status = { status: 'pending' };
+  } else if (whiteboardStatus === 'deleting') {
+    status = { status: 'deleting', currWhiteboard };
+  } else if (whiteboardStatus === 'deleted') {
+    status = { status: 'deleted' };
   } else {
     status = { status: 'ready', currWhiteboard };
   }
@@ -702,6 +713,120 @@ const Whiteboard = ({
           </main>
         </Page>
       );
+    }
+    case 'deleting':
+    {
+      // -- keep displaying the whiteboard, with a gray overlay to indicate to
+      // indicate that editing is disabled.
+      // Assume a toast notification has already been created.
+      const {
+        currWhiteboard,
+      } = status;
+
+      const canvasesById : Record<CanvasIdType, CanvasData> = Object.fromEntries(canvases.map(
+        canvasData => [ canvasData.id, canvasData ]
+      ));
+      
+      const rootCanvasId = currWhiteboard.rootCanvas;
+      
+      const canvasesSorted = [...canvases];
+      
+      canvasesSorted.sort((a, b) => new Date(a.timeCreated) < new Date(b.timeCreated) ? -1 : 1);
+      
+      const title = currWhiteboard.name;
+      
+      // --- misc functions
+      const handleCreateCanvasDimensions = (_parentCanvasId: CanvasIdType, _dimensions: NewCanvasDimensions) => {
+          // do nothing; functionality disabled
+      };
+
+      const pageTitle = `${title} | ${APP_NAME}`;
+
+      return (
+        <Page
+          title={pageTitle}
+        >
+          <main>
+            {/* Header */}
+            <HeaderAuthed 
+              title={title}
+              zIndex={10}
+              noMarginTop={true}
+            />
+      
+            {/* Content */}
+            <div className="">
+              {/** Gray overlay **/}
+              <div
+                className="absolute z-5 w-full h-full bg-black opacity-60"
+              >
+              </div>
+            
+              {/* Canvas Container */}
+              <div className="flex flex-col justify-center flex-wrap">
+                
+                {/** Misc. info **/}
+                <div className="fixed top-20 left-2 right-0 z-50 flex flex-col justify-center flex-wrap">
+                  {/** Indicate if the user is in view-only mode **/}
+                  {(ownPermission && (ownPermission === 'view')) && (
+                    <div>
+                      <span>
+                        <strong
+                          className="text-xl font-bold"
+                        >
+                          You are in view-only mode
+                        </strong>
+                      </span>
+                    </div>
+                  )}
+                </div>
+      
+                {/* Display Canvases */}
+                <div className="flex flex-1 flex-row justify-center flex-wrap">
+                  <CanvasCard
+                    whiteboardId={whiteboardId}
+                    rootCanvasId={rootCanvasId}
+                    shapeAttributes={shapeAttributesState}
+                    currentTool={currentTool}
+                    canvasesById={canvasesById}
+                    childCanvasesByCanvas={childCanvasesByCanvas}
+                    onSelectCanvasDimensions={handleCreateCanvasDimensions}
+                  />
+                </div>
+              </div>
+            </div>
+          </main>
+        </Page>
+      );
+    }
+    case 'deleted':
+    {
+        // Just display a plain authed header 
+        const pageTitle = `Whiteboard Deleted | ${APP_NAME}`;
+
+        return (
+          <Page
+            title={pageTitle}
+          >
+            <main>
+              {/* Header */}
+              <HeaderAuthed 
+                title="Whiteboard Deleted"
+                zIndex={10}
+                noMarginTop={true}
+              />
+        
+              {/* Content */}
+              <div className="">
+                {/** Gray overlay **/}
+                <div
+                  className="absolute z-5 w-full h-full bg-black opacity-60"
+                >
+                </div>
+              </div>
+            </main>
+          </Page>
+        );
     }
     default:
       throw new Error(`Unrecognized component status: ${status}`);
