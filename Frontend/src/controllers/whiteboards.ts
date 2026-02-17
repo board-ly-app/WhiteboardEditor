@@ -1,17 +1,17 @@
-import type {
-  AppDispatch
+import {
+  type AppDispatch,
 } from '@/store';
 
 import type {
-  WhiteboardData
+  WhiteboardData ,
 } from '@/types/WebSocketProtocol';
 
 import {
-  setCanvasObjects
+  setCanvasObjects,
 } from '@/store/canvasObjects/canvasObjectsSlice';
 
 import {
-  setObjectsByCanvas
+  setObjectsByCanvas,
 } from '@/store/canvasObjects/canvasObjectsByCanvasSlice';
 
 import {
@@ -19,11 +19,11 @@ import {
 } from '@/store/canvases/childCanvasesByCanvasSlice';
 
 import {
-  setCanvases
+  setCanvases,
 } from '@/store/canvases/canvasesSlice';
 
 import {
-  setCanvasesByWhiteboard
+  setCanvasesByWhiteboard,
 } from '@/store/canvases/canvasesByWhiteboardSlice';
 
 import {
@@ -31,12 +31,16 @@ import {
 } from '@/store/allowedUsers/allowedUsersByCanvasSlice';
 
 import {
-  normalizeWhiteboard
+  normalizeWhiteboard,
 } from '@/store/whiteboards/whiteboardsNormalizers';
 
 import {
-  setWhiteboards
+  setWhiteboards,
 } from '@/store/whiteboards/whiteboardsSlice';
+
+import {
+  setWhiteboardStatuses,
+} from '@/store/whiteboards/whiteboardStatusSlice';
 
 export const addWhiteboard = (
   dispatch: AppDispatch,
@@ -59,4 +63,9 @@ export const addWhiteboard = (
   dispatch(setObjectsByCanvas(canvasObjectsByCanvas));
   dispatch(setCanvasesByWhiteboard(canvasesByWhiteboard));
   dispatch(setAllowedUsersByCanvas(allowedUsersByCanvas));
+
+  // set all new whiteboards to active status
+  dispatch(setWhiteboardStatuses(
+    Object.fromEntries(Object.keys(whiteboards).map(wid => [wid, 'active']))
+  ));
 };

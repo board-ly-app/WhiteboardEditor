@@ -15,6 +15,7 @@ import childCanvasesByCanvasReducer from './canvases/childCanvasesByCanvasSlice'
 import canvasesByWhiteboardReducer from './canvases/canvasesByWhiteboardSlice';
 import selectedCanvasByWhiteboardReducer from './canvases/selectedCanvasByWhiteboardSlice';
 import whiteboardsReducer from './whiteboards/whiteboardsSlice';
+import whiteboardStatusReducer from './whiteboards/whiteboardStatusSlice';
 
 // root reducers
 import {
@@ -36,6 +37,7 @@ const rootReducer = combineReducers({
   canvasesByWhiteboard: canvasesByWhiteboardReducer,
   selectedCanvasByWhiteboard: selectedCanvasByWhiteboardReducer,
   whiteboards: whiteboardsReducer,
+  whiteboardStatus: whiteboardStatusReducer,
 });// -- end rootReducer
 
 type ActionType =
