@@ -3,26 +3,58 @@ import {
   combineReducers,
 } from '@reduxjs/toolkit'
 
-import activeUsersReducer from './activeUsers/activeUsersSlice';
-import activeUsersByWhiteboardReducer from './activeUsers/activeUsersByWhiteboardSlice';
-import currentEditorsByCanvasReducer from './activeUsers/currentEditorsByCanvasSlice';
-import canvasObjectsReducer from './canvasObjects/canvasObjectsSlice';
-import allowedUsersByCanvasReducer from './allowedUsers/allowedUsersByCanvasSlice';
-import canvasObjectsByCanvasReducer from './canvasObjects/canvasObjectsByCanvasSlice';
-import selectedCanvasObjectsReducer from './canvasObjects/selectedCanvasObjectsSlice';
-import canvasesReducer from './canvases/canvasesSlice';
-import childCanvasesByCanvasReducer from './canvases/childCanvasesByCanvasSlice';
-import canvasesByWhiteboardReducer from './canvases/canvasesByWhiteboardSlice';
-import selectedCanvasByWhiteboardReducer from './canvases/selectedCanvasByWhiteboardSlice';
-import whiteboardsReducer from './whiteboards/whiteboardsSlice';
-import whiteboardStatusReducer from './whiteboards/whiteboardStatusSlice';
+import activeUsersReducer, {
+  type ActiveUsersActions,
+} from './activeUsers/activeUsersSlice';
+import activeUsersByWhiteboardReducer, {
+  type ActiveUsersByWhiteboardActions,
+} from './activeUsers/activeUsersByWhiteboardSlice';
+import currentEditorsByCanvasReducer, {
+  type CurrentEditorsByCanvasActions,
+} from './activeUsers/currentEditorsByCanvasSlice';
+import canvasObjectsReducer, {
+  type CanvasObjectsActions,
+} from './canvasObjects/canvasObjectsSlice';
+import allowedUsersByCanvasReducer, {
+  type AllowedUsersByCanvasActions,
+} from './allowedUsers/allowedUsersByCanvasSlice';
+import canvasObjectsByCanvasReducer, {
+  type CanvasObjectsByCanvasActions,
+} from './canvasObjects/canvasObjectsByCanvasSlice';
+import selectedCanvasObjectsReducer, {
+  type SelectedCanvasObjectsActions,
+} from './canvasObjects/selectedCanvasObjectsSlice';
+import canvasesReducer, {
+  type CanvasesActions,
+} from './canvases/canvasesSlice';
+import childCanvasesByCanvasReducer, {
+  type ChildCanvasesByCanvasActions,
+} from './canvases/childCanvasesByCanvasSlice';
+import canvasesByWhiteboardReducer, {
+  type CanvasesByWhiteboardActions,
+} from './canvases/canvasesByWhiteboardSlice';
+import selectedCanvasByWhiteboardReducer, {
+  type SelectedCanvasByWhiteboardActions,
+} from './canvases/selectedCanvasByWhiteboardSlice';
+import whiteboardsReducer, {
+  type WhiteboardsActions,
+} from './whiteboards/whiteboardsSlice';
+import whiteboardStatusReducer, {
+  type WhiteboardStatusActions,
+} from './whiteboards/whiteboardStatusSlice';
 
-// root reducers
+// -- root reducers
 import {
   mergeCanvasReducer,
-  isMergeCanvasAction,
+  mergeCanvasAction,
   type MergeCanvasActionType,
 } from '@/store/canvases/mergeCanvasesReducer';
+
+import {
+  deleteWhiteboardsReducer,
+  deleteWhiteboardsAction,
+  type DeleteWhiteboardsActionType,
+} from '@/store/whiteboards/deleteWhiteboardsReducer';
 
 const rootReducer = combineReducers({
   activeUsers: activeUsersReducer,
@@ -41,17 +73,33 @@ const rootReducer = combineReducers({
 });// -- end rootReducer
 
 type ActionType =
-  | Parameters<typeof rootReducer>[1]
+  | ActiveUsersActions
+  | ActiveUsersByWhiteboardActions
+  | CurrentEditorsByCanvasActions
+  | CanvasObjectsActions
+  | AllowedUsersByCanvasActions
+  | CanvasObjectsByCanvasActions
+  | SelectedCanvasObjectsActions
+  | CanvasesActions
+  | ChildCanvasesByCanvasActions
+  | CanvasesByWhiteboardActions
+  | SelectedCanvasByWhiteboardActions
+  | WhiteboardsActions
+  | WhiteboardStatusActions
   | MergeCanvasActionType
+  | DeleteWhiteboardsActionType
 ;
 
 export const store = configureStore({
   reducer: (state, action: ActionType) => {
-    if (isMergeCanvasAction(action)) {
-      return mergeCanvasReducer(state, action as MergeCanvasActionType);
-    } else {
-      return rootReducer(state, action);
-    }
+    switch (action.type) {
+      case mergeCanvasAction.type:
+        return mergeCanvasReducer(state, action);
+      case deleteWhiteboardsAction.type:
+        return deleteWhiteboardsReducer(state, action);
+      default:
+        return rootReducer(state, action);
+    }// -- end switch action.type
   },
 });
 

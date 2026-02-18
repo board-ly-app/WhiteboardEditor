@@ -43,4 +43,10 @@ export const {
   removeSelectedCanvasObjects,
 } = selectedCanvasObjectsSlice.actions;
 
+export type SelectedCanvasObjectsActions =
+  | ReturnType<typeof setSelectedCanvasObjects>
+  | ReturnType<typeof addSelectedCanvasObjects>
+  | ReturnType<typeof removeSelectedCanvasObjects>
+;
+
 export default selectedCanvasObjectsSlice.reducer;

@@ -59,4 +59,9 @@ export const {
   removeWhiteboardStatuses,
 } = whiteboardStatusSlice.actions;
 
+export type WhiteboardStatusActions =
+  | ReturnType<typeof setWhiteboardStatuses>
+  | ReturnType<typeof removeWhiteboardStatuses>
+;
+
 export default whiteboardStatusSlice.reducer;
