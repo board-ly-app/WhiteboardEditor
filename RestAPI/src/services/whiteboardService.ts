@@ -15,6 +15,8 @@ import {
 } from '../models/Whiteboard';
 
 import {
+  isIPermanentUser,
+  IUserType,
   User,
   type IUser,
   type UserIdType,
@@ -223,13 +225,20 @@ export const setSharedUsers = async (
     const emailsToPermissions = Object.fromEntries(permissionsByEmail.map(perm => [
       perm.email, perm
     ]));
-    const foundUsersByEmail = await User.find({ email: { $in: permissionEmails } });
-    const foundEmailSet: Record<string, boolean> = Object.fromEntries(foundUsersByEmail.map(user => [user.email, true]));
-    const permissionsByIdFromEmail: IWhiteboardUserPermissionById<Types.ObjectId>[] = foundUsersByEmail.map(user => ({
-      type: 'user',
-      user: user._id,
-      permission: emailsToPermissions[user.email].permission,
-    }));
+    const foundUsersByEmail = await User.find({ email: { $in: permissionEmails } }) as IUserType[];
+    const permanentFoundUsersByEmail = foundUsersByEmail.filter(isIPermanentUser);
+    const foundEmailSet: Record<string, boolean> = Object.fromEntries(permanentFoundUsersByEmail.map(user => [user.email, true]));
+    const permissionsByIdFromEmail: IWhiteboardUserPermissionById<Types.ObjectId>[] = permanentFoundUsersByEmail.map(user => {
+      if (!user.email) {
+        throw new Error("Error: User does not have email.");
+      }
+
+      return {
+        type: 'user',
+        user: user._id,
+        permission: emailsToPermissions[user.email].permission,
+      }
+    });
     const finalEmailPermissions : IWhiteboardUserPermissionByEmail[] = permissionsByEmail.filter(perm => !(perm.email in foundEmailSet));
     const finalPermissions = [
       ...permissionsById,
