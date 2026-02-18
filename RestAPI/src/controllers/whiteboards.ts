@@ -16,6 +16,8 @@ import {
 } from '../models/Whiteboard';
 
 import {
+  isIPermanentUser,
+  IUserType,
   User,
   type IUser,
 } from '../models/User';
@@ -110,18 +112,27 @@ export const handleCreateWhiteboard = async (
     const collaboratorEmails : string[] = collaboratorPermissions.map(perm => perm.email);
 
     // Fetch users whose emails match
-    const foundUsers = await User.find({ email: { $in: collaboratorEmails } });
+    const foundUsers = await User.find({ email: { $in: collaboratorEmails } }) as IUserType[];
+
+    const permanentUsers = foundUsers.filter(isIPermanentUser);
 
     // Create quick lookup
-    const foundEmails = new Set(foundUsers.map(u => u.email));
+    const foundEmails = new Set(permanentUsers
+      .map(u => u.email));
 
     // Permissions for users that exist in DB
     const collarboratorPermissionsFromUsers: IWhiteboardUserPermissionModel <Types.ObjectId>[] =
-      foundUsers.map(user => ({
-        type: 'user',
-        user: user._id,
-        permission: collaboratorPermissionsByEmail[user.email].permission,
-      }) as IWhiteboardUserPermissionById <Types.ObjectId>);
+      permanentUsers.map(user => {
+        if (!user.email) {
+          throw new Error("Invariant violation: user returned from email query has no email.");
+        }
+
+        return {
+          type: 'user',
+          user: user._id,
+          permission: collaboratorPermissionsByEmail[user.email].permission,
+        }
+      });
 
     // For emails that don't match an account, keep them as email permissions
     const collarboratorPermissionsFromEmail: IWhiteboardUserPermissionByEmail[] = 
