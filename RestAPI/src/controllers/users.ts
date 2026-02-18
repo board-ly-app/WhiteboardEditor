@@ -11,6 +11,8 @@ import {
   Types,
 } from 'mongoose';
 
+import jwt from 'jsonwebtoken';
+
 // -- local imports
 import {
   SetInclusionOptionType
@@ -33,8 +35,9 @@ import type {
 
 import {
   User,
-  type PatchUserRequest,
-  type CreateUserRequest,
+  type PatchPermanentUserRequest,
+  type CreatePermanentUserRequest,
+  isIPermanentUser,
 } from "../models/User";
 
 import {
@@ -42,7 +45,7 @@ import {
 } from '../models/Whiteboard';
 
 export const handleCreateUser = async (
-  req: Request<{}, {}, CreateUserRequest>,
+  req: Request<{}, {}, CreatePermanentUserRequest>,
   res: Response
 ) => {
   try {
@@ -99,27 +102,30 @@ export const handleCreateUser = async (
 // Create a temporary user account for trial whiteboard use.
 //
 // =============================================================================
+// TODO: transfer logic into loginService
 export const handleCreateTempUser = async (
-  req: Request<{}, {}, CreateUserRequest>,
+  _req: Request,
   res: Response
 ) => {
+  const tempUsername = `TempUser ${Math.floor(Math.random() * 10000)}`;
+
   const tempUser = new User({
-    isTemp: true,
-    createdAt: new Date(),
-    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24) // 24hr
+    username: tempUsername,
+    kind: 'temp',
+    tempExpiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24) // 24hr
   });
 
   const saved = await tempUser.save();
 
   const accessToken = jwt.sign(
     { userId: saved._id, isTemp: true },
-    process.env.ACCESS_SECRET!,
+    process.env.WHITEBOARD_EDITOR_JWT_SECRET!,
     { expiresIn: "15m" }
   );
 
   const refreshToken = jwt.sign(
     { userId: saved._id, isTemp: true },
-    process.env.REFRESH_SECRET!,
+    process.env.WHITEBOARD_EDITOR_JWT_SECRET!,
     { expiresIn: "7d" }
   );
 
@@ -128,6 +134,8 @@ export const handleCreateTempUser = async (
     secure: true,
     sameSite: "strict"
   });
+
+  console.log("user: ", tempUser);
 
   return res.status(201).json({
     user: saved.toPublicView(),
@@ -169,11 +177,11 @@ export const handleGetUserById = async (
 //
 // =============================================================================
 export const handlePatchOwnUser = async (
-  req: Request<{}, any, PatchUserRequest>,
+  req: Request<{}, any, PatchPermanentUserRequest>,
   res: Response
 ) => {
     const { authUser } = req.body;
-    const patchData: Partial<PatchUserRequest> = ({ ...req.body });
+    const patchData: Partial<PatchPermanentUserRequest> = ({ ...req.body });
     const { id: userId } = authUser;
     const resp = await getUserById(userId);
 
@@ -192,6 +200,10 @@ export const handlePatchOwnUser = async (
               return res.status(400).json({
                 message: `Could not find user with id ${userId}`
               });
+            } else if (!isIPermanentUser(user)) {
+              return res.status(400).json({
+                message: `User ${userId} is not permanent`
+              })
             } else {
               delete patchData.authUser;
               const patchUserRes = await patchUser(user, patchData);
