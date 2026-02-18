@@ -4,8 +4,9 @@ import jwt from 'jsonwebtoken';
 
 // -- local imports
 import {
+  isIPermanentUser,
+  type IUserType,
   User,
-  type IUser
 } from '../models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -21,13 +22,14 @@ if (! JWT_EXPIRATION_SECS) {
   process.exit(1);
 }
 
+// TODO: copy and rewrite for temp users
 export const loginService = async (
   authSource: 'email' | 'username',
   identifier: string,
   password: string,
 ) => {
   // Find user by email or username
-  const user: IUser | null = await (async () => {
+  const user: IUserType | null = await (async () => {
     switch (authSource) {
       case 'email':
         return await User.findOne({ email: identifier });
@@ -42,7 +44,10 @@ export const loginService = async (
 
   const userId = user._id;
 
+  if (!isIPermanentUser(user)) throw new Error("User is not permanent");
+
   // Check password
+  if (!user.passwordHashed) throw new Error("Error: User does not have password");
   const valid = await bcrypt.compare(password, user.passwordHashed);
   if (!valid) throw new Error("Invalid credentials, incorrect password");
 
