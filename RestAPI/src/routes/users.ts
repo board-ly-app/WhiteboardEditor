@@ -16,13 +16,13 @@ import {
 } from '../middleware/auth';
 
 import type {
-  CreateUserRequest,
+  CreatePermanentUserRequest,
 } from "../models/User";
 
 const router = Router();
 
 router.post("/", async (
-  req: Request<{}, {}, CreateUserRequest>,
+  req: Request<{}, {}, CreatePermanentUserRequest>,
   res: Response
 ) => {
     // TODO: secure logging to scrub credentials
