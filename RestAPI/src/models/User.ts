@@ -29,7 +29,7 @@ export interface IUserModel {
   username: string;
 }
 
-// === Data Transfer Objects ===================================================
+// === Base Data Transfer Objects ===================================================
 //
 // =============================================================================
 
@@ -69,7 +69,7 @@ type PermanentUserProtectedFields =
   | "passwordHashed"
 ;
 
-// === Data Transfer Objects ===================================================
+// === Permanent Data Transfer Objects ===================================================
 //
 // =============================================================================
 
@@ -100,7 +100,7 @@ export interface ITempUserModel extends IUserModel{
   tempExpiresAt: Date;
 }
 
-// === Data Transfer Objects ===================================================
+// === Temp Data Transfer Objects ===================================================
 //
 // =============================================================================
 
@@ -307,3 +307,16 @@ userSchema.virtual('id').get(function() {
 
 // -- User Model
 export const User = model<IUser>("User", userSchema, "users");
+
+export type IUserType = 
+  | IPermanentUser
+  | ITempUser
+;
+
+export const isIPermanentUser = (user: IUserType): user is IPermanentUser => {
+  return user.kind === 'permanent';
+}
+
+export const isITempUser = (user: IUserType): user is ITempUser => {
+  return user.kind === 'temp';
+}
