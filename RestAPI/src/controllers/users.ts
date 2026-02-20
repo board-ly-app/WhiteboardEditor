@@ -11,8 +11,6 @@ import {
   Types,
 } from 'mongoose';
 
-import jwt from 'jsonwebtoken';
-
 // -- local imports
 import {
   SetInclusionOptionType
@@ -26,7 +24,8 @@ import {
 } from "../services/userService";
 
 import {
-  loginService,
+  permanentUserLoginService,
+  tempUserLoginService,
 } from '../services/loginService';
 
 import type {
@@ -81,7 +80,7 @@ export const handleCreateUser = async (
 
     // --- Automatically log in user via service ---
     try {
-      const loginResult = await loginService("username", username, password);
+      const loginResult = await permanentUserLoginService("username", username, password);
       return res.status(201).json({
         user: userFinal.toPublicView(),
         token: loginResult.token
@@ -102,47 +101,20 @@ export const handleCreateUser = async (
 // Create a temporary user account for trial whiteboard use.
 //
 // =============================================================================
-// TODO: transfer logic into loginService
 export const handleCreateTempUser = async (
   _req: Request,
   res: Response
 ) => {
-  const tempUsername = `TempUser ${Math.floor(Math.random() * 10000)}`;
-
-  const tempUser = new User({
-    username: tempUsername,
-    kind: 'temp',
-    tempExpiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24) // 24hr
-  });
-
-  const saved = await tempUser.save();
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error("JWT_SECRET not defined!");
-  }
-
-  const accessToken = jwt.sign(
-    { userId: saved._id, isTemp: true },
-    secret,
-    { expiresIn: "15m" }
-  );
-
-  const refreshToken = jwt.sign(
-    { userId: saved._id, isTemp: true },
-    secret,
-    { expiresIn: "7d" }
-  );
-
+  const { user, accessToken, refreshToken } = await tempUserLoginService();
+  
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: true,
     sameSite: "strict"
   });
 
-  console.log("user: ", tempUser);
-
   return res.status(201).json({
-    user: saved.toPublicView(),
+    user,
     accessToken
   });
 };
