@@ -288,7 +288,7 @@ const WebSocketClientMessengerProvider = ({
               setWhiteboardStatus(dispatch, whiteboardId, "deleting");
 
               // -- close connection
-              if (!! webSocket) {
+              if (webSocket) {
                 webSocket.close();
               }
 
