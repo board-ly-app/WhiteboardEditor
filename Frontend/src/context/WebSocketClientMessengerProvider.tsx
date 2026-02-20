@@ -22,6 +22,7 @@ import {
 // -- local imports
 import {
   CURRENT_EDITOR_NUM_MILLIS,
+  WHITEBOARD_DELETED_NOTIFICATION_NUM_MILLIS,
 } from '@/app.config';
 
 import {
@@ -60,6 +61,8 @@ import {
 
 import {
   addWhiteboard,
+  deleteWhiteboard,
+  setWhiteboardStatus,
   setCanvasObjects,
   removeCanvasObjects,
   removeSelectedCanvasObjects,
@@ -107,6 +110,7 @@ const WebSocketClientMessengerProvider = ({
   const dispatch = store.dispatch;
 
   const [clientMessenger, setClientMessenger] = useState<IWhiteboardClientMessenger | null>(null);
+  const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
   const currentEditorTimeoutsByCanvasRef = useRef<Record<CanvasIdType, number>>({});
 
   // handles incoming web socket messages
@@ -278,6 +282,25 @@ const WebSocketClientMessengerProvider = ({
               mergeCanvas(dispatch, canvasId);
           }
           break;
+          case 'delete_whiteboard':
+          {
+              // -- set whiteboard status to "deleting"
+              setWhiteboardStatus(dispatch, whiteboardId, "deleting");
+
+              // -- close connection
+              if (!! webSocket) {
+                webSocket.close();
+              }
+
+              // -- set timeout for changing status from "deleting" to "deleted"
+              window.setTimeout(
+                () => {
+                  deleteWhiteboard(dispatch, whiteboardId);
+                },
+                WHITEBOARD_DELETED_NOTIFICATION_NUM_MILLIS
+              );
+          }
+          break;
           case 'individual_error':
           case 'broadcast_error':
             {
@@ -330,7 +353,7 @@ const WebSocketClientMessengerProvider = ({
         console.log('Failed to parse message:', e);
       }
     },
-    [dispatch, whiteboardId]
+    [dispatch, whiteboardId, webSocket]
   );// -- end handleServerMessage
 
   const makeHandleWebSocketOpen = useCallback(
@@ -367,8 +390,9 @@ const WebSocketClientMessengerProvider = ({
       const ws : WebSocket = new WebSocket(wsUri);
 
       ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
+      setWebSocket(ws);
     },
-    [makeHandleWebSocketOpen, whiteboardId]
+    [makeHandleWebSocketOpen, whiteboardId, setWebSocket]
   );
 
   return (
