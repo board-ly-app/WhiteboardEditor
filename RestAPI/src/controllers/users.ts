@@ -116,16 +116,20 @@ export const handleCreateTempUser = async (
   });
 
   const saved = await tempUser.save();
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET not defined!");
+  }
 
   const accessToken = jwt.sign(
     { userId: saved._id, isTemp: true },
-    process.env.WHITEBOARD_EDITOR_JWT_SECRET!,
+    secret,
     { expiresIn: "15m" }
   );
 
   const refreshToken = jwt.sign(
     { userId: saved._id, isTemp: true },
-    process.env.WHITEBOARD_EDITOR_JWT_SECRET!,
+    secret,
     { expiresIn: "7d" }
   );
 
