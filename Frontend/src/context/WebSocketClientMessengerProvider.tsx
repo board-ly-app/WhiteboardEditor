@@ -110,7 +110,7 @@ const WebSocketClientMessengerProvider = ({
   const dispatch = store.dispatch;
 
   const [clientMessenger, setClientMessenger] = useState<IWhiteboardClientMessenger | null>(null);
-  const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
+  const webSocketRef = useRef<WebSocket | null>(null);
   const currentEditorTimeoutsByCanvasRef = useRef<Record<CanvasIdType, number>>({});
 
   // handles incoming web socket messages
@@ -288,8 +288,8 @@ const WebSocketClientMessengerProvider = ({
               setWhiteboardStatus(dispatch, whiteboardId, "deleting");
 
               // -- close connection
-              if (webSocket) {
-                webSocket.close();
+              if (webSocketRef.current) {
+                webSocketRef.current.close();
               }
 
               // -- set timeout for changing status from "deleting" to "deleted"
@@ -353,7 +353,7 @@ const WebSocketClientMessengerProvider = ({
         console.log('Failed to parse message:', e);
       }
     },
-    [dispatch, whiteboardId, webSocket]
+    [dispatch, whiteboardId]
   );// -- end handleServerMessage
 
   const makeHandleWebSocketOpen = useCallback(
@@ -390,9 +390,9 @@ const WebSocketClientMessengerProvider = ({
       const ws : WebSocket = new WebSocket(wsUri);
 
       ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
-      setWebSocket(ws);
+      webSocketRef.current = ws;
     },
-    [makeHandleWebSocketOpen, whiteboardId, setWebSocket]
+    [makeHandleWebSocketOpen, whiteboardId]
   );
 
   return (
