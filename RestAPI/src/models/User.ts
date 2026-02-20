@@ -23,15 +23,17 @@ export type UserTypeEnum =
   | "temp"
 ;
 
-// -- Start IUser
+// === IUser ========================================================================
+//  
+// Base user model containing fields shared by all user types in the system.
+// 
+// ==================================================================================
 export interface IUserModel {
   kind: UserTypeEnum;
   username: string;
 }
 
-// === Base Data Transfer Objects ===================================================
-//
-// =============================================================================
+// === Base Data Transfer Objects ======================================
 
 // -- User with id and other basic document info
 export type IUserDocument = ViewDocument<IUserModel>;
@@ -56,7 +58,12 @@ export type IUser =
 ;
 // -- End IUser
 
-// -- Start IPermanentUser
+
+// === IPermanentUser================================================================
+// 
+// Represents a registered user account with persistent identity and login credentials.
+//
+// ==================================================================================
 export interface IPermanentUserModel extends IUserModel{
   email: string;
 
@@ -69,9 +76,7 @@ type PermanentUserProtectedFields =
   | "passwordHashed"
 ;
 
-// === Permanent Data Transfer Objects ===================================================
-//
-// =============================================================================
+// === Permanent Data Transfer Objects =========================================
 
 // -- User with id and other basic document info
 export type IPermanentUserDocument = ViewDocument<IPermanentUserModel>;
@@ -95,14 +100,17 @@ export type IPermanentUser =
 ;
 // -- End IPermanentUser
 
-// -- Start ITempUser
+
+// === ITempUser=====================================================================
+// 
+// Represents a temporary guest user that expires after a limited session duration.
+//
+// ==================================================================================
 export interface ITempUserModel extends IUserModel{
   tempExpiresAt: Date;
 }
 
-// === Temp Data Transfer Objects ===================================================
-//
-// =============================================================================
+// === Temp Data Transfer Objects ======================================
 
 // -- User with id and other basic document info
 export type ITempUserDocument = ViewDocument<ITempUserModel>;
@@ -129,6 +137,7 @@ export type ITempUser =
   & Document <Types.ObjectId>
 ;
 // -- End ITempUser
+
 
 // === REST Request Body Definitions ===========================================
 //
@@ -222,6 +231,18 @@ const userSchema = new Schema<IUser, UserModelType, {}, {}, IUserVirtual>(
   }
 );// -- end userSchema
 
+// Define the user schema index to have a unique email for permanent users only
+userSchema.index(
+  { email: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      kind: "permanent",
+      email: { $exists: true }
+    }
+  }
+);
+
 // === permanentUserSchema ==============================================================
 //
 // Defines how permanent user objects are stored/interacted with.
@@ -232,7 +253,7 @@ userSchema.discriminator(
   (
   // -- fields
   {
-    email:    { type: String, required: false, unique: true },
+    email:    { type: String, required: false },
     passwordHashed: { type: String, required: false },
   },
   {
