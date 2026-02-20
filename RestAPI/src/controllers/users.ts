@@ -73,6 +73,7 @@ export const handleCreateUser = async (
     const user = new User({
       username,
       email,
+      kind: 'permanent',
       passwordHashed: hashed,
     });
 
