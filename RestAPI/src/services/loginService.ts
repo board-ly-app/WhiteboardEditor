@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 // -- local imports
 import {
   isIPermanentUser,
+  ITempUserPublicView,
   type IUserType,
   User,
 } from '../models/User';
@@ -22,8 +23,7 @@ if (! JWT_EXPIRATION_SECS) {
   process.exit(1);
 }
 
-// TODO: copy and rewrite for temp users
-export const loginService = async (
+export const permanentUserLoginService = async (
   authSource: 'email' | 'username',
   identifier: string,
   password: string,
@@ -66,3 +66,37 @@ export const loginService = async (
     user: user.toPublicView()
   });
 }
+
+export const tempUserLoginService = async (): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  user: ITempUserPublicView;
+}> => {
+  const tempUsername = `TempUser ${Math.floor(Math.random() * 10000)}`;
+
+  const tempUser = new User({
+    username: tempUsername,
+    kind: 'temp',
+    tempExpiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24) // 24hr
+  });
+
+  const saved = await tempUser.save();
+
+  const accessToken = jwt.sign(
+    { userId: saved._id, isTemp: true },
+    JWT_SECRET,
+    { expiresIn: "15m" }
+  );
+
+  const refreshToken = jwt.sign(
+    { userId: saved._id, isTemp: true },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+
+  return {
+    user: saved.toPublicView() as ITempUserPublicView,
+    accessToken,
+    refreshToken
+  };
+};
