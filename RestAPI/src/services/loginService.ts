@@ -9,6 +9,7 @@ import {
   type IUserType,
   User,
 } from '../models/User';
+import mongoose from 'mongoose';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const JWT_EXPIRATION_SECS = parseInt(process.env.JWT_EXPIRATION_SECS || '');
@@ -67,36 +68,72 @@ export const permanentUserLoginService = async (
   });
 }
 
-export const tempUserLoginService = async (): Promise<{
-  accessToken: string;
-  refreshToken: string;
-  user: ITempUserPublicView;
-}> => {
-  const tempUsername = `TempUser ${Math.floor(Math.random() * 10000)}`;
+export type CreateTempUserRes =
+  | { 
+      status: 'missing_env'; 
+      envVar: string; 
+    }
+  | {
+      status: 'unexpected_error';
+      message: string
+    }
+  | { 
+      status: 'ok'; 
+      payload: { 
+        user: ITempUserPublicView, 
+        accessToken: string, 
+        refreshToken: string 
+      }; 
+    }
+;
 
-  const tempUser = new User({
-    username: tempUsername,
-    kind: 'temp',
-    tempExpiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24) // 24hr
-  });
-
-  const saved = await tempUser.save();
-
-  const accessToken = jwt.sign(
-    { userId: saved._id, isTemp: true },
-    JWT_SECRET,
-    { expiresIn: "15m" }
-  );
-
-  const refreshToken = jwt.sign(
-    { userId: saved._id, isTemp: true },
-    JWT_SECRET,
-    { expiresIn: "7d" }
-  );
-
-  return {
-    user: saved.toPublicView() as ITempUserPublicView,
-    accessToken,
-    refreshToken
-  };
+export const tempUserLoginService = async (): Promise<CreateTempUserRes> => {
+  try{
+    const tempUserId = new mongoose.Types.ObjectId();
+    const tempUsername = `TempUser${tempUserId.toHexString()}`;
+    const expirationTime = process.env.TEMP_USER_EXPIRATION_SECS;
+    if (!expirationTime) {
+      console.error("TEMP_USER_EXPIRATION_SECS not defined in env.");
+      return {
+        status: 'missing_env',
+        envVar: 'TEMP_USER_EXPIRATION_SECS'
+      }
+    }
+  
+    const tempUser = new User({
+      _id: tempUserId,
+      username: tempUsername,
+      kind: 'temp',
+      tempExpiresAt: new Date(Date.now() + 1000 * parseInt(expirationTime))
+    });
+  
+    const saved = await tempUser.save();
+  
+    const accessToken = jwt.sign(
+      { userId: saved._id, isTemp: true },
+      JWT_SECRET,
+      { expiresIn: "15m" }
+    );
+  
+    const refreshToken = jwt.sign(
+      { userId: saved._id, isTemp: true },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+  
+    return {
+      status: 'ok',
+      payload: {
+        user: saved.toPublicView() as ITempUserPublicView,
+        accessToken,
+        refreshToken
+      }  
+    };
+  } catch (e: any) {
+    console.error("Unexpected error: ", e);
+    return {
+      status: 'unexpected_error',
+      message: `${e}`
+    }
+  }
 };
