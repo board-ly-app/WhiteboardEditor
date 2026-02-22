@@ -196,7 +196,12 @@ const permanentUserToAttribView = permanentUserToPublicView;
 // =============================================================================
 
 const tempUserToPublicView = (user: ITempUser): ITempUserPublicView => {
-  return user; // Just return original user, nothing to hide
+  const {
+    _id,
+    ...out
+  } = user;
+  
+  return out; // Just return original user, nothing to hide
 };// -- end tempUserToPublicView
 
 // -- identical to toPublicView, in this case
@@ -298,8 +303,16 @@ userSchema.discriminator(
     tempExpiresAt: { type: Date, required: true },
   },
   {
+    toObject: {
+      virtuals: true,
+    },
     toJSON: {
       virtuals: true,
+      transform: (_, ret: Partial<ITempUser>) => {
+        delete ret._id;
+
+        return ret as ITempUserPublicView;
+      }
     },
     // -- instance methods
     methods: {
