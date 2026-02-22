@@ -106,19 +106,28 @@ export const handleCreateTempUser = async (
   _req: Request,
   res: Response
 ) => {
-  const { user, accessToken, refreshToken } = await tempUserLoginService();
-  
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict"
-  });
+  const resp = await tempUserLoginService();
 
-  return res.status(201).json({
-    user,
-    accessToken
-  });
-};
+  switch(resp.status) {
+    case 'missing_env':
+      return res.status(500).json({ message: resp.envVar });
+    case 'unexpected_error':
+      return res.status(500).json({ message: resp.message });
+    case 'ok':
+      res.cookie("refreshToken", resp.payload.refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict"
+      });
+
+      return res.status(201).json({ 
+        ...resp.payload,
+        user: resp.payload.user
+      });
+    default:
+      throw new Error(`Unhandled case: ${resp}`);
+  }
+};// -- end handleCreateTempUser
 
 // === GET /users/:userId ======================================================
 //
