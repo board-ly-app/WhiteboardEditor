@@ -12,9 +12,10 @@ import type {
 
 import {
   User,
-  PatchUserData,
-  type IUser,
+  PatchPermanentUserData,
   type IUserPublicView,
+  type IUserType,
+  IPermanentUser,
 } from "../models/User";
 
 import {
@@ -26,7 +27,7 @@ import {
 export type GetUserByIdRes =
   | { status: 'bad_request'; message: string; }
   | { status: 'not_found'; }
-  | { status: 'ok'; user: IUser; }
+  | { status: 'ok'; user: IUserType; }
 ;
 
 export const getUserById = async (userId: Types.ObjectId): Promise<GetUserByIdRes> => {
@@ -37,7 +38,7 @@ export const getUserById = async (userId: Types.ObjectId): Promise<GetUserByIdRe
     });
   }
 
-  const user = await User.findOne({ _id: userId });
+  const user = await User.findOne({ _id: userId }) as IUserType;
 
   if (! user) {
     return ({
@@ -63,7 +64,7 @@ export interface PatchUserErrorResult {
 
 export type PatchUserResult = PatchUserOkResult | PatchUserErrorResult;
 
-export const patchUser = async (user: IUser, patchData: PatchUserData): Promise<PatchUserResult> => {
+export const patchUser = async (user: IPermanentUser, patchData: PatchPermanentUserData): Promise<PatchUserResult> => {
   try {
     const patchDataLocal = { ...patchData };
     const passwordHashed = patchDataLocal.password ? 

@@ -24,7 +24,8 @@ import {
 } from "../services/userService";
 
 import {
-  loginService,
+  permanentUserLoginService,
+  tempUserLoginService,
 } from '../services/loginService';
 
 import type {
@@ -33,8 +34,9 @@ import type {
 
 import {
   User,
-  type PatchUserRequest,
-  type CreateUserRequest,
+  type PatchPermanentUserRequest,
+  type CreatePermanentUserRequest,
+  isIPermanentUser,
 } from "../models/User";
 
 import {
@@ -42,7 +44,7 @@ import {
 } from '../models/Whiteboard';
 
 export const handleCreateUser = async (
-  req: Request<{}, {}, CreateUserRequest>,
+  req: Request<{}, {}, CreatePermanentUserRequest>,
   res: Response
 ) => {
   try {
@@ -71,6 +73,7 @@ export const handleCreateUser = async (
     const user = new User({
       username,
       email,
+      kind: 'permanent',
       passwordHashed: hashed,
     });
 
@@ -78,7 +81,7 @@ export const handleCreateUser = async (
 
     // --- Automatically log in user via service ---
     try {
-      const loginResult = await loginService("username", username, password);
+      const loginResult = await permanentUserLoginService("username", username, password);
       return res.status(201).json({
         user: userFinal.toPublicView(),
         token: loginResult.token
@@ -93,6 +96,38 @@ export const handleCreateUser = async (
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// === POST /users/temp ======================================================
+//
+// Create a temporary user account for trial whiteboard use.
+//
+// =============================================================================
+export const handleCreateTempUser = async (
+  _req: Request,
+  res: Response
+) => {
+  const resp = await tempUserLoginService();
+
+  switch(resp.status) {
+    case 'missing_env':
+      return res.status(500).json({ message: resp.envVar });
+    case 'unexpected_error':
+      return res.status(500).json({ message: resp.message });
+    case 'ok':
+      res.cookie("refreshToken", resp.payload.refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict"
+      });
+
+      return res.status(201).json({ 
+        ...resp.payload,
+        user: resp.payload.user
+      });
+    default:
+      throw new Error(`Unhandled case: ${resp}`);
+  }
+};// -- end handleCreateTempUser
 
 // === GET /users/:userId ======================================================
 //
@@ -128,11 +163,11 @@ export const handleGetUserById = async (
 //
 // =============================================================================
 export const handlePatchOwnUser = async (
-  req: Request<{}, any, PatchUserRequest>,
+  req: Request<{}, any, PatchPermanentUserRequest>,
   res: Response
 ) => {
     const { authUser } = req.body;
-    const patchData: Partial<PatchUserRequest> = ({ ...req.body });
+    const patchData: Partial<PatchPermanentUserRequest> = ({ ...req.body });
     const { id: userId } = authUser;
     const resp = await getUserById(userId);
 
@@ -151,6 +186,10 @@ export const handlePatchOwnUser = async (
               return res.status(400).json({
                 message: `Could not find user with id ${userId}`
               });
+            } else if (!isIPermanentUser(user)) {
+              return res.status(400).json({
+                message: `User ${userId} is not permanent`
+              })
             } else {
               delete patchData.authUser;
               const patchUserRes = await patchUser(user, patchData);

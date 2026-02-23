@@ -13,6 +13,7 @@ db = db.getSiblingDB("testdb"); // create/use "testdb"
 const users = [
   {
     _id: new ObjectId('68d5e8cf829da666aece0101'),
+    kind: "permanent",
     username: "alice",
     email: "alice@example.com",
     // password: password123
@@ -20,6 +21,7 @@ const users = [
   },
   {
     _id: new ObjectId('68d5e8d4829da666aece0102'),
+    kind: "permanent",
     username: "bob",
     email: "bob@example.com",
     // password: password456
@@ -27,6 +29,7 @@ const users = [
   },
   {
     _id: new ObjectId('68d5e8d4829da666aece0103'),
+    kind: "permanent",
     username: "carol",
     email: "carol@example.com",
     // password: password789
@@ -34,6 +37,7 @@ const users = [
     },
   {
     _id: new ObjectId('68d5e8d4829da666aece0104'),
+    kind: "permanent",
     username: "dave",
     email: "dave@example.com",
     // password: password101
@@ -41,6 +45,7 @@ const users = [
   },
   {
     _id: new ObjectId('68d5e8d4829da666aece0105'),
+    kind: "permanent",
     username: "eve",
     email: "eve@example.com",
     // password: weakpassword

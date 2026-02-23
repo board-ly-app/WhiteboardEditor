@@ -23,6 +23,7 @@ beforeAll(connectToDatabase);
 afterAll(disconnectFromDatabase);
 
 describe("Users API", () => {
+  // TODO: Update for permanent user kind
   it("should create a new user", async () => {
     const res = await request(app)
       .post("/api/v1/users")
@@ -35,6 +36,7 @@ describe("Users API", () => {
 
     expect(res.body.user).toHaveProperty("id");
     expect(res.body.user).not.toHaveProperty("_id");
+    expect(res.body.user).toHaveProperty("username");
     expect(res.body.user.username).toBe("tester_beta");
     expect(res.body.user.email).toBe("tester_beta@example.com");
     // sensitive field; should not be exposed
@@ -49,5 +51,27 @@ describe("Users API", () => {
     await request(app)
       .get("/api/v1/users/me")
       .expect(401);
+  });
+
+  // Create a new temp user
+  it("should create a new temp user", async () => {
+    const expirationSecs = process.env.TEMP_USER_EXPIRATION_SECS;
+    expect(expirationSecs).not.toBe(undefined);
+    const expirationMSecs = parseInt(expirationSecs || "") * 1000;
+
+    const toleranceMSecs = 1000 * 5; // 5 ms
+    const minExpirationDTime = new Date(Date.now() + expirationMSecs - toleranceMSecs);
+    const maxExpirationDTime = new Date(Date.now() + expirationMSecs + toleranceMSecs);
+    
+    const res = await request(app)
+      .post("/api/v1/users/temp")
+      .send()
+      .expect(201);
+    
+    expect(res.body.user).toHaveProperty("id");
+    expect(res.body.user.username).toBe(`TempUser${res.body.user.id}`);
+    expect(res.body.user).toHaveProperty("tempExpiresAt");
+    expect(new Date (res.body.user.tempExpiresAt) >= minExpirationDTime).toBe(true);
+    expect(new Date (res.body.user.tempExpiresAt) <= maxExpirationDTime).toBe(true);
   });
 });
