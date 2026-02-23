@@ -43,8 +43,6 @@ export interface WhiteboardContextType {
   setOwnPermission: React.Dispatch<React.SetStateAction<UserPermissionEnum | null>>;
   currentDispatcher: OperationDispatcher | null;
   setCurrentDispatcher: React.Dispatch<React.SetStateAction<OperationDispatcher | null>>;
-  selectedCanvasId: CanvasIdType | null;
-  setSelectedCanvasId: (id: CanvasIdType | null) => void;
   // -- tracks refs to Canvas groups (Konva Groups serve as frames for each Canvas)
   canvasGroupRefsByIdRef: RefObject<Record<CanvasIdType, RefObject<Konva.Group | null>>>;
   tooltipText: string;
@@ -72,8 +70,6 @@ const WhiteboardProvider = (props: PropsWithChildren<WhiteboardProvidersProps>):
     setOwnPermission,
     currentDispatcher,
     setCurrentDispatcher,
-    selectedCanvasId,
-    setSelectedCanvasId,
     canvasGroupRefsByIdRef,
     tooltipText,
     setTooltipText,
@@ -95,8 +91,6 @@ const WhiteboardProvider = (props: PropsWithChildren<WhiteboardProvidersProps>):
       setOwnPermission,
       currentDispatcher,
       setCurrentDispatcher,
-      selectedCanvasId,
-      setSelectedCanvasId,
       canvasGroupRefsByIdRef,
       tooltipText,
       setTooltipText,

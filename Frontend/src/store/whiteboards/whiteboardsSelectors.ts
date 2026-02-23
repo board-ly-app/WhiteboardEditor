@@ -15,9 +15,14 @@ export const selectWhiteboardById = (state: RootState, whiteboardId: WhiteboardI
 export const selectCanvasesForWhiteboard = (
   state: RootState,
   whiteboardId: WhiteboardIdType
-) => (
-  state.canvasesByWhiteboard[whiteboardId]?.map(key => state.canvases[key.toString()]) ?? []
-);
+) => {
+  if (whiteboardId in state.canvasesByWhiteboard.canvasesByWhiteboard) {
+    return Object.keys(state.canvasesByWhiteboard.canvasesByWhiteboard[whiteboardId])
+      .map(canvasId => state.canvases[canvasId]);
+  } else {
+    return [];
+  }
+};
 
 export const selectWhiteboardWithCanvases = createSelector(
   [selectWhiteboardById, selectCanvasesForWhiteboard],

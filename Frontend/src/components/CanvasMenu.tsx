@@ -2,6 +2,7 @@
 import { 
   useState,
   useContext,
+  useCallback,
 } from "react";
 
 // -- third-party imports
@@ -126,48 +127,73 @@ const CanvasMenu = ({
     throw new Error(`Could not find canvas ${canvasId} in application state`);
   }
 
-  const handleUpdateAllowedUsers = (allowedUsers: string[]) => {
-    if (! clientMessenger) {
-      console.error('Could not update allowed users: no ClientMessenger provided');
-    } else {
-      clientMessenger.sendUpdateCanvasAllowedUsers({
-        type: 'update_canvas_allowed_users',
-        canvasId,
-        allowedUsers,
-      });
-    }
-  };
+  const handleUpdateAllowedUsers = useCallback(
+    (allowedUsers: string[]) => {
+      if (! clientMessenger) {
+        console.error('Could not update allowed users: no ClientMessenger provided');
+      } else {
+        clientMessenger.sendUpdateCanvasAllowedUsers({
+          type: 'update_canvas_allowed_users',
+          canvasId,
+          allowedUsers,
+        });
+      }
+    },
+    [canvasId, clientMessenger]
+  );// -- end handleUpdateAllowedUsers
 
-  const handleDelete = () => {
-    if (! clientMessenger) {
-      console.error('Could not update allowed users: no ClientMessenger provided');
-    } else {
-      clientMessenger.sendDeleteCanvases({
-        type: "delete_canvases",
-        canvasIds: [canvasId],
-      });
-    }
-  };
+  const handleMerge = useCallback(
+    () => {
+      if (! clientMessenger) {
+        console.error('Could not merge canvas: no ClientMessenger provided');
+      } else if (! canvas.parentCanvas) {
+        console.error(`Could not merge canvas ${canvasId}: canvas has no parent`);
+      } else {
+        clientMessenger.sendMergeCanvas({
+          type: 'merge_canvas',
+          canvasId,
+        });
+      }
+    },
+    [clientMessenger, canvasId, canvas.parentCanvas]
+  );// -- end handleMerge
 
-  const handleDownload = () => {
-    console.log("!! Download clicked");// TODO: remove debug
-    
-    const imageType: ImageTypeEnum = 'png';
-    const imageQuality: number = 1.0;
+  const handleDelete = useCallback(
+    () => {
+      if (! clientMessenger) {
+        console.error('Could not update allowed users: no ClientMessenger provided');
+      } else if (! canvas.parentCanvas) {
+        console.error(`Could not delete canvas ${canvasId}: canvas has no parent`);
+      } else {
+        clientMessenger.sendDeleteCanvases({
+          type: "delete_canvases",
+          canvasIds: [canvasId],
+        });
+      }
+    },
+    [canvasId, clientMessenger, canvas.parentCanvas]
+  );// -- end handleDelete
 
-    const exportUrl = captureImage(canvasGroupRefsByIdRef, canvasId, imageType, imageQuality);
+  const handleDownload = useCallback(
+    () => {
+      const imageType: ImageTypeEnum = 'png';
+      const imageQuality: number = 1.0;
 
-    // -- create a dummy link that the function can "click"
-    const downloadLink : HTMLAnchorElement = document.createElement('a');
-    const fileName = `${whiteboard.name} - ${canvas.name}.png`;
+      const exportUrl = captureImage(canvasGroupRefsByIdRef, canvasId, imageType, imageQuality);
 
-    downloadLink.download = fileName;
-    downloadLink.href = exportUrl;
+      // -- create a dummy link that the function can "click"
+      const downloadLink : HTMLAnchorElement = document.createElement('a');
+      const fileName = `${whiteboard.name} - ${canvas.name}.png`;
 
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-  };
+      downloadLink.download = fileName;
+      downloadLink.href = exportUrl;
+
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    },
+    [canvas.name, canvasGroupRefsByIdRef, canvasId, whiteboard.name]
+  );// -- end handleDownload
 
   return (
     <div>
@@ -214,9 +240,22 @@ const CanvasMenu = ({
             Export to PNG
           </DropdownMenuItem>
 
-          <DropdownMenuItem onSelect={handleDelete}>
-            Delete Canvas
-          </DropdownMenuItem>
+          {
+            // Only display these options if the canvas has a parent
+            (canvas.parentCanvas) && 
+            (
+              <>
+                <DropdownMenuItem onSelect={handleMerge}>
+                  Merge Canvas into Parent
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onSelect={handleDelete}>
+                  Delete Canvas
+                </DropdownMenuItem>
+              </>
+            )
+            || null
+          }
         </DropdownMenuContent>
       </DropdownMenu>
 

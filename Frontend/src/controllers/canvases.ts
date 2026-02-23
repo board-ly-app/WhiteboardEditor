@@ -1,5 +1,5 @@
-import type {
-  AppDispatch
+import {
+  type AppDispatch,
 } from '@/store';
 
 import {
@@ -10,15 +10,15 @@ import {
 } from '@/types/WebSocketProtocol';
 
 import {
-  setCanvasObjects
+  setCanvasObjects,
 } from '@/store/canvasObjects/canvasObjectsSlice';
 
 import {
-  setObjectsByCanvas
+  setObjectsByCanvas,
 } from '@/store/canvasObjects/canvasObjectsByCanvasSlice';
 
 import {
-  setAllowedUsersByCanvas
+  setAllowedUsersByCanvas,
 } from '@/store/allowedUsers/allowedUsersByCanvasSlice';
 
 import {
@@ -27,8 +27,12 @@ import {
 } from '@/store/canvases/canvasesSlice';
 
 import {
+  mergeCanvasAction,
+} from '@/store/canvases/mergeCanvasesReducer';
+
+import {
   addCanvasesByWhiteboard,
-  removeCanvasesByWhiteboard
+  removeCanvasesByWhiteboard,
 } from '@/store/canvases/canvasesByWhiteboardSlice';
 
 import {
@@ -36,12 +40,17 @@ import {
 } from '@/store/canvases/childCanvasesByCanvasSlice';
 
 import {
+  setSelectedCanvasByWhiteboard as setSelectedCanvasByWhiteboardReducer,
+  unselectCanvas,
+} from '@/store/canvases/selectedCanvasByWhiteboardSlice';
+
+import {
   setCurrentEditorsByCanvas,
   unsetCurrentEditorsByCanvas,
 } from '@/store/activeUsers/currentEditorsByCanvasSlice';
 
 import {
-  normalizeCanvas
+  normalizeCanvas,
 } from '@/store/canvases/canvasesNormalizers';
 
 export const addCanvas = (
@@ -77,6 +86,7 @@ export const deleteCanvas = (
   dispatch: AppDispatch,
   canvasId: CanvasIdType
 ) => {
+  dispatch(unselectCanvas(canvasId));
   dispatch(removeCanvases([canvasId]));
   dispatch(removeCanvasesByWhiteboard([canvasId]));
 };
@@ -94,4 +104,29 @@ export const unsetCurrentEditorByCanvas = (
   canvasId: CanvasIdType,
 ) => {
   dispatch(unsetCurrentEditorsByCanvas([ canvasId ]));
+};
+
+export const setSelectedCanvasByWhiteboard = (
+  dispatch: AppDispatch,
+  canvasId: CanvasIdType,
+  whiteboardId: WhiteboardIdType,
+) => {
+  dispatch(setSelectedCanvasByWhiteboardReducer({
+    canvasId,
+    whiteboardId,
+  }));
+};
+
+// === mergeCanvas =============================================================
+//
+// Merges the canvas indicated by canvasId into its parent canvas, transferring
+// ownership of its shapes to the parent, then removing the canvas as a unique
+// object in the store.
+//
+// =============================================================================
+export const mergeCanvas = (
+  dispatch: AppDispatch,
+  canvasId: CanvasIdType,
+) => {
+  dispatch(mergeCanvasAction(canvasId));
 };
