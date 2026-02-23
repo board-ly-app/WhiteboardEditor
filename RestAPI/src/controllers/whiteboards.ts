@@ -30,6 +30,7 @@ import {
   setSharedUsers,
   getWhiteboardById,
   getWhiteboardsByOwner,
+  deleteWhiteboardById,
   removeDanglingUserPermissions,
 } from '../services/whiteboardService';
 
@@ -297,4 +298,49 @@ export const handlePutThumbnail = async (
     console.error("Error updating thumbnail", err);
     return res.status(500).json({ message: "Unexpected server error" });
   }
-};
+};// -- end handlePutThumbnail
+
+export const handleDeleteWhiteboard = async (
+  req: Request<{ whiteboardId: string }, any, AuthorizedRequestBody>,
+  res: Response 
+) => {
+  try {
+    const {
+      whiteboardId,
+    } = req.params;
+    const {
+      authUser,
+    } = req.body;
+
+    const resp = await deleteWhiteboardById(
+      new Types.ObjectId(whiteboardId),
+      authUser.id
+    );
+
+    switch (resp.status) {
+      case 'no_whiteboard':
+      {
+        return res.status(400).json({
+          message: `No whiteboard with id ${whiteboardId}`,
+        });
+      }
+      case 'unauthorized':
+      {
+          return res.status(403).json({
+            message: `You are not authorized to delete whiteboard ${whiteboardId}`,
+          });
+      }
+      case 'ok':
+      {
+        return res.status(200).json({
+          message: `Whiteboard ${whiteboardId} deleted successfully`,
+        });
+      }
+      default:
+        throw new Error(`Unrecognized response type: ${resp}`);
+    }// -- end switch resp.status
+  } catch (e: unknown) {
+    console.error("Unexpected error in handleDeleteWhiteboard:", e);
+    return res.status(500).json({ message: 'Unexpected server error' });
+  }
+};// -- end handleDeleteWhiteboard
