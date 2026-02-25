@@ -127,6 +127,10 @@ import CreateCanvasMenu, {
 } from '@/components/CreateCanvasMenu'
 
 import {
+  DeleteWhiteboardForm,
+} from '@/components/DeleteWhiteboardForm';
+
+import {
   type NewCanvasDimensions,
 } from '@/types/CreateCanvas';
 
@@ -281,6 +285,12 @@ const Whiteboard = ({
     closeModal: closeCreateCanvasModal,
   } = useModal();
 
+  const {
+    Modal: DeleteWhiteboardModal,
+    openModal: openDeleteWhiteboardModal,
+    closeModal: closeDeleteWhiteboardModal,
+  } = useModal();
+
   const [newCanvasDimensions, setNewCanvasDimensions] = useState<NewCanvasDimensions | null>(null);
   const [newCanvasParentId, setNewCanvasParentId] = useState<CanvasIdType | null>(null);
 
@@ -354,6 +364,42 @@ const Whiteboard = ({
     },
     [clientMessenger, selectedCanvasObjects]
   );
+
+  // -- miscellaneous callback functions
+  const handleSubmitDeleteWhiteboard = useCallback(() => {
+      api.delete(`/whiteboards/${whiteboardId}`).
+        then(() => {
+          console.log('Whiteboard', whiteboardId, 'deleted successfully');
+          toast.success(`Whiteboard ${whiteboardId} deleted successfully`, {
+            position: "bottom-center",
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+        })
+        .catch((e: AxiosError) => {
+          console.error(`FAILED TO DELETE WHITEBOARD (${e.code}): ${JSON.stringify(e.response, null, 2)}`);
+          toast.error(`Error fetching whiteboard: ${e}`, {
+            position: "bottom-center",
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+        })
+        .finally(() => {
+          closeDeleteWhiteboardModal();
+        });
+    },
+    [closeDeleteWhiteboardModal, whiteboardId]
+  );// -- end handleSubmitDeleteWhiteboard
 
   // -- derived state
   let status : ComponentStatus;
@@ -523,6 +569,16 @@ const Whiteboard = ({
           disabled={ownPermission !== 'own'}
         /> 
       );
+
+      // Delete whiteboard button (only if the user is an owner)
+      const DeleteWhiteboardButton = (ownPermission === 'own') ?
+        () => (
+          <HeaderButton
+            onClick={openDeleteWhiteboardModal}
+            title="Delete"
+          />
+        )
+        : () => null;
       
       const pageTitle = `${title} | ${APP_NAME}`;
 
@@ -557,6 +613,7 @@ const Whiteboard = ({
               zIndex={10}
               toolbarElemsLeft={[
                 <ShareWhiteboardButton />,
+                <DeleteWhiteboardButton />,
               ]}
               toolbarElemsRight={[
                 <ActiveUsersHeaderDropdown />,
@@ -742,6 +799,18 @@ const Whiteboard = ({
                 onCancel={closeCreateCanvasModal}
               />
             </CreateCanvasModal>
+
+            {/** Delete Whiteboard Modal **/}
+            <DeleteWhiteboardModal
+              zIndex={20}
+              className="p-4 rounded-sm"
+            >
+                <DeleteWhiteboardForm
+                  whiteboardAttribs={currWhiteboard}
+                  onSubmit={handleSubmitDeleteWhiteboard}
+                  onCancel={closeDeleteWhiteboardModal}
+                />
+            </DeleteWhiteboardModal>
           </main>
         </Page>
       );
