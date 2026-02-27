@@ -14,6 +14,10 @@ import {
 } from 'axios';
 
 import {
+  useQueryClient,
+} from '@tanstack/react-query';
+
+import {
   Bounce,
   toast,
 } from 'react-toastify';
@@ -58,6 +62,8 @@ function WhiteboardCard({
   user_permissions: userPermissions,
   thumbnail_url,
 }: WhiteboardProps) {
+  const queryClient = useQueryClient();
+
   const authContext = useContext(AuthContext);
 
   if (! authContext) {
@@ -98,6 +104,12 @@ function WhiteboardCard({
       api.delete(`/whiteboards/${id}`).
         then(() => {
           console.log('Whiteboard', id, 'deleted successfully');
+
+          // make sure list of own whiteboards is refreshed
+          queryClient.invalidateQueries({
+            queryKey: [user.id, 'dashboard', 'whiteboards', 'own'],
+          });
+
           toast.success(`Whiteboard ${id} deleted successfully`, {
             position: "bottom-center",
             hideProgressBar: true,
@@ -126,7 +138,7 @@ function WhiteboardCard({
           closeDeletionModal();
         });
     },
-    [closeDeletionModal, id]
+    [closeDeletionModal, id, queryClient, user.id]
   );// -- end handleSubmitDeleteWhiteboard
 
   const isOwnWhiteboard = userPermissions.find(
