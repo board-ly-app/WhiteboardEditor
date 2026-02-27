@@ -26,7 +26,7 @@ export interface DeleteWhiteboardFormProps {
 type ComponentStatus = 
   | { name: 'default'; }
   | { name: 'deletion_unconfirmed'; }
-  | { name: 'deletion_confirmation_pending'; }
+  | { name: 'deletion_confirmation_pending'; progress: number; }
   | { name: 'deletion_confirmed'; }
 ;
 
@@ -65,7 +65,9 @@ export const DeleteWhiteboardForm = ({
   } else if (confirmationKeyEntry === CONFIRMATION_KEY) {
     status = { name: 'deletion_confirmed' };
   } else if (CONFIRMATION_KEY.substring(0, confirmationKeyEntry.length) === confirmationKeyEntry) {
-    status = { name: 'deletion_confirmation_pending' };
+    const progress = confirmationKeyEntry.length / CONFIRMATION_KEY.length;
+
+    status = { name: 'deletion_confirmation_pending', progress };
   } else {
     status = { name: 'deletion_unconfirmed' };
   }
@@ -91,9 +93,20 @@ export const DeleteWhiteboardForm = ({
     break;
     case 'deletion_confirmation_pending':
     {
+        const {
+          progress,
+        } = status;
+        const colorStart = 100;
+        const colorLimit = 600;
+        const colorStep = 100;
+        const colorScale = (colorLimit - colorStart);
+        const colorLevel = (Math.floor(
+          (progress * colorScale) / colorStep
+        ) * colorStep) + colorStart;
+
         confirmationKeyEntryClassname = cn(
           confirmationKeyEntryClassnameBase,
-          "outline-green-100",
+          `outline-green-${colorLevel}`,
         );
     }
     break;
