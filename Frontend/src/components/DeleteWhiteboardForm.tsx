@@ -20,7 +20,7 @@ import {
 export interface DeleteWhiteboardFormProps {
   onSubmit: () => unknown;
   onCancel: () => unknown;
-  whiteboardAttribs: WhiteboardAttribs,
+  whiteboardAttribs: Pick<WhiteboardAttribs, 'id' | 'name'>;
 }
 
 type ComponentStatus = 
