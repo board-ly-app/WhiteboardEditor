@@ -10,6 +10,10 @@ import {
 } from '@/types/WebSocketProtocol';
 
 import {
+  cn,
+} from "@/lib/utils"
+
+import {
   Button,
 } from '@/components/ui/button';
 
@@ -20,7 +24,9 @@ export interface DeleteWhiteboardFormProps {
 }
 
 type ComponentStatus = 
+  | { name: 'default'; }
   | { name: 'deletion_unconfirmed'; }
+  | { name: 'deletion_confirmation_pending'; }
   | { name: 'deletion_confirmed'; }
 ;
 
@@ -54,11 +60,54 @@ export const DeleteWhiteboardForm = ({
   // -- derived state
   let status : ComponentStatus;
 
-  if (confirmationKeyEntry === CONFIRMATION_KEY) {
+  if (confirmationKeyEntry === '') {
+    status = { name: 'default' };
+  } else if (confirmationKeyEntry === CONFIRMATION_KEY) {
     status = { name: 'deletion_confirmed' };
+  } else if (CONFIRMATION_KEY.substring(0, confirmationKeyEntry.length) === confirmationKeyEntry) {
+    status = { name: 'deletion_confirmation_pending' };
   } else {
     status = { name: 'deletion_unconfirmed' };
   }
+
+  const confirmationKeyEntryClassnameBase = "placeholder:italic outline-2 rounded-sm p-1";
+  let confirmationKeyEntryClassname : string;
+
+  switch (status.name) {
+    case 'default':
+    {
+        confirmationKeyEntryClassname = cn(
+          confirmationKeyEntryClassnameBase,
+        );
+    }
+    break;
+    case 'deletion_confirmed':
+    {
+        confirmationKeyEntryClassname = cn(
+          confirmationKeyEntryClassnameBase,
+          "outline-green-600",
+        );
+    }
+    break;
+    case 'deletion_confirmation_pending':
+    {
+        confirmationKeyEntryClassname = cn(
+          confirmationKeyEntryClassnameBase,
+          "outline-green-100",
+        );
+    }
+    break;
+    case 'deletion_unconfirmed':
+    {
+        confirmationKeyEntryClassname = cn(
+          confirmationKeyEntryClassnameBase,
+          "outline-red-600"
+        );
+    }
+    break;
+    default:
+      throw new Error(`Unrecognized status "${status}"`);
+  }// -- end status.name
 
   return (
     <div>
@@ -73,9 +122,10 @@ export const DeleteWhiteboardForm = ({
             placeholder={CONFIRMATION_KEY}
             value={confirmationKeyEntry}
             onChange={handleConfirmationKeyEntryChange}
+            className={confirmationKeyEntryClassname}
           />
           <Button
-            disabled={status.name === 'deletion_unconfirmed'}
+            disabled={status.name !== 'deletion_confirmed'}
             type="submit"
             variant="destructive"
           >
