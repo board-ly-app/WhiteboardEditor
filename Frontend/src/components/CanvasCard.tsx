@@ -120,6 +120,7 @@ function CanvasCard({
     tooltipText,
     editingText,
     canvasGroupRefsByIdRef,
+    currentDispatcher,
   } = whiteboardContext;
 
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
@@ -244,6 +245,7 @@ function CanvasCard({
 
         container.addEventListener('pointerdown', handlePointerEvent);
         // We need to ensure focus remains after pointerup
+        container.addEventListener('pointermove', handlePointerEvent);
         container.addEventListener('pointerup', handlePointerEvent);
 
         // handle keypresses within container
@@ -256,6 +258,10 @@ function CanvasCard({
                 canvasObjectIds: selectedCanvasObjects,
               });
               break;
+            case 'Escape':
+            case 'Esc':
+              currentDispatcher?.handleCancel();
+              break;
           }
         };// -- end handleKeyDown
 
@@ -263,12 +269,13 @@ function CanvasCard({
 
         return () => {
           container.removeEventListener('pointerdown', handlePointerEvent);
+          container.removeEventListener('pointermove', handlePointerEvent);
           container.removeEventListener('pointerup', handlePointerEvent);
           container.removeEventListener('keydown', handleKeyDown);
         };
       }
     },
-    [containerRef, clientMessenger, selectedCanvasObjects]
+    [containerRef, clientMessenger, selectedCanvasObjects, currentDispatcher]
   );
 
   return (
