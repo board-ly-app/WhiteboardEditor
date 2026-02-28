@@ -40,10 +40,7 @@ export const activeUsersByWhiteboardSlice = createSlice({
         }// -- end for clientId
       }// -- end for whiteboardId, clientIds
 
-      return {
-        clientsByWhiteboard,
-        whiteboardsByClient,
-      };
+      return state;
     },
     addActiveUsersByWhiteboard(state: ActiveUsersByWhiteboardState, action: PayloadAction<Record<WhiteboardIdType, ClientIdType[]>>) {
       const {
@@ -81,10 +78,7 @@ export const activeUsersByWhiteboardSlice = createSlice({
         }
       }// -- end for clientId
 
-      return {
-        clientsByWhiteboard,
-        whiteboardsByClient,
-      };
+      return state;
     },
     removeWhiteboards(state: ActiveUsersByWhiteboardState, action: PayloadAction<WhiteboardIdType[]>) {
       const {
@@ -102,10 +96,7 @@ export const activeUsersByWhiteboardSlice = createSlice({
         }
       }// -- end for whiteboardId
 
-      return {
-        clientsByWhiteboard,
-        whiteboardsByClient,
-      };
+      return state;
     },
   },
   extraReducers: (builder) => {
@@ -126,10 +117,7 @@ export const activeUsersByWhiteboardSlice = createSlice({
         }
       }// -- end for whiteboardId
 
-      return {
-        clientsByWhiteboard,
-        whiteboardsByClient,
-      };
+      return state;
     });
   },
 });// -- end activeUsersByWhiteboardSlice
