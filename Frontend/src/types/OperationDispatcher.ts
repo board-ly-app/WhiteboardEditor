@@ -35,6 +35,7 @@ export interface OperationDispatcher {
   handlePointerDown: (ev: Konva.KonvaEventObject<MouseEvent>) => void;
   handlePointerMove: (ev: Konva.KonvaEventObject<MouseEvent>) => void;
   handlePointerUp: (ev: Konva.KonvaEventObject<MouseEvent>) => void;
+  handleCancel: () => void;
   getPreview: () => React.JSX.Element | null;
   getAttributes: () => AttributeDefinition[];
   renderShape: (

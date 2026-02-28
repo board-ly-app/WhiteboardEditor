@@ -89,6 +89,10 @@ const useEllipseDispatcher = ({
     }
   };
 
+  const handleCancel = () => {
+    setMouseDownCoords(null);
+  };// -- end handleCancel
+
   const getPreview = (): React.JSX.Element | null => {
     if (mouseDownCoords && mouseCoords) {
       const { x: xOrigin, y: yOrigin } = mouseDownCoords;
@@ -170,6 +174,7 @@ const useEllipseDispatcher = ({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handleCancel,
     getPreview,
     getAttributes,
     renderShape,
