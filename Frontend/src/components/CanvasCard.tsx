@@ -37,6 +37,10 @@ import {
 } from "@/types/WebSocketProtocol";
 
 import {
+  type CanvasObjectIdType,
+} from '@/types/CanvasObjectModel';
+
+import {
   type User,
 } from '@/types/APIProtocol';
 
@@ -61,6 +65,10 @@ import {
 import {
   selectSelectedCanvasByWhiteboard,
 } from '@/store/canvases/canvasesSelectors';
+
+import {
+  selectSelectedCanvasObjectsByWhiteboard,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
   type NewCanvasDimensions,
@@ -123,6 +131,10 @@ function CanvasCard({
   if (! clientMessengerContext) {
     throw new Error('No ClientMessengerContext provided to CanvasCard');
   }
+
+  const {
+    clientMessenger,
+  } = clientMessengerContext;
 
   const [selectedCanvasAllowedUsers, setSelectedCanvasAllowedUsers] = useState<User[] | null>(null);
 
@@ -211,6 +223,53 @@ function CanvasCard({
       container.scrollTop = (height - container.clientHeight) / 2;
     }
   }, [width, height])
+
+  // -- handle deletion keypresses
+  const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
+    (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(state, whiteboardId)
+  );
+
+  useEffect(
+    () => {
+      if (containerRef.current) {
+        const container = containerRef.current;
+
+        // ensure container receives focus while objects within are being
+        // manipulated
+        const handlePointerEvent = () => {
+          container.focus({
+            preventScroll: true,
+          });
+        };// -- end handlePointerEvent
+
+        container.addEventListener('pointerdown', handlePointerEvent);
+        // We need to ensure focus remains after pointerup
+        container.addEventListener('pointerup', handlePointerEvent);
+
+        // handle keypresses within container
+        const handleKeyDown = (ev: KeyboardEvent) => {
+          switch (ev.key) {
+            case 'Delete':
+            case 'Backspace':
+              clientMessenger?.sendDeleteCanvasObjects({
+                type: 'delete_canvas_objects',
+                canvasObjectIds: selectedCanvasObjects,
+              });
+              break;
+          }
+        };// -- end handleKeyDown
+
+        container.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+          container.removeEventListener('pointerdown', handlePointerEvent);
+          container.removeEventListener('pointerup', handlePointerEvent);
+          container.removeEventListener('keydown', handleKeyDown);
+        };
+      }
+    },
+    [containerRef, clientMessenger, selectedCanvasObjects]
+  );
 
   return (
     <div
