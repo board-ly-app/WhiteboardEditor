@@ -51,6 +51,12 @@ const users = [
     // password: weakpassword
     passwordHashed: "$2b$10$ihPYYk6dgK/OwTMkBOnlXe9UDcSHNvYSWQe5N0oM11TPwle7EJrH2",
   },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece0106'),
+    kind: "temp",
+    username: "TempUser68d5e8d4829da666aece0106",
+    tempExpiresAt: new Date(Date.now() + (60 * 60 * 24)),
+  },
 ];
 
 db.users.insertMany(users);

@@ -131,62 +131,146 @@ impl CanvasObjectMongoDBView {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct User {
-    pub id: UserIdType,
-    pub username: String,
-    pub email: String,
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", rename_all_fields="camelCase")]
+pub enum UserMongoDBView {
+    Permanent {
+        #[serde(rename = "_id")]
+        id: UserIdType,
+        username: String,
+        email: String,
+    },
+    #[serde(rename = "temp")]
+    Temp {
+        #[serde(rename = "_id")]
+        id: UserIdType,
+        username: String,
+        // temp_expires_at: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UserClientView {
-    pub id: String,
-    pub username: String,
-    pub email: String,
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum UserClientView {
+    Permanent {
+        id: String,
+        username: String,
+        email: String,
+    },
+    Temp {
+        id: String,
+        username: String,
+        // temp_expires_at: String,
+    },
 }
 
 impl UserClientView {
     pub fn from_user(user: &User) -> Self {
-        Self {
-            id: user.id.to_string(),
-            username: user.username.clone(),
-            email: user.email.clone(),
+        match user {
+            User::Permanent {
+                id,
+                username,
+                email,
+            } => Self::Permanent {
+                id: id.to_hex(),
+                username: username.clone(),
+                email: email.clone(),
+            },
+            User::Temp {
+                id,
+                username,
+                // temp_expires_at,
+            } => Self::Temp {
+                id: id.to_hex(),
+                username: username.clone(),
+                // temp_expires_at: temp_expires_at.clone(),
+            },
         }
     }// end from_user
 
     pub fn to_user(&self) -> Result<User, mongodb::bson::oid::Error> {
-        Ok(User {
-            id: ObjectId::parse_str(&self.id)?,
-            username: self.username.clone(),
-            email: self.email.clone(),
-        })
+        match self {
+            Self::Permanent {
+                id,
+                username,
+                email,
+            } => Ok(User::Permanent {
+                id: ObjectId::parse_str(&id)?,
+                username: username.clone(),
+                email: email.clone(),
+            }),
+            Self::Temp {
+                id,
+                username,
+                // temp_expires_at,
+            } => Ok(User::Temp {
+                id: ObjectId::parse_str(&id)?,
+                username: username.clone(),
+                // temp_expires_at: temp_expires_at.clone(),
+            }),
+        }
     }// end to_user
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub struct UserMongoDBView {
-    #[serde(rename = "_id")]
-    id: ObjectId,
-    username: String,
-    email: String,
+#[serde(tag = "kind", rename_all = "snake_case", rename_all_fields = "camelCase")]
+pub enum User {
+    Permanent {
+        id: ObjectId,
+        username: String,
+        email: String,
+    },
+    Temp {
+        id: ObjectId,
+        username: String,
+        // temp_expires_at: String,
+    },
 }
 
 impl UserMongoDBView {
     pub fn from_user(user: &User) -> Self {
-        Self {
-            id: user.id.clone(),
-            username: user.username.clone(),
-            email: user.email.clone(),
+        match user {
+            User::Permanent {
+                id,
+                username,
+                email,
+            } => Self::Permanent {
+                id: id.clone(),
+                username: username.clone(),
+                email: email.clone(),
+            },
+            User::Temp {
+                id,
+                username,
+                // temp_expires_at,
+            } => Self::Temp {
+                id: id.clone(),
+                username: username.clone(),
+                // temp_expires_at: temp_expires_at.clone(),
+            },
         }
     }// end from_user
 
     pub fn to_user(&self) -> User {
-        User {
-            id: self.id.clone(),
-            username: self.username.clone(),
-            email: self.email.clone(),
+        match self {
+            Self::Permanent {
+                id,
+                username,
+                email,
+            } => User::Permanent {
+                id: id.clone(),
+                username: username.clone(),
+                email: email.clone(),
+            },
+            Self::Temp {
+                id,
+                username,
+                // temp_expires_at,
+            } => User::Temp {
+                id: id.clone(),
+                username: username.clone(),
+                // temp_expires_at: temp_expires_at.clone(),
+            },
         }
     }// end to_user
 }
@@ -1425,7 +1509,9 @@ pub async fn handle_unauthenticated_client_message<StoreType: UserStore + Whiteb
                         let user_summary = UserSummary{
                             client_id: client_state.client_id.clone(),
                             user_id: user_id.to_string(),
-                            username: user.username.clone(),
+                            username: match user {
+                                User::Permanent { username, .. } | User::Temp { username, .. } => username.clone(),
+                            },
                         };
 
                         *client_state.user_summary.lock().await = Some(user_summary.clone());

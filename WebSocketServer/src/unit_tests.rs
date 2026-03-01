@@ -552,7 +552,7 @@ mod unit_tests {
         // -- initialize user store
         let user_store = MockStore {
             users_by_id: HashMap::from([
-                (target_uid, User {
+                (target_uid, User::Permanent {
                     id: ObjectId::parse_str(target_uid_s).unwrap(),
                     username: String::from("bob"),
                     email: String::from("bob@example.com"),
@@ -630,18 +630,18 @@ mod unit_tests {
                 panic!("Expected InitClient message, got {:?}", bad_resp);
             },
         };
-    }// -- end fn fetch_user_from_mongodb_user_store
+    }// -- end fn fetch_permanent_user_from_mongodb_user_store
 
-    // === fetch_user_from_mongodb_user_store =====================================================
+    // === fetch_permanent_user_from_mongodb_user_store ===========================================
     //
-    // Tests instantiating a MongoDBStore and using it to fetch a user account from the test
-    // database.
+    // Tests instantiating a MongoDBStore and using it to fetch a permanent user account from the
+    // test database.
     //
     // See TestDatabase/init-db.js for the sample data.
     //
     // ============================================================================================
     #[tokio::test]
-    async fn fetch_user_from_mongodb_user_store() {
+    async fn fetch_permanent_user_from_mongodb_user_store() {
         use mongodb::{
             Collection,
             bson::{
@@ -677,10 +677,77 @@ mod unit_tests {
         let user = user_opt.expect("User to be non-null");
 
         // -- ensure fetched user matches expected value
-        assert!(user.id == uid);
-        assert!(user.username.as_str() == "alice");
-        assert!(user.email.as_str() == "alice@example.com");
-    }// -- end fn fetch_user_from_mongodb_user_store()
+        match user {
+            User::Permanent {
+                id,
+                username,
+                email,
+            } => {
+                assert!(id == uid);
+                assert!(username.as_str() == "alice");
+                assert!(email.as_str() == "alice@example.com");
+            },
+            _ => panic!("Expected permanent user"),
+        };
+    }// -- end fn fetch_permanent_user_from_mongodb_user_store()
+
+    // === fetch_temp_user_from_mongodb_user_store ================================================
+    //
+    // Tests instantiating a MongoDBStore and using it to fetch a temporary user account from the
+    // test database.
+    //
+    // See TestDatabase/init-db.js for the sample data.
+    //
+    // ============================================================================================
+    #[tokio::test]
+    async fn fetch_temp_user_from_mongodb_user_store() {
+        use mongodb::{
+            Collection,
+            bson::{
+                oid::{
+                    ObjectId,
+                },
+            },
+        };
+
+        // -- initialize database connection
+        let mongo_uri = "mongodb://test_db:27017/testdb";
+        let mongo_client = connect_mongodb(&mongo_uri).await
+            .expect("Mongo client to establish connection to database");
+        let db = mongo_client.default_database()
+            .expect("The mongo uri to point to a default database");
+        let user_coll: Collection<UserMongoDBView> = db.collection::<UserMongoDBView>(
+            "users"
+        );
+        let whiteboard_metadata_coll: Collection<WhiteboardMetadataMongoDBView> = db.collection::<WhiteboardMetadataMongoDBView>(
+            "whiteboards"
+        );
+
+        // -- "TempUser68d5e8d4829da666aece0106"
+        let uid = ObjectId::parse_str("68d5e8d4829da666aece0106")
+            .expect("The provided string is a valid ObjectId");
+
+        // -- instantiate MongoDBStore
+        let user_store = MongoDBStore::new(&user_coll, &whiteboard_metadata_coll);
+
+        // -- fetch the user from the database
+        let user_opt = user_store.get_user_by_id(&uid).await
+            .expect("The user store to return a user with the given ID");
+        let user = user_opt.expect("User to be non-null");
+
+        // -- ensure fetched user matches expected value
+        match user {
+            User::Temp {
+                id,
+                username,
+                ..
+            } => {
+                assert!(id == uid);
+                assert!(username.as_str() == "TempUser68d5e8d4829da666aece0106");
+            },
+            _ => panic!("Expected temp user"),
+        };
+    }// -- end fn fetch_temp_user_from_mongodb_user_store()
 
     // === test_create_shapes_nonexistent_canvas_id ===============================================
     //
