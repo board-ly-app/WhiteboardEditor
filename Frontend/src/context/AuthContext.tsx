@@ -1,6 +1,13 @@
-import { useState, useEffect, createContext, type ReactNode } from 'react';
+import {
+  useState,
+  createContext,
+  type ReactNode,
+} from 'react';
 
-import type { User, AuthContextType } from '@/types/UserAuth';
+import type {
+  User,
+  AuthContextType,
+} from '@/types/UserAuth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -23,30 +30,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (): string | null => localStorage.getItem(LS_KEY_AUTH_TOKEN) || null
   );
 
-  // Save user to localStorage whenever user changes
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(LS_KEY_USER, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(LS_KEY_USER);
-    }
-  }, [user]);
+  const isSetAuthTokenFunction = (setter: Parameters<typeof setAuthToken>[0])
+    : setter is (prevState: string | null) => string | null => {
+    return (typeof setter === 'function');
+  };
 
-  // Save authToken to localStorage whenever authToken changes
-  useEffect(() => {
-    if (authToken) {
-      localStorage.setItem(LS_KEY_AUTH_TOKEN, authToken);
+  // sets value in localStorage simultaneously
+  const setAuthTokenWrapper = (setter: Parameters<typeof setAuthToken>[0]) => {
+    if (isSetAuthTokenFunction(setter)) {
+      setAuthToken((oldAuthToken) => {
+        const value = setter(oldAuthToken);
+
+        if (! value) {
+          localStorage.removeItem(LS_KEY_AUTH_TOKEN);
+        } else {
+          localStorage.setItem(LS_KEY_AUTH_TOKEN, value);
+        }
+        console.log('!! NEW AUTH TOKEN (func):', value);// TODO: remove debug
+
+        return value;
+      });
     } else {
-      localStorage.removeItem(LS_KEY_AUTH_TOKEN);
+      const value = setter;
+
+      if (value === null) {
+        localStorage.removeItem(LS_KEY_AUTH_TOKEN);
+      } else {
+        localStorage.setItem(LS_KEY_AUTH_TOKEN, value);
+      }
+
+      console.log('!! NEW AUTH TOKEN (value):', value);// TODO: remove debug
+      setAuthToken(value);
     }
-  }, [authToken]);
+  };// -- end setAuthTokenWrapper
+
+  const isSetUserFunction = (setter: Parameters<typeof setUser>[0])
+    : setter is (prevState: User | null) => User | null => {
+    return (typeof setter === 'function');
+  };
+
+  // sets value in localStorage simultaneously
+  const setUserWrapper = (setter: Parameters<typeof setUser>[0]) => {
+    if (isSetUserFunction(setter)) {
+      setUser((oldUser) => {
+        const value = setter(oldUser);
+
+        if (! value) {
+          localStorage.removeItem(LS_KEY_USER);
+        } else {
+          localStorage.setItem(LS_KEY_USER, JSON.stringify(value));
+        }
+
+        console.log('!! NEW USER (func):', value);// TODO: remove debug
+        return value;
+      });
+    } else {
+      const value = setter;
+
+      if (value === null) {
+        localStorage.removeItem(LS_KEY_USER);
+      } else {
+        localStorage.setItem(LS_KEY_USER, JSON.stringify(value));
+      }
+
+      console.log('!! NEW USER (value):', value);// TODO: remove debug
+      setUser(value);
+    }
+  };// -- end setUserWrapper
 
   return (
     <AuthContext.Provider value={{
       user,
-      setUser,
+      setUser: setUserWrapper,
       authToken,
-      setAuthToken,
+      setAuthToken: setAuthTokenWrapper,
     }}>
       {children}
     </AuthContext.Provider>
