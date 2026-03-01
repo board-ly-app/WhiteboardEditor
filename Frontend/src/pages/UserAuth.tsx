@@ -7,6 +7,7 @@ import HeaderUnauthed from "@/components/HeaderUnauthed";
 import AuthForm from "@/components/AuthForm";
 import Page from '@/components/Page';
 import Footer from '@/components/Footer';
+import api from '@/api/axios';
 
 interface UserAuthProps {
   action: "login" | "signup";
@@ -30,6 +31,15 @@ const UserAuth = ({
 
   const pageTitle = `${authActionLabel} | ${APP_NAME}`;
 
+  const handleCreateTrialWhiteboard = async () => {
+    try {
+      const userResp = await api.post('/users/temp');
+      console.log("userResp: ", userResp);
+    } catch (err) {
+      console.log("Error creating trial whiteboard: ", err);
+    }
+  }
+
   return (
     <Page
       title={pageTitle}
@@ -49,7 +59,7 @@ const UserAuth = ({
           </h1>
 
           <button 
-            onClick={() => console.log("clicked")}
+            onClick={handleCreateTrialWhiteboard}
             className="text-h2-text font-medium rounded-lg border-border border-1 p-4 bg-button-600 hover:bg-button-hover hover:cursor-pointer shadow-md"
           >
             Create a Whiteboard!
