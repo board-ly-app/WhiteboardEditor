@@ -86,6 +86,10 @@ const useTextDispatcher = ({
     }
   };
 
+  const handleCancel = () => {
+    setMouseDownCoords(null);
+  };// -- end handleCancel
+
   const getPreview = (): React.JSX.Element | null => {
     if (mouseDownCoords && mouseCoords) {
       const { x: xA, y: yA } = mouseDownCoords;
@@ -160,6 +164,7 @@ const useTextDispatcher = ({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handleCancel,
     getPreview,
     getAttributes,
     renderShape,

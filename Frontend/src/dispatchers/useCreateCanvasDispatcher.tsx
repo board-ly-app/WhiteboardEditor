@@ -87,6 +87,10 @@ const useCreateCanvasDispatcher = ({
     }
   };
 
+  const handleCancel = () => {
+    setMouseDownCoords(null);
+  };// -- end handleCancel
+
   const getPreview = (): React.JSX.Element | null => {
     if (mouseDownCoords && mouseCoords) {
       const { x: xA, y: yA } = mouseDownCoords;
@@ -132,6 +136,7 @@ const useCreateCanvasDispatcher = ({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handleCancel,
     getPreview,
     getAttributes,
     renderShape,

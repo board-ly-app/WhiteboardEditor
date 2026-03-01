@@ -24,6 +24,9 @@ const useMockDispatcher = (_props: OperationDispatcherProps<null>): OperationDis
     handlePointerUp: (_ev: Konva.KonvaEventObject<MouseEvent>) => {
       console.log('TODO: implement');
     },
+    handleCancel: () => {
+      console.log('TODO: implement');
+    },
     getPreview: () => null,
     getAttributes: () => [],
     renderShape: (

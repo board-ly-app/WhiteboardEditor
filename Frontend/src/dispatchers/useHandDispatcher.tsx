@@ -38,6 +38,9 @@ const useHandDispatcher = ({
     handlePointerUp: (_ev: Konva.KonvaEventObject<MouseEvent>) => {
       setIsMouseDown(false);
     },
+    handleCancel: () => {
+      setIsMouseDown(false);
+    },
     getPreview: () => null,
     getAttributes: () => [],
     renderShape: (
