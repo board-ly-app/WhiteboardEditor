@@ -21,6 +21,7 @@ mod unit_tests {
         // -- initialize client state
         let whiteboard = Whiteboard {
             id: ObjectId::new(),
+            is_active: true,
             metadata: WhiteboardMetadata {
                 name: String::from("Test"),
                 user_permissions: vec![],
@@ -145,6 +146,7 @@ mod unit_tests {
 
         let whiteboard = Whiteboard {
             id: ObjectId::new(),
+            is_active: true,
             metadata: WhiteboardMetadata {
                 name: String::from("Test"),
                 user_permissions: vec![],
@@ -323,6 +325,7 @@ mod unit_tests {
 
         let whiteboard = Whiteboard {
             id: ObjectId::new(),
+            is_active: true,
             metadata: WhiteboardMetadata {
                 name: String::from("Test"),
                 user_permissions: vec![],
@@ -563,6 +566,7 @@ mod unit_tests {
 
         let whiteboard = Whiteboard {
             id: ObjectId::new(),
+            is_active: true,
             metadata: WhiteboardMetadata {
                 name: String::from("Test"),
                 user_permissions: vec![
@@ -711,6 +715,7 @@ mod unit_tests {
         // -- initialize client state
         let whiteboard = Whiteboard {
             id: ObjectId::new(),
+            is_active: true,
             metadata: WhiteboardMetadata {
                 name: String::from("Test"),
                 user_permissions: vec![

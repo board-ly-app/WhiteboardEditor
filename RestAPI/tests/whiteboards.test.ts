@@ -16,6 +16,14 @@ import type {
 
 const MONGO_URI = 'mongodb://test_db:27017/testdb';
 
+const {
+  JWT_SECRET,
+} = process.env;
+
+if (! JWT_SECRET) {
+  throw new Error('JWT_SECRET not defined in process environment');
+}
+
 // handle database connection
 const connectToDatabase = async () => {
   try {
@@ -115,7 +123,7 @@ const validateWhiteboardAttribView = (
 
 describe("Whiteboards API", () => {
   it("should allow an authenticated user to get their own whiteboard", async () => {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -163,7 +171,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should fetch an authenticated user's own whiteboards at GET /whiteboards/own", async () => {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
 
     const owner = await userCollection.findOne({ username: 'alice' });
@@ -218,7 +226,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should create a new whiteboard for an authenticated user", async () => {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
 
     const user = await userCollection.findOne({ username: 'alice' });
@@ -256,7 +264,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should allow setting collaborator permissions when creating a new whiteboard", async () => {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
 
     const creatingUser = await userCollection.findOne({ username: 'alice' });
@@ -328,7 +336,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should allow an authenticated user to share their whiteboard", async () => {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -400,7 +408,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should not allow a user to share a whiteboard they don't own", async () => {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -440,7 +448,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should not allow a user to share a whiteboard with user with a malformed user ID", async () => {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -479,7 +487,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should not allow a user to share a whiteboard with a user that doesn't exist", async () => {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -518,7 +526,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should allow a user to share a whiteboard with a user email that doesn't correspond to an existing account", async () => {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -590,7 +598,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should convert a shared user email to a shared user id if an account exists for the given email", async () => {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -677,7 +685,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should ensure that a request to change a whiteboard's shared users leaves at least one user with \"own\" permission", async () => {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -722,7 +730,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should ignore invalid user ids (i.e. from deleted users) in permissions when fetching a whiteboard", async () => {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -768,4 +776,112 @@ describe("Whiteboards API", () => {
       ],
     });
   });
+
+  it('should allow a user with "own" permission on a whiteboard to delete the whiteboard', async () => {
+    const userCollection = mongoose.connection.collection('users');
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Delta"});
+    const owner = await userCollection.findOne({ username: 'carol' });
+
+    expect(owner).not.toBeNull();
+    expect(whiteboard).not.toBeNull();
+
+    // to please TypeScript
+    if ((! owner) || (! whiteboard)) {
+      return;
+    }
+
+    const whiteboardId = whiteboard._id;
+    const targetUrl = `/api/v1/whiteboards/${whiteboardId.toHexString()}`;
+
+    // Generate signed JWT
+    const authToken = jwt.sign(
+      { sub: owner._id.toString() },   // sub = subject claim
+      JWT_SECRET,
+      { expiresIn: 999999999 }
+    );
+
+    // -- Try to delete whiteboard
+    await request(app)
+      .delete(targetUrl)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send()
+      .expect(200);
+
+    // Ensure the deletion actually propagated to the database
+    expect(await whiteboardCollection.findOne({ _id: whiteboardId })).toBeNull();
+  });// -- end test case
+
+  it('should not allow a user with "edit" permission on a whiteboard to delete the whiteboard', async () => {
+    const userCollection = mongoose.connection.collection('users');
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Gamma"});
+    const nonOwner = await userCollection.findOne({ username: 'alice' });
+
+    expect(nonOwner).not.toBeNull();
+    expect(whiteboard).not.toBeNull();
+
+    // to please TypeScript
+    if ((! nonOwner) || (! whiteboard)) {
+      return;
+    }
+
+    const whiteboardId = whiteboard._id;
+    const targetUrl = `/api/v1/whiteboards/${whiteboardId.toHexString()}`;
+
+    // Generate signed JWT
+    const authToken = jwt.sign(
+      { sub: nonOwner._id.toString() },   // sub = subject claim
+      JWT_SECRET,
+      { expiresIn: 999999999 }
+    );
+
+    // -- Try to delete whiteboard
+    await request(app)
+      .delete(targetUrl)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send()
+      .expect(403);
+
+    // Ensure the deletion didn't propagate to the database
+    expect(await whiteboardCollection.findOne({ _id: whiteboardId })).not.toBeNull();
+  });// -- end test case
+
+  it('should not allow a user without any permissions on a whiteboard to delete the whiteboard', async () => {
+    const userCollection = mongoose.connection.collection('users');
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Gamma"});
+    const nonMember = await userCollection.findOne({ username: 'bob' });
+
+    expect(nonMember).not.toBeNull();
+    expect(whiteboard).not.toBeNull();
+
+    // to please TypeScript
+    if ((! nonMember) || (! whiteboard)) {
+      return;
+    }
+
+    const whiteboardId = whiteboard._id;
+    const targetUrl = `/api/v1/whiteboards/${whiteboardId.toHexString()}`;
+
+    // Generate signed JWT
+    const authToken = jwt.sign(
+      { sub: nonMember._id.toString() },   // sub = subject claim
+      JWT_SECRET,
+      { expiresIn: 999999999 }
+    );
+
+    // -- Try to delete whiteboard
+    await request(app)
+      .delete(targetUrl)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send()
+      .expect(403);
+
+    // Ensure the deletion didn't propagate to the database
+    expect(await whiteboardCollection.findOne({ _id: whiteboardId })).not.toBeNull();
+  });// -- end test case
 });

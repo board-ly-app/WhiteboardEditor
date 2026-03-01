@@ -11,6 +11,7 @@ import {
   handleGetOwnWhiteboards,
   handleGetWhiteboardById,
   handleCreateWhiteboard,
+  handleDeleteWhiteboard,
   handleShareWhiteboard,
   handlePutThumbnail,
 } from "../controllers/whiteboards";
@@ -27,6 +28,9 @@ router.get("/own", handleGetOwnWhiteboards);
 
 // -- Get whiteboard by id
 router.get('/:whiteboardId', handleGetWhiteboardById);
+
+// -- Delete a whiteboard identified by its ID
+router.delete('/:whiteboardId', handleDeleteWhiteboard);
 
 // -- Share whiteboard with other users
 router.post("/:id/user_permissions", handleShareWhiteboard);

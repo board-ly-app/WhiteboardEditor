@@ -97,6 +97,12 @@ export const {
   removeCanvasObjectsByCanvas,
 } = canvasObjectsByCanvasSlice.actions;
 
+export type CanvasObjectsByCanvasActions =
+  | ReturnType<typeof setObjectsByCanvas>
+  | ReturnType<typeof addObjectsByCanvas>
+  | ReturnType<typeof removeCanvasObjectsByCanvas>
+;
+
 export const {
   selectObjectsByCanvas
 } = canvasObjectsByCanvasSlice.selectors;
