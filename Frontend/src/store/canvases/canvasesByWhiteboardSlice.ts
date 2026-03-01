@@ -87,11 +87,17 @@ const canvasesByWhiteboardSlice = createSlice({
 export const {
   setCanvasesByWhiteboard,
   addCanvasesByWhiteboard,
-  removeCanvasesByWhiteboard
+  removeCanvasesByWhiteboard,
 } = canvasesByWhiteboardSlice.actions;
 
+export type CanvasesByWhiteboardActions =
+  | ReturnType<typeof setCanvasesByWhiteboard>
+  | ReturnType<typeof addCanvasesByWhiteboard>
+  | ReturnType<typeof removeCanvasesByWhiteboard>
+;
+
 export const {
-  selectCanvasesByWhiteboard
+  selectCanvasesByWhiteboard,
 } = canvasesByWhiteboardSlice.selectors;
 
 export default canvasesByWhiteboardSlice.reducer;

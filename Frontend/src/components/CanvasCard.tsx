@@ -309,16 +309,18 @@ function CanvasCard({
 
       {/* Canvas Menu & Tooltip Text */}
       {selectedCanvasId && (
-        <div className='fixed bottom-6 left-2 flex justify-between items-end gap-4 w-[95vw] z-50'>
-          <CanvasMenu 
-            name={selectedCanvas.name}
-            canvasId={selectedCanvasId}
-            whiteboardId={whiteboardId}
-            allowedUsernames={selectedCanvasAllowedUsers
-              ?.map(u => u.username)
-              ?? []
-            }
-          />
+        <div className='pointer-events-none fixed bottom-6 left-2 flex justify-between items-end gap-4 w-[95vw] z-50'>
+          <div className="pointer-events-auto">
+            <CanvasMenu 
+              name={selectedCanvas.name}
+              canvasId={selectedCanvasId}
+              whiteboardId={whiteboardId}
+              allowedUsernames={selectedCanvasAllowedUsers
+                ?.map(u => u.username)
+                ?? []
+              }
+            />
+          </div>
           <h2 className='text-dark-text'>
             {editingText}
           </h2>

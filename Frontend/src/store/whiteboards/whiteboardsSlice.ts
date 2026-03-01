@@ -38,11 +38,16 @@ const whiteboardsSlice = createSlice({
 
 export const {
   setWhiteboards,
-  removeWhiteboards
+  removeWhiteboards,
 } = whiteboardsSlice.actions;
 
+export type WhiteboardsActions =
+  | ReturnType<typeof setWhiteboards>
+  | ReturnType<typeof removeWhiteboards>
+;
+
 export const {
-  selectWhiteboards
+  selectWhiteboards,
 } = whiteboardsSlice.selectors;
 
 export default whiteboardsSlice.reducer;

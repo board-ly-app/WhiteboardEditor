@@ -40,11 +40,16 @@ const canvasObjectsSlice = createSlice({
 
 export const {
   setCanvasObjects,
-  removeCanvasObjects
+  removeCanvasObjects,
 } = canvasObjectsSlice.actions;
 
+export type CanvasObjectsActions =
+  | ReturnType<typeof setCanvasObjects>
+  | ReturnType<typeof removeCanvasObjects>
+;
+
 export const {
-  selectCanvasObjects
+  selectCanvasObjects,
 } = canvasObjectsSlice.selectors;
 
 export default canvasObjectsSlice.reducer;

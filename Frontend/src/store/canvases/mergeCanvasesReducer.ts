@@ -7,10 +7,6 @@
 
 // -- third-party imports
 import {
-  type UnknownAction,
-} from 'redux';
-
-import {
   createAction,
 } from '@reduxjs/toolkit';
 
@@ -28,15 +24,13 @@ import {
   type CanvasObjectModel,
 } from '@/types/CanvasObjectModel';
 
-const MERGE_CANVAS_ACTION_TYPE = 'mergeCanvas';
+const MERGE_CANVAS_ACTION_TYPE = 'canvases/mergeCanvas';
 
-export const mergeCanvasAction = createAction<CanvasIdType>(MERGE_CANVAS_ACTION_TYPE);
+export const mergeCanvasAction = createAction<CanvasIdType, typeof MERGE_CANVAS_ACTION_TYPE>(
+  MERGE_CANVAS_ACTION_TYPE
+);
 
 export type MergeCanvasActionType = ReturnType<typeof mergeCanvasAction>;
-
-export const isMergeCanvasAction = (action: UnknownAction): action is MergeCanvasActionType => {
-  return action.type === MERGE_CANVAS_ACTION_TYPE;
-};
 
 export const mergeCanvasReducer = (state: RootState, action: MergeCanvasActionType): RootState => {
   const canvasId : CanvasIdType = action.payload;

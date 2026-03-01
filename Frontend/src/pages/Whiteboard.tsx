@@ -79,7 +79,8 @@ import {
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import {
-  selectWhiteboardById
+  selectWhiteboardById,
+  selectWhiteboardStatus,
 } from '@/store/whiteboards/whiteboardsSelectors';
 
 import {
@@ -125,6 +126,10 @@ import CreateCanvasMenu, {
 } from '@/components/CreateCanvasMenu'
 
 import {
+  DeleteWhiteboardForm,
+} from '@/components/DeleteWhiteboardForm';
+
+import {
   type NewCanvasDimensions,
 } from '@/types/CreateCanvas';
 
@@ -153,6 +158,8 @@ type ComponentStatus =
   | { status: 'ready'; currWhiteboard: WhiteboardAttribs; }
   | { status: 'pending'; }
   | { status: 'error'; error: AxiosError; }
+  | { status: 'deleting'; currWhiteboard: WhiteboardAttribs; }
+  | { status: 'deleted'; }
 ;
 
 type WhiteboardQueryType = ReturnType<typeof useQuery<APIWhiteboard, AxiosError>>;
@@ -277,6 +284,12 @@ const Whiteboard = ({
     closeModal: closeCreateCanvasModal,
   } = useModal();
 
+  const {
+    Modal: DeleteWhiteboardModal,
+    openModal: openDeleteWhiteboardModal,
+    closeModal: closeDeleteWhiteboardModal,
+  } = useModal();
+
   const [newCanvasDimensions, setNewCanvasDimensions] = useState<NewCanvasDimensions | null>(null);
   const [newCanvasParentId, setNewCanvasParentId] = useState<CanvasIdType | null>(null);
 
@@ -288,6 +301,104 @@ const Whiteboard = ({
     },
     [dispatch, setCurrentTool]
   );
+
+  // Send delete canvas objects message when the delete key is pressed
+  const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
+    (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(state, whiteboardId)
+  );
+
+  const whiteboardStatus = useSelector(
+    (state: RootState) => selectWhiteboardStatus(state, whiteboardId)
+  );
+
+  // -- display alert if whiteboard enters deleting status
+  useEffect(
+    () => {
+      switch (whiteboardStatus) {
+        case 'deleting':
+        {
+          toast.warning('Whiteboard has been deleted', {
+            position: "bottom-center",
+            autoClose: 10000,
+            hideProgressBar: false,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+        }
+        break;
+        case 'deleted':
+        {
+            // -- redirect to dashboard
+            navigate('/dashboard');
+        }
+        break;
+        default:
+          // -- nothing to do in particular
+      }// -- end switch whiteboardStatus
+    },
+    [whiteboardStatus, navigate]
+  );
+
+  useEffect(
+    () => {
+      const handleKeyDown = (ev: KeyboardEvent) => {
+        switch (ev.key) {
+          case 'Delete':
+          case 'Backspace':
+            clientMessenger?.sendDeleteCanvasObjects({
+              type: 'delete_canvas_objects',
+              canvasObjectIds: selectedCanvasObjects,
+            });
+            break;
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    },
+    [clientMessenger, selectedCanvasObjects]
+  );
+
+  // -- miscellaneous callback functions
+  const handleSubmitDeleteWhiteboard = useCallback(() => {
+      api.delete(`/whiteboards/${whiteboardId}`).
+        then(() => {
+          console.log('Whiteboard', whiteboardId, 'deleted successfully');
+          toast.success(`Whiteboard ${whiteboardId} deleted successfully`, {
+            position: "bottom-center",
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+        })
+        .catch((e: AxiosError) => {
+          console.error(`FAILED TO DELETE WHITEBOARD (${e.code}): ${JSON.stringify(e.response, null, 2)}`);
+          toast.error(`Error fetching whiteboard: ${e}`, {
+            position: "bottom-center",
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+        })
+        .finally(() => {
+          closeDeleteWhiteboardModal();
+        });
+    },
+    [closeDeleteWhiteboardModal, whiteboardId]
+  );// -- end handleSubmitDeleteWhiteboard
 
   // -- derived state
   let status : ComponentStatus;
@@ -303,8 +414,12 @@ const Whiteboard = ({
     }
 
     status = { status: 'error', error: whiteboardError };
-  } else if (isWhiteboardLoading || isWhiteboardFetching || (! currWhiteboard)) {
+  } else if (isWhiteboardLoading || isWhiteboardFetching || (! currWhiteboard) || (! whiteboardStatus)) {
     status = { status: 'pending' };
+  } else if (whiteboardStatus === 'deleting') {
+    status = { status: 'deleting', currWhiteboard };
+  } else if (whiteboardStatus === 'deleted') {
+    status = { status: 'deleted' };
   } else {
     status = { status: 'ready', currWhiteboard };
   }
@@ -453,6 +568,16 @@ const Whiteboard = ({
           disabled={ownPermission !== 'own'}
         /> 
       );
+
+      // Delete whiteboard button (only if the user is an owner)
+      const DeleteWhiteboardButton = (ownPermission === 'own') ?
+        () => (
+          <HeaderButton
+            onClick={openDeleteWhiteboardModal}
+            title="Delete"
+          />
+        )
+        : () => null;
       
       const pageTitle = `${title} | ${APP_NAME}`;
 
@@ -487,6 +612,7 @@ const Whiteboard = ({
               zIndex={10}
               toolbarElemsLeft={[
                 <ShareWhiteboardButton />,
+                <DeleteWhiteboardButton />,
               ]}
               toolbarElemsRight={[
                 <ActiveUsersHeaderDropdown />,
@@ -672,9 +798,135 @@ const Whiteboard = ({
                 onCancel={closeCreateCanvasModal}
               />
             </CreateCanvasModal>
+
+            {/** Delete Whiteboard Modal **/}
+            <DeleteWhiteboardModal
+              zIndex={20}
+              className="p-4 rounded-sm"
+            >
+                <DeleteWhiteboardForm
+                  whiteboardAttribs={currWhiteboard}
+                  onSubmit={handleSubmitDeleteWhiteboard}
+                  onCancel={closeDeleteWhiteboardModal}
+                />
+            </DeleteWhiteboardModal>
           </main>
         </Page>
       );
+    }
+    case 'deleting':
+    {
+      // -- keep displaying the whiteboard, with a gray overlay to indicate to
+      // indicate that editing is disabled.
+      // Assume a toast notification has already been created.
+      const {
+        currWhiteboard,
+      } = status;
+
+      const canvasesById : Record<CanvasIdType, CanvasData> = Object.fromEntries(canvases.map(
+        canvasData => [ canvasData.id, canvasData ]
+      ));
+      
+      const rootCanvasId = currWhiteboard.rootCanvas;
+      
+      const canvasesSorted = [...canvases];
+      
+      canvasesSorted.sort((a, b) => new Date(a.timeCreated) < new Date(b.timeCreated) ? -1 : 1);
+      
+      const title = `[DELETED] ${currWhiteboard.name}`;
+      
+      // --- misc functions
+      const handleCreateCanvasDimensions = (_parentCanvasId: CanvasIdType, _dimensions: NewCanvasDimensions) => {
+          // do nothing; functionality disabled
+      };
+
+      const pageTitle = `${title} | ${APP_NAME}`;
+
+      return (
+        <Page
+          title={pageTitle}
+        >
+          <main>
+            {/* Header */}
+            <HeaderAuthed 
+              title={title}
+              zIndex={10}
+              noMarginTop={true}
+            />
+      
+            {/* Content */}
+            <div className="">
+              {/** Gray overlay **/}
+              <div
+                className="absolute z-5 w-full h-full bg-black opacity-60"
+              >
+              </div>
+            
+              {/* Canvas Container */}
+              <div className="flex flex-col justify-center flex-wrap">
+                
+                {/** Misc. info **/}
+                <div className="fixed top-20 left-2 right-0 z-50 flex flex-col justify-center flex-wrap">
+                  {/** Indicate if the user is in view-only mode **/}
+                  {(ownPermission && (ownPermission === 'view')) && (
+                    <div>
+                      <span>
+                        <strong
+                          className="text-xl font-bold"
+                        >
+                          You are in view-only mode
+                        </strong>
+                      </span>
+                    </div>
+                  )}
+                </div>
+      
+                {/* Display Canvases */}
+                <div className="flex flex-1 flex-row justify-center flex-wrap">
+                  <CanvasCard
+                    whiteboardId={whiteboardId}
+                    rootCanvasId={rootCanvasId}
+                    shapeAttributes={shapeAttributesState}
+                    currentTool={currentTool}
+                    canvasesById={canvasesById}
+                    childCanvasesByCanvas={childCanvasesByCanvas}
+                    onSelectCanvasDimensions={handleCreateCanvasDimensions}
+                  />
+                </div>
+              </div>
+            </div>
+          </main>
+        </Page>
+      );
+    }
+    case 'deleted':
+    {
+        // Just display a plain authed header 
+        const pageTitle = `Whiteboard Deleted | ${APP_NAME}`;
+
+        return (
+          <Page
+            title={pageTitle}
+          >
+            <main>
+              {/* Header */}
+              <HeaderAuthed 
+                title="Whiteboard Deleted"
+                zIndex={10}
+                noMarginTop={true}
+              />
+        
+              {/* Content */}
+              <div className="">
+                {/** Gray overlay **/}
+                <div
+                  className="absolute z-5 w-full h-full bg-black opacity-60"
+                >
+                </div>
+              </div>
+            </main>
+          </Page>
+        );
     }
     default:
       throw new Error(`Unrecognized component status: ${status}`);

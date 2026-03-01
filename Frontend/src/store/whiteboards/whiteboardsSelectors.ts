@@ -1,12 +1,16 @@
 import { createSelector } from '@reduxjs/toolkit';
 
-import type {
-  RootState
+import {
+  type RootState,
 } from '@/store';
 
-import type {
-  WhiteboardIdType
+import {
+  type WhiteboardIdType,
 } from '@/types/WebSocketProtocol';
+
+import {
+  type WhiteboardStatusEnum,
+} from '@/store/whiteboards/whiteboardStatusSlice';
 
 export const selectWhiteboardById = (state: RootState, whiteboardId: WhiteboardIdType) => (
   state.whiteboards[whiteboardId]
@@ -28,3 +32,10 @@ export const selectWhiteboardWithCanvases = createSelector(
   [selectWhiteboardById, selectCanvasesForWhiteboard],
   (whiteboard, canvases) => whiteboard ? ({ ...whiteboard, canvases }) : null
 );
+
+export const selectWhiteboardStatus = (
+  state: RootState,
+  whiteboardId: WhiteboardIdType,
+): WhiteboardStatusEnum | undefined => {
+  return state.whiteboardStatus.statusesByWhiteboard[whiteboardId];
+};

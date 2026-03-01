@@ -47,7 +47,7 @@ export const useModal = (): UseModalResult => {
           >
             {/** Actual Modal **/}
             <div
-              className={`fixed bg-white ${className}`}
+              className={`fixed bg-popover text-popover-foreground ${className}`}
             >
               {children}
             </div>

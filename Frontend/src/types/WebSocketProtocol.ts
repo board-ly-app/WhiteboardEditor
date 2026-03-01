@@ -59,10 +59,6 @@ export interface CanvasData extends CanvasAttribs {
   allowedUsers: string[];
 }
 
-export interface CanvasRecord extends CanvasAttribs {
-  whiteboardId: WhiteboardIdType;
-}
-
 export interface WhiteboardAttribs {
   id: WhiteboardIdType;
   name: string;
@@ -74,8 +70,6 @@ export interface WhiteboardAttribs {
 export interface WhiteboardData extends WhiteboardAttribs {
   canvases: CanvasData[];
 }
-
-export type WhiteboardRecord = WhiteboardAttribs;
 
 // ========================== SERVER → CLIENT ==================================
 //
@@ -236,6 +230,10 @@ export interface ServerMessageMergeCanvas {
   canvasId: string;
 }
 
+export interface ServerMessageDeleteWhiteboard {
+  type: 'delete_whiteboard';
+}
+
 export interface ServerMessageIndividualError {
   type: 'individual_error';
   clientId: ClientIdType;
@@ -257,11 +255,12 @@ export type SocketServerMessage =
   | ServerMessageUpdateShapes
   | ServerMessageCreateCanvas
   | ServerMessageDeleteCanvases
-  | ServerMessageIndividualError
-  | ServerMessageBroadcastError
   | ServerMessageUpdateAllowedUsers
   | ServerMessageDeleteCanvasObjects
   | ServerMessageMergeCanvas
+  | ServerMessageDeleteWhiteboard
+  | ServerMessageIndividualError
+  | ServerMessageBroadcastError
 ;
 
 // ========================== CLIENT → SERVER ==================================

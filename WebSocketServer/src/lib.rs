@@ -386,6 +386,7 @@ pub enum ServerSocketMessage {
         client_id: ClientIdType,
         canvas_id: String,
     },
+    DeleteWhiteboard,
     IndividualError {
         client_id: ClientIdType,
         error: ClientError,
@@ -592,6 +593,7 @@ pub struct WhiteboardMetadata {
 #[derive(Clone, Debug)]
 pub struct Whiteboard {
     pub id: WhiteboardIdType,
+    pub is_active: bool,
     pub metadata: WhiteboardMetadata,
     pub canvases: HashMap<CanvasIdType, Canvas>,
     pub root_canvas: CanvasIdType,
@@ -733,6 +735,7 @@ impl WhiteboardMongoDBView {
     pub fn to_whiteboard(&self, canvases: &[Canvas]) -> Whiteboard {
         Whiteboard {
             id: self.id,
+            is_active: true,
             metadata: self.metadata.to_whiteboard_metadata(),
             canvases: canvases.iter()
                 .map(|canvas| (canvas.id, canvas.clone()))

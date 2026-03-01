@@ -37,6 +37,11 @@ export const {
   removeCanvases,
 } = canvasesSlice.actions;
 
+export type CanvasesActions =
+  | ReturnType<typeof setCanvases>
+  | ReturnType<typeof removeCanvases>
+;
+
 export const {
   selectCanvases,
 } = canvasesSlice.selectors;

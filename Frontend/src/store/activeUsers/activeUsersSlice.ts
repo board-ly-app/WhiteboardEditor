@@ -48,4 +48,9 @@ export const {
   removeActiveUsers,
 } = activeUsersSlice.actions;
 
+export type ActiveUsersActions =
+  | ReturnType<typeof setActiveUsers>
+  | ReturnType<typeof removeActiveUsers>
+;
+
 export default activeUsersSlice.reducer;

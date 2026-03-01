@@ -153,4 +153,11 @@ export const {
   removeCurrentEditorsByCanvas,
 } = currentEditorsByCanvasSlice.actions;
 
+export type CurrentEditorsByCanvasActions =
+  | ReturnType<typeof setCurrentEditorsByCanvas>
+  | ReturnType<typeof unsetCurrentEditorsByCanvas>
+  | ReturnType<typeof removeCurrentEditors>
+  | ReturnType<typeof removeCurrentEditorsByCanvas>
+;
+
 export default currentEditorsByCanvasSlice.reducer;
