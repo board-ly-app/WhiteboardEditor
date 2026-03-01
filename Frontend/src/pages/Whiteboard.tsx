@@ -89,7 +89,6 @@ import {
 
 import {
   selectCanvasObjectsByWhiteboard,
-  selectSelectedCanvasObjectsByWhiteboard
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import WhiteboardContext, {
@@ -303,11 +302,6 @@ const Whiteboard = ({
     [dispatch, setCurrentTool]
   );
 
-  // Send delete canvas objects message when the delete key is pressed
-  const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
-    (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(state, whiteboardId)
-  );
-
   const whiteboardStatus = useSelector(
     (state: RootState) => selectWhiteboardStatus(state, whiteboardId)
   );
@@ -342,27 +336,6 @@ const Whiteboard = ({
       }// -- end switch whiteboardStatus
     },
     [whiteboardStatus, navigate]
-  );
-
-  useEffect(
-    () => {
-      const handleKeyDown = (ev: KeyboardEvent) => {
-        switch (ev.key) {
-          case 'Delete':
-          case 'Backspace':
-            clientMessenger?.sendDeleteCanvasObjects({
-              type: 'delete_canvas_objects',
-              canvasObjectIds: selectedCanvasObjects,
-            });
-            break;
-        }
-      };
-
-      window.addEventListener('keydown', handleKeyDown);
-
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    },
-    [clientMessenger, selectedCanvasObjects]
   );
 
   // -- miscellaneous callback functions
