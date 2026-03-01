@@ -141,4 +141,11 @@ export const {
   removeWhiteboards,
 } = activeUsersByWhiteboardSlice.actions;
 
+export type ActiveUsersByWhiteboardActions =
+  | ReturnType<typeof setActiveUsersByWhiteboard>
+  | ReturnType<typeof addActiveUsersByWhiteboard>
+  | ReturnType<typeof removeActiveUsers>
+  | ReturnType<typeof removeWhiteboards>
+;
+
 export default activeUsersByWhiteboardSlice.reducer;

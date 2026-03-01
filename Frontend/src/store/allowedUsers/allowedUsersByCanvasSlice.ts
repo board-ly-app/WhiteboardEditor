@@ -55,6 +55,12 @@ export const {
   removeAllowedUsersByCanvas
 } = allowedUsersByCanvasSlice.actions;
 
+export type AllowedUsersByCanvasActions =
+  | ReturnType<typeof setAllowedUsersByCanvas>
+  | ReturnType<typeof addAllowedUsersByCanvas>
+  | ReturnType<typeof removeAllowedUsersByCanvas>
+;
+
 export const {
   selectAllowedUsersByCanvas
 } = allowedUsersByCanvasSlice.selectors;

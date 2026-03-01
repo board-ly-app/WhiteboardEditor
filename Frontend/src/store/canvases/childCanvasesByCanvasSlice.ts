@@ -149,6 +149,12 @@ export const {
   removeCanvases,
 } = childCanvasesByCanvasSlice.actions;
 
+export type ChildCanvasesByCanvasActions =
+  | ReturnType<typeof setChildCanvasesByCanvas>
+  | ReturnType<typeof addChildCanvasesByCanvas>
+  | ReturnType<typeof removeCanvases>
+;
+
 export const {
   selectChildCanvasesByCanvas,
 } = childCanvasesByCanvasSlice.selectors;

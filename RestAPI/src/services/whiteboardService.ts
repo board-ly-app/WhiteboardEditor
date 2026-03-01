@@ -5,6 +5,8 @@ import {
 // --- local imports
 import {
   Whiteboard,
+  Canvas,
+  Shape,
   type IWhiteboardFull,
   type IWhiteboardAttribView,
   type WhiteboardIdType,
@@ -12,6 +14,7 @@ import {
   type IWhiteboardUserPermissionModel,
   type IWhiteboardUserPermissionById,
   type IWhiteboardUserPermissionByEmail,
+  type ICanvas,
 } from '../models/Whiteboard';
 
 import {
@@ -272,3 +275,54 @@ export const setSharedUsers = async (
     };
   }
 };// -- end setSharedUsers
+
+export type DeleteWhiteboardResType =
+  | { status: 'ok'; }
+  | { status: 'no_whiteboard'; }
+  | { status: 'unauthorized'; }
+;
+
+export const deleteWhiteboardById = async (
+  whiteboardId: WhiteboardIdType,
+  userId: UserIdType,
+): Promise<DeleteWhiteboardResType> => {
+  // ensure whiteboard ID is valid
+  if (! Types.ObjectId.isValid(whiteboardId)) {
+    return { status: "no_whiteboard" };
+  }
+
+  const whiteboard = await Whiteboard.findById(whiteboardId);
+
+  // -- ensure that the user has the proper permissions to delete the whiteboard
+  if (! whiteboard?.user_permissions
+      .filter((perm) => perm.type === 'user')
+      .find((perm) => (perm.user.toHexString() === userId.toHexString()) && (perm.permission === 'own'))) {
+    return { status: 'unauthorized' };
+  }
+
+  const rootCanvasId = whiteboard.root_canvas;
+
+  // recursive function to delete all canvases and their objects, starting from
+  // the root canvas
+  const deleteCanvasById = (canvasId: Types.ObjectId) => {
+    // -- find all child objects and delete
+    Shape.deleteMany({
+      canvas_id: canvasId,
+    });
+
+    // -- find all child canvases and recursively delete them
+    Canvas.find({
+      'parent_canvas.canvas': canvasId,
+    }).then((canvases: ICanvas<Types.ObjectId>[]) => canvases.forEach(canvas => deleteCanvasById(canvas._id)));
+  };// -- end deleteCanvasById
+
+  deleteCanvasById(rootCanvasId);
+
+  // -- delete whiteboard
+  await Whiteboard.deleteOne({
+    _id: whiteboard._id,
+  });
+
+  // -- success
+  return { status: 'ok' };
+};// -- end deleteWhiteboardById

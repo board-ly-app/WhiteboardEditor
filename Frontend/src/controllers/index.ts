@@ -16,6 +16,8 @@ import {
 
 import {
   addWhiteboard,
+  deleteWhiteboard,
+  setWhiteboardStatus,
 } from './whiteboards';
 
 import {
@@ -41,6 +43,8 @@ export {
   removeCurrentEditorsByCanvas,
   setSelectedCanvasByWhiteboard,
   addWhiteboard,
+  deleteWhiteboard,
+  setWhiteboardStatus,
   addActiveUsersByWhiteboard,
   setActiveUsersByWhiteboard,
   removeActiveUsers,
