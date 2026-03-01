@@ -89,6 +89,7 @@ import {
 
 import {
   selectCanvasObjectsByWhiteboard,
+  selectSelectedCanvasObjectsByWhiteboard
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import WhiteboardContext, {
