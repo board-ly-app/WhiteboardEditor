@@ -83,6 +83,12 @@ export const {
   unselectCanvasByWhiteboard,
 } = selectedCanvasByWhiteboardSlice.actions;
 
+export type SelectedCanvasByWhiteboardActions =
+  | ReturnType<typeof setSelectedCanvasByWhiteboard>
+  | ReturnType<typeof unselectCanvas>
+  | ReturnType<typeof unselectCanvasByWhiteboard>
+;
+
 export const {
   selectSelectedCanvasByWhiteboard,
 } = selectedCanvasByWhiteboardSlice.selectors;

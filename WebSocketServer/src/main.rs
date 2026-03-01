@@ -57,16 +57,71 @@ async fn main() -> process::ExitCode {
         },
         Ok(client) => client
     };
-    // broadcaster for initial whiteboard
 
+    // broadcaster for initial whiteboard
     let connection_state_ref = Arc::new(ConnectionState{
         jwt_secret: jwt_secret.clone(),
         next_client_id_index: Mutex::new(0),
-        mongo_client,
+        mongo_client: mongo_client.clone(),
         program_state: ProgramState{
             whiteboards: Mutex::new(HashMap::new()),
         }
     });
+
+    // -- spawn thread to watch for changes to whiteboards collection
+    let whiteboard_deletion_checker_thread = {
+        let connection_state_ref = Arc::clone(&connection_state_ref);
+        let db = match mongo_client.default_database() {
+                None => {
+                    // No database specified in mongo uri
+                    // Print error and disconnect early
+                    panic!("Database connection error; could not fetch whiteboard - no default database defined in mongo uri");
+                },
+                Some(db) => db
+        };
+
+        tokio::spawn(async move {
+            let whiteboard_coll = db.collection::<WhiteboardMongoDBView>("whiteboards");
+            let mut wb_change_stream = match whiteboard_coll.watch().await {
+                Err(e) => panic!("Could not subscribe to change stream on whiteboards collection: {}", e),
+                Ok(stream) => stream,
+            };
+
+            // TODO: replace while-let with loop that includes error logging
+            while let Ok(Some(event)) = wb_change_stream.next().await.transpose() {
+                match event.operation_type {
+                    mongodb::change_stream::event::OperationType::Delete => {
+                        if let Some(doc) = event.document_key {
+                            if let Some(bson::Bson::ObjectId(wb_id)) = doc.get("_id") {
+                                // acquire lock on whiteboards store in connection state
+                                {
+                                    let mut whiteboards = connection_state_ref.program_state.whiteboards.lock().await;
+
+                                    if whiteboards.contains_key(&wb_id) {
+                                        if let Some(whiteboard_entry) = whiteboards.get(&wb_id) {
+                                            // -- We have a whiteboard in the whiteboard store
+
+                                            // Notify subscribed clients that the whiteboard has been
+                                            // deleted
+                                            let _ = whiteboard_entry.broadcaster.send(ServerSocketMessage::DeleteWhiteboard);
+
+                                            // TODO: end connections
+                                            // whiteboard_entry.broadcaster.closed
+                                        }
+
+                                        // delete entry
+                                        whiteboards.remove(&wb_id);
+                                    }
+                                }
+                            }
+                        };
+                    },
+                    // we don't care about any other operations
+                    _ => {},
+                };
+            }// -- end while event
+        })
+    };// -- end let whiteboard_deletion_checker_thread
 
     let connection_state_ref_filter = warp::any().map({
         let connection_state_ref = Arc::clone(&connection_state_ref);
@@ -83,6 +138,10 @@ async fn main() -> process::ExitCode {
     let addr: SocketAddr = ([0, 0, 0, 0], port).into();
     println!("Rust WebSocket server running at ws://{}", addr);
     warp::serve(ws_route).run(addr).await;
+
+    // -- abort and reap whiteboard deletion checker thread
+    let _ = whiteboard_deletion_checker_thread.abort();
+    let _ = whiteboard_deletion_checker_thread.await;
 
     process::ExitCode::SUCCESS
 }// end async fn main()
@@ -261,6 +320,16 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
                 // Handle client messages in this loop until user authenticates
                 while let Some(Ok(msg)) = user_ws_rx.next().await {
                     println!("Client {} sent message ...", current_client_id);
+
+                    // -- check for whiteboard deletion; if whiteboard deleted, break connection
+                    {
+                        let whiteboard = client_state_ref.whiteboard_ref.lock().await;
+
+                        if ! whiteboard.is_active {
+                            return;
+                        }
+                    }
+
                     if let Ok(msg_s) = msg.to_str() {
                         println!("Raw message: {}", msg_s);
 
@@ -579,6 +648,16 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
                 // Once client authenticates, handle client messages in this loop
                 while let Some(Ok(msg)) = user_ws_rx.next().await {
                     println!("Client {} sent message ...", current_client_id);
+
+                    // -- check for whiteboard deletion; if whiteboard deleted, break connection
+                    {
+                        let whiteboard = client_state_ref.whiteboard_ref.lock().await;
+
+                        if ! whiteboard.is_active {
+                            return;
+                        }
+                    }
+
                     if let Ok(msg_s) = msg.to_str() {
                         println!("Raw message: {}", msg_s);
 
@@ -885,7 +964,7 @@ async fn handle_connection(ws: WebSocket, whiteboard_id: WhiteboardIdType, conne
     tokio::select! {
         _ = send_task => {},
         _ = recv_task => {},
-    }
+    };
 
     // Clean up when client disconnects
     {
