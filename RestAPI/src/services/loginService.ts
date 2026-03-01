@@ -110,7 +110,10 @@ export const tempUserLoginService = async (): Promise<CreateTempUserRes> => {
     const saved = await tempUser.save();
   
     const accessToken = jwt.sign(
-      { userId: saved._id, isTemp: true },
+      { 
+        sub: saved._id.toString(),
+        isTemp: true
+      },
       JWT_SECRET,
       { expiresIn: "15m" }
     );
