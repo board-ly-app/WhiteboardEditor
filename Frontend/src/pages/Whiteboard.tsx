@@ -384,6 +384,7 @@ const Whiteboard = ({
         const redirectUrl : string = encodeURIComponent(`${location.pathname}${location.search}`);
 
         navigate(`/login?redirect=${redirectUrl}`);
+        return null;
       }
     }
 
