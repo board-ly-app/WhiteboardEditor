@@ -217,6 +217,7 @@ const whiteboards = [
       {
         type: 'user',
         user: new ObjectId('68d5e8cf829da666aece0101'),  // Alice
+        email: "alice@example.com",
         permission: 'own',
       }
     ],
@@ -230,6 +231,7 @@ const whiteboards = [
       {
         type: 'user',
         user: new ObjectId('68d5e8d4829da666aece0102'), // Bob
+        email: "bob@example.com",
         permission: 'own',
       }
     ],
@@ -243,11 +245,13 @@ const whiteboards = [
       {
         type: 'user',
         user: new ObjectId('68d5e8d4829da666aece0103'), // Carol
+        email: "carol@example.com",
         permission: 'own',
       },
       {
         type: 'user',
         user: new ObjectId('68d5e8cf829da666aece0101'),  // Alice
+        email: "alice@example.com",
         permission: 'edit',
       },
     ],
@@ -261,11 +265,13 @@ const whiteboards = [
       {
         type: 'user',
         user: new ObjectId('68d5e8d4829da666aece0103'), // Carol
+        email: "carol@example.com",
         permission: 'own',
       },
       {
         type: 'user',
         user: new ObjectId('68d5e8cf829da666aece01ff'),  // Non-existent user
+        email: "nobody@example.com",
         permission: 'edit',
       },
     ],
