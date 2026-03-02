@@ -198,9 +198,7 @@ export const handlePatchOwnUser = async (
             message: `User ${userId} is not permanent`
           })
         } else {
-          const origUser = {
-            ...user
-          };
+          const origUser = user.toObject();
           delete patchData.authUser;
           const patchUserRes = await patchUser(user, patchData);
         
@@ -217,9 +215,9 @@ export const handlePatchOwnUser = async (
                 whiteboard.set(
                   'user_permissions',
                   whiteboard.user_permissions.map(perm => {
-                    if ((perm.type === 'user') && (perm.user === origUser._id)) {
+                    if ((perm.type === 'user') && (perm.user.equals(origUser._id))) {
                       return ({
-                        ...perm,
+                        ...perm.toObject(),
                         email: patchUserRes.data.email,
                       });
                     } else {
@@ -228,7 +226,7 @@ export const handlePatchOwnUser = async (
                   })
                 );
 
-                whiteboard.save();
+                await whiteboard.save();
               }// -- end for whiteboard
             }
 
