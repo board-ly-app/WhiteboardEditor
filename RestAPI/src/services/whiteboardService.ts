@@ -64,15 +64,25 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
       // permissions
       let haveSharedUsersChanged = false;
       const sharedUsers: IWhiteboardUserPermissionModel<Types.ObjectId>[] = await Promise.all(whiteboard.user_permissions
-          .filter(perm => (perm.type !== 'user') || ((!! perm.user) && (!! perm.user._id)))
+          .filter(perm => (perm.type !== 'user') || ((!! perm.user) && ((!! perm.user._id) || (!! perm.email))))
           .map(async perm => {
         switch (perm.type) {
           case 'user':
-            return ({
-              type: 'user',
-              user: perm.user._id,
-              permission: perm.permission,
-            }) ;
+            if (((! perm.user) || (! perm.user._id)) && perm.email) {
+              // transform back into an email-type permission
+              return ({
+                  type: 'email',
+                  email: perm.email,
+                  permission: perm.permission,
+              });
+            } else {
+              return ({
+                type: 'user',
+                user: perm.user._id,
+                email: perm.email,
+                permission: perm.permission,
+              }) ;
+            }
           case 'email':
             // check if this email now belongs to a registered user
             const user = await User.findOne({ email: perm.email });
@@ -84,6 +94,7 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
               return ({
                 type: 'user',
                 user: user._id,
+                email: perm.email,
                 permission: perm.permission,
               });
             } else {

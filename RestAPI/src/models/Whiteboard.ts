@@ -538,8 +538,6 @@ sharedUsersArraySchema?.discriminator('user', new Schema<IWhiteboardUserPermissi
           ...fields
         } = obj;
 
-        console.log('!! perm (toAttribView):', this);// TODO: remove debug
-
         return ({
           ...fields,
           user: (this as unknown as IWhiteboardUserPermissionById<IUser>).user.toAttribView(),
