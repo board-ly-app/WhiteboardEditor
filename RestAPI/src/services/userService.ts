@@ -14,6 +14,7 @@ import {
   User,
   PatchPermanentUserData,
   type IUserPublicView,
+  type IPermanentUserPublicView,
   type IUserType,
   IPermanentUser,
 } from "../models/User";
@@ -52,19 +53,19 @@ export const getUserById = async (userId: Types.ObjectId): Promise<GetUserByIdRe
   }
 };// end getUser
 
-export interface PatchUserOkResult {
+export interface PatchPermanentUserOkResult {
   type: 'ok';
-  data: IUserPublicView;
+  data: IPermanentUserPublicView;
 }
 
-export interface PatchUserErrorResult {
+export interface PatchPermanentUserErrorResult {
   type: 'error';
   message: string;
 }
 
-export type PatchUserResult = PatchUserOkResult | PatchUserErrorResult;
+export type PatchPermanentUserResult = PatchPermanentUserOkResult | PatchPermanentUserErrorResult;
 
-export const patchUser = async (user: IPermanentUser, patchData: PatchPermanentUserData): Promise<PatchUserResult> => {
+export const patchUser = async (user: IPermanentUser, patchData: PatchPermanentUserData): Promise<PatchPermanentUserResult> => {
   try {
     const patchDataLocal = { ...patchData };
     const passwordHashed = patchDataLocal.password ? 

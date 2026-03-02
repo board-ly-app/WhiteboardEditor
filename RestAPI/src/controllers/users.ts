@@ -40,6 +40,7 @@ import {
 } from "../models/User";
 
 import {
+  Whiteboard,
   type IWhiteboardPermissionEnum,
 } from '../models/Whiteboard';
 
@@ -166,44 +167,78 @@ export const handlePatchOwnUser = async (
   req: Request<{}, any, PatchPermanentUserRequest>,
   res: Response
 ) => {
-    const { authUser } = req.body;
-    const patchData: Partial<PatchPermanentUserRequest> = ({ ...req.body });
-    const { id: userId } = authUser;
-    const resp = await getUserById(userId);
-
-    switch (resp.status) {
-        case 'bad_request':
-          return res.status(400).json({ message: resp.message });
-        case 'not_found':
-          return res.status(404).json({ message: `User ${userId} not found` });
-        case 'ok':
-        {
-            const {
-              user,
-            } = resp;
-
-            if (! user) {
-              return res.status(400).json({
-                message: `Could not find user with id ${userId}`
+  const {
+    authUser,
+  } = req.body;
+  const patchData: Partial<PatchPermanentUserRequest> = ({
+    ...req.body
+  });
+  const {
+    id: userId,
+  } = authUser;
+  const resp = await getUserById(userId);
+  
+  switch (resp.status) {
+      case 'bad_request':
+        return res.status(400).json({ message: resp.message });
+      case 'not_found':
+        return res.status(404).json({ message: `User ${userId} not found` });
+      case 'ok':
+      {
+        const {
+          user,
+        } = resp;
+        
+        if (! user) {
+          return res.status(400).json({
+            message: `Could not find user with id ${userId}`
+          });
+        } else if (! isIPermanentUser(user)) {
+          return res.status(400).json({
+            message: `User ${userId} is not permanent`
+          })
+        } else {
+          const origUser = {
+            ...user
+          };
+          delete patchData.authUser;
+          const patchUserRes = await patchUser(user, patchData);
+        
+          if (patchUserRes.type === 'error') {
+            return res.status(400).json({ message: patchUserRes.message });
+          } else {
+            // -- update user permissions if email has been changed
+            if (patchUserRes.data.email !== origUser.email) {
+              const usersWhiteboards = await Whiteboard.find({
+                'user_permissions.user': origUser._id,
               });
-            } else if (!isIPermanentUser(user)) {
-              return res.status(400).json({
-                message: `User ${userId} is not permanent`
-              })
-            } else {
-              delete patchData.authUser;
-              const patchUserRes = await patchUser(user, patchData);
 
-              if (patchUserRes.type === 'error') {
-                return res.status(400).json({ message: patchUserRes.message });
-              } else {
-                return res.status(201).json(patchUserRes.data);
-              }
+              for (const whiteboard of usersWhiteboards) {
+                whiteboard.set(
+                  'user_permissions',
+                  whiteboard.user_permissions.map(perm => {
+                    if ((perm.type === 'user') && (perm.user === origUser._id)) {
+                      return ({
+                        ...perm,
+                        email: patchUserRes.data.email,
+                      });
+                    } else {
+                      return perm;
+                    }
+                  })
+                );
+
+                whiteboard.save();
+              }// -- end for whiteboard
             }
+
+            return res.status(201).json(patchUserRes.data);
+          }
         }
-        default:
-          throw new Error(`Unhandled case: ${resp}`);
-    }
+      }
+      default:
+        throw new Error(`Unhandled case: ${resp}`);
+  }
 };// -- end handlePatchOwnUser
 
 // === DELETE /users/me ========================================================
