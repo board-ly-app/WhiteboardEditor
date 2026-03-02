@@ -51,6 +51,14 @@ const users = [
     // password: weakpassword
     passwordHashed: "$2b$10$ihPYYk6dgK/OwTMkBOnlXe9UDcSHNvYSWQe5N0oM11TPwle7EJrH2",
   },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece0106'),
+    kind: "permanent",
+    username: "frank",
+    email: "frank@example.com",
+    // password: weakpassword
+    passwordHashed: "$2b$10$ihPYYk6dgK/OwTMkBOnlXe9UDcSHNvYSWQe5N0oM11TPwle7EJrH2",
+  },
 ];
 
 db.users.insertMany(users);
@@ -159,6 +167,36 @@ const canvases = [
     width: 3000,
     height: 3000,
     name: "Canvas Delta",
+    time_created: new Date("2025-08-01T12:10:00.000Z"),
+    time_last_modified: new Date("2025-08-10T12:10:00.000Z"),
+    // null allowed_users = all users allowed
+    // allowed_users: [],
+  },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece0208'),
+    width: 3000,
+    height: 3000,
+    name: "Canvas Epsilon",
+    time_created: new Date("2025-08-01T12:10:00.000Z"),
+    time_last_modified: new Date("2025-08-10T12:10:00.000Z"),
+    // null allowed_users = all users allowed
+    // allowed_users: [],
+  },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece0209'),
+    width: 3000,
+    height: 3000,
+    name: "Canvas Zeta",
+    time_created: new Date("2025-08-01T12:10:00.000Z"),
+    time_last_modified: new Date("2025-08-10T12:10:00.000Z"),
+    // null allowed_users = all users allowed
+    // allowed_users: [],
+  },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece020a'),
+    width: 3000,
+    height: 3000,
+    name: "Canvas Eta",
     time_created: new Date("2025-08-01T12:10:00.000Z"),
     time_last_modified: new Date("2025-08-10T12:10:00.000Z"),
     // null allowed_users = all users allowed
@@ -273,6 +311,60 @@ const whiteboards = [
         user: new ObjectId('68d5e8cf829da666aece01ff'),  // Non-existent user
         email: "nobody@example.com",
         permission: 'edit',
+      },
+    ],
+  },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece0404'),
+    name: "Project Epsilon",
+    time_created: new Date("2025-08-02T12:10:00.000Z"),
+    root_canvas: new ObjectId('68d5e8d4829da666aece0208'),
+    user_permissions: [
+      {
+        type: 'user',
+        user: new ObjectId('68d5e8d4829da666aece0106'), // Frank
+        email: "frank@example.com",
+        permission: 'own',
+      },
+    ],
+  },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece0405'),
+    name: "Project Zeta",
+    time_created: new Date("2025-08-02T12:10:00.000Z"),
+    root_canvas: new ObjectId('68d5e8d4829da666aece0209'),
+    user_permissions: [
+      {
+        type: 'user',
+        user: new ObjectId('68d5e8d4829da666aece0105'), // Eve
+        email: "eve@example.com",
+        permission: 'own',
+      },
+      {
+        type: 'user',
+        user: new ObjectId('68d5e8d4829da666aece0106'), // Frank
+        email: "frank@example.com",
+        permission: 'edit',
+      },
+    ],
+  },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece0406'),
+    name: "Project Eta",
+    time_created: new Date("2025-08-02T12:10:00.000Z"),
+    root_canvas: new ObjectId('68d5e8d4829da666aece020a'),
+    user_permissions: [
+      {
+        type: 'user',
+        user: new ObjectId('68d5e8d4829da666aece0105'), // Eve
+        email: "eve@example.com",
+        permission: 'own',
+      },
+      {
+        type: 'user',
+        user: new ObjectId('68d5e8d4829da666aece0106'), // Frank
+        email: "frank@example.com",
+        permission: 'view',
       },
     ],
   },
