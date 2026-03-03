@@ -139,6 +139,16 @@ export const getSharedWhiteboardsByUser = async (
       });
     }
 
+    const user = await User.findOne({
+      '_id': userId,
+    });
+
+    if (! user) {
+      return {
+        status: 'user_not_found',
+      };
+    }
+
     const permissionsFilter : object = (() => {
       switch (includePermissionOpts.type) {
         case 'all':
@@ -152,14 +162,33 @@ export const getSharedWhiteboardsByUser = async (
       }
     })();
 
-    const query = ({
-      user_permissions: {
+    const userQuery = (user.kind === 'permanent') ?
+      {
+        '$elemMatch': {
+          '$or': [
+            {
+              type: 'user',
+              user: userId,
+              permission: permissionsFilter,
+            },
+            {
+              type: 'email',
+              email: user.email,
+              permission: permissionsFilter,
+            },
+          ],
+        },
+      }
+      : {
         '$elemMatch': {
           type: 'user',
           user: userId,
           permission: permissionsFilter
         }
-      }
+      };
+
+    const query = ({
+      user_permissions: userQuery,
     });
 
     const whiteboards = await Whiteboard.findAttribs(query);

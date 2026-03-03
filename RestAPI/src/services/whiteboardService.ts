@@ -136,10 +136,27 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
 };// -- end getWhiteboardById
 
 export const getWhiteboardsByOwner = async (ownerId: Types.ObjectId): Promise<IWhiteboardAttribView[]> => {
+  const owner = await User.findOne({
+    '_id': ownerId,
+  });
+
+  if (! owner) {
+    return [] as IWhiteboardAttribView[];
+  }
+
+  const userIdQueries = (owner.kind === 'permanent') ?
+    [
+      { user: ownerId, },
+      { email: owner.email, },
+    ]
+    : [
+      { user: ownerId, },
+    ];
+
   const query = {
     user_permissions: {
       '$elemMatch': {
-        user: ownerId,
+        '$or': userIdQueries,
         permission: 'own',
       },
     },
