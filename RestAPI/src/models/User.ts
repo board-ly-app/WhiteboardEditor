@@ -164,8 +164,7 @@ export type PutPermanentUserRequest = AuthorizedRequestBody & PutPermanentUserDa
 // -- for DELETE
 export interface DeletePermanentUserData {
   // requires additional password confirmation
-  id: Types.ObjectId;
-  password: string;
+  password?: string;
 }
 
 export type DeletePermanentUserRequest = AuthorizedRequestBody & DeletePermanentUserData;

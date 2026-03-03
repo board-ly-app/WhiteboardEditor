@@ -36,6 +36,7 @@ import {
   User,
   type PatchPermanentUserRequest,
   type CreatePermanentUserRequest,
+  type DeletePermanentUserRequest,
   isIPermanentUser,
 } from "../models/User";
 
@@ -245,17 +246,45 @@ export const handlePatchOwnUser = async (
 // 
 // =============================================================================
 export const handleDeleteOwnUser = async (
-  req: Request<{}, any, AuthorizedRequestBody>,
+  req: Request<{}, any, DeletePermanentUserRequest>,
   res: Response
 ) => {
-  const { authUser } = req.body;
-  const { id: userId } = authUser;
+  const {
+    authUser,
+    password,
+  } = req.body;
+  const {
+    id: userId,
+  } = authUser;
+  const user = await User.findOne({
+    '_id': userId,
+  });
+
+  if (! user) {
+    return res.status(404).json({
+      message: 'User not found',
+    });
+  }
+
+  if (user.kind === 'permanent') {
+      // ensure request is authenticated
+      if (! password) {
+        return res.status(400).json({
+          message: 'Password required to delete user',
+        });
+      } else if (! await bcrypt.compare(password, user.passwordHashed)) {
+        return res.status(400).json({
+          message: 'Password incorrect',
+        });
+      }
+  }
+
   const resp = await deleteUser(userId);
 
   if (resp.result === 'err') {
-    res.status(400).json({ message: resp.err });
+    return res.status(400).json({ message: resp.err });
   } else {
-    res.status(200).json(resp.data);
+    return res.status(200).json(resp.data);
   }
 };// -- end handleDeleteOwnUser
 
