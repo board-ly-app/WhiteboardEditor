@@ -110,7 +110,7 @@ const UserAuth = ({
             onClick={handleCreateTrialWhiteboard}
             className="text-h2-text font-medium rounded-lg border-border border-1 p-4 bg-button-600 hover:bg-button-hover hover:cursor-pointer shadow-md"
           >
-            Create a Whiteboard!
+            Try it out!
           </button>
 
           <h2 className="text-2xl md:text-4xl text-h2-text font-thin my-4">
