@@ -172,7 +172,6 @@ export const getSharedWhiteboardsByUser = async (
               permission: permissionsFilter,
             },
             {
-              type: 'email',
               email: user.email,
               permission: permissionsFilter,
             },

@@ -269,6 +269,7 @@ export const setSharedUsers = async (
       return {
         type: 'user',
         user: user._id,
+        email: user.email,
         permission: emailsToPermissions[user.email].permission,
       }
     });

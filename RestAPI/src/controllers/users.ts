@@ -304,8 +304,12 @@ export const handleGetSharedWhiteboardsByUser = async (
   const {
     userId,
   } = req.params;
-  const { authUser } = req.body;
-  const { id: authUserId } = authUser;
+  const {
+    authUser,
+  } = req.body;
+  const {
+    id: authUserId,
+  } = authUser;
 
   const targetUserId = (userId === 'me') ?
     authUserId
