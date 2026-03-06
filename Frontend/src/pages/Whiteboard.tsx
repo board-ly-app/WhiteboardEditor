@@ -153,6 +153,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import HeaderUnauthed from '@/components/HeaderUnauthed';
+import { useUser } from '@/hooks/useUser';
 
 type ComponentStatus = 
   | { status: 'ready'; currWhiteboard: WhiteboardAttribs; }
@@ -174,6 +176,11 @@ const Whiteboard = ({
 }: WhiteboardProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useUser();
+
+  if (!user) {
+    throw new Error('No user found');
+  }
 
   const dispatch = store.dispatch;
 
@@ -581,19 +588,35 @@ const Whiteboard = ({
           title={pageTitle}
         >
           <main>
-            {/* Header */}
-            <HeaderAuthed 
-              title={title}
-              zIndex={10}
-              toolbarElemsLeft={[
-                <ShareWhiteboardButton />,
-                <DeleteWhiteboardButton />,
-              ]}
-              toolbarElemsRight={[
-                <ActiveUsersHeaderDropdown />,
-              ]}
-              noMarginTop={true}
-            />
+            {/* Header - permanent or temp */}
+            {user.kind === 'permanent' ? <>
+              <HeaderAuthed 
+                title={title}
+                zIndex={10}
+                toolbarElemsLeft={[
+                  <ShareWhiteboardButton />,
+                  <DeleteWhiteboardButton />,
+                ]}
+                toolbarElemsRight={[
+                  <ActiveUsersHeaderDropdown />,
+                ]}
+                noMarginTop={true}
+              />
+            </>
+            : <>
+              <HeaderUnauthed
+                title={"Trial Whiteboard"}
+                toolbarElemsLeft={[
+                  (
+                    <HeaderButton 
+                      to={"/login"}
+                      title="Home"
+                    />
+                  ),
+                ]}
+                noMarginTop={true}
+              />
+            </>}
       
             {/* Content */}
             <div className="">
