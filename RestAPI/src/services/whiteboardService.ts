@@ -70,6 +70,7 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
           case 'user':
             if (((! perm.user) || (! perm.user._id)) && perm.email) {
               const user = await User.findOne({
+                kind: 'permanent',
                 email: perm.email,
               });
 
@@ -101,8 +102,10 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
             }
           case 'email':
             // check if this email now belongs to a registered user
-            const user = await User.findOne({ email: perm.email });
-            console.log('!! Found email-identified user:', user);
+            const user = await User.findOne({
+              kind: 'permanent',
+              email: perm.email
+            });
 
             if (user) {
               haveSharedUsersChanged = true;
