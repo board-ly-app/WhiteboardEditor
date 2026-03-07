@@ -69,21 +69,35 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
         switch (perm.type) {
           case 'user':
             if (((! perm.user) || (! perm.user._id)) && perm.email) {
-              // transform back into an email-type permission
+              const user = await User.findOne({
+                email: perm.email,
+              });
+
               haveSharedUsersChanged = true;
 
-              return ({
-                  type: 'email',
+              if (! user) {
+                // transform back into an email-type permission
+                return ({
+                    type: 'email',
+                    email: perm.email,
+                    permission: perm.permission,
+                });
+              } else {
+                // replace with new user document
+                return ({
+                  type: 'user',
+                  user: user._id,
                   email: perm.email,
                   permission: perm.permission,
-              });
+                });
+              }
             } else {
               return ({
                 type: 'user',
                 user: perm.user._id,
                 email: perm.email,
                 permission: perm.permission,
-              }) ;
+              });
             }
           case 'email':
             // check if this email now belongs to a registered user
