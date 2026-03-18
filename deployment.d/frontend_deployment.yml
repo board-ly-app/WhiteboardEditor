@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment.whiteboard_editor.frontend
+  labels:
+    app: whiteboard_editor.frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: whiteboard_editor.frontend
+  template:
+    metadata:
+      labels:
+        app: whiteboard_editor.frontend
+    spec:
+      containers:
+      - name: whiteboard_editor-frontend
+        image: ${WHITEBOARD_EDITOR_CR_URI-whiteboard_editor}/frontend:${WHITEBOARD_EDITOR_TAG-latest}
+        ports:
+        # exposed for testing purposes
+        - ${WHITEBOARD_EDITOR_FRONTEND_PORT-3001}:3000

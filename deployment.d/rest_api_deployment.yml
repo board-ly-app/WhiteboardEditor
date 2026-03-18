@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment.whiteboard_editor.rest_api
+  labels:
+    app: whiteboard_editor.rest_api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: whiteboard_editor.rest_api
+  template:
+    metadata:
+      labels:
+        app: whiteboard_editor.rest_api
+    spec:
+      containers:
+      - name: whiteboard_editor-rest_api
+        image: ${WHITEBOARD_EDITOR_CR_URI-whiteboard_editor}/rest_api:${WHITEBOARD_EDITOR_TAG-latest}
+        ports:
+        # exposed for testing purposes
+        - ${WHITEBOARD_EDITOR_REST_API_PORT-3003}:3000
