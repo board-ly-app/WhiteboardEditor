@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment.whiteboard_editor.web_socket_server
+  labels:
+    app: whiteboard_editor.web_socket_server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: whiteboard_editor.web_socket_server
+  template:
+    metadata:
+      labels:
+        app: whiteboard_editor.web_socket_server
+    spec:
+      containers:
+      - name: whiteboard_editor-web_socket_server
+        image: ${WHITEBOARD_EDITOR_CR_URI-whiteboard_editor}/web_socket_server:${WHITEBOARD_EDITOR_TAG-latest}
+        ports:
+        # exposed for testing purposes
+        - ${WHITEBOARD_EDITOR_WEB_SOCKET_PORT-3002}:3000
