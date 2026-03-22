@@ -14,6 +14,7 @@ import {
   User,
   PatchPermanentUserData,
   type IUserPublicView,
+  type IPermanentUserPublicView,
   type IUserType,
   IPermanentUser,
 } from "../models/User";
@@ -52,19 +53,19 @@ export const getUserById = async (userId: Types.ObjectId): Promise<GetUserByIdRe
   }
 };// end getUser
 
-export interface PatchUserOkResult {
+export interface PatchPermanentUserOkResult {
   type: 'ok';
-  data: IUserPublicView;
+  data: IPermanentUserPublicView;
 }
 
-export interface PatchUserErrorResult {
+export interface PatchPermanentUserErrorResult {
   type: 'error';
   message: string;
 }
 
-export type PatchUserResult = PatchUserOkResult | PatchUserErrorResult;
+export type PatchPermanentUserResult = PatchPermanentUserOkResult | PatchPermanentUserErrorResult;
 
-export const patchUser = async (user: IPermanentUser, patchData: PatchPermanentUserData): Promise<PatchUserResult> => {
+export const patchUser = async (user: IPermanentUser, patchData: PatchPermanentUserData): Promise<PatchPermanentUserResult> => {
   try {
     const patchDataLocal = { ...patchData };
     const passwordHashed = patchDataLocal.password ? 
@@ -138,6 +139,16 @@ export const getSharedWhiteboardsByUser = async (
       });
     }
 
+    const user = await User.findOne({
+      '_id': userId,
+    });
+
+    if (! user) {
+      return {
+        status: 'user_not_found',
+      };
+    }
+
     const permissionsFilter : object = (() => {
       switch (includePermissionOpts.type) {
         case 'all':
@@ -151,14 +162,32 @@ export const getSharedWhiteboardsByUser = async (
       }
     })();
 
-    const query = ({
-      user_permissions: {
+    const userQuery = (user.kind === 'permanent') ?
+      {
+        '$elemMatch': {
+          '$or': [
+            {
+              type: 'user',
+              user: userId,
+              permission: permissionsFilter,
+            },
+            {
+              email: user.email,
+              permission: permissionsFilter,
+            },
+          ],
+        },
+      }
+      : {
         '$elemMatch': {
           type: 'user',
           user: userId,
           permission: permissionsFilter
         }
-      }
+      };
+
+    const query = ({
+      user_permissions: userQuery,
     });
 
     const whiteboards = await Whiteboard.findAttribs(query);

@@ -1,17 +1,20 @@
 import request from "supertest";
 import app from "../src/app";
-import mongoose from 'mongoose';
+import mongoose, {
+  Types,
+} from 'mongoose';
 import jwt from "jsonwebtoken";
 
 // -- imports from models
-import type {
-  IUser,
+import {
+  type IUser,
 } from '../src/models/User';
 
-import type {
-  IWhiteboardAttribView,
-  IWhiteboardUserPermission,
-  IWhiteboardUserPermissionModel,
+import {
+  type IWhiteboard,
+  type IWhiteboardAttribView,
+  type IWhiteboardUserPermission,
+  type IWhiteboardUserPermissionModel,
 } from '../src/models/Whiteboard';
 
 const MONGO_URI = 'mongodb://test_db:27017/testdb';
@@ -884,4 +887,79 @@ describe("Whiteboards API", () => {
     // Ensure the deletion didn't propagate to the database
     expect(await whiteboardCollection.findOne({ _id: whiteboardId })).not.toBeNull();
   });// -- end test case
+
+  it(
+    'should transform user-type permissions back into email-type permissions if the referenced user cannot be found in the database',
+    async () => {
+      const userCollection = mongoose.connection.collection('users');
+      const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+      const ownerName = 'eve';
+      const owner = await userCollection.findOne({
+        username: ownerName,
+      });
+
+      if (! owner) {
+        throw new Error(`Could not find owner named "${ownerName}"`);
+      }
+
+      const whiteboardName = "Project Theta";
+      const whiteboardOrig = await whiteboardCollection.findOne({
+        name: whiteboardName,
+      }) as IWhiteboard<Types.ObjectId, Types.ObjectId>;
+
+      if (! whiteboardOrig) {
+        throw new Error(`Could not find whiteboard "${whiteboardName}"`);
+      }
+
+      const deletedUserEmail = 'substitute@example.com';
+
+      // ensure that we start with two user-type permissions
+      expect(whiteboardOrig.user_permissions.filter(perm => perm.type === 'user').length)
+        .toBe(2);
+
+      // perform GET /whiteboards/:id
+
+      // Generate signed JWT
+      const authToken = jwt.sign(
+        { sub: owner._id.toHexString() },   // sub = subject claim
+        JWT_SECRET,
+        { expiresIn: 999999999 }
+      );
+
+      const resp = await request(app)
+        .get(`/api/v1/whiteboards/${whiteboardOrig._id.toHexString()}`)
+        .set("Authorization", `Bearer ${authToken}`)
+        .send()
+        .expect(200);
+
+      // ensure permissions are set correctly in the response body
+      expect(resp.body).toHaveProperty('user_permissions');
+      expect(resp.body.user_permissions.length).toBe(2);
+      expect(resp.body.user_permissions
+        .filter((perm: IWhiteboardUserPermission<Types.ObjectId>) => perm.type === 'email').length)
+        .toBe(1);
+
+      // ensure permissions were properly written back to database
+      const whiteboardUpdated = await whiteboardCollection.findOne({
+        name: whiteboardName,
+      }) as IWhiteboard<Types.ObjectId, Types.ObjectId>;
+
+      if (! whiteboardUpdated) {
+        throw new Error(`Could not find whiteboard "${whiteboardName}"`);
+      }
+
+      expect(whiteboardUpdated).toHaveProperty('user_permissions');
+      expect(whiteboardUpdated.user_permissions.length).toBe(2);
+      expect(whiteboardUpdated.user_permissions
+        .filter((perm: IWhiteboardUserPermission<Types.ObjectId>) => perm.type === 'email').length)
+        .toBe(1);
+      expect(whiteboardUpdated.user_permissions
+        .find((perm: IWhiteboardUserPermission<Types.ObjectId>) => perm.type === 'email'))
+        .not.toBeNull();
+      expect(whiteboardUpdated.user_permissions
+        .find((perm: IWhiteboardUserPermission<Types.ObjectId>) => perm.type === 'email')?.email)
+        .toBe(deletedUserEmail);
+    }
+  );
 });

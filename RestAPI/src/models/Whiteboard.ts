@@ -321,6 +321,7 @@ export interface IWhiteboardUserPermissionBase {
 export interface IWhiteboardUserPermissionById <UserType> extends IWhiteboardUserPermissionBase {
   type: 'user';
   user: UserType;
+  email?: string;
 }
 
 export interface IWhiteboardUserPermissionByEmail extends IWhiteboardUserPermissionBase {
@@ -508,6 +509,7 @@ const sharedUsersArraySchema = whiteboardSchema.path('user_permissions').schema;
 sharedUsersArraySchema?.discriminator('user', new Schema<IWhiteboardUserPermissionById<Types.ObjectId>>(
   {
     user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    email: { type: Schema.Types.String, required: false },
   },
   {
     // -- serialization options
@@ -535,8 +537,6 @@ sharedUsersArraySchema?.discriminator('user', new Schema<IWhiteboardUserPermissi
           user: _user,
           ...fields
         } = obj;
-
-        console.log('!! perm (toAttribView):', this);// TODO: remove debug
 
         return ({
           ...fields,
