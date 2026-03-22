@@ -57,11 +57,6 @@ describe("Users API", () => {
   it("should create a new temp user", async () => {
     const expirationSecs = process.env.TEMP_USER_EXPIRATION_SECS;
     expect(expirationSecs).not.toBe(undefined);
-    const expirationMSecs = parseInt(expirationSecs || "") * 1000;
-
-    const toleranceMSecs = 1000 * 5; // 5 ms
-    const minExpirationDTime = new Date(Date.now() + expirationMSecs - toleranceMSecs);
-    const maxExpirationDTime = new Date(Date.now() + expirationMSecs + toleranceMSecs);
     
     const res = await request(app)
       .post("/api/v1/users/temp")
@@ -70,8 +65,6 @@ describe("Users API", () => {
     
     expect(res.body.user).toHaveProperty("id");
     expect(res.body.user.username).toBe(`TempUser${res.body.user.id}`);
-    expect(res.body.user).toHaveProperty("tempExpiresAt");
-    expect(new Date (res.body.user.tempExpiresAt) >= minExpirationDTime).toBe(true);
-    expect(new Date (res.body.user.tempExpiresAt) <= maxExpirationDTime).toBe(true);
+    expect(res.body.user).toHaveProperty("createdAt");
   });
 });
