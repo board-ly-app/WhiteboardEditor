@@ -139,6 +139,7 @@ export const handleCreateWhiteboard = async (
         return {
           type: 'user',
           user: user._id,
+          email: user.email,
           permission: collaboratorPermissionsByEmail[user.email].permission,
         }
       });
