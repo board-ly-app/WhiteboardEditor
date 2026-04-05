@@ -4,8 +4,11 @@ import {
   type ReactNode,
 } from 'react';
 
+import {
+  type User,
+} from '@/types/APIProtocol';
+
 import type {
-  User,
   AuthContextType,
 } from '@/types/UserAuth';
 

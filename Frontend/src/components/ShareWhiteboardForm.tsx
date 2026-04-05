@@ -38,20 +38,43 @@ const ShareWhiteboardForm = ({
   onSubmit
 }: ShareWhiteboardFormProps): React.JSX.Element => {
   // -- prop-derived state
-  const initPermissionsByEmail: Record<string, UserPermission> = Object.fromEntries(
+  const initPermissionsByKey: Record<string, UserPermission> = Object.fromEntries(
     initUserPermissions.map(perm => {
       switch (perm.type) {
         case 'email':
-          return [perm.email, perm];
+        {
+            const key = `email:${perm.email}`;
+
+            return [key, perm];
+        }
+        case 'user':
+        {
+            switch (perm.user.kind) {
+              case 'permanent':
+              {
+                  const key = `email:${perm.user.email}`;
+
+                  return [key, perm];
+              }
+              case 'temp':
+              {
+                  const key = `username:${perm.user.username}`;
+
+                  return [key, perm];
+              }
+              default:
+                throw new Error(`Unrecognized user type: ${perm.user}`);
+            }// -- end switch (perm.user.kind)
+        }
         default:
-          return [perm.user.email, perm];
+          throw new Error(`Unrecognized permission type: ${perm}`);
       }
     })
   );
 
   // -- managed state
-  const [permissionsByEmail, setPermissionsByEmail] = useState<Record<string, UserPermission>>(
-    initPermissionsByEmail
+  const [permissionsByKey, setPermissionsByKey] = useState<Record<string, UserPermission>>(
+    initPermissionsByKey
   );
   const [newEmail, setNewEmail] = useState<string>("");
   const [newUserPermType, setNewUserPermType] = useState<UserPermissionEnum>(
@@ -59,7 +82,7 @@ const ShareWhiteboardForm = ({
   );
 
   // -- derived state
-  const permissions: UserPermission[] = Object.values(permissionsByEmail);
+  const permissions: UserPermission[] = Object.values(permissionsByKey);
 
   const handleChangeNewEmail = (ev: React.ChangeEvent<HTMLInputElement>) => {
     ev.preventDefault();
@@ -76,7 +99,7 @@ const ShareWhiteboardForm = ({
 
     setNewEmail(newEmail => {
       if (newEmail) {
-        setPermissionsByEmail(prev => ({
+        setPermissionsByKey(prev => ({
           ...prev,
           [newEmail]: ({
             type: 'email',
@@ -90,30 +113,67 @@ const ShareWhiteboardForm = ({
     });
   };
 
-  const makeHandleRemoveEmail = (email: string) => () => {
-    setPermissionsByEmail(prev => {
-      const next = ({ ...prev });
+  const makeHandleRemoveByKey = (key: string) => () => {
+    setPermissionsByKey(prev => {
+      const {
+        [key]: _removed,
+        ...filtered
+      } = prev;
 
-      delete next[email];
-
-      return next;
+      return filtered;
     });
   };
 
   const RemovablePermission = (perm: UserPermission): React.JSX.Element => {
     // as an entry in a table
-    const email: string = perm.type === 'email' ? perm.email : perm.user.email;
-    const username: string = perm.type === 'user' ? perm.user.username : '-';
-    const { permission } = perm;
+    const FIELD_UNAVAILABLE = '-';
+
+    let email : string | null;
+    switch (perm.type) {
+      case 'user':
+        switch (perm.user.kind) {
+          case 'temp':
+            email = null;
+            break;
+          case 'permanent':
+            email = perm.user.email;
+            break;
+          default:
+            throw new Error(`Unrecognized user format: ${perm.user}`);
+        }
+        break;
+      case 'email':
+        email = perm.email;
+        break;
+      default:
+        throw new Error(`Unrecognized permission type: ${perm}`);
+    }// -- end switch (perm.type)
+
+    const username: string | null = perm.type === 'user' ? perm.user.username : null;
+
+    const {
+      permission,
+    } = perm;
+
+    let key : string;
+    if (email) {
+      key = `email:${email}`;
+    } else if (username) {
+      key = `username:${username}`;
+    } else {
+      throw new Error(
+        `Either email or username must be present on permission in order to form unique ID`
+      );
+    }
 
     return (
-      <tr key={email}>
-        <td className="text-center">{email}</td>
-        <td className="text-center">{username}</td>
+      <tr key={key}>
+        <td className="text-center">{email || FIELD_UNAVAILABLE}</td>
+        <td className="text-center">{username || FIELD_UNAVAILABLE}</td>
         <td className="text-center">{permission}</td>
         <td className="text-center">
           <button
-            onClick={makeHandleRemoveEmail(email)}
+            onClick={makeHandleRemoveByKey(key)}
             className="hover:cursor-pointer p-1 inline-block align-middle"
           >
             <X size={18} />
@@ -127,7 +187,7 @@ const ShareWhiteboardForm = ({
     ev.preventDefault();
 
     const data: ShareWhiteboardFormData = ({
-      userPermissions: Object.values(permissionsByEmail)
+      userPermissions: Object.values(permissionsByKey)
     });
 
     onSubmit(data);

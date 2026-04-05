@@ -203,7 +203,7 @@ function WhiteboardCard({
                     <li key={`email:${perm.email}`}>
                       <UserTagEmail
                         size="small"
-                        user={{ email: perm.email }}
+                        email={perm.email}
                         note={
                           <span> ({permissionTypeToUserRole(perm.permission)})</span>
                         }

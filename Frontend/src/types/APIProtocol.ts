@@ -26,11 +26,26 @@ export type ObjectIdType = string;
 // Basic data about a user.
 //
 // =============================================================================
-export interface User {
+
+interface UserBase {
   id: string;
-  email: string;
   username: string;
 }
+
+export interface PermanentUser extends UserBase {
+  kind: 'permanent';
+  email: string;
+}
+
+export interface TempUser extends UserBase {
+  kind: 'temp';
+  createdAt: Date;
+}
+
+export type User =
+  | PermanentUser
+  | TempUser
+;
 
 // === UserPermissionEnum ======================================================
 //

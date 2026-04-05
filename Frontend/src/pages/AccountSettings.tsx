@@ -32,12 +32,14 @@ import {
 
 import {
   type User,
+  type PermanentUser,
 } from '@/types/APIProtocol';
+
 import Footer from "@/components/Footer";
 
 // -- type definitions
 type ProfileType = Pick<User, 'username'>;
-type SecureFieldsType = Pick<User, 'email'> & {
+type SecureFieldsType = Pick<PermanentUser, 'email'> & {
   currentPassword: string;
   newPassword: string;
   confirmNewPassword: string;
@@ -123,9 +125,24 @@ export default function AccountSettings() {
     [api, setUser, navigate, locationEncoded]
   );
 
+  const defaultEmail : string = (() => {
+    if (! user) {
+      return "";
+    } else {
+      switch (user.kind) {
+        case 'permanent':
+          return user.email;
+        case 'temp':
+          return "";
+        default:
+          throw new Error(`Unrecognized user type: ${user}`);
+      }// -- end switch (user.kind)
+    }
+  })();
+
   const securityForm = useForm({
     defaultValues: {
-      email: user?.email || "",
+      email: defaultEmail,
       currentPassword: "",
       newPassword: "",
       confirmNewPassword: "",
