@@ -123,7 +123,7 @@ export interface Canvas {
 // server.
 //
 // =============================================================================
-export interface Whiteboard {
+interface WhiteboardBase {
   id: string;
   name: string;
   time_created: Date;
@@ -131,6 +131,19 @@ export interface Whiteboard {
   user_permissions: UserPermission[];
   canvases?: Canvas[];
 }
+
+export interface TempWhiteboard extends WhiteboardBase {
+  kind: 'temp';
+}
+
+export interface PermanentWhiteboard extends WhiteboardBase {
+  kind: 'permanent';
+}
+
+export type Whiteboard =
+  | TempWhiteboard
+  | PermanentWhiteboard
+;
 
 // === AuthLoginSuccessResponse ================================================
 //
