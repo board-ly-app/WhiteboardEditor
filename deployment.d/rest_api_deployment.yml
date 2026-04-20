@@ -1,22 +1,43 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: deployment.whiteboard_editor.rest_api
+  name: whiteboard-editor-rest-api
   labels:
-    app: whiteboard_editor.rest_api
+    app: whiteboard-editor.rest-api
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: whiteboard_editor.rest_api
+      app: whiteboard-editor-rest-api
   template:
     metadata:
       labels:
-        app: whiteboard_editor.rest_api
+        app: whiteboard-editor-rest-api
     spec:
       containers:
-      - name: whiteboard_editor-rest_api
-        image: ${WHITEBOARD_EDITOR_CR_URI-whiteboard_editor}/rest_api:${WHITEBOARD_EDITOR_TAG-latest}
+      - name: whiteboard-editor-rest-api
+        image: ${WHITEBOARD_EDITOR_CR_URI}/rest_api:${WHITEBOARD_EDITOR_TAG}
+        imagePullPolicy: Never
         ports:
-        # exposed for testing purposes
-        - ${WHITEBOARD_EDITOR_REST_API_PORT-3003}:3000
+          - containerPort: 3000
+        env:
+          - name: MONGO_URI
+            valueFrom:
+              configMapKeyRef:
+                name: whiteboard-editor
+                key: mongo_uri
+          - name: JWT_SECRET
+            valueFrom:
+              configMapKeyRef:
+                name: whiteboard-editor
+                key: jwt_secret
+          - name: JWT_EXPIRATION_SECS
+            valueFrom:
+              configMapKeyRef:
+                name: whiteboard-editor
+                key: jwt_expiration_secs
+          - name: TEMP_USER_EXPIRATION_SECS
+            valueFrom:
+              configMapKeyRef:
+                name: whiteboard-editor
+                key: temp_user_expiration_secs

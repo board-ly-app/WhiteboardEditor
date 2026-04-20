@@ -1,22 +1,33 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: deployment.whiteboard_editor.web_socket_server
+  name: whiteboard-editor-web-socket-server
   labels:
-    app: whiteboard_editor.web_socket_server
+    app: whiteboard-editor.web-socket-server
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: whiteboard_editor.web_socket_server
+      app: whiteboard-editor.web-socket-server
   template:
     metadata:
       labels:
-        app: whiteboard_editor.web_socket_server
+        app: whiteboard-editor.web-socket-server
     spec:
       containers:
-      - name: whiteboard_editor-web_socket_server
-        image: ${WHITEBOARD_EDITOR_CR_URI-whiteboard_editor}/web_socket_server:${WHITEBOARD_EDITOR_TAG-latest}
+      - name: whiteboard-editor-web-socket-server
+        image: ${WHITEBOARD_EDITOR_CR_URI}/web_socket_server:${WHITEBOARD_EDITOR_TAG}
+        imagePullPolicy: Never
         ports:
-        # exposed for testing purposes
-        - ${WHITEBOARD_EDITOR_WEB_SOCKET_PORT-3002}:3000
+          - containerPort: 3000
+        env:
+          - name: MONGO_URI
+            valueFrom:
+              configMapKeyRef:
+                name: whiteboard-editor
+                key: mongo_uri
+          - name: JWT_SECRET
+            valueFrom:
+              configMapKeyRef:
+                name: whiteboard-editor
+                key: jwt_secret

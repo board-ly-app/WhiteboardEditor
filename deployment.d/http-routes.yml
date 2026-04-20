@@ -1,0 +1,56 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: whiteboard-editor-rest-api
+spec:
+  parentRefs:
+  - name: gateway
+    sectionName: http
+  hostnames:
+  - "${WHITEBOARD_EDITOR_DOMAIN}"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+    - name: whiteboard-editor.rest-api
+      port: 3000
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: whiteboard-editor-web-socket-server
+spec:
+  parentRefs:
+  - name: gateway
+    sectionName: http
+  hostnames:
+  - "${WHITEBOARD_EDITOR_DOMAIN}"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /ws
+    backendRefs:
+    - name: whiteboard-editor.web-socket-server
+      port: 3000
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: whiteboard-editor-frontend
+spec:
+  parentRefs:
+  - name: gateway
+    sectionName: http
+  hostnames:
+  - "${WHITEBOARD_EDITOR_DOMAIN}"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: whiteboard-editor.frontend
+      port: 3000
