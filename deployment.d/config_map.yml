@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: whiteboard-editor
+  namespace: whiteboard-editor
 data:
   # Database
   mongo_uri: "${WHITEBOARD_EDITOR_MONGO_URI}"

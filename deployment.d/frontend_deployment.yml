@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: whiteboard-editor-frontend
+  namespace: whiteboard-editor
   labels:
     app: whiteboard-editor.frontend
 spec:

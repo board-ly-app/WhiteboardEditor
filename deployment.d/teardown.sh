@@ -1,25 +1,33 @@
 #!/bin/bash -v
 
 # -- Source environment variables from .env
+set -a
+source .env
 
-# -- Apply configmap
+# -- Remove namespaces
+kubectl delete -f <(envsubst < deployment.d/namespaces.yml)
+
+# -- Remove configmap
 kubectl delete -f <(envsubst < deployment.d/config_map.yml)
 
-# -- Deploy frontend pods
+# -- Delete frontend pods
 kubectl delete -f <(envsubst < deployment.d/frontend_deployment.yml)
 
-# -- Deploy frontend service
+# -- Delete frontend service
 kubectl delete -f <(envsubst < deployment.d/frontend_service.yml)
 
-# -- Deploy rest_api pods
+# -- Delete rest_api pods
 kubectl delete -f <(envsubst < deployment.d/rest_api_deployment.yml)
 
-# -- Deploy rest_api service
+# -- Delete rest_api service
 kubectl delete -f <(envsubst < deployment.d/rest_api_service.yml)
 
-# -- Deploy web_socket_server pods
+# -- Delete web_socket_server pods
 kubectl delete -f <(envsubst < deployment.d/web_socket_server_deployment.yml)
 
-# -- Deploy web_socket_server service
+# -- Delete web_socket_server service
 kubectl delete -f <(envsubst < deployment.d/web_socket_server_service.yml)
 
+# -- Delete gateway
+kubectl delete -f <(envsubst < deployment.d/http-routes.yml)
+kubectl delete -f <(envsubst < deployment.d/gateway.yml)

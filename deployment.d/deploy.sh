@@ -15,6 +15,9 @@ kind load docker-image "whiteboard_editor/frontend:latest"
 kind load docker-image "whiteboard_editor/rest_api:latest"
 kind load docker-image "whiteboard_editor/web_socket_server:latest"
 
+# -- Set up namespaces
+kubectl apply -f <(envsubst < deployment.d/namespaces.yml)
+
 # -- Apply configmap
 kubectl apply -f <(envsubst < deployment.d/config_map.yml)
 
