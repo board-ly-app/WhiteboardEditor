@@ -12,11 +12,11 @@ spec:
     port: 80
     allowedRoutes:
       namespaces:
-        from: All
+        from: Same
   - name: https
     hostname: "*.${WHITEBOARD_EDITOR_DOMAIN}"
     protocol: HTTPS
     port: 443
     allowedRoutes:
       namespaces:
-        from: All
+        from: Same
