@@ -22,23 +22,25 @@ spec:
         ports:
           - containerPort: 3000
         env:
+          # Values should be stored in generic secret named
+          # whiteboard-editor-config, which contains contents of .env file.
           - name: MONGO_URI
             valueFrom:
-              configMapKeyRef:
-                name: whiteboard-editor
-                key: mongo_uri
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_MONGO_URI
           - name: JWT_SECRET
             valueFrom:
-              configMapKeyRef:
-                name: whiteboard-editor
-                key: jwt_secret
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_JWT_SECRET
           - name: JWT_EXPIRATION_SECS
             valueFrom:
-              configMapKeyRef:
-                name: whiteboard-editor
-                key: jwt_expiration_secs
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_JWT_EXPIRATION_SECS
           - name: TEMP_USER_EXPIRATION_SECS
             valueFrom:
-              configMapKeyRef:
-                name: whiteboard-editor
-                key: temp_user_expiration_secs
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_TEMP_USER_EXPIRATION_SECS

@@ -8,9 +8,6 @@ source .env
 kubectl delete -f <(envsubst < deployment.d/http-routes.yml)
 kubectl delete -f <(envsubst < deployment.d/gateway.yml)
 
-# -- Remove configmap
-kubectl delete -f <(envsubst < deployment.d/config_map.yml)
-
 # -- Delete frontend pods
 kubectl delete -f <(envsubst < deployment.d/frontend_deployment.yml)
 
