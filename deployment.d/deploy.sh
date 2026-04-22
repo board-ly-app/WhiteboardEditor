@@ -1,5 +1,17 @@
 #!/bin/bash -ve
 
+# === deploy.sh ================================================================
+#
+# Script to set up deployment in kubernetes using kind.
+#
+# This deployment script assumes the following:
+#   - The .env file is filled out and present in the current working directory
+#   - kind is installed on the system
+#   - kubectl is installed on the system
+#   - The oci images are present on the system
+# 
+# ==============================================================================
+
 # -- Source environment variables from .env
 set -a
 source .env
@@ -17,6 +29,9 @@ kind load docker-image "whiteboard_editor/web_socket_server:latest"
 
 # -- Set up namespaces
 kubectl apply -f <(envsubst < deployment.d/namespaces.yml)
+
+# -- Set up secrets
+kubectl -n whiteboard-editor create secret generic whiteboard-editor-config --from-env-file .env
 
 # -- Deploy frontend pods
 kubectl apply -f <(envsubst < deployment.d/frontend_deployment.yml)

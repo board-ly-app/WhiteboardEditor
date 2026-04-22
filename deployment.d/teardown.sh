@@ -26,5 +26,8 @@ kubectl delete -f <(envsubst < deployment.d/web_socket_server_deployment.yml)
 # -- Delete web_socket_server service
 kubectl delete -f <(envsubst < deployment.d/web_socket_server_service.yml)
 
+# -- Remove secrets
+kubectl -n whiteboard-editor delete secret whiteboard-editor-config
+
 # -- Remove namespaces
 kubectl delete -f <(envsubst < deployment.d/namespaces.yml)
