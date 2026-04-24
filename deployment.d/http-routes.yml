@@ -35,6 +35,10 @@ spec:
     - path:
         type: PathPrefix
         value: /ws
+    timeouts:
+      # -- no timeouts - this is a web socket
+      request: 0s
+      backendRequest: 0s
     backendRefs:
     - name: web-socket-server-service
       namespace: whiteboard-editor
