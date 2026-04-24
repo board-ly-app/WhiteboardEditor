@@ -67,10 +67,10 @@ const UserAuth = ({
         collaboratorPermissions: [],
         width: 3000,
         height: 3000
-      }
+      };
 
-      const whiteboardResp = await api.post('/whiteboards', tempWhiteboardData);
-      console.log("whiteboardResp: ", whiteboardResp);
+      const whiteboardResp = await api.post('/whiteboards/temp', tempWhiteboardData);
+      console.log("tempWhiteboardResp: ", whiteboardResp);
 
       const {
         id,
