@@ -24,6 +24,13 @@ spec:
     hostname: "*.${WHITEBOARD_EDITOR_DOMAIN}"
     protocol: HTTPS
     port: 443
+    tls:
+      mode: Terminate
+      certificateRefs:
+        - kind: Secret
+          group: ""
+          name: cert-default
+          namespace: whiteboard-editor
     allowedRoutes:
       namespaces:
         from: Same

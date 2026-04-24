@@ -74,8 +74,13 @@ kind load docker-image "whiteboard_editor/web_socket_server:latest"
 # -- Set up namespaces
 kubectl apply -f <(envsubst < namespaces.yml)
 
-# -- Set up secrets
+# -- Set up generic secrets
 kubectl -n whiteboard-editor create secret generic whiteboard-editor-config --from-env-file ../.env
+
+# -- Set up tls secret
+kubectl -n whiteboard-editor create secret tls cert-default \
+  --cert=../.secrets/cert.pem \
+  --key=../.secrets/key.pem
 
 # -- Deploy frontend pods
 kubectl apply -f <(envsubst < frontend_deployment.yml)
