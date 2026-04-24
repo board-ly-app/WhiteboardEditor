@@ -7,8 +7,6 @@ spec:
   parentRefs:
   - name: gateway
     namespace: whiteboard-editor
-  hostnames:
-  - "*.${WHITEBOARD_EDITOR_DOMAIN}"
   rules:
   - matches:
     - path:
@@ -28,8 +26,6 @@ spec:
   parentRefs:
   - name: gateway
     namespace: whiteboard-editor
-  hostnames:
-  - "*.${WHITEBOARD_EDITOR_DOMAIN}"
   rules:
   - matches:
     - path:
@@ -53,8 +49,6 @@ spec:
   parentRefs:
   - name: gateway
     namespace: whiteboard-editor
-  hostnames:
-  - "*.${WHITEBOARD_EDITOR_DOMAIN}"
   rules:
   - matches:
     - path:
