@@ -126,18 +126,21 @@ export interface Canvas {
 interface WhiteboardBase {
   id: string;
   name: string;
-  time_created: Date;
   thumbnail_url: string;
   user_permissions: UserPermission[];
   canvases?: Canvas[];
 }
 
+// the temp 'createdAt' is used for automatic deletion after expire time
 export interface TempWhiteboard extends WhiteboardBase {
-  kind: 'temp';
+  kind: 'temp_whiteboard';
+  createdAt: Date;
 }
 
+// the permanent 'time_created' is used for general documentation of creation time
 export interface PermanentWhiteboard extends WhiteboardBase {
-  kind: 'permanent';
+  kind: 'permanent_whiteboard';
+  time_created: Date;
 }
 
 export type Whiteboard =
