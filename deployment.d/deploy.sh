@@ -15,9 +15,27 @@
 # -- Change working directory to deployment.d
 cd "$(dirname "$0")"
 
+# -- Save current environment to tempfile
+OLD_ENV_FILE="$(mktemp prev-XXXXX.env)"
+
+cleanup() {
+  [[ -f "${OLD_ENV_FILE}" ]] && shred -u "${OLD_ENV_FILE}"
+
+  exit 0
+}
+
+trap cleanup EXIT
+
+printenv | (grep -e '^WHITEBOARD_EDITOR_' > "${OLD_ENV_FILE}") || true
+
 # -- Source environment variables from .env
 set -a
 source ../.env
+
+# -- Re-source old environment, to ensure variables defined outside the .env
+# file take precedence.
+source "${OLD_ENV_FILE}"
+shred -u "${OLD_ENV_FILE}"
 
 # -- Ensure kind is running
 if [[ $(kind get clusters | wc -l) -lt 1 ]]
