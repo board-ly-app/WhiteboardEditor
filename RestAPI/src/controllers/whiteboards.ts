@@ -162,6 +162,7 @@ export const handleCreateWhiteboard = async (
 
     const whiteboard = new Whiteboard({
       name,
+      kind: 'permanent_whiteboard',
       root_canvas: rootCanvas._id,
       thumbnail_url: null,
       user_permissions: [ownerPermission, ...collaboratorPermissionsFinal]
@@ -178,6 +179,53 @@ export const handleCreateWhiteboard = async (
     res.status(500).json({ message: "Unexpected server error" });
   }
 };// -- end handleCreateWhiteboard
+
+export const handleCreateTempWhiteboard = async (
+  req: Request<{}, any, CreateWhiteboardRequest, {}>,
+  res: Response
+) => {
+  try {
+    const { authUser, name } = req.body;
+    const { id: ownerId } = authUser;
+    console.log("handleCreateTempWhiteboard req.body: ", req.body);
+    
+    // Give owner 'own' permission for user_permissions
+    const ownerPermission: IWhiteboardUserPermissionModel<Types.ObjectId> = {
+      type: 'user',
+      user: ownerId,
+      permission: 'own',
+    };
+
+    // initialize every new whiteboard with a single empty canvas
+    const rootCanvasModel = new Canvas({
+      name: "Main Canvas",
+      width: req.body.width,
+      height: req.body.height,
+      allowed_users: [],
+    });
+
+    const rootCanvas = await rootCanvasModel.save();
+
+    const whiteboard = new Whiteboard({
+      name,
+      kind: 'temp_whiteboard',
+      root_canvas: rootCanvas._id,
+      thumbnail_url: null,
+      user_permissions: [ownerPermission],
+      createdAt: new Date(Date.now())
+    });
+
+    console.log('Attempting to create new temp whiteboard:', whiteboard);
+
+    const whiteboardOut = await whiteboard.save()
+      .then(wb => wb.populateFull());
+    
+    res.status(201).json(whiteboardOut.toPublicView());
+  } catch (err: any) {
+    console.log('Server Error:', err);
+    res.status(500).json({ message: "Unexpected server error" });
+  }
+};// -- end handleCreateTempWhiteboard
 
 // -- Get user's own whiteboards
 export const handleGetOwnWhiteboards = async (
