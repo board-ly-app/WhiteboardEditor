@@ -239,8 +239,6 @@ const userSchema = new Schema<IUser, UserModelType, {}, {}, IUserVirtual>(
     toJSON: {
       virtuals: true,
     },
-
-    // TTL index to delete temporary users on expiration
   }
 );// -- end userSchema
 

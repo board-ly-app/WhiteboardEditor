@@ -32,6 +32,12 @@ const SHAPE_TYPE_ENUM = [
   'vector',
 ];
 
+if (! process.env.TEMP_WHITEBOARD_EXPIRATION_SECS) {
+  throw new Error('TEMP_WHITEBOARD_EXPIRATION_SECS not set in environment');
+}
+
+const TEMP_WHITEBOARD_EXPIRATION_SECS = parseInt(process.env.TEMP_WHITEBOARD_EXPIRATION_SECS);
+
 export interface IShapeModel {
   type: ShapeTypeEnum;
   // other shape fields vary by shape
@@ -358,15 +364,37 @@ const whiteboardUserPermissionSchema = new Schema<IWhiteboardUserPermission <Typ
   }
 );
 
+export type WhiteboardTypeEnum =
+  | "permanent_whiteboard"
+  | "temp_whiteboard"
+;
+
+// === IWhiteboard ========================================================================
+//  
+// Base whiteboard model containing fields shared by all whiteboard types in the system.
+// 
+// ========================================================================================
 export interface IWhiteboardModel <UserType, CanvasType> {
   name: string;
-  time_created: Date;
   root_canvas: CanvasType;
   thumbnail_url: string;
+  kind: WhiteboardTypeEnum;
 
   // -- vector fields: exclude from attribute view
   user_permissions: IWhiteboardUserPermission<UserType>[];
 }
+
+// === Base Data Transfer Objects ===================================================
+
+type WhiteboardVectorFields = 
+  | "canvases"
+;
+
+export type IWhiteboardDocument <UserType, CanvasType> = IWhiteboardModel <UserType, CanvasType>;
+
+export type IWhiteboardPublicView = ViewDocument<IWhiteboardDocument <IUser, ICanvas<IUser>>>;
+
+export type IWhiteboardAttribView = Omit<IWhiteboardPublicView, WhiteboardVectorFields>;
 
 export type IWhiteboard <UserType, CanvasType> =
   & IWhiteboardDocument <UserType, CanvasType>
@@ -375,10 +403,73 @@ export type IWhiteboard <UserType, CanvasType> =
 ;
 
 export type IWhiteboardFull = IWhiteboard<IUser, ICanvas<IUser>>;
+// -- End IWhiteboard
 
-type WhiteboardVectorFields = 
-  | "canvases"
+
+// === IPermanentWhiteboard ===============================================================
+//  
+// Represents a whiteboard created by a permanent user or converted from a temp whiteboard.
+// 
+// ========================================================================================
+export interface IPermanentWhiteboardModel <UserType, CanvasType> extends IWhiteboardModel <UserType, CanvasType> {
+  time_created: Date;
+};
+
+type PermanentWhiteboardProtectedFields = "";
+
+// === Permanent Data Transfer Objects =========================================
+
+export type IPermanentWhiteboardDocument <UserType, CanvasType> = ViewDocument<IPermanentWhiteboardModel <UserType, CanvasType>>;
+
+export type IPermanentWhiteboardPublicView <UserType, CanvasType> = Omit<IPermanentWhiteboardDocument <UserType, CanvasType>, PermanentWhiteboardProtectedFields>;
+
+// -- Public view, excluding vector attributes
+export type IPermanentWhiteboardAttribView <UserType, CanvasType> = Omit<IPermanentWhiteboardPublicView <UserType, CanvasType>, WhiteboardVectorFields>;
+
+export type IPermanentWhiteboardVirtual = DocumentVirtualBase;
+
+export type PermanentWhiteboardModelType <UserType, CanvasType> = Model<IPermanentWhiteboardDocument <UserType, CanvasType>, {}, {}, IPermanentWhiteboardVirtual>;
+
+// -- User as a Mongo document
+export type IPermanentWhiteboard <UserType, CanvasType> = 
+  & IPermanentWhiteboardDocument <UserType, CanvasType>
+  & DocumentViewMethods<IPermanentWhiteboard <UserType, CanvasType>, IPermanentWhiteboardPublicView <UserType, CanvasType>, IPermanentWhiteboardAttribView <UserType, CanvasType>>
+  & Document <Types.ObjectId>
 ;
+// -- End IPermanentWhiteboard
+
+
+// === ITempWhiteboard ====================================================================
+//  
+// Represents a whiteboard created by a temp user with automatic deletion.
+// 
+// ========================================================================================
+export interface ITempWhiteboardModel <UserType, CanvasType> extends IWhiteboardModel <UserType, CanvasType> {
+  createdAt: Date;
+};
+
+type TempWhiteboardProtectedFields = "";
+
+// === Temp Data Transfer Objects =========================================
+
+export type ITempWhiteboardDocument <UserType, CanvasType> = ViewDocument<ITempWhiteboardModel <UserType, CanvasType>>;
+
+export type ITempWhiteboardPublicView <UserType, CanvasType> = Omit<ITempWhiteboardDocument <UserType, CanvasType>, TempWhiteboardProtectedFields>;
+
+// -- Public view, excluding vector attributes
+export type ITempWhiteboardAttribView <UserType, CanvasType> = Omit<ITempWhiteboardPublicView <UserType, CanvasType>, WhiteboardVectorFields>;
+
+export type ITempWhiteboardVirtual = DocumentVirtualBase;
+
+export type TempWhiteboardModelType <UserType, CanvasType> = Model<ITempWhiteboardDocument <UserType, CanvasType>, {}, {}, ITempWhiteboardVirtual>;
+
+// -- User as a Mongo document
+export type ITempWhiteboard <UserType, CanvasType> = 
+  & ITempWhiteboardDocument <UserType, CanvasType>
+  & DocumentViewMethods<ITempWhiteboard <UserType, CanvasType>, ITempWhiteboardPublicView <UserType, CanvasType>, ITempWhiteboardAttribView <UserType, CanvasType>>
+  & Document <Types.ObjectId>
+;
+// -- End ITempWhiteboard
 
 const WHITEBOARD_VECTOR_FIELDS = [
   "canvases",
@@ -398,16 +489,11 @@ const WHITEBOARD_POP_FIELDS_FULL = [
   ...WHITEBOARD_POP_FIELDS_ATTRIBS,
 ];
 
-// === Data Transfer Objects ===================================================
+// === whiteboardSchema ==============================================================
+//
+// Defines how whiteboard objects are stored/interacted with.
 //
 // =============================================================================
-
-export type IWhiteboardDocument <UserType, CanvasType> = IWhiteboardModel <UserType, CanvasType>;
-
-export type IWhiteboardPublicView = ViewDocument<IWhiteboardDocument <IUser, ICanvas<IUser>>>;
-
-export type IWhiteboardAttribView = Omit<IWhiteboardPublicView, WhiteboardVectorFields>;
-
 export interface IWhiteboardSchema <UserType, CanvasType> extends Model<IWhiteboard<UserType, CanvasType>> {
   findFull: (options: Record<string, any>) => Promise<IWhiteboard <IUser, ICanvas<IUser>>[]>;
   findAttribs: (options: Record<string, any>) => Promise<IWhiteboard<IUser, ICanvas<IUser>>[]>;
@@ -417,12 +503,19 @@ export interface IWhiteboardSchema <UserType, CanvasType> extends Model<IWhitebo
 const whiteboardSchema = new Schema<IWhiteboard<Types.ObjectId, Types.ObjectId>, IWhiteboardSchema<Types.ObjectId, Types.ObjectId>>(
   {
     name: { type: String, required: true },
-    time_created: { type: Date, default: Date.now },
     root_canvas: { type: Schema.Types.ObjectId, ref: "Canvas", required: true },
     thumbnail_url: { type: String, required: false, default: null },
     user_permissions: [whiteboardUserPermissionSchema],
   },
   {
+    // -- options
+    discriminatorKey: 'kind',
+    // --- do not commit data not defined in schema
+    strict: true,
+    // --- do not omit empty fields
+    minimize: false,
+
+    // -- data transformation
     toObject: {
       virtuals: false,
     },
@@ -502,6 +595,207 @@ const whiteboardSchema = new Schema<IWhiteboard<Types.ObjectId, Types.ObjectId>,
     },
   }
 );
+
+// === permanentWhiteboardSchema ==============================================================
+//
+// Defines how permanent whiteboard objects are stored/interacted with.
+//
+// ============================================================================================
+export interface IPermanentWhiteboardSchema <UserType, CanvasType> extends Model<IPermanentWhiteboard<UserType, CanvasType>> {
+  findFull: (options: Record<string, any>) => Promise<IPermanentWhiteboard <IUser, ICanvas<IUser>>[]>;
+  findAttribs: (options: Record<string, any>) => Promise<IPermanentWhiteboard<IUser, ICanvas<IUser>>[]>;
+  findSharedUsersByWhiteboardId: (whiteboardId: Types.ObjectId) => Promise<IWhiteboardUserPermission<IUser>[] | null>;
+}
+
+const permanentWhiteboardSchema = new Schema<IPermanentWhiteboard<Types.ObjectId, Types.ObjectId>, IPermanentWhiteboardSchema<Types.ObjectId, Types.ObjectId>>(
+  // --fields
+  {
+    time_created: { type: Date, default: Date.now },
+  },
+  {
+    toObject: {
+      virtuals: false,
+    },
+    toJSON: {
+      virtuals: true,
+      transform: (_, ret: Partial<IPermanentWhiteboard<Types.ObjectId, Types.ObjectId>>) => {
+        delete ret._id;
+
+        return ret;
+      },
+    },
+    // -- instance methods
+    methods: {
+      async populateAttribs(): Promise<IPermanentWhiteboard <IUser, ICanvas<IUser>>> {
+        await this.populate(WHITEBOARD_POP_FIELDS_ATTRIBS);
+        return this as unknown as IPermanentWhiteboard <IUser, ICanvas<IUser>>;
+      },
+      async populateFull(): Promise<IPermanentWhiteboard <IUser, ICanvas<IUser>>> {
+        await this.populate(WHITEBOARD_POP_FIELDS_FULL);
+        return this as unknown as IPermanentWhiteboard <IUser, ICanvas<IUser>>;
+      },
+      toPublicView() {
+        const obj = this.toObject({ virtuals: true });
+        const {
+          _id,
+          user_permissions: _user_permissions,
+          ...fields
+        } = obj;
+
+        return ({
+          ...fields,
+          user_permissions: (this as unknown as IPermanentWhiteboard <IUser, ICanvas<IUser>>)
+            .user_permissions
+            .filter(perm => ((perm.type !== 'user') || ((!! perm.user) && (!! perm.user.id))))
+            .map(perm => perm.toPublicView()),
+        });
+      },
+      toAttribView() {
+        const obj = this.toObject({ virtuals: true });
+        const {
+          _id,
+          user_permissions: _user_permissions,
+          ...fields
+        } = obj;
+
+        return ({
+          ...fields,
+          user_permissions: (this as unknown as IPermanentWhiteboard <IUser, ICanvas<IUser>>)
+            .user_permissions
+            .filter(perm => ((perm.type !== 'user') || ((!! perm.user) && (!! perm.user.id))))
+            .map(perm => perm.toAttribView()),
+        });
+      }
+    },
+    // -- static methods
+    statics: {
+      findFull(options: Record<string, any>) {
+        return this.find(options)
+          .populate(WHITEBOARD_POP_FIELDS_FULL);
+      },
+      findAttribs(options: Record<string, any>) {
+        return this.find(options)
+          .select(WHITEBOARD_VECTOR_FIELDS.map(field => `-${field}`).join(' '))
+          .populate(WHITEBOARD_POP_FIELDS_ATTRIBS);
+      },
+      async findSharedUsersByWhiteboardId(whiteboardId: Types.ObjectId): Promise<IWhiteboardUserPermission<IUser>[] | null> {
+        const res = await this.findById(whiteboardId)
+          .select("user_permissions")
+          .then(wb => wb?.populateAttribs() || null) as IWhiteboardFull | null;
+
+        if ((! res) || (! Array.isArray(res.user_permissions))) {
+          return null;
+        } else {
+          return res.user_permissions;
+        }
+      }
+    },
+  }
+);
+
+whiteboardSchema.discriminator('permanent_whiteboard', permanentWhiteboardSchema);
+
+// === tempWhiteboardSchema ==============================================================
+//
+// Defines how temporary whiteboard objects are stored/interacted with.
+//
+// ============================================================================================
+export interface ITempWhiteboardSchema <UserType, CanvasType> extends Model<ITempWhiteboard<UserType, CanvasType>> {
+  findFull: (options: Record<string, any>) => Promise<ITempWhiteboard <IUser, ICanvas<IUser>>[]>;
+  findAttribs: (options: Record<string, any>) => Promise<ITempWhiteboard<IUser, ICanvas<IUser>>[]>;
+  findSharedUsersByWhiteboardId: (whiteboardId: Types.ObjectId) => Promise<IWhiteboardUserPermission<IUser>[] | null>;
+}
+
+const tempWhiteboardSchema = new Schema<ITempWhiteboard<Types.ObjectId, Types.ObjectId>, ITempWhiteboardSchema<Types.ObjectId, Types.ObjectId>>(
+  // --fields
+  {
+    createdAt: {
+      type: Date,
+      expires: TEMP_WHITEBOARD_EXPIRATION_SECS,
+    },
+  },
+  {
+    toObject: {
+      virtuals: false,
+    },
+    toJSON: {
+      virtuals: true,
+      transform: (_, ret: Partial<ITempWhiteboard<Types.ObjectId, Types.ObjectId>>) => {
+        delete ret._id;
+
+        return ret;
+      },
+    },
+    // -- instance methods
+    methods: {
+      async populateAttribs(): Promise<ITempWhiteboard <IUser, ICanvas<IUser>>> {
+        await this.populate(WHITEBOARD_POP_FIELDS_ATTRIBS);
+        return this as unknown as ITempWhiteboard <IUser, ICanvas<IUser>>;
+      },
+      async populateFull(): Promise<ITempWhiteboard <IUser, ICanvas<IUser>>> {
+        await this.populate(WHITEBOARD_POP_FIELDS_FULL);
+        return this as unknown as ITempWhiteboard <IUser, ICanvas<IUser>>;
+      },
+      toPublicView() {
+        const obj = this.toObject({ virtuals: true });
+        const {
+          _id,
+          user_permissions: _user_permissions,
+          ...fields
+        } = obj;
+
+        return ({
+          ...fields,
+          user_permissions: (this as unknown as ITempWhiteboard <IUser, ICanvas<IUser>>)
+            .user_permissions
+            .filter(perm => ((perm.type !== 'user') || ((!! perm.user) && (!! perm.user.id))))
+            .map(perm => perm.toPublicView()),
+        });
+      },
+      toAttribView() {
+        const obj = this.toObject({ virtuals: true });
+        const {
+          _id,
+          user_permissions: _user_permissions,
+          ...fields
+        } = obj;
+
+        return ({
+          ...fields,
+          user_permissions: (this as unknown as ITempWhiteboard <IUser, ICanvas<IUser>>)
+            .user_permissions
+            .filter(perm => ((perm.type !== 'user') || ((!! perm.user) && (!! perm.user.id))))
+            .map(perm => perm.toAttribView()),
+        });
+      }
+    },
+    // -- static methods
+    statics: {
+      findFull(options: Record<string, any>) {
+        return this.find(options)
+          .populate(WHITEBOARD_POP_FIELDS_FULL);
+      },
+      findAttribs(options: Record<string, any>) {
+        return this.find(options)
+          .select(WHITEBOARD_VECTOR_FIELDS.map(field => `-${field}`).join(' '))
+          .populate(WHITEBOARD_POP_FIELDS_ATTRIBS);
+      },
+      async findSharedUsersByWhiteboardId(whiteboardId: Types.ObjectId): Promise<IWhiteboardUserPermission<IUser>[] | null> {
+        const res = await this.findById(whiteboardId)
+          .select("user_permissions")
+          .then(wb => wb?.populateAttribs() || null) as IWhiteboardFull | null;
+
+        if ((! res) || (! Array.isArray(res.user_permissions))) {
+          return null;
+        } else {
+          return res.user_permissions;
+        }
+      }
+    },
+  }
+);
+
+whiteboardSchema.discriminator('temp_whiteboard', tempWhiteboardSchema);
 
 const sharedUsersArraySchema = whiteboardSchema.path('user_permissions').schema;
 
