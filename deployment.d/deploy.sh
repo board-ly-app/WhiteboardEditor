@@ -22,7 +22,30 @@ source ../.env
 # -- Ensure kind is running
 if [[ $(kind get clusters | wc -l) -lt 1 ]]
 then
-  kind create cluster
+  kind create cluster --config <(envsubst < cluster-config.yml)
+
+  helm install eg oci://docker.io/envoyproxy/gateway-helm \
+    --version v1.3.0 \
+    --namespace envoy-gateway-system \
+    --create-namespace
+
+  kubectl wait --timeout=5m \
+    -n envoy-gateway-system \
+    deployment/envoy-gateway \
+    --for=condition=Available
+fi
+
+# -- Ensure cloud-provider-kind is running
+if [[ $(docker container ls | grep -e cloud-provider-kind) -lt 1 ]]
+then
+  docker pull "registry.k8s.io/cloud-provider-kind/cloud-controller-manager:v0.10.0"
+
+  docker run \
+    --name "cloud-provider-kind" \
+    --network kind \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    --rm -d \
+    "registry.k8s.io/cloud-provider-kind/cloud-controller-manager:v0.10.0"
 fi
 
 # -- Load images
