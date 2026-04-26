@@ -4,8 +4,12 @@ import Footer from "@/components/Footer";
 import HeaderAuthed from "@/components/HeaderAuthed";
 import HeaderUnauthed from "@/components/HeaderUnauthed";
 import Page from "@/components/Page";
-import { useUser } from "@/hooks/useUser";
-import type { User } from "@/types/UserAuth";
+import {
+  type User,
+} from '@/types/APIProtocol';
+import {
+  useUser,
+} from "@/hooks/useUser";
 
 const AboutUs = () => {
   const user: User | null = useUser().user;

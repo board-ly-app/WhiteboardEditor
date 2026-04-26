@@ -18,6 +18,17 @@ import type {
 
 export type UserIdType = Types.ObjectId;
 
+export type UserTypeEnum = 
+  | "permanent"
+  | "temp"
+;
+
+if (! process.env.TEMP_USER_EXPIRATION_SECS) {
+  throw new Error('TEMP_USER_EXPIRATION_SECS not set in environment');
+}
+
+const TEMP_USER_EXPIRATION_SECS = parseInt(process.env.TEMP_USER_EXPIRATION_SECS);
+
 // === IUser ========================================================================
 //  
 // Base user model containing fields shared by all user types in the system.
@@ -25,6 +36,7 @@ export type UserIdType = Types.ObjectId;
 // ==================================================================================
 export interface IUserModel {
   username: string;
+  kind: UserTypeEnum;
 }
 
 // === Base Data Transfer Objects ======================================
@@ -103,7 +115,7 @@ export type IPermanentUser =
 // ==================================================================================
 export interface ITempUserModel extends IUserModel{
   kind: 'temp';
-  tempExpiresAt: Date;
+  createdAt: Date;
 }
 
 // === Temp Data Transfer Objects ======================================
@@ -294,12 +306,13 @@ userSchema.discriminator(
 // Defines how temporary user objects are stored/interacted with.
 //
 // =============================================================================
-userSchema.discriminator(
-  'temp', new Schema<ITempUser, TempUserModelType, {}, {}, ITempUserVirtual>
-  (
+const tempUserSchema = new Schema<ITempUser, TempUserModelType, {}, {}, ITempUserVirtual>(
   // -- fields
   {
-    tempExpiresAt: { type: Date, required: true },
+    createdAt: {
+      type: Date,
+      expires: TEMP_USER_EXPIRATION_SECS,
+    },
   },
   {
     toObject: {
@@ -332,7 +345,9 @@ userSchema.discriminator(
       }// -- end toAttribView
     },
   }
-));
+);// -- end tempUserSchema
+
+userSchema.discriminator('temp', tempUserSchema);
 
 userSchema.virtual('id').get(function() {
   return this._id;

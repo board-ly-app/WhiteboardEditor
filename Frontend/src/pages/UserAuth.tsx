@@ -7,6 +7,12 @@ import HeaderUnauthed from "@/components/HeaderUnauthed";
 import AuthForm from "@/components/AuthForm";
 import Page from '@/components/Page';
 import Footer from '@/components/Footer';
+import api from '@/api/axios';
+import type { CreateWhiteboardFormData } from '@/components/CreateWhiteboardModal';
+import { useNavigate } from 'react-router';
+import { useContext } from 'react';
+import AuthContext from '@/context/AuthContext';
+import { useUser } from '@/hooks/useUser';
 
 interface UserAuthProps {
   action: "login" | "signup";
@@ -15,6 +21,8 @@ interface UserAuthProps {
 const UserAuth = ({
   action,
 }: UserAuthProps): React.JSX.Element => {
+  const navigate = useNavigate();
+
   let authActionLabel : string;
 
   switch (action) {
@@ -29,6 +37,56 @@ const UserAuth = ({
   }// -- end switch (action)
 
   const pageTitle = `${authActionLabel} | ${APP_NAME}`;
+
+  const { setUser } = useUser();
+  const authContext = useContext(AuthContext);
+
+  if (! authContext) {
+    throw new Error('AuthContext not provided');
+  }
+
+  const {
+    setAuthToken,
+  } = authContext;
+
+  const handleCreateTrialWhiteboard = async () => {
+    try {
+      const userResp = await api.post('/users/temp');
+      console.log("userResp: ", userResp);
+
+      const {
+        user,
+        accessToken
+      } = userResp.data;
+
+      setAuthToken(accessToken);
+      setUser(user);
+      
+      const tempWhiteboardData: CreateWhiteboardFormData = {
+        name: `${userResp.data.user.username}'s Whiteboard`,
+        collaboratorPermissions: [],
+        width: 3000,
+        height: 3000
+      };
+
+      const whiteboardResp = await api.post('/whiteboards/temp', tempWhiteboardData);
+      console.log("tempWhiteboardResp: ", whiteboardResp);
+
+      const {
+        id,
+      } = whiteboardResp.data;
+
+      if (! id) {
+        throw new Error('Received no Whiteboard ID from API response');
+      }
+
+      const redirectUrl = `/whiteboard/${id}`;
+
+      navigate(redirectUrl);
+    } catch (err) {
+      console.log("Error creating trial whiteboard: ", err);
+    }
+  }
 
   return (
     <Page
@@ -47,6 +105,13 @@ const UserAuth = ({
           <h1 className="text-4xl md:text-8xl text-h1-text font-light mb-2 md:my-8">
             {APP_NAME}
           </h1>
+
+          <button 
+            onClick={handleCreateTrialWhiteboard}
+            className="text-h2-text font-medium rounded-lg border-border border-1 p-4 bg-button-600 hover:bg-button-hover hover:cursor-pointer shadow-md"
+          >
+            Try it out!
+          </button>
 
           <h2 className="text-2xl md:text-4xl text-h2-text font-thin my-4">
             The better web whiteboard

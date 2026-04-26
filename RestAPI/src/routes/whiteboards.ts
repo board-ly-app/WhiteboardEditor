@@ -14,6 +14,7 @@ import {
   handleDeleteWhiteboard,
   handleShareWhiteboard,
   handlePutThumbnail,
+  handleCreateTempWhiteboard,
 } from "../controllers/whiteboards";
 
 const router = Router();
@@ -21,7 +22,11 @@ const router = Router();
 // -- all routes authenticated
 router.use(authenticateJWT);
 
+// -- Create a new permanent whiteboard
 router.post("/", handleCreateWhiteboard);
+
+// -- Create a new temp whiteboard
+router.post("/temp", handleCreateTempWhiteboard);
 
 // -- Get user's own whiteboards
 router.get("/own", handleGetOwnWhiteboards);

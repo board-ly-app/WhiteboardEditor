@@ -3,11 +3,9 @@ import type {
   SetStateAction,
 } from 'react';
 
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-}
+import {
+  type User,
+} from '@/types/APIProtocol';
 
 export interface AuthContextType {
   user: User | null;

@@ -44,8 +44,12 @@ import Page from '@/components/Page';
 
 // -- components
 import HeaderAuthed from "@/components/HeaderAuthed";
-import { useUser } from "@/hooks/useUser";
-import type { User } from "@/types/UserAuth";
+import {
+  type User,
+} from '@/types/APIProtocol';
+import {
+  useUser,
+} from "@/hooks/useUser";
 import CreateWhiteboardModal, {
   type CreateWhiteboardFormData
 } from '@/components/CreateWhiteboardModal';

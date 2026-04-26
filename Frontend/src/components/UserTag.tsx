@@ -17,9 +17,9 @@ import {
 } from 'lucide-react';
 
 // -- local imports
-import type {
-  User,
-} from '@/types/UserAuth';
+import {
+  type User,
+} from '@/types/APIProtocol';
 
 import {
   cn,
@@ -45,40 +45,40 @@ interface UserTagPropsBase {
 // -- displays just username and email; optional functionality on click
 interface UserTagPropsBrief extends UserTagPropsBase {
   variant: 'brief';
-  user: Pick<User, 'username' | 'email'> & Partial<User>;
-  onClick?: (user: Pick<User, 'username' | 'email'> & Partial<User>) => void;
+  user: User,
+  onClick?: (user: User) => unknown;
 }
 
 // -- displays just username and email, with a delete button; optional functionality on click
 interface UserTagPropsBriefDeleter extends Omit<UserTagPropsBrief, 'variant'> {
   variant: 'brief_deleter'
-  onDelete: (user: Pick<User, 'username' | 'email'> & Partial<User>) => void;
+  onDelete: (user: User) => unknown;
 }
 
 // -- displays just username; optional functionality on click
 interface UserTagPropsUsername extends UserTagPropsBase {
   variant: 'username';
-  user: Pick<User, 'username'> & Partial<User>;
-  onClick?: (user: Pick<User, 'username'> & Partial<User>) => void;
+  user: User;
+  onClick?: (user: User) => unknown;
 }
 
 // -- displays just username, with a delete button; optional functionality on click
 interface UserTagPropsUsernameDeleter extends Omit<UserTagPropsUsername, 'variant'> {
   variant: 'username_deleter'
-  onDelete: (user: Pick<User, 'username'> & Partial<User>) => void;
+  onDelete: (user: User) => unknown;
 }
 
 // -- displays just email; optional functionality on click
 interface UserTagPropsEmail extends UserTagPropsBase {
   variant: 'email';
-  user: Pick<User, 'email'> & Partial<User>;
-  onClick?: (user: Pick<User, 'email'> & Partial<User>) => void;
+  email: string;
+  onClick?: (email: string) => unknown;
 }
 
 // -- displays just email, with a delete button; optional functionality on click
 interface UserTagPropsEmailDeleter extends Omit<UserTagPropsEmail, 'variant'> {
   variant: 'email_deleter'
-  onDelete: (user: Pick<User, 'email'> & Partial<User>) => void;
+  onDelete: (email: string) => unknown;
 }
 
 export type UserTagProps = 
@@ -119,12 +119,12 @@ const getIconSizeByTagSize = (tagSize: EnumUserTagSize): number => {
     default:
       // -- we should never get here
       throw new Error(`Unhandled case: ${tagSize}`);
-  }
+  }// -- end switch (tagSize)
 };
 
 interface UserTagBaseProps extends UserTagPropsBase {
   role: EnumUserTagRole;
-  onClick?: () => void;
+  onClick?: () => unknown;
 }
 
 const UserTagBase = ({
@@ -153,8 +153,17 @@ export const UserTagBrief = ({
 }: Omit<UserTagPropsBrief, 'variant'>): React.JSX.Element => {
   const {
     username,
-    email,
   } = user;
+  const email = (() => {
+    switch (user.kind) {
+      case 'permanent':
+        return user.email;
+      case 'temp':
+        return '-';
+      default:
+        throw new Error(`Unrecognized user kind: ${user}`);
+    }// -- end switch (user.kind)
+  })();
 
   return (
     <UserTagBase
@@ -175,8 +184,17 @@ export const UserTagBriefDeleter = ({
 }: Omit<UserTagPropsBriefDeleter, 'variant'>): React.JSX.Element => {
   const {
     username,
-    email,
   } = user;
+  const email = (() => {
+    switch (user.kind) {
+      case 'permanent':
+        return user.email;
+      case 'temp':
+        return '-';
+      default:
+        throw new Error(`Unrecognized user type ${user}`);
+    }// -- end switch (user.kind)
+  })();
 
   return (
     <UserTagBase
@@ -244,19 +262,15 @@ export const UserTagUsernameDeleter = ({
 
 // interface UserTagPropsEmail extends UserTagPropsBase {
 export const UserTagEmail = ({
-  user,
+  email,
   onClick,
   ...baseProps
 }: Omit<UserTagPropsEmail, 'variant'>): React.JSX.Element => {
-  const {
-    email,
-  } = user;
-
   return (
     <UserTagBase
       {...baseProps}
       role={onClick ? 'button' : 'default'}
-      onClick={onClick && (() => onClick(user))}
+      onClick={onClick && (() => onClick(email))}
     >
       <span>{email}</span>
     </UserTagBase>
@@ -264,23 +278,19 @@ export const UserTagEmail = ({
 };
 
 export const UserTagEmailDeleter = ({
-  user,
+  email,
   onClick,
   onDelete,
   ...baseProps
 }: Omit<UserTagPropsEmailDeleter, 'variant'>): React.JSX.Element => {
-  const {
-    email,
-  } = user;
-
   return (
     <UserTagBase
       {...baseProps}
       role={onClick ? 'button' : 'default'}
-      onClick={onClick && (() => onClick(user))}
+      onClick={onClick && (() => onClick(email))}
     >
       <button
-        onClick={() => onDelete(user)}
+        onClick={() => onDelete(email)}
         className="hover:cursor-pointer p-1 inline-block align-middle"
       >
         <X size={getIconSizeByTagSize(baseProps.size)} />
@@ -307,5 +317,5 @@ export const UserTag = (props: UserTagProps): React.JSX.Element => {
     default:
       // -- we should never get here
       throw new Error(`Unhandled variant: ${props}`);
-  }
+  }// -- end switch (props.variant)
 };

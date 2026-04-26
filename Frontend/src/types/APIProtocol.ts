@@ -26,11 +26,26 @@ export type ObjectIdType = string;
 // Basic data about a user.
 //
 // =============================================================================
-export interface User {
+
+interface UserBase {
   id: string;
-  email: string;
   username: string;
 }
+
+export interface PermanentUser extends UserBase {
+  kind: 'permanent';
+  email: string;
+}
+
+export interface TempUser extends UserBase {
+  kind: 'temp';
+  createdAt: Date;
+}
+
+export type User =
+  | PermanentUser
+  | TempUser
+;
 
 // === UserPermissionEnum ======================================================
 //
@@ -109,14 +124,30 @@ export interface Canvas {
 // server.
 //
 // =============================================================================
-export interface Whiteboard {
+interface WhiteboardBase {
   id: string;
   name: string;
-  time_created: Date;
   thumbnail_url: string;
   user_permissions: UserPermission[];
   canvases?: Canvas[];
 }
+
+// the temp 'createdAt' is used for automatic deletion after expire time
+export interface TempWhiteboard extends WhiteboardBase {
+  kind: 'temp_whiteboard';
+  createdAt: Date;
+}
+
+// the permanent 'time_created' is used for general documentation of creation time
+export interface PermanentWhiteboard extends WhiteboardBase {
+  kind: 'permanent_whiteboard';
+  time_created: Date;
+}
+
+export type Whiteboard =
+  | TempWhiteboard
+  | PermanentWhiteboard
+;
 
 // === AuthLoginSuccessResponse ================================================
 //
