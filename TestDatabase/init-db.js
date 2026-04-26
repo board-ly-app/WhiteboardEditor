@@ -55,7 +55,7 @@ const users = [
     _id: new ObjectId('68d5e8d4829da666aece0106'),
     kind: "temp",
     username: "TempUser68d5e8d4829da666aece0106",
-    tempExpiresAt: new Date(Date.now() + (60 * 60 * 24)),
+    createdAt: new Date(Date.now()),
   },
 ];
 
@@ -264,6 +264,7 @@ const whiteboards = [
   {
     _id: new ObjectId('68d5e8d4829da666aece0403'),
     name: "Project Delta",
+    kind: "permanent_whiteboard",
     time_created: new Date("2025-08-02T12:10:00.000Z"),
     root_canvas: new ObjectId('68d5e8d4829da666aece0207'),
     user_permissions: [
