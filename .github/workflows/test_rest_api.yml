@@ -83,11 +83,8 @@ jobs:
             # To set exposed port for testing
             WHITEBOARD_EDITOR_REST_API_PORT=3001
 
-            # Temp user expires after 24hr (86400s)
-            WHITEBOARD_EDITOR_TEMP_USER_EXPIRATION_SECS=86400
-
-            # Number of seconds until a temporary whiteboard expires
-            WHITEBOARD_EDITOR_TEMP_WHITEBOARD_EXPIRATION_SECS=86400
+            # Number of seconds until a temporary resource expires
+            WHITEBOARD_EDITOR_TEMP_EXPIRATION_SECS=86400
         run: |
           printenv TEST_ENV > .env
 
