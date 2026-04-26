@@ -35,8 +35,8 @@ const TEMP_USER_EXPIRATION_SECS = parseInt(process.env.TEMP_USER_EXPIRATION_SECS
 // 
 // ==================================================================================
 export interface IUserModel {
-  kind: UserTypeEnum;
   username: string;
+  kind: UserTypeEnum;
 }
 
 // === Base Data Transfer Objects ======================================
@@ -71,6 +71,7 @@ export type IUser =
 //
 // ==================================================================================
 export interface IPermanentUserModel extends IUserModel{
+  kind: 'permanent';
   email: string;
 
   // -- sensitive fields: ensure they are omitted from public-facing views
@@ -113,6 +114,7 @@ export type IPermanentUser =
 //
 // ==================================================================================
 export interface ITempUserModel extends IUserModel{
+  kind: 'temp';
   createdAt: Date;
 }
 
@@ -144,6 +146,10 @@ export type ITempUser =
 ;
 // -- End ITempUser
 
+export type IUserType = 
+  | IPermanentUser
+  | ITempUser
+;
 
 // === REST Request Body Definitions ===========================================
 //
@@ -170,8 +176,7 @@ export type PutPermanentUserRequest = AuthorizedRequestBody & PutPermanentUserDa
 // -- for DELETE
 export interface DeletePermanentUserData {
   // requires additional password confirmation
-  id: Types.ObjectId;
-  password: string;
+  password?: string;
 }
 
 export type DeletePermanentUserRequest = AuthorizedRequestBody & DeletePermanentUserData;
@@ -218,7 +223,7 @@ const tempUserToAttribView = tempUserToPublicView;
 // Defines how user objects are stored/interacted with.
 //
 // =============================================================================
-const userSchema = new Schema<IUser, UserModelType, {}, {}, IUserVirtual>(
+const userSchema = new Schema<IUserType, UserModelType, {}, {}, IUserVirtual>(
   // -- fields
   {
     kind: { type: String, enum: ['permanent', 'temp'], required: true },
@@ -349,12 +354,7 @@ userSchema.virtual('id').get(function() {
 });
 
 // -- User Model
-export const User = model<IUser>("User", userSchema, "users");
-
-export type IUserType = 
-  | IPermanentUser
-  | ITempUser
-;
+export const User = model<IUserType>("User", userSchema, "users");
 
 export const isIPermanentUser = (user: IUserType): user is IPermanentUser => {
   return user.kind === 'permanent';

@@ -13,6 +13,11 @@ import {
 } from "@tanstack/react-form";
 
 import {
+  toast,
+  Bounce,
+} from 'react-toastify';
+
+import {
   useModal,
 } from "@/components/Modal";
 
@@ -83,7 +88,7 @@ export default function AccountSettings() {
         }
       }
     },
-    [api, navigate, locationEncoded]
+    [navigate, locationEncoded, setUser]
   );
 
   const profileForm = useForm({
@@ -122,7 +127,7 @@ export default function AccountSettings() {
         }
       }
     },
-    [api, setUser, navigate, locationEncoded]
+    [setUser, navigate, locationEncoded]
   );
 
   const defaultEmail : string = (() => {
@@ -157,14 +162,41 @@ export default function AccountSettings() {
       value: DeleteFormFieldsType,
     }) => {
       try {
-        const res : AxiosResponse<User> = await api.patch("/users/me", {
-          password: value.password
+        const res = await api.request({
+          method: 'delete',
+          url: "/users/me",
+          data: {
+            password: value.password
+         },
         });
 
-        if (res.status === 201) {
+        if (res.status === 200) {
           setUser(null);
           localStorage.removeItem("user");
-          alert("Account deleted successfully");
+          console.log('User account deleted successfully.');
+          toast.success('Account deleted successfully', {
+            position: "bottom-center",
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+          navigate('/');
+        } else {
+          console.error(`Account deletion failed ${res.status}:`, res.data);
+          toast.error('Account deletion failed', {
+            position: "bottom-center",
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
         }
       } catch (err: unknown) {
         const apiErr = err as AxiosError;
@@ -177,7 +209,7 @@ export default function AccountSettings() {
         }
       }
     },
-    [api, setUser, navigate, locationEncoded]
+    [setUser, navigate, locationEncoded]
   );
 
   const deleteForm = useForm({

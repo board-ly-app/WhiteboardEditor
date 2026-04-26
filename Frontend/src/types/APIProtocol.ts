@@ -72,6 +72,7 @@ export const USER_PERMISSION_TYPES = [
 export interface UserPermissionByUser {
   type: 'user';
   user: User;
+  email?: string;
   permission: UserPermissionEnum;
 }
 

@@ -573,6 +573,7 @@ mod unit_tests {
                     WhiteboardPermission {
                         permission_type: WhiteboardPermissionType::User {
                             user: target_uid,
+                            email: Some(String::from("bob@example.com")),
                         },
                         permission: WhiteboardPermissionEnum::Edit,
                     },
@@ -789,6 +790,7 @@ mod unit_tests {
                     WhiteboardPermission {
                         permission_type: WhiteboardPermissionType::User {
                             user: test_user_id,
+                            email: None,
                         },
                         permission: WhiteboardPermissionEnum::Edit,
                     },

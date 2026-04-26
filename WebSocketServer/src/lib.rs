@@ -643,8 +643,13 @@ pub enum WhiteboardPermissionEnum {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "snake_case")]
 pub enum WhiteboardPermissionType {
-    User { user: ObjectId },
-    Email { email: String },
+    User {
+        user: ObjectId,
+        email: Option<String>,
+    },
+    Email {
+        email: String,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -796,7 +801,7 @@ impl WhiteboardMetadataMongoDBView {
             user_permissions: self.user_permissions.clone(),
             permissions_by_user_id: self.user_permissions.iter()
                 .map(|wb_perm| match wb_perm.permission_type {
-                    WhiteboardPermissionType::User { ref user} => Some((user.to_string(), wb_perm.permission)),
+                    WhiteboardPermissionType::User { ref user, .. } => Some((user.to_string(), wb_perm.permission)),
                     _ => None
                 })
                 .filter(|x| x.is_some())

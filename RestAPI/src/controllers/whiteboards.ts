@@ -45,48 +45,56 @@ export const handleGetWhiteboardById = async (
   req: Request<{ whiteboardId: string }, any, AuthorizedRequestBody>,
   res: Response
 ) => {
-    const { authUser } = req.body;
-    const { id: userId } = authUser;
-    const { whiteboardId } = req.params;
-
-    // fetch whiteboard by id
-    const resp = await getWhiteboardById(whiteboardId);
-
-    switch (resp.status) {
-      case 'server_error':
-        return res.status(500).json({ message: 'An unexpected error occurred' });
-      case 'invalid_id':
-        return res.status(400).json({ message: 'Invalid whiteboard id' });
-      case 'not_found':
-        return res.status(404).json({ message: 'Whiteboard not found' });
-      case 'ok':
-      {
-          const { whiteboard } = resp;
-          
-          console.log('Received whiteboard:', JSON.stringify(whiteboard, null, 2));
-
-          const isValidUserPerm = (perm: IWhiteboardUserPermissionModel<IUser>): perm is IWhiteboardUserPermissionById <IUser> => {
-            return (perm.type === 'user') && (!! perm.user);
-          };
-          const validUserIdSet: Record<string, boolean> = Object.fromEntries(
-              whiteboard.user_permissions.filter(perm => isValidUserPerm(perm)).map(perm => [
-              perm.user.id, true 
-            ])
-          );
-
-          if (! (userId.toString() in validUserIdSet)) {
-            return res.status(403).json({
-              message: 'You are not authorized to view this resource'
-            });
-          } else {
-            const wbAttribView = whiteboard.toAttribView();
-
-            return res.status(200).json(wbAttribView);
-          }
-      }
-      default:
-        return res.status(500).json({ message: 'Unexpected error occurred' });
+  const {
+    authUser,
+  } = req.body;
+  const {
+    id: userId,
+  } = authUser;
+  const {
+    whiteboardId,
+  } = req.params;
+  
+  // fetch whiteboard by id
+  const resp = await getWhiteboardById(whiteboardId);
+  
+  switch (resp.status) {
+    case 'server_error':
+      return res.status(500).json({ message: 'An unexpected error occurred' });
+    case 'invalid_id':
+      return res.status(400).json({ message: 'Invalid whiteboard id' });
+    case 'not_found':
+      return res.status(404).json({ message: 'Whiteboard not found' });
+    case 'ok':
+    {
+        const {
+          whiteboard,
+        } = resp;
+        
+        console.log('Received whiteboard:', JSON.stringify(whiteboard, null, 2));
+  
+        const isValidUserPerm = (perm: IWhiteboardUserPermissionModel<IUser>): perm is IWhiteboardUserPermissionById <IUser> => {
+          return (perm.type === 'user') && (!! perm.user);
+        };
+        const validUserIdSet: Record<string, boolean> = Object.fromEntries(
+            whiteboard.user_permissions.filter(perm => isValidUserPerm(perm)).map(perm => [
+            perm.user.id, true 
+          ])
+        );
+  
+        if (! (userId.toString() in validUserIdSet)) {
+          return res.status(403).json({
+            message: 'You are not authorized to view this resource'
+          });
+        } else {
+          const wbAttribView = whiteboard.toAttribView();
+  
+          return res.status(200).json(wbAttribView);
+        }
     }
+    default:
+      return res.status(500).json({ message: 'Unexpected error occurred' });
+  }
 };// -- end handleGetWhiteboardById
 
 export const handleCreateWhiteboard = async (
@@ -131,6 +139,7 @@ export const handleCreateWhiteboard = async (
         return {
           type: 'user',
           user: user._id,
+          email: user.email,
           permission: collaboratorPermissionsByEmail[user.email].permission,
         }
       });
