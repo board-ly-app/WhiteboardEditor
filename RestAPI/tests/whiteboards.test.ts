@@ -54,8 +54,15 @@ afterAll(disconnectFromDatabase);
 // =============================================================================
 const validateUser = (user: IUser, fieldValues: {} | any[]) => {
   expect(user).toHaveProperty('id');
-  expect(user).toHaveProperty('email');
   expect(user).toHaveProperty('username');
+
+  if (user.kind === 'permanent') {
+    expect(user).toHaveProperty('email');
+  }
+  else if (user.kind === 'temp') {
+    expect(user).toHaveProperty("createdAt");
+  }
+
   expect(user).not.toHaveProperty('passwordHashed');
 
   if (fieldValues) {
@@ -65,13 +72,25 @@ const validateUser = (user: IUser, fieldValues: {} | any[]) => {
 
 const validateWhiteboardAttribView = (
   whiteboard: IWhiteboardAttribView,
-  fieldValues: Record<string, any> | any[]
+  fieldValues: Record<string, any>
 ) => {
   expect(whiteboard).toHaveProperty('id');
-  expect(whiteboard).not.toHaveProperty('_id');
+  expect(whiteboard).toHaveProperty('kind');
   expect(whiteboard).toHaveProperty('name');
-  expect(whiteboard).toHaveProperty('time_created');
+  expect(whiteboard).not.toHaveProperty('_id');
   // NOTE: no canvases
+
+  // Verify the kind matches if specified in expectations
+  if (fieldValues.kind) {
+    expect(whiteboard.kind).toBe(fieldValues.kind);
+  }
+
+  // Handle specific fields based on kind
+  if (whiteboard.kind === 'temp_whiteboard') {
+    expect(whiteboard).toHaveProperty('createdAt');
+  } else if (whiteboard.kind === 'permanent_whiteboard') {
+    expect(whiteboard).toHaveProperty('time_created');
+  }
 
   // -- root canvas
   expect(whiteboard).toHaveProperty('root_canvas');
@@ -161,6 +180,7 @@ describe("Whiteboards API", () => {
           type: 'user',
           user: {
             id: owner._id.toString(),
+            kind: 'permanent',
             username: 'alice',
             email: 'alice@example.com',
           },
@@ -225,7 +245,7 @@ describe("Whiteboards API", () => {
       .expect(401);
   });
 
-  it("should create a new whiteboard for an authenticated user", async () => {
+  it("should create a new permanent whiteboard for an authenticated user", async () => {
     const jwtSecret = JWT_SECRET;
     const userCollection = mongoose.connection.collection('users');
 
@@ -260,7 +280,39 @@ describe("Whiteboards API", () => {
     // Verify response body
     validateWhiteboardAttribView(wbRes.body, {
       name: "Alice's Whiteboard",
+      kind: "permanent_whiteboard"
     });
+
+    expect(wbRes.body).toHaveProperty('time_created');
+    expect(wbRes.body).not.toHaveProperty('createdAt');
+  });
+
+  it("should create a new temp whiteboard for a temp user", async () => {
+    const tempUser = await mongoose.connection.collection('users').findOne({ kind: 'temp' });
+    
+    const authToken = jwt.sign(
+      { sub: tempUser!._id.toString(), isTemp: true },
+      JWT_SECRET!,
+      { expiresIn: '1h' }
+    );
+
+    const res = await request(app)
+      .post("/api/v1/whiteboards/temp")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        name: "Temporary Session",
+        width: 1920,
+        height: 1080,
+      })
+      .expect(201);
+
+    validateWhiteboardAttribView(res.body, {
+      name: "Temporary Session",
+      kind: "temp_whiteboard"
+    });
+    
+    expect(res.body).toHaveProperty('createdAt');
+    expect(res.body).not.toHaveProperty('time_created');
   });
 
   it("should allow setting collaborator permissions when creating a new whiteboard", async () => {
@@ -770,6 +822,7 @@ describe("Whiteboards API", () => {
             id: owner._id.toString(),
             username: 'carol',
             email: 'carol@example.com',
+            kind: 'permanent',
           },
           permission: 'own',
         },
