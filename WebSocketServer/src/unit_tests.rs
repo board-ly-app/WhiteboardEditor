@@ -725,7 +725,7 @@ mod unit_tests {
         );
 
         // -- "TempUser68d5e8d4829da666aece0106"
-        let uid = ObjectId::parse_str("68d5e8d4829da666aece0106")
+        let uid = ObjectId::parse_str("68d5e8d4829da666aece0107")
             .expect("The provided string is a valid ObjectId");
 
         // -- instantiate MongoDBStore
@@ -744,7 +744,7 @@ mod unit_tests {
                 ..
             } => {
                 assert!(id == uid);
-                assert!(username.as_str() == "TempUser68d5e8d4829da666aece0106");
+                assert!(username.as_str() == "TempUser68d5e8d4829da666aece0107");
             },
             _ => panic!("Expected temp user"),
         };
