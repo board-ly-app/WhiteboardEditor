@@ -42,35 +42,23 @@ if [[ $(kind get clusters | wc -l) -lt 1 ]]
 then
   kind create cluster --config <(envsubst < cluster-config.yml)
 
-  helm install eg oci://docker.io/envoyproxy/gateway-helm \
-    --version v1.3.0 \
-    --namespace envoy-gateway-system \
-    --create-namespace
+  kubectl kustomize "https://github.com/nginx/nginx-gateway-fabric/config/crd/gateway-api/standard?ref=v2.5.1" \
+    | kubectl apply -f -
 
-  kubectl wait --timeout=5m \
-    -n envoy-gateway-system \
-    deployment/envoy-gateway \
-    --for=condition=Available
-fi
-
-# -- Ensure cloud-provider-kind is running
-if [[ $(docker container ls | grep -e cloud-provider-kind) -lt 1 ]]
-then
-  docker pull "registry.k8s.io/cloud-provider-kind/cloud-controller-manager:v0.10.0"
-
-  docker run \
-    --name "cloud-provider-kind" \
-    --network kind \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    --rm -d \
-    "registry.k8s.io/cloud-provider-kind/cloud-controller-manager:v0.10.0" \
-    --enable-lb-port-mapping
+  helm install ngf oci://ghcr.io/nginx/charts/nginx-gateway-fabric \
+    --create-namespace \
+    -n nginx-gateway \
+    --set nginx.service.type=NodePort \
+    --set-json 'nginx.service.nodePorts=[
+      {"port":30080,"listenerPort":80},
+      {"port":30443,"listenerPort":443}
+    ]'
 fi
 
 # -- Load images
-kind load docker-image "whiteboard_editor/frontend:latest"
-kind load docker-image "whiteboard_editor/rest_api:latest"
-kind load docker-image "whiteboard_editor/web_socket_server:latest"
+kind load docker-image "${WHITEBOARD_EDITOR_CR_URI}/frontend:${WHITEBOARD_EDITOR_TAG}"
+kind load docker-image "${WHITEBOARD_EDITOR_CR_URI}/rest_api:${WHITEBOARD_EDITOR_TAG}"
+kind load docker-image "${WHITEBOARD_EDITOR_CR_URI}/web_socket_server:${WHITEBOARD_EDITOR_TAG}"
 
 # -- Set up namespaces
 kubectl apply -f <(envsubst < namespaces.yml)
