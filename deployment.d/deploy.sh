@@ -63,7 +63,8 @@ then
     --network kind \
     -v /var/run/docker.sock:/var/run/docker.sock \
     --rm -d \
-    "registry.k8s.io/cloud-provider-kind/cloud-controller-manager:v0.10.0"
+    "registry.k8s.io/cloud-provider-kind/cloud-controller-manager:v0.10.0" \
+    --enable-lb-port-mapping
 fi
 
 # -- Load images
