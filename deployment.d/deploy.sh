@@ -20,8 +20,6 @@ OLD_ENV_FILE="$(mktemp prev-XXXXX.env)"
 
 cleanup() {
   [[ -f "${OLD_ENV_FILE}" ]] && shred -u "${OLD_ENV_FILE}"
-
-  exit 0
 }
 
 trap cleanup EXIT
