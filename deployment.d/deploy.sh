@@ -19,7 +19,11 @@ cd "$(dirname "$0")"
 OLD_ENV_FILE="$(mktemp prev-XXXXX.env)"
 
 cleanup() {
+  STATUS="$?"
+
   [[ -f "${OLD_ENV_FILE}" ]] && shred -u "${OLD_ENV_FILE}"
+
+  exit "${STATUS}"
 }
 
 trap cleanup EXIT
