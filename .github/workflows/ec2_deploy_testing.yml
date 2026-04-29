@@ -191,6 +191,7 @@ jobs:
           _EOF_
           chmod 400 "${{ runner.temp }}/github-ec2.pem"
           ssh-keygen -y -f "${{ runner.temp }}/github-ec2.pem" > "${{ runner.temp }}/github-ec2.pem.pub"
+          chmod 400 "${{ runner.temp }}/github-ec2.pem.pub"
           ssh-add "${{ runner.temp }}/github-ec2.pem"
 
       - name: Copy docker-compose.yml to remote host
