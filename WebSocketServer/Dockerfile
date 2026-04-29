@@ -3,7 +3,7 @@ ARG BUILD_DIR=/build
 ARG DEST_DIR=/app
 
 # ---- Stage 1: Dependency planner (cargo-chef) ----
-FROM rust:1.88 AS planner
+FROM rust:1.95 AS planner
 
 ARG BUILD_DIR
 ARG DEST_DIR
@@ -31,7 +31,7 @@ RUN \
   cargo chef prepare --recipe-path recipe.json
 
 # ---- Stage: Test Builder ----
-FROM rust:1.88 AS build_tests
+FROM rust:1.95 AS build_tests
 
 ARG BUILD_DIR
 ARG DEST_DIR
@@ -87,7 +87,7 @@ cargo test --no-run
 _EOF_
 
 # ---- Stage: Prepare Test Runtime Environment ----
-FROM rust:1.88 AS test_runtime
+FROM rust:1.95 AS test_runtime
 
 ARG BUILD_DIR
 ARG DEST_DIR
@@ -113,7 +113,7 @@ EOF
 ENTRYPOINT ["cargo", "test"]
 
 # ---- Stage: Build Release Binary ----
-FROM rust:1.88 AS build_release
+FROM rust:1.95 AS build_release
 
 ARG BUILD_DIR
 ARG DEST_DIR
