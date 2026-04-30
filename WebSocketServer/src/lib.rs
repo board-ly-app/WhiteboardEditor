@@ -1237,15 +1237,15 @@ pub async fn handle_authenticated_client_message(
                                 });
                             },
                             Some(perm) => match perm {
-                                WhiteboardPermissionEnum::View => {
+                                WhiteboardPermissionEnum::Own => {},
+                                _  => {
                                     return Some(ServerSocketMessage::IndividualError {
                                         client_id: client_state.client_id.clone(),
                                         error: ClientError::Other {
-                                            message: format!("User {} does not have edit permission", user_id),
+                                            message: format!("User {} is not an owner", user_id),
                                         }
                                     });
                                 },
-                                WhiteboardPermissionEnum::Edit | WhiteboardPermissionEnum::Own => {},
                             },
                         };
                     }// -- end for user_id in allowed_users.iter()
