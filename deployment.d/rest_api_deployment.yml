@@ -43,4 +43,9 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: whiteboard-editor-config
-                key: WHITEBOARD_EDITOR_TEMP_USER_EXPIRATION_SECS
+                key: WHITEBOARD_EDITOR_TEMP_EXPIRATION_SECS
+          - name: TEMP_WHITEBOARD_EXPIRATION_SECS
+            valueFrom:
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_TEMP_EXPIRATION_SECS
