@@ -211,6 +211,7 @@ jobs:
             | ssh \
               -i "${{ runner.temp }}/github-ec2.pem" \
               -o StrictHostKeyChecking=no \
+              "${REMOTE_HOST}" \
               tar -C "${{ secrets.EC2_TEST_DEPLOYMENT_DIR }}" -xzf -
 
       - name: Deploy via SSH
