@@ -1242,7 +1242,9 @@ pub async fn handle_authenticated_client_message(
                                     return Some(ServerSocketMessage::IndividualError {
                                         client_id: client_state.client_id.clone(),
                                         error: ClientError::Other {
-                                            message: format!("User {} is not an owner", user_id),
+                                            message: String::from(
+                                                "You cannot change a canvas' allowed users as a non-owner"
+                                            ),
                                         }
                                     });
                                 },
