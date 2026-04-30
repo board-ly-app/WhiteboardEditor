@@ -247,6 +247,7 @@ jobs:
             docker compose pull
 
             # === Restart kubernetes deployment ================================
+            ./deployment.d/teardown.sh
             ./deployment.d/deploy.sh
         run: |
           # Write script to a tempfile
