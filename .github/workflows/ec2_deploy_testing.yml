@@ -7,8 +7,6 @@ on:
   push:
     branches:
       - master
-      # TODO: remove after done testing
-      - feat/simulated_kubernetes_staging_deployment
   workflow_dispatch:
   workflow_call:
     secrets:
