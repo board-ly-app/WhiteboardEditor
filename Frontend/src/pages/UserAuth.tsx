@@ -1,3 +1,9 @@
+// -- std imports
+import {
+  useState,
+  useCallback,
+} from 'react';
+
 // -- local imports
 import {
   APP_NAME,
@@ -13,6 +19,10 @@ import { useNavigate } from 'react-router';
 import { useContext } from 'react';
 import AuthContext from '@/context/AuthContext';
 import { useUser } from '@/hooks/useUser';
+import {
+  type ButtonStatus,
+  Button,
+} from '@/components/ui/button';
 
 interface UserAuthProps {
   action: "login" | "signup";
@@ -49,44 +59,55 @@ const UserAuth = ({
     setAuthToken,
   } = authContext;
 
-  const handleCreateTrialWhiteboard = async () => {
-    try {
-      const userResp = await api.post('/users/temp');
-      console.log("userResp: ", userResp);
+  const [tempWhiteboardButtonStatus, setTempWhiteboardButtonStatus]
+    = useState<ButtonStatus>('enabled');
 
-      const {
-        user,
-        accessToken
-      } = userResp.data;
+  const handleCreateTrialWhiteboard = useCallback(
+    async () => {
+      try {
+        // -- set temp whiteboard button status to "pending"
+        setTempWhiteboardButtonStatus('pending');
 
-      setAuthToken(accessToken);
-      setUser(user);
-      
-      const tempWhiteboardData: CreateWhiteboardFormData = {
-        name: `${userResp.data.user.username}'s Whiteboard`,
-        collaboratorPermissions: [],
-        width: 3000,
-        height: 3000
-      };
+        const userResp = await api.post('/users/temp');
+        console.log("userResp: ", userResp);
 
-      const whiteboardResp = await api.post('/whiteboards/temp', tempWhiteboardData);
-      console.log("tempWhiteboardResp: ", whiteboardResp);
+        const {
+          user,
+          accessToken
+        } = userResp.data;
 
-      const {
-        id,
-      } = whiteboardResp.data;
+        setAuthToken(accessToken);
+        setUser(user);
+        
+        const tempWhiteboardData: CreateWhiteboardFormData = {
+          name: `${userResp.data.user.username}'s Whiteboard`,
+          collaboratorPermissions: [],
+          width: 3000,
+          height: 3000
+        };
 
-      if (! id) {
-        throw new Error('Received no Whiteboard ID from API response');
+        // -- make temp whiteboard request
+        const whiteboardResp = await api.post('/whiteboards/temp', tempWhiteboardData);
+
+        const {
+          id,
+        } = whiteboardResp.data;
+
+        if (! id) {
+          throw new Error('Received no Whiteboard ID from API response');
+        }
+
+        const redirectUrl = `/whiteboard/${id}`;
+
+        navigate(redirectUrl);
+      } catch (err) {
+        console.log("Error creating trial whiteboard: ", err);
+      } finally {
+        setTempWhiteboardButtonStatus('enabled');
       }
-
-      const redirectUrl = `/whiteboard/${id}`;
-
-      navigate(redirectUrl);
-    } catch (err) {
-      console.log("Error creating trial whiteboard: ", err);
-    }
-  }
+    },
+    [navigate, setAuthToken, setUser, setTempWhiteboardButtonStatus]
+  );// -- end handleCreateTrialWhiteboard
 
   return (
     <Page
@@ -106,12 +127,13 @@ const UserAuth = ({
             {APP_NAME}
           </h1>
 
-          <button 
+          <Button 
             onClick={handleCreateTrialWhiteboard}
+            status={tempWhiteboardButtonStatus}
             className="text-h2-text font-medium rounded-lg border-border border-1 p-4 bg-button-600 hover:bg-button-hover hover:cursor-pointer shadow-md"
           >
             Try it out!
-          </button>
+          </Button>
 
           <h2 className="text-2xl md:text-4xl text-h2-text font-thin my-4">
             The better web whiteboard
