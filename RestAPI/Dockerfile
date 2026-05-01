@@ -18,6 +18,7 @@ COPY . .
 # Cache node_modules for future builds.
 # Then, copy to /app directory for persistence, to allow in-image testing.
 RUN \
+  --mount=type=cache,id=yarn_home,target=${HOME}/.yarn \
   --mount=type=cache,id=node_modules,target=${BUILD_DIR}/node_modules \
   yarn install && \
   npx tsc && \
