@@ -14,11 +14,12 @@ import {
 } from "@/lib/utils"
 
 import {
+  type ButtonStatus,
   Button,
 } from '@/components/ui/button';
 
 export interface DeleteWhiteboardFormProps {
-  onSubmit: () => unknown;
+  onSubmit: () => Promise<unknown>;
   onCancel: () => unknown;
   whiteboardAttribs: Pick<WhiteboardAttribs, 'id' | 'name'>;
 }
@@ -39,6 +40,7 @@ export const DeleteWhiteboardForm = ({
   // intends to carry out the intended action
   const CONFIRMATION_KEY = 'Delete';
   const [confirmationKeyEntry, setConfirmationKeyEntry] = useState<string>('');
+  const [deleteButtonStatus, setDeleteButtonStatus] = useState<ButtonStatus>('enabled');
 
   const handleConfirmationKeyEntryChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,9 +54,14 @@ export const DeleteWhiteboardForm = ({
   const handleSubmit = useCallback((ev: React.FormEvent<HTMLFormElement>) => {
       ev.preventDefault();
 
-      onSubmit();
+      setDeleteButtonStatus('pending');
+
+      onSubmit()
+        .finally(() => {
+          setDeleteButtonStatus('enabled');
+        });
     },
-    [onSubmit]
+    [onSubmit, setDeleteButtonStatus]
   );// -- end handleSubmit
 
   // -- derived state
@@ -139,6 +146,7 @@ export const DeleteWhiteboardForm = ({
           />
           <Button
             disabled={status.name !== 'deletion_confirmed'}
+            status={deleteButtonStatus}
             type="submit"
             variant="destructive"
           >
