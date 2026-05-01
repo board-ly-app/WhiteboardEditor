@@ -777,6 +777,9 @@ const Whiteboard = ({
                           theme: "colored",
                           transition: Bounce,
                         });
+
+                        // -- propagate error to caller
+                        throw err;
                     }
                   }}
                 />
