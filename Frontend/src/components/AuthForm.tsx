@@ -1,15 +1,14 @@
 // -- std imports
-
 import {
   useState,
   useContext,
+  useCallback,
 } from "react";
 
 import {
   useNavigate,
   useLocation,
 } from 'react-router-dom';
-
 
 // -- third-party imports
 
@@ -28,6 +27,11 @@ import AuthContext from '@/context/AuthContext';
 import AuthInput from "@/components/AuthInput";
 import { useUser } from "@/hooks/useUser";
 import api from '@/api/axios';
+
+import {
+  Button,
+  type ButtonStatus,
+} from '@/components/ui/button';
 
 import {
   APP_NAME,
@@ -71,79 +75,100 @@ const AuthForm = ({
     setAuthToken,
   } = authContext;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const [submitButtonStatus, setSubmitButtonStatus] = useState<ButtonStatus>('enabled');
 
-    const endpoint = action === "login" ? "/auth/login" : "/users";
+  // -- derived state
+  const endpoint = (action === "login") ? "/auth/login" : "/users";
 
-    // TODO: Make this dynamic to handle either email or username
-    const authSource = "email";
+  // TODO: Make this dynamic to handle either email or username
+  const authSource = "email";
 
-    const payload = 
-      action === "login"
-      ? { authSource, email, password }
-      : { email, username, password };
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
 
-    try {
-      const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
+      setSubmitButtonStatus('pending');
 
-      const {
-        user,
-        token,
-      } = res.data;
+      const payload = 
+        action === "login"
+        ? { authSource, email, password }
+        : { email, username, password };
 
-      // -- ensure fields are not highlit as errors
-      setUiStatus('ok');
+      try {
+        const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
 
-      setAuthToken(token);
-      setUser(user);
-      navigate(redirectUrl);
-    } catch (err: unknown) {
-      const axiosErr = err as AxiosError;
+        const {
+          user,
+          token,
+        } = res.data;
 
-      if ((axiosErr?.response?.status) && (axiosErr.response.status >= 400) && (axiosErr.response.status < 500)) {
-        const status = axiosErr.response.status;
+        // -- ensure fields are not highlit as errors
+        setUiStatus('ok');
 
-        console.log('Authentication request failed with status', status);
+        setAuthToken(token);
+        setUser(user);
+        navigate(redirectUrl);
+      } catch (err: unknown) {
+        const axiosErr = err as AxiosError;
 
-        // === Display error to user ===========================================
+        if ((axiosErr?.response?.status) && (axiosErr.response.status >= 400) && (axiosErr.response.status < 500)) {
+          const status = axiosErr.response.status;
 
-        // -- ensure fields are highlit
-        setUiStatus('err_user');
+          console.log('Authentication request failed with status', status);
 
-        // -- display popup alert
-        toast.error('Authentication Failed. Try again.', {
-          position: "bottom-center",
-          autoClose: 10000,
-          hideProgressBar: false,
-          closeOnClick: false,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "colored",
-          transition: Bounce,
-        });
-      } else {
-        console.error('Error handling authentication:', err);
+          // === Display error to user ===========================================
 
-        // -- notify user of a system error (fields not highlit)
-        setUiStatus('err_system');
+          // -- ensure fields are highlit
+          setUiStatus('err_user');
 
-        // -- display error to user
-        toast.error('Error handling authentication.', {
-          position: "bottom-center",
-          autoClose: 10000,
-          hideProgressBar: false,
-          closeOnClick: false,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "colored",
-          transition: Bounce,
-        });
+          // -- display popup alert
+          toast.error('Authentication Failed. Try again.', {
+            position: "bottom-center",
+            autoClose: 10000,
+            hideProgressBar: false,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+        } else {
+          console.error('Error handling authentication:', err);
+
+          // -- notify user of a system error (fields not highlit)
+          setUiStatus('err_system');
+
+          // -- display error to user
+          toast.error('Error handling authentication.', {
+            position: "bottom-center",
+            autoClose: 10000,
+            hideProgressBar: false,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+        }
+      } finally {
+        setSubmitButtonStatus('enabled');
       }
-    }
-  }
+    },
+    [
+      action,
+      endpoint,
+      email,
+      navigate,
+      password,
+      redirectUrl,
+      setAuthToken,
+      setUser,
+      username,
+      setSubmitButtonStatus,
+    ]
+  );// -- end const handleSubmit
 
   const handleToggle = () => {
     // -- remove highlighting
@@ -199,12 +224,13 @@ const AuthForm = ({
             variant={uiStatus === 'err_user' ? 'error' : 'default'}
           />
         )}
-        <button
+        <Button
           type="submit"
+          status={submitButtonStatus}
           className="w-full font-medium text-h2-text py-2 my-2 rounded-lg border-border border-1 bg-button-300 hover:bg-button-hover hover:cursor-pointer shadow-md"
         >
           {action === "login" ? "Log In" : "Sign Up"}
-        </button>
+        </Button>
       </form>
 
       {/* Toggle Login/Signup */}
