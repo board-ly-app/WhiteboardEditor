@@ -19,6 +19,11 @@ import {
   useParams,
 } from 'react-router-dom';
 
+import {
+  Bounce,
+  toast,
+} from 'react-toastify';
+
 // -- local imports
 import {
   CURRENT_EDITOR_NUM_MILLIS,
@@ -304,45 +309,78 @@ const WebSocketClientMessengerProvider = ({
           case 'individual_error':
           case 'broadcast_error':
             {
-              const { error } = msg;
+              const {
+                error,
+              } = msg;
+
+              // -- A user-friendly error message to display in a popup
+              // notification
+              let popupErrorMsg : string;
 
               switch (error.type) {
                 case 'invalid_message':
                   console.error('Socket error: invalid message:', error.clientMessageRaw);
+                  // This is a low-level error, which implies that the client
+                  // was programmed incorrectly (i.e. programmer error, not user
+                  // error). We should indicate to the user that the app
+                  // encountered an error and direct them to the information they
+                  // need to submit an error report.
+                  popupErrorMsg = 'ERROR: app sent an invalid message to the server. See console logs for details';
                   break;
                 case 'unauthorized':
                   console.error('Socket error: not authorized to view this whiteboard');
+                  popupErrorMsg = 'You are not authorized to view this whiteboard';
                   break;
                 case 'not_authenticated':
                   console.error('Socket error: client not authenticated');
+                  popupErrorMsg = 'You are not currently logged in';
                   break;
                 case 'already_authorized':
                   console.error('Socket error: client cannot authenticate again');
+                  popupErrorMsg = 'You are already logged in';
                   break;
                 case 'invalid_auth':
                   console.error('Socket error: auth token invalid');
+                  popupErrorMsg = 'Your authentication token is invalid';
                   break;
                 case 'auth_token_expired':
                   console.error('Socket error: auth token expired');
+                  popupErrorMsg = 'Your login session has expired';
                   break;
                 case 'user_not_found':
                   console.error(`Socket error: user ${error.userId} not found`);
+                  popupErrorMsg = `User ${error.userId} not found`;
                   break;
                 case 'whiteboard_not_found':
                   console.error(`Socket error: whiteboard ${error.whiteboardId} not found`);
+                  popupErrorMsg = `Whiteboard ${error.whiteboardId} not found`;
                   break;
                 case 'canvas_not_found':
                   console.error(`Socket error: canvas ${error.canvasId} not found`);
+                  popupErrorMsg = `Canvas ${error.canvasId} not found`;
                   break;
                 case 'action_forbidden':
                   console.error(`Socket error: action ${error.action} not permitted`);
+                  popupErrorMsg = `You are not authorized to ${error.action}`;
                   break;
                 case 'other':
                   console.error('Socket error:', error.message);
+                  popupErrorMsg = error.message;
                   break;
                 default:
                   throw new Error(`Unrecognized error: ${JSON.stringify(error, null, 2)}`);
               }// -- end switch (error.type)
+
+              toast.error(popupErrorMsg, {
+                position: "bottom-center",
+                hideProgressBar: true,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+                theme: "colored",
+                transition: Bounce,
+              });
             }
             break;
           default:
