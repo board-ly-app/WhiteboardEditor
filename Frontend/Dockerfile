@@ -11,7 +11,7 @@ COPY . .
 RUN \
   --mount=type=cache,id=npm_home,target=${HOME}/.npm \
   --mount=type=cache,id=node_modules,target=/app/node_modules \
-  npm install && \
+  npm install --prefer-offline && \
   npm ci && \
   npm run build
 

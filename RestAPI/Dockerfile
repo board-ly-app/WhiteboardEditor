@@ -20,7 +20,7 @@ COPY . .
 RUN \
   --mount=type=cache,id=yarn_home,target=${HOME}/.yarn \
   --mount=type=cache,id=node_modules,target=${BUILD_DIR}/node_modules \
-  yarn install && \
+  yarn install --prefer-offline && \
   npx tsc && \
   cp -rp . ${DEST_DIR}
 
