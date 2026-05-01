@@ -217,7 +217,9 @@ const CanvasMenu = ({
         <DropdownMenuContent className="w-48">
         
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger
+              className="hover:cursor-pointer"
+            >
               Allowed Users
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
