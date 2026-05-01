@@ -41,6 +41,7 @@ const Button = ({
   className,
   variant,
   size,
+  disabled,
   status = 'enabled',
   asChild = false,
   children,
@@ -52,7 +53,7 @@ const Button = ({
 
   switch (status) {
     case 'enabled':
-      isDisabled = false;
+      isDisabled = disabled || false;
       innerContent = children;
       break;
     case 'disabled':
