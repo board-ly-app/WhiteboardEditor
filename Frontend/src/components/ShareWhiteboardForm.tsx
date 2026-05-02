@@ -26,6 +26,14 @@ import {
   Input,
 } from '@/components/ui/input';
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
 export interface ShareWhiteboardFormData {
   userPermissions: UserPermission[];
 }
@@ -96,9 +104,8 @@ const ShareWhiteboardForm = ({
   );
 
   const handleChangePermType = useCallback(
-    (ev: React.ChangeEvent<HTMLSelectElement>) => {
-      ev.preventDefault();
-      setNewUserPermType(ev.target.value as UserPermissionEnum);
+    (value: string) => {
+      setNewUserPermType(value as UserPermissionEnum);
     },
     [setNewUserPermType]
   );
@@ -240,16 +247,16 @@ const ShareWhiteboardForm = ({
             >
               Permission:
             </label>
-            <select
-              name="permission-type"
-              value={newUserPermType}
-              onChange={handleChangePermType}
-              className="hover:cursor-pointer mr-2"
-            >
-              {USER_PERMISSION_TYPES.map(perm => (
-                <option key={perm} value={perm}>{perm}</option>
-              ))}
-            </select>
+            <Select value={newUserPermType} onValueChange={handleChangePermType}>
+              <SelectTrigger id="permission-type" className="hover:cursor-pointer mr-2 w-auto">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {USER_PERMISSION_TYPES.map(perm => (
+                  <SelectItem key={perm} value={perm}>{perm}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Button
               variant="secondary"
