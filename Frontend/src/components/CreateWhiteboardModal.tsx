@@ -37,6 +37,14 @@ import {
   Input
 } from '@/components/ui/input';
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
 interface CreateWhiteboardFormAttribs {
   name: string;
 }
@@ -65,7 +73,7 @@ const CreateWhiteboardModal = ({
     ...FORM_ATTRIBS_DEFAULT
   });
   const [newUserPermType, setNewUserPermType] = useState<UserPermissionEnum>(
-    USER_PERMISSION_TYPES[0] as UserPermissionEnum
+    USER_PERMISSION_TYPES[0]
   );
   const [permissionsByKey, setPermissionsByKey] = useState<Record<string, UserPermission>>({});
 
@@ -114,10 +122,12 @@ const CreateWhiteboardModal = ({
     }));
   };
 
-  const handleChangePermType = (ev: React.ChangeEvent<HTMLSelectElement>) => {
-    ev.preventDefault();
-    setNewUserPermType(ev.target.value as UserPermissionEnum);
-  };
+  const handleChangePermType = useCallback(
+    (value: string) => {
+      setNewUserPermType(value as UserPermissionEnum);
+    },
+    [setNewUserPermType]
+  );
 
   const handleSubmit = useCallback(
     (ev: React.FormEvent<HTMLFormElement>) => {
@@ -290,16 +300,16 @@ const CreateWhiteboardModal = ({
                 >
                   Permission:
                 </label>
-                <select
-                  name="permission-type"
-                  value={newUserPermType}
-                  onChange={handleChangePermType}
-                  className="hover:cursor-pointer mr-2"
-                >
-                  {USER_PERMISSION_TYPES.map(perm => (
-                    <option key={perm} value={perm}>{perm}</option>
-                  ))}
-                </select>
+                <Select value={newUserPermType} onValueChange={handleChangePermType}>
+                  <SelectTrigger id="permission-type" className="hover:cursor-pointer mr-2 w-auto">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {USER_PERMISSION_TYPES.map(perm => (
+                      <SelectItem key={perm} value={perm}>{perm}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
                 <Button
                   variant="secondary"
