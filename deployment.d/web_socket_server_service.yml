@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-socket-server-service
+  namespace: whiteboard-editor
+spec:
+  selector:
+    app: whiteboard-editor.web-socket-server
+  ports:
+  - name: http
+    protocol: TCP
+    port: 3000
+    targetPort: 3000

@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whiteboard-editor-web-socket-server
+  namespace: whiteboard-editor
+  labels:
+    app: whiteboard-editor.web-socket-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: whiteboard-editor.web-socket-server
+  template:
+    metadata:
+      labels:
+        app: whiteboard-editor.web-socket-server
+    spec:
+      containers:
+      - name: whiteboard-editor-web-socket-server
+        image: ${WHITEBOARD_EDITOR_CR_URI}/web_socket_server:${WHITEBOARD_EDITOR_TAG}
+        imagePullPolicy: Never
+        ports:
+          - containerPort: 3000
+        env:
+          # Values should be stored in generic secret named
+          # whiteboard-editor-config, which contains contents of .env file.
+          - name: MONGO_URI
+            valueFrom:
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_MONGO_URI
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_JWT_SECRET

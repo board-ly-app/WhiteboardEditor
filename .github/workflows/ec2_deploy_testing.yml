@@ -166,48 +166,6 @@ jobs:
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/web_socket_server:buildcache
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/web_socket_server:buildcache,mode=max
 
-  build_and_push_reverse_proxy:
-    name: Build and Push Reverse Proxy
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-
-      - name: Set up Docker
-        uses: docker/setup-docker-action@v4
-        with:
-          daemon-config: |
-            {
-              "debug": true,
-              "features": {
-                "containerd-snapshotter": true
-              }
-            }
-
-      - name: Log into Github Container Registry
-        id: login-ghcr
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push image
-        id: build-and-push-image
-        uses: docker/build-push-action@v6
-        with:
-          context: ReverseProxy
-          target: release
-          push: true
-          tags: ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/reverse_proxy:${{ env.CURRENT_VERSION_TAG }}
-
-          # cache settings
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/reverse_proxy:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}/reverse_proxy:buildcache,mode=max
-
   deploy:
     name: Deploy to EC2
     runs-on: ubuntu-24.04
@@ -218,7 +176,6 @@ jobs:
       - build_and_push_frontend
       - build_and_push_frontend
       - build_and_push_web_socket_server
-      - build_and_push_reverse_proxy
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -232,6 +189,7 @@ jobs:
           _EOF_
           chmod 400 "${{ runner.temp }}/github-ec2.pem"
           ssh-keygen -y -f "${{ runner.temp }}/github-ec2.pem" > "${{ runner.temp }}/github-ec2.pem.pub"
+          chmod 400 "${{ runner.temp }}/github-ec2.pem.pub"
           ssh-add "${{ runner.temp }}/github-ec2.pem"
 
       - name: Copy docker-compose.yml to remote host
@@ -242,6 +200,17 @@ jobs:
             -i "${{ runner.temp }}/github-ec2.pem" \
             -o StrictHostKeyChecking=no \
             docker-compose.yml "${REMOTE_HOST}:${{ secrets.EC2_TEST_DEPLOYMENT_DIR }}"
+
+      - name: Copy deployment.d to remote host
+        id: copy-deployment-d-to-remote-host
+        run: |
+          REMOTE_HOST="${{ secrets.EC2_TEST_USER }}@${{ secrets.EC2_TEST_HOST }}"
+          find deployment.d/ -type f -exec tar -czf - '{}' + \
+            | ssh \
+              -i "${{ runner.temp }}/github-ec2.pem" \
+              -o StrictHostKeyChecking=no \
+              "${REMOTE_HOST}" \
+              tar -C "${{ secrets.EC2_TEST_DEPLOYMENT_DIR }}" -xzf -
 
       - name: Deploy via SSH
         id: deploy-ssh
@@ -275,9 +244,9 @@ jobs:
             _EOF_
             docker compose pull
 
-            # === Restart containers ===========================================
-            docker compose down
-            docker compose up --detach
+            # === Restart kubernetes deployment ================================
+            ./deployment.d/teardown.sh
+            ./deployment.d/deploy.sh
         run: |
           # Write script to a tempfile
           printenv SSH_SCRIPT > "${{ runner.temp }}/script.sh"

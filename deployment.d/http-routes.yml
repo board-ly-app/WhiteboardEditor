@@ -1,0 +1,60 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: whiteboard-editor-rest-api-route
+  namespace: whiteboard-editor
+spec:
+  parentRefs:
+  - name: gateway
+    namespace: whiteboard-editor
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+    - name: rest-api-service
+      namespace: whiteboard-editor
+      port: 3000
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: whiteboard-editor-web-socket-server-route
+  namespace: whiteboard-editor
+spec:
+  parentRefs:
+  - name: gateway
+    namespace: whiteboard-editor
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /ws
+    timeouts:
+      # -- no timeouts - this is a web socket
+      request: 0s
+      backendRequest: 0s
+    backendRefs:
+    - name: web-socket-server-service
+      namespace: whiteboard-editor
+      port: 3000
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: whiteboard-editor-frontend-route
+  namespace: whiteboard-editor
+spec:
+  parentRefs:
+  - name: gateway
+    namespace: whiteboard-editor
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: frontend-service
+      namespace: whiteboard-editor
+      port: 3000

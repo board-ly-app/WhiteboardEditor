@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whiteboard-editor-rest-api
+  namespace: whiteboard-editor
+  labels:
+    app: whiteboard-editor.rest-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: whiteboard-editor-rest-api
+  template:
+    metadata:
+      labels:
+        app: whiteboard-editor-rest-api
+    spec:
+      containers:
+      - name: whiteboard-editor-rest-api
+        image: ${WHITEBOARD_EDITOR_CR_URI}/rest_api:${WHITEBOARD_EDITOR_TAG}
+        imagePullPolicy: Never
+        ports:
+          - containerPort: 3000
+        env:
+          # Values should be stored in generic secret named
+          # whiteboard-editor-config, which contains contents of .env file.
+          - name: MONGO_URI
+            valueFrom:
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_MONGO_URI
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_JWT_SECRET
+          - name: JWT_EXPIRATION_SECS
+            valueFrom:
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_JWT_EXPIRATION_SECS
+          - name: TEMP_USER_EXPIRATION_SECS
+            valueFrom:
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_TEMP_EXPIRATION_SECS
+          - name: TEMP_WHITEBOARD_EXPIRATION_SECS
+            valueFrom:
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_TEMP_EXPIRATION_SECS
