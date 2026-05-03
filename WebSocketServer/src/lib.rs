@@ -1237,15 +1237,17 @@ pub async fn handle_authenticated_client_message(
                                 });
                             },
                             Some(perm) => match perm {
-                                WhiteboardPermissionEnum::View => {
+                                WhiteboardPermissionEnum::Own => {},
+                                _  => {
                                     return Some(ServerSocketMessage::IndividualError {
                                         client_id: client_state.client_id.clone(),
                                         error: ClientError::Other {
-                                            message: format!("User {} does not have edit permission", user_id),
+                                            message: String::from(
+                                                "You cannot change a canvas' allowed users as a non-owner"
+                                            ),
                                         }
                                     });
                                 },
-                                WhiteboardPermissionEnum::Edit | WhiteboardPermissionEnum::Own => {},
                             },
                         };
                     }// -- end for user_id in allowed_users.iter()

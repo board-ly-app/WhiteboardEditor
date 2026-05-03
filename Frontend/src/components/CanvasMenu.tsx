@@ -83,7 +83,7 @@ const CanvasMenu = ({
   whiteboardId,
   allowedUsernames,
 }: CanvasMenuProps) => {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [allowedUsersMenuOpen, setAllowedUsersMenuOpen] = useState(false);
   const allowedUsers = useSelector((state: RootState) =>
     selectAllowedUsersByCanvas(state, canvasId)
   ) ?? [];
@@ -97,6 +97,7 @@ const CanvasMenu = ({
   }
 
   const { 
+    ownPermission,
     canvasGroupRefsByIdRef,
   } = whiteboardContext;
 
@@ -216,18 +217,26 @@ const CanvasMenu = ({
         <DropdownMenuContent className="w-48">
         
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger
+              className="hover:cursor-pointer"
+            >
               Allowed Users
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
-              <DropdownMenuItem 
-                className="flex justify-center" 
-                onSelect={() => setDialogOpen(true)}
-              >
-                Edit
-                <SquarePen/>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              {
+                (ownPermission === 'own') && (
+                  <>
+                    <DropdownMenuItem 
+                      className="flex justify-center" 
+                      onSelect={() => setAllowedUsersMenuOpen(true)}
+                    >
+                      Edit
+                      <SquarePen/>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )
+              }
               {allowedUsernames.map((u) => (
                 <DropdownMenuLabel key={u}>
                   {u}
@@ -260,7 +269,7 @@ const CanvasMenu = ({
       </DropdownMenu>
 
       {/* Edit Users Modal */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={allowedUsersMenuOpen} onOpenChange={setAllowedUsersMenuOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Allowed Users</DialogTitle>
@@ -274,13 +283,13 @@ const CanvasMenu = ({
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="secondary" onClick={() => {
               setSelectedUsers(allowedUsers); // Reset to original selection
-              setDialogOpen(false);
+              setAllowedUsersMenuOpen(false);
             }}>
               Cancel
             </Button>
             <Button onClick={() => {
               handleUpdateAllowedUsers(selectedUsers);
-              setDialogOpen(false);
+              setAllowedUsersMenuOpen(false);
             }}>
               Save
             </Button>

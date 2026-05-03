@@ -1,6 +1,7 @@
 // -- std imports
 import {
-  useState
+  useState,
+  useCallback,
 } from 'react';
 
 // -- third-party imports
@@ -28,12 +29,21 @@ import {
 } from '@/components/ui/command';
 
 import {
-  Button
+  Button,
+  type ButtonStatus,
 } from '@/components/ui/button';
 
 import {
   Input
 } from '@/components/ui/input';
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface CreateWhiteboardFormAttribs {
   name: string;
@@ -50,7 +60,7 @@ export interface CreateWhiteboardFormData extends CreateWhiteboardFormAttribs {
 }
 
 export interface CreateWhiteboardModalProps {
-  onSubmit: (data: CreateWhiteboardFormData) => void;
+  onSubmit: (data: CreateWhiteboardFormData) => Promise<unknown>;
 }
 
 const CreateWhiteboardModal = ({
@@ -63,9 +73,11 @@ const CreateWhiteboardModal = ({
     ...FORM_ATTRIBS_DEFAULT
   });
   const [newUserPermType, setNewUserPermType] = useState<UserPermissionEnum>(
-    USER_PERMISSION_TYPES[0] as UserPermissionEnum
+    USER_PERMISSION_TYPES[0]
   );
   const [permissionsByKey, setPermissionsByKey] = useState<Record<string, UserPermission>>({});
+
+  const [submitButtonStatus, setSubmitButtonStatus] = useState<ButtonStatus>('enabled');
 
   // -- derived state
   const permissions: UserPermission[] = Object.values(permissionsByKey);
@@ -110,36 +122,51 @@ const CreateWhiteboardModal = ({
     }));
   };
 
-  const handleChangePermType = (ev: React.ChangeEvent<HTMLSelectElement>) => {
-    ev.preventDefault();
-    setNewUserPermType(ev.target.value as UserPermissionEnum);
-  };
+  const handleChangePermType = useCallback(
+    (value: string) => {
+      setNewUserPermType(value as UserPermissionEnum);
+    },
+    [setNewUserPermType]
+  );
 
-  const handleSubmit = (ev: React.FormEvent<HTMLFormElement>) => {
-    ev.preventDefault();
+  const handleSubmit = useCallback(
+    (ev: React.FormEvent<HTMLFormElement>) => {
+      ev.preventDefault();
 
-    // Possibly useful when implementing custom scrolling
-    // const windowWidth = window.innerWidth;
-    // const windowHeight = window.innerHeight;
-    const rootCanvasWidth = 3000;
-    const rootCanvasHeight = 3000;
+      setSubmitButtonStatus('pending');
 
-    const data = {
-      ...formInputs,
-      collaboratorPermissions: permissions,
-      width: rootCanvasWidth,
-      height: rootCanvasHeight,
-    };
+      // Possibly useful when implementing custom scrolling
+      // const windowWidth = window.innerWidth;
+      // const windowHeight = window.innerHeight;
+      const rootCanvasWidth = 3000;
+      const rootCanvasHeight = 3000;
 
-    if (! data.name) {
-      alert('Name required');
-      return;
-    }
+      const data = {
+        ...formInputs,
+        collaboratorPermissions: permissions,
+        width: rootCanvasWidth,
+        height: rootCanvasHeight,
+      };
 
-    onSubmit(data);
-    setIsOpen(false);
-    setFormInputs({ ...FORM_ATTRIBS_DEFAULT });
-  };
+      if (! data.name) {
+        alert('Name required');
+        return;
+      }
+
+      onSubmit(data)
+        .then(() => {
+          // -- reset state and close modal on success
+          //    otherwise, we want to save the form state so the user can try
+          //    again
+          setIsOpen(false);
+          setFormInputs({ ...FORM_ATTRIBS_DEFAULT });
+        })
+        .finally(() => {
+          setSubmitButtonStatus('enabled');
+        });
+    },
+    [setSubmitButtonStatus, formInputs, onSubmit, permissions]
+  );
 
   const makeHandleRemoveByKey = (key: string) => () => {
     setPermissionsByKey(prev => {
@@ -273,16 +300,16 @@ const CreateWhiteboardModal = ({
                 >
                   Permission:
                 </label>
-                <select
-                  name="permission-type"
-                  value={newUserPermType}
-                  onChange={handleChangePermType}
-                  className="hover:cursor-pointer mr-2"
-                >
-                  {USER_PERMISSION_TYPES.map(perm => (
-                    <option key={perm} value={perm}>{perm}</option>
-                  ))}
-                </select>
+                <Select value={newUserPermType} onValueChange={handleChangePermType}>
+                  <SelectTrigger id="permission-type" className="hover:cursor-pointer mr-2 w-auto">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {USER_PERMISSION_TYPES.map(perm => (
+                      <SelectItem key={perm} value={perm}>{perm}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
                 <Button
                   variant="secondary"
@@ -328,6 +355,7 @@ const CreateWhiteboardModal = ({
           <div className="flex flex-row justify-center mb-4">
             <Button
               type="submit"
+              status={submitButtonStatus}
               className="md:w-1/2"
             >
               + Create Whiteboard

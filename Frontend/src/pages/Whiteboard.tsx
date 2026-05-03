@@ -346,37 +346,42 @@ const Whiteboard = ({
   );
 
   // -- miscellaneous callback functions
-  const handleSubmitDeleteWhiteboard = useCallback(() => {
-      api.delete(`/whiteboards/${whiteboardId}`).
-        then(() => {
-          console.log('Whiteboard', whiteboardId, 'deleted successfully');
-          toast.success(`Whiteboard ${whiteboardId} deleted successfully`, {
-            position: "bottom-center",
-            hideProgressBar: true,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "colored",
-            transition: Bounce,
-          });
-        })
-        .catch((e: AxiosError) => {
-          console.error(`FAILED TO DELETE WHITEBOARD (${e.code}): ${JSON.stringify(e.response, null, 2)}`);
-          toast.error(`Error fetching whiteboard: ${e}`, {
-            position: "bottom-center",
-            hideProgressBar: true,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "colored",
-            transition: Bounce,
-          });
-        })
-        .finally(() => {
-          closeDeleteWhiteboardModal();
+  const handleSubmitDeleteWhiteboard = useCallback(
+    async () => {
+      try {
+        await api.delete(`/whiteboards/${whiteboardId}`);
+
+        console.log('Whiteboard', whiteboardId, 'deleted successfully');
+        toast.success(`Whiteboard ${whiteboardId} deleted successfully`, {
+          position: "bottom-center",
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Bounce,
         });
+      } catch (err: unknown) {
+        const e = err as AxiosError;
+        
+        console.error(`FAILED TO DELETE WHITEBOARD (${e.code}): ${JSON.stringify(e.response, null, 2)}`);
+        toast.error(`Error fetching whiteboard: ${e}`, {
+          position: "bottom-center",
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Bounce,
+        });
+        
+        // -- propagate error
+        throw err;
+      } finally {
+        closeDeleteWhiteboardModal();
+      }
     },
     [closeDeleteWhiteboardModal, whiteboardId]
   );// -- end handleSubmitDeleteWhiteboard
@@ -777,6 +782,9 @@ const Whiteboard = ({
                           theme: "colored",
                           transition: Bounce,
                         });
+
+                        // -- propagate error to caller
+                        throw err;
                     }
                   }}
                 />
