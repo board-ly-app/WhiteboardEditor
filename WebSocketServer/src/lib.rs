@@ -672,12 +672,34 @@ pub type WhiteboardPermissionMongoDBView = WhiteboardPermission;
 // ================================================================================================
 #[derive(Clone, Debug)]
 pub struct WhiteboardMetadata {
-    pub name: String,
-    pub user_permissions: Vec<WhiteboardPermission>,
+    name: String,
+    user_permissions: Vec<WhiteboardPermission>,
     // For permissions attached to an existing account, index by user id, to enable faster
     // retrieval when users log in.
-    pub permissions_by_user_id: HashMap<String, WhiteboardPermissionEnum>,
+    permissions_by_user_id: HashMap<String, WhiteboardPermissionEnum>,
 }// -- end WhiteboardMetadata
+
+impl WhiteboardMetadata {
+    pub fn new(
+        name: String,
+        user_permissions: Vec<WhiteboardPermission>,
+        permissions_by_user_id: HashMap<String, WhiteboardPermissionEnum>,
+    ) -> Self {
+        Self { name, user_permissions, permissions_by_user_id }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn user_permissions(&self) -> &[WhiteboardPermission] {
+        &self.user_permissions
+    }
+
+    pub fn permission_for_user(&self, user_id: &str) -> Option<WhiteboardPermissionEnum> {
+        self.permissions_by_user_id.get(user_id).copied()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Whiteboard {
@@ -694,7 +716,7 @@ impl Whiteboard {
         // always be the case.
         WhiteboardClientView {
             id: Some(self.id),
-            name: self.metadata.name.clone(),
+            name: self.metadata.name().to_string(),
             canvases: self.canvases.iter()
                 .map(|(_, canvas)| canvas.to_client_view())
                 .collect(),
@@ -796,18 +818,17 @@ pub struct WhiteboardMetadataMongoDBView {
 
 impl WhiteboardMetadataMongoDBView {
     pub fn to_whiteboard_metadata(&self) -> WhiteboardMetadata {
-        WhiteboardMetadata {
-            name: self.name.clone(),
-            user_permissions: self.user_permissions.clone(),
-            permissions_by_user_id: self.user_permissions.iter()
-                .map(|wb_perm| match wb_perm.permission_type {
-                    WhiteboardPermissionType::User { ref user, .. } => Some((user.to_string(), wb_perm.permission)),
-                    _ => None
-                })
-                .filter(|x| x.is_some())
-                .map(|x| x.unwrap())
-                .collect(),
-        }
+        let permissions_by_user_id = self.user_permissions.iter()
+            .filter_map(|wb_perm| match wb_perm.permission_type {
+                WhiteboardPermissionType::User { ref user, .. } => Some((user.to_string(), wb_perm.permission)),
+                _ => None,
+            })
+            .collect();
+        WhiteboardMetadata::new(
+            self.name.clone(),
+            self.user_permissions.clone(),
+            permissions_by_user_id,
+        )
     }// -- end fn to_whiteboard_metadata
 }
 
@@ -1227,7 +1248,7 @@ pub async fn handle_authenticated_client_message(
 
                     // -- ensure all allowed users are valid users who have edit or own permission
                     for user_id in allowed_users.iter() {
-                        match whiteboard.metadata.permissions_by_user_id.get(&user_id.to_string()) {
+                        match whiteboard.metadata.permission_for_user(&user_id.to_string()) {
                             None => {
                                 return Some(ServerSocketMessage::IndividualError {
                                     client_id: client_state.client_id.clone(),
@@ -1508,7 +1529,7 @@ pub async fn handle_unauthenticated_client_message<StoreType: UserStore + Whiteb
                             },
                         };
 
-                        whiteboard.metadata.permissions_by_user_id.get(&user_id.to_string()).copied()
+                        whiteboard.metadata.permission_for_user(&user_id.to_string())
                     };
 
                     if let Some(permission) = permission {

@@ -22,11 +22,11 @@ mod unit_tests {
         let whiteboard = Whiteboard {
             id: ObjectId::new(),
             is_active: true,
-            metadata: WhiteboardMetadata {
-                name: String::from("Test"),
-                user_permissions: vec![],
-                permissions_by_user_id: HashMap::new(),
-            },
+            metadata: WhiteboardMetadata::new(
+                String::from("Test"),
+                vec![],
+                HashMap::new(),
+            ),
             root_canvas: test_canvas_id,
             canvases: HashMap::new(),
         };
@@ -147,11 +147,11 @@ mod unit_tests {
         let whiteboard = Whiteboard {
             id: ObjectId::new(),
             is_active: true,
-            metadata: WhiteboardMetadata {
-                name: String::from("Test"),
-                user_permissions: vec![],
-                permissions_by_user_id: HashMap::new(),
-            },
+            metadata: WhiteboardMetadata::new(
+                String::from("Test"),
+                vec![],
+                HashMap::new(),
+            ),
             root_canvas: canvas_a_id,
             canvases: HashMap::from([
                 (
@@ -326,11 +326,11 @@ mod unit_tests {
         let whiteboard = Whiteboard {
             id: ObjectId::new(),
             is_active: true,
-            metadata: WhiteboardMetadata {
-                name: String::from("Test"),
-                user_permissions: vec![],
-                permissions_by_user_id: HashMap::new(),
-            },
+            metadata: WhiteboardMetadata::new(
+                String::from("Test"),
+                vec![],
+                HashMap::new(),
+            ),
             root_canvas: canvas_a_id,
             canvases: HashMap::from([
                 (
@@ -447,8 +447,8 @@ mod unit_tests {
         println!("Whiteboard Received: {:?}", whiteboard);
 
         assert!(whiteboard.id == whiteboard_id);
-        assert!(whiteboard.metadata.name == "Project Alpha");
-        assert!(whiteboard.metadata.user_permissions.len() == 1);
+        assert!(whiteboard.metadata.name() == "Project Alpha");
+        assert!(whiteboard.metadata.user_permissions().len() == 1);
         assert!(whiteboard.root_canvas == root_canvas_id);
         assert!(whiteboard.canvases.len() == 4);
         assert!(whiteboard.canvases.contains_key(&root_canvas_id));
@@ -567,9 +567,9 @@ mod unit_tests {
         let whiteboard = Whiteboard {
             id: ObjectId::new(),
             is_active: true,
-            metadata: WhiteboardMetadata {
-                name: String::from("Test"),
-                user_permissions: vec![
+            metadata: WhiteboardMetadata::new(
+                String::from("Test"),
+                vec![
                     WhiteboardPermission {
                         permission_type: WhiteboardPermissionType::User {
                             user: target_uid,
@@ -578,10 +578,10 @@ mod unit_tests {
                         permission: WhiteboardPermissionEnum::Edit,
                     },
                 ],
-                permissions_by_user_id: HashMap::from([
+                HashMap::from([
                     (String::from(target_uid_s), WhiteboardPermissionEnum::Edit),
                 ]),
-            },
+            ),
             root_canvas: ObjectId::new(),
             canvases: HashMap::new(),
         };
@@ -784,9 +784,9 @@ mod unit_tests {
         let whiteboard = Whiteboard {
             id: ObjectId::new(),
             is_active: true,
-            metadata: WhiteboardMetadata {
-                name: String::from("Test"),
-                user_permissions: vec![
+            metadata: WhiteboardMetadata::new(
+                String::from("Test"),
+                vec![
                     WhiteboardPermission {
                         permission_type: WhiteboardPermissionType::User {
                             user: test_user_id,
@@ -795,10 +795,10 @@ mod unit_tests {
                         permission: WhiteboardPermissionEnum::Edit,
                     },
                 ],
-                permissions_by_user_id: HashMap::from([
+                HashMap::from([
                     (test_user_id.to_string(), WhiteboardPermissionEnum::Edit),
                 ]),
-            },
+            ),
             // no canvases
             root_canvas: ObjectId::new(),
             canvases: HashMap::new(),
