@@ -1,20 +1,14 @@
-use super::models::{
-    WhiteboardIdType,
-    ClientIdType,
-};
+use super::models::{ClientIdType, WhiteboardIdType};
 
-use chrono::{
-    self,
-    Utc,
-};
+use chrono::{self, Utc};
 
 use mongodb::bson;
 
 pub fn generate_unique_client_id(whiteboard_id: WhiteboardIdType, index: i32) -> ClientIdType {
     format!("{}.{}", whiteboard_id, index)
-}// -- end generate_unique_client_id
+} // -- end generate_unique_client_id
 
-pub fn dt_bson_to_chrono_utc(dt: &bson::DateTime) -> chrono::DateTime::<Utc> {
+pub fn dt_bson_to_chrono_utc(dt: &bson::DateTime) -> chrono::DateTime<Utc> {
     match chrono::DateTime::<Utc>::from_timestamp_millis(dt.timestamp_millis()) {
         Some(dt) => dt,
         None => {

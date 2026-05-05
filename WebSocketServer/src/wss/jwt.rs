@@ -1,20 +1,8 @@
-use serde::{
-    self,
-    Deserialize,
-    Serialize,
-};
+use serde::{self, Deserialize, Serialize};
 
-use chrono::{
-    self,
-    Utc,
-};
+use chrono::{self, Utc};
 
-use mongodb::{
-    bson::{
-        doc,
-        oid::ObjectId,
-    },
-};
+use mongodb::bson::{doc, oid::ObjectId};
 
 // === JWTClaims ==================================================================================
 //
@@ -26,16 +14,16 @@ use mongodb::{
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JWTClaims {
-    sub: String,
+    pub sub: String,
 
     // -- the time at which the token was issued, in UNIX epoch seconds
     #[serde(rename = "iat")]
-    issued_at_epoch_secs: i64,
+    pub issued_at_epoch_secs: i64,
 
     // -- the time at which the token should expire, in UNIX epoch seconds
     #[serde(rename = "exp")]
-    expiration_epoch_secs: i64,
-}
+    pub expiration_epoch_secs: i64,
+} // -- end pub struct JWTClaims
 
 #[derive(Clone, Debug)]
 pub struct JWTExpiredError {
@@ -58,22 +46,21 @@ impl std::fmt::Display for JWTExpiredError {
 
 impl std::error::Error for JWTExpiredError {}
 
-pub fn get_user_id_from_jwt(token_s: &str, secret: &str) -> Result<ObjectId, Box::<dyn std::error::Error + Send + Sync>> {
+pub fn get_user_id_from_jwt(
+    token_s: &str,
+    secret: &str,
+) -> Result<ObjectId, Box<dyn std::error::Error + Send + Sync>> {
     use hmac::{Hmac, Mac};
-    use jwt::{
-        VerifyWithKey,
-        Header,
-        Token,
-    };
+    use jwt::{Header, Token, VerifyWithKey};
     use sha2::Sha256;
 
     let key: Hmac<Sha256> = Hmac::new_from_slice(secret.as_bytes())?;
-    let token : Token<Header, JWTClaims, _> = token_s.verify_with_key(&key)?;
+    let token: Token<Header, JWTClaims, _> = token_s.verify_with_key(&key)?;
     let claims = token.claims();
 
     let timestamp_now_utc = chrono::Local::now().to_utc().timestamp();
     let timestamp_exp_utc = claims.expiration_epoch_secs;
-    
+
     if timestamp_now_utc >= timestamp_exp_utc {
         Err(Box::new(JWTExpiredError::new(timestamp_exp_utc)))
     } else {

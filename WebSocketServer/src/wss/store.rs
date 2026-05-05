@@ -1,9 +1,4 @@
-use super::models::{
-    User,
-    UserIdType,
-    WhiteboardMetadata,
-    WhiteboardIdType,
-};
+use super::models::{User, UserIdType, WhiteboardIdType, WhiteboardMetadata};
 
 // === UserStore ==================================================================================
 //
@@ -14,10 +9,11 @@ use super::models::{
 //
 // ================================================================================================
 pub trait UserStore {
-    fn get_user_by_id(&self, user_id: &UserIdType) -> impl futures::Future<
-        Output = Result<Option<User>, Box<dyn std::error::Error + Send + Sync>>
-    >;
-}// -- end trait UserStore
+    fn get_user_by_id(
+        &self,
+        user_id: &UserIdType,
+    ) -> impl futures::Future<Output = Result<Option<User>, Box<dyn std::error::Error + Send + Sync>>>;
+} // -- end trait UserStore
 
 // === WhiteboardMetadataStore ====================================================================
 //
@@ -29,7 +25,10 @@ pub trait UserStore {
 //
 // ================================================================================================
 pub trait WhiteboardMetadataStore {
-    fn get_whiteboard_metadata_by_id(&self, whiteboard_id: &WhiteboardIdType) -> impl futures::Future<
-        Output = Result<Option<WhiteboardMetadata>, Box<dyn std::error::Error + Send + Sync>>
+    fn get_whiteboard_metadata_by_id(
+        &self,
+        whiteboard_id: &WhiteboardIdType,
+    ) -> impl futures::Future<
+        Output = Result<Option<WhiteboardMetadata>, Box<dyn std::error::Error + Send + Sync>>,
     >;
-}// -- end trait WhiteboardMetadataStore
+} // -- end trait WhiteboardMetadataStore

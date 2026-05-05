@@ -1,15 +1,8 @@
-use serde::{
-    self,
-    Serialize,
-    Deserialize,
-};
+use serde::{self, Deserialize, Serialize};
 
 use super::models::*;
 
-use std::collections::{
-    HashMap,
-    HashSet,
-};
+use std::collections::{HashMap, HashSet};
 
 // === ClientError ================================================================================
 //
@@ -18,7 +11,11 @@ use std::collections::{
 //
 // ================================================================================================
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "type",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
 pub enum ClientError {
     // -- previous message from client was invalid in some form (invalid json, non-existent message
     // type, invalid message format, etc.)
@@ -61,13 +58,17 @@ pub enum ClientError {
         // -- make sure it excludes sensitive information
         message: String,
     },
-}// -- end ClientError
+} // -- end ClientError
 
 // === ServerSocketMessage ========================================================================
 //
 // ================================================================================================
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "type",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
 pub enum ServerSocketMessage {
     InitClient {
         client_id: ClientIdType,
@@ -124,7 +125,7 @@ pub enum ServerSocketMessage {
     BroadcastError {
         error: ClientError,
     },
-}// -- end pub enum ServerSocketMessage
+} // -- end pub enum ServerSocketMessage
 
 // === ClientSocketMessage ========================================================================
 //
@@ -132,7 +133,11 @@ pub enum ServerSocketMessage {
 //
 // ================================================================================================
 #[derive(Debug, Clone, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "type",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
 pub enum ClientSocketMessage {
     EditingCanvas {
         canvas_id: String,
@@ -153,7 +158,7 @@ pub enum ClientSocketMessage {
         width: f64,
         height: f64,
         parent_canvas: CanvasParentRefClientView,
-        allowed_users: HashSet::<UserIdType>,
+        allowed_users: HashSet<UserIdType>,
     },
     DeleteCanvases {
         canvas_ids: Vec<CanvasIdType>,
@@ -168,4 +173,4 @@ pub enum ClientSocketMessage {
     MergeCanvas {
         canvas_id: CanvasIdType,
     },
-}// -- end pub enum ClientSocketMessage
+} // -- end pub enum ClientSocketMessage
