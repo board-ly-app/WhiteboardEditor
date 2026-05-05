@@ -65,7 +65,7 @@ cp -rp ./target /tmp/test_deps
 _EOF_
 
 # Copy relevant source code
-COPY ./src/lib.rs ./src/unit_tests.rs ./src
+COPY ./src/unit_tests.rs ./src
 COPY ./src/wss ./src/wss
 
 # Dummy build file to make Cargo happy
@@ -139,7 +139,7 @@ RUN \
   cargo chef cook --release --recipe-path recipe.json
 
 # Copy relevant source code
-COPY ./src/lib.rs ./src/main.rs ./src
+COPY ./src/main.rs ./src
 COPY ./src/wss ./src/wss
 
 # Dummy build file to make Cargo happy
