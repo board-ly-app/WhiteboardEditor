@@ -99,7 +99,7 @@ pub async fn handle_authenticated_client_message(
             let user_whiteboard_permission = {
                 let perm = client_state.user_whiteboard_permission.lock().await;
 
-                perm.clone()
+                *perm
             };
 
             match user_whiteboard_permission {
@@ -132,7 +132,7 @@ pub async fn handle_authenticated_client_message(
                     // canvas.
                     Some(ServerSocketMessage::EditingCanvas {
                         client_id: client_state.client_id.clone(),
-                        canvas_id: canvas_id,
+                        canvas_id,
                     })
                 }
                 CreateShapes {
@@ -155,8 +155,8 @@ pub async fn handle_authenticated_client_message(
                             for shape in shapes.iter() {
                                 let obj_id = ObjectId::new();
 
-                                new_shapes.insert(obj_id.clone(), shape.clone());
-                                canvas.shapes_mut().insert(obj_id.clone(), shape.clone());
+                                new_shapes.insert(obj_id, shape.clone());
+                                canvas.shapes_mut().insert(obj_id, shape.clone());
                             } // end for (idx, &mut shape) in new_shapes.iter_mut().enumerate()
 
                             // valid input: add to diffs
@@ -318,7 +318,7 @@ pub async fn handle_authenticated_client_message(
 
                     // delete canvases identified by the given ids
                     for id in &canvas_ids {
-                        whiteboard.canvases_mut().remove(&id);
+                        whiteboard.canvases_mut().remove(id);
                     } // end for id in canvas_ids
 
                     // valid message: add to diffs
@@ -374,12 +374,12 @@ pub async fn handle_authenticated_client_message(
                     match whiteboard.canvases_mut().get_mut(&canvas_id) {
                         None => {
                             // canvas doesn't exist
-                            return Some(ServerSocketMessage::IndividualError {
+                            Some(ServerSocketMessage::IndividualError {
                                 client_id: client_state.client_id.clone(),
                                 error: ClientError::CanvasNotFound {
                                     canvas_id: canvas_id.to_string(),
                                 },
-                            });
+                            })
                         }
                         Some(canvas) => {
                             // update allowed users
@@ -391,7 +391,7 @@ pub async fn handle_authenticated_client_message(
 
                                 diffs.push(WhiteboardDiff::UpdateCanvasAllowedUsers {
                                     canvas_id,
-                                    allowed_users: allowed_users.iter().map(|oid| *oid).collect(),
+                                    allowed_users: allowed_users.iter().copied().collect(),
                                 });
                             }
 
@@ -421,7 +421,7 @@ pub async fn handle_authenticated_client_message(
                     //  - Create a new hashmap that contains all the shapes of the parent canvas,
                     //  then extend it with the shapes from the child canvas, then make it the new
                     //  parent canvas shapes
-                    if let Some(ref child_canvas) = whiteboard.canvases().get(&canvas_id) {
+                    if let Some(child_canvas) = whiteboard.canvases().get(&canvas_id) {
                         if let Some(parent_canvas) = child_canvas.parent_canvas() {
                             // Store copy of parent canvas ref, to allow resetting parent canvas refs
                             // later
@@ -431,21 +431,21 @@ pub async fn handle_authenticated_client_message(
                             new_parent_canvas_objects = child_canvas
                                 .shapes()
                                 .iter()
-                                .map(|(k, v)| (k.clone(), v.clone()))
+                                .map(|(k, v)| (*k, v.clone()))
                                 .collect();
 
                             // store diff to indicate change in ownership of canvases
                             new_diffs.push(WhiteboardDiff::TransferCanvasObjects {
-                                old_canvas_id: canvas_id.clone(),
-                                new_canvas_id: parent_canvas.canvas_id().clone(),
+                                old_canvas_id: canvas_id,
+                                new_canvas_id: *parent_canvas.canvas_id(),
                                 translate_x: parent_canvas.origin_x(),
                                 translate_y: parent_canvas.origin_y(),
                             });
 
                             // store diff to indicate change of ownership of canvas objects
                             new_diffs.push(WhiteboardDiff::TransferChildCanvases {
-                                old_parent_id: canvas_id.clone(),
-                                new_parent_id: parent_canvas.canvas_id().clone(),
+                                old_parent_id: canvas_id,
+                                new_parent_id: *parent_canvas.canvas_id(),
                                 translate_x: parent_canvas.origin_x(),
                                 translate_y: parent_canvas.origin_y(),
                             });
@@ -472,8 +472,8 @@ pub async fn handle_authenticated_client_message(
                         // change child canvas objects' coordinates to match position on parent
                         // canvas
                         for &mut (_, ref mut canvas_obj) in new_parent_canvas_objects.iter_mut() {
-                            match canvas_obj {
-                                &mut ShapeModel::Rect {
+                            match *canvas_obj {
+                                ShapeModel::Rect {
                                     ref mut x,
                                     ref mut y,
                                     ..
@@ -481,7 +481,7 @@ pub async fn handle_authenticated_client_message(
                                     *x += parent_ref.origin_x();
                                     *y += parent_ref.origin_y();
                                 }
-                                &mut ShapeModel::Ellipse {
+                                ShapeModel::Ellipse {
                                     ref mut x,
                                     ref mut y,
                                     ..
@@ -489,7 +489,7 @@ pub async fn handle_authenticated_client_message(
                                     *x += parent_ref.origin_x();
                                     *y += parent_ref.origin_y();
                                 }
-                                &mut ShapeModel::Vector { ref mut points, .. } => {
+                                ShapeModel::Vector { ref mut points, .. } => {
                                     for (idx, ref mut coord) in points.iter_mut().enumerate() {
                                         if idx % 2 == 0 {
                                             // even-indexed coordinates are x coordinates
@@ -500,7 +500,7 @@ pub async fn handle_authenticated_client_message(
                                         }
                                     } // -- end for idx, point
                                 }
-                                &mut ShapeModel::Text {
+                                ShapeModel::Text {
                                     ref mut x,
                                     ref mut y,
                                     ..
@@ -527,13 +527,12 @@ pub async fn handle_authenticated_client_message(
                     // Replace all parent refs pointing to child canvas with references parent canvas,
                     // recalculating offsets accordingly.
                     for canvas in whiteboard.canvases_mut().values_mut() {
-                        if let Some(ref mut target_parent_ref) = canvas.parent_canvas_mut() {
-                            if *target_parent_ref.canvas_id() == canvas_id {
+                        if let Some(ref mut target_parent_ref) = canvas.parent_canvas_mut()
+                            && *target_parent_ref.canvas_id() == canvas_id {
                                 *target_parent_ref.canvas_id_mut() = *parent_ref.canvas_id();
                                 *target_parent_ref.origin_x_mut() += parent_ref.origin_x();
                                 *target_parent_ref.origin_y_mut() += parent_ref.origin_y();
                             }
-                        }
                     } // -- end for canvas
 
                     // Remove child canvas from canvases map
@@ -541,7 +540,7 @@ pub async fn handle_authenticated_client_message(
 
                     // push diff to indicate that child canvas should be deleted in database
                     new_diffs.push(WhiteboardDiff::DeleteCanvases {
-                        canvas_ids: vec![canvas_id.clone()],
+                        canvas_ids: vec![canvas_id],
                     });
 
                     // Leave diff to indicate that canvas should be merged in database

@@ -63,7 +63,7 @@ impl UserStore for MongoDBStore {
     ) -> Result<Option<User>, Box<dyn std::error::Error + Send + Sync>> {
         match self
             .user_collection
-            .find_one(doc! { "_id": user_id.clone() })
+            .find_one(doc! { "_id": *user_id })
             .await?
         {
             Some(user_view) => Ok(Some(user_view.to_user())),
@@ -79,7 +79,7 @@ impl WhiteboardMetadataStore for MongoDBStore {
     ) -> Result<Option<WhiteboardMetadata>, Box<dyn std::error::Error + Send + Sync>> {
         match self
             .whiteboard_metadata_collection
-            .find_one(doc! { "_id": whiteboard_id.clone() })
+            .find_one(doc! { "_id": *whiteboard_id })
             .await?
         {
             Some(metadata_view) => Ok(Some(metadata_view.to_whiteboard_metadata())),
@@ -142,9 +142,9 @@ pub async fn get_whiteboard_metadata_by_id(
 ) -> Result<Option<WhiteboardMetadata>, mongodb::error::Error> {
     let metadata_coll = db.collection::<WhiteboardMetadataMongoDBView>("whiteboards");
 
-    match metadata_coll.find_one(doc! { "_id": wid.clone() }).await? {
+    match metadata_coll.find_one(doc! { "_id": *wid }).await? {
         None => {
-            return Ok(None);
+            Ok(None)
         }
         Some(metadata) => Ok(Some(metadata.to_whiteboard_metadata())),
     }
@@ -158,7 +158,7 @@ pub async fn get_whiteboard_by_id(
     let canvas_coll = db.collection::<CanvasMongoDBView>("canvases");
 
     let whiteboard_view = match whiteboard_coll
-        .find_one(doc! { "_id": wid.clone() })
+        .find_one(doc! { "_id": *wid })
         .await?
     {
         None => {

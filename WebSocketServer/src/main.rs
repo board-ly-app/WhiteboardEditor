@@ -89,15 +89,15 @@ async fn main() -> process::ExitCode {
             while let Ok(Some(event)) = wb_change_stream.next().await.transpose() {
                 match event.operation_type {
                     mongodb::change_stream::event::OperationType::Delete => {
-                        if let Some(doc) = event.document_key {
-                            if let Some(bson::Bson::ObjectId(wb_id)) = doc.get("_id") {
+                        if let Some(doc) = event.document_key
+                            && let Some(bson::Bson::ObjectId(wb_id)) = doc.get("_id") {
                                 // acquire lock on whiteboards store in connection state
                                 {
                                     let mut whiteboards =
                                         connection_state_ref.program_state.whiteboards.lock().await;
 
-                                    if whiteboards.contains_key(&wb_id) {
-                                        if let Some(whiteboard_entry) = whiteboards.get(&wb_id) {
+                                    if whiteboards.contains_key(wb_id) {
+                                        if let Some(whiteboard_entry) = whiteboards.get(wb_id) {
                                             // -- We have a whiteboard in the whiteboard store
 
                                             // Notify subscribed clients that the whiteboard has been
@@ -111,11 +111,10 @@ async fn main() -> process::ExitCode {
                                         }
 
                                         // delete entry
-                                        whiteboards.remove(&wb_id);
+                                        whiteboards.remove(wb_id);
                                     }
                                 }
-                            }
-                        };
+                            };
                     }
                     // we don't care about any other operations
                     _ => {}
@@ -143,7 +142,7 @@ async fn main() -> process::ExitCode {
     warp::serve(ws_route).run(addr).await;
 
     // -- abort and reap whiteboard deletion checker thread
-    let _ = whiteboard_deletion_checker_thread.abort();
+    whiteboard_deletion_checker_thread.abort();
     let _ = whiteboard_deletion_checker_thread.await;
 
     process::ExitCode::SUCCESS
@@ -197,8 +196,8 @@ async fn handle_connection(
         let mut whiteboards_by_id = connection_state_ref.program_state.whiteboards.lock().await;
         let whiteboard_res = whiteboards_by_id.get(&whiteboard_id);
 
-        match &whiteboard_res {
-            &None => {
+        match whiteboard_res {
+            None => {
                 // Try to fetch whiteboard from the database.
                 // If present, load into cache.
                 // Otherwise, return (disconnect) early.
@@ -242,7 +241,7 @@ async fn handle_connection(
                         return;
                     }
                     Ok(Some(whiteboard)) => {
-                        let whiteboard_id = whiteboard.id().clone();
+                        let whiteboard_id = *whiteboard.id();
                         let whiteboard_ref = Arc::new(Mutex::new(whiteboard));
 
                         // sender
@@ -250,7 +249,7 @@ async fn handle_connection(
                         let (tx, _rx) = broadcast::channel::<ServerSocketMessage>(100);
                         let shared_whiteboard_entry = SharedWhiteboardEntry {
                             whiteboard_ref: Arc::clone(&whiteboard_ref),
-                            whiteboard_id: whiteboard_id.clone(),
+                            whiteboard_id,
                             broadcaster: tx.clone(),
                             active_clients: Arc::new(Mutex::new(HashMap::new())),
                             diffs: Arc::new(Mutex::new(Vec::new())),
@@ -269,7 +268,7 @@ async fn handle_connection(
                     }
                 }
             }
-            &Some(shared_whiteboard_entry) => shared_whiteboard_entry.clone(),
+            Some(shared_whiteboard_entry) => shared_whiteboard_entry.clone(),
         }
     };
 
@@ -386,7 +385,7 @@ async fn handle_connection(
 
                                             // TODO: make method of Canvas struct
                                             let canvas_doc =
-                                                CanvasMongoDBView::from_canvas(&canvas);
+                                                CanvasMongoDBView::from_canvas(canvas);
                                             let create_canvas_res =
                                                 canvas_coll.insert_one(&canvas_doc).await;
 
@@ -468,7 +467,7 @@ async fn handle_connection(
                                                     .map(|(obj_id, shape)| {
                                                         CanvasObjectMongoDBView {
                                                             id: *obj_id,
-                                                            canvas_id: canvas_id.clone(),
+                                                            canvas_id: *canvas_id,
                                                             shape: shape.clone(),
                                                         }
                                                     })
@@ -496,10 +495,10 @@ async fn handle_connection(
                                             );
 
                                             for (obj_id, shape) in shapes.iter() {
-                                                let query_doc = doc! { "_id": obj_id.clone() };
+                                                let query_doc = doc! { "_id": *obj_id };
                                                 let canvas_obj_doc = CanvasObjectMongoDBView {
                                                     id: *obj_id,
-                                                    canvas_id: canvas_id.clone(),
+                                                    canvas_id: *canvas_id,
                                                     shape: shape.clone(),
                                                 };
 
@@ -828,7 +827,7 @@ async fn handle_connection(
                                             );
 
                                             let canvas_doc =
-                                                CanvasMongoDBView::from_canvas(&canvas);
+                                                CanvasMongoDBView::from_canvas(canvas);
                                             let create_canvas_res =
                                                 canvas_coll.insert_one(&canvas_doc).await;
 
@@ -910,7 +909,7 @@ async fn handle_connection(
                                                     .map(|(obj_id, shape)| {
                                                         CanvasObjectMongoDBView {
                                                             id: *obj_id,
-                                                            canvas_id: canvas_id.clone(),
+                                                            canvas_id: *canvas_id,
                                                             shape: shape.clone(),
                                                         }
                                                     })
@@ -938,10 +937,10 @@ async fn handle_connection(
                                             );
 
                                             for (obj_id, shape) in shapes.iter() {
-                                                let query_doc = doc! { "_id": obj_id.clone() };
+                                                let query_doc = doc! { "_id": *obj_id };
                                                 let canvas_obj_doc = CanvasObjectMongoDBView {
                                                     id: *obj_id,
-                                                    canvas_id: canvas_id.clone(),
+                                                    canvas_id: *canvas_id,
                                                     shape: shape.clone(),
                                                 };
 

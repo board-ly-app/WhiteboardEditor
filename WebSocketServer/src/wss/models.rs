@@ -74,7 +74,7 @@ pub struct CanvasObjectMongoDBView {
 impl CanvasObjectMongoDBView {
     pub fn to_canvas_object(&self) -> CanvasObject {
         CanvasObject {
-            id: self.id.clone(),
+            id: self.id,
             shape: self.shape.clone(),
         }
     }
@@ -82,7 +82,7 @@ impl CanvasObjectMongoDBView {
     pub fn from_canvas_object(obj: &CanvasObject, canvas_id: &CanvasIdType) -> Self {
         Self {
             id: obj.id,
-            canvas_id: canvas_id.clone(),
+            canvas_id: *canvas_id,
             shape: obj.shape.clone(),
         }
     }
@@ -160,7 +160,7 @@ impl UserClientView {
                 username,
                 email,
             } => Ok(User::Permanent {
-                id: ObjectId::parse_str(&id)?,
+                id: ObjectId::parse_str(id)?,
                 username: username.clone(),
                 email: email.clone(),
             }),
@@ -169,7 +169,7 @@ impl UserClientView {
                 username,
                 // temp_expires_at,
             } => Ok(User::Temp {
-                id: ObjectId::parse_str(&id)?,
+                id: ObjectId::parse_str(id)?,
                 username: username.clone(),
                 // temp_expires_at: temp_expires_at.clone(),
             }),
@@ -204,7 +204,7 @@ impl UserMongoDBView {
                 username,
                 email,
             } => Self::Permanent {
-                id: id.clone(),
+                id: *id,
                 username: username.clone(),
                 email: email.clone(),
             },
@@ -213,7 +213,7 @@ impl UserMongoDBView {
                 username,
                 // temp_expires_at,
             } => Self::Temp {
-                id: id.clone(),
+                id: *id,
                 username: username.clone(),
                 // temp_expires_at: temp_expires_at.clone(),
             },
@@ -227,7 +227,7 @@ impl UserMongoDBView {
                 username,
                 email,
             } => User::Permanent {
-                id: id.clone(),
+                id: *id,
                 username: username.clone(),
                 email: email.clone(),
             },
@@ -236,7 +236,7 @@ impl UserMongoDBView {
                 username,
                 // temp_expires_at,
             } => User::Temp {
-                id: id.clone(),
+                id: *id,
                 username: username.clone(),
                 // temp_expires_at: temp_expires_at.clone(),
             },
@@ -405,12 +405,12 @@ impl Canvas {
         allowed_users: Option<HashSet<ObjectId>>, // None = open to all
     ) -> Self {
         Self {
-            id: id.clone(),
+            id: *id,
             width,
             height,
             name: String::from(name),
-            time_created: time_created.clone(),
-            time_last_modified: time_last_modified.clone(),
+            time_created: *time_created,
+            time_last_modified: *time_last_modified,
             parent_canvas: parent_canvas.cloned(),
             shapes,
             allowed_users,
@@ -425,15 +425,12 @@ impl Canvas {
             width: self.width,
             height: self.height,
             name: self.name.clone(),
-            parent_canvas: match self.parent_canvas {
-                None => None,
-                Some(ref parent) => Some(CanvasParentRefClientView::from_canvas_parent_ref(parent)),
-            },
+            parent_canvas: self.parent_canvas.as_ref().map(CanvasParentRefClientView::from_canvas_parent_ref),
             shapes: self.shapes.clone(),
             time_created: self.time_created.to_rfc3339(),
             time_last_modified: self.time_last_modified.to_rfc3339(),
             allowed_users: match &self.allowed_users {
-                Some(set) => set.iter().map(|oid| *oid).collect(),
+                Some(set) => set.iter().copied().collect(),
                 None => vec![], // empty array means open to all
             },
         }
@@ -602,11 +599,9 @@ impl Whiteboard {
             id: Some(self.id),
             name: self.metadata.name().to_string(),
             canvases: self
-                .canvases
-                .iter()
-                .map(|(_, canvas)| canvas.to_client_view())
+                .canvases.values().map(|canvas| canvas.to_client_view())
                 .collect(),
-            root_canvas: self.root_canvas.clone(),
+            root_canvas: self.root_canvas,
         }
     } // end pub fn to_client_view(&self) -> CanvasClientView
 
@@ -677,14 +672,8 @@ impl CanvasMongoDBView {
                 .iter()
                 .map(|shape| (shape.id, shape.to_canvas_object().shape))
                 .collect(),
-            parent_canvas: match self.parent_canvas {
-                None => None,
-                Some(ref parent_ref) => Some(parent_ref.to_canvas_parent_ref()),
-            },
-            allowed_users: match &self.allowed_users {
-                None => None,
-                Some(users) => Some(users.iter().map(|uid| uid.clone()).collect()),
-            },
+            parent_canvas: self.parent_canvas.as_ref().map(|parent_ref| parent_ref.to_canvas_parent_ref()),
+            allowed_users: self.allowed_users.as_ref().map(|users| users.iter().copied().collect()),
         }
     } // -- end pub fn to_canvas
 
@@ -692,7 +681,7 @@ impl CanvasMongoDBView {
         use super::utils::dt_chrono_utc_to_bson;
 
         Self {
-            id: canvas.id.clone(),
+            id: canvas.id,
             width: canvas.width,
             height: canvas.height,
             name: canvas.name.clone(),
@@ -701,7 +690,7 @@ impl CanvasMongoDBView {
             parent_canvas: canvas
                 .parent_canvas
                 .as_ref()
-                .map(|parent| CanvasParentRefMongoDBView::from_canvas_parent_ref(parent)),
+                .map(CanvasParentRefMongoDBView::from_canvas_parent_ref),
             // canvas_hierarchy: Option<Vec<CanvasMongoDBView>>,
             canvas_hierarchy: None,
             shapes: vec![],
