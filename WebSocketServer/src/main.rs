@@ -22,18 +22,10 @@ use mongodb::{
 #[tokio::main]
 async fn main() -> process::ExitCode {
     use wss::{
-        server::{
-            ProgramState,
-            ConnectionState,
-        },
-        protocol::{
-            ServerSocketMessage,
-        },
         db::connect_mongodb,
-        models::{
-            WhiteboardIdType,
-            WhiteboardMongoDBView,
-        },
+        models::{WhiteboardIdType, WhiteboardMongoDBView},
+        protocol::ServerSocketMessage,
+        server::{ConnectionState, ProgramState},
     };
 
     let port = 3000u16;
@@ -163,27 +155,15 @@ async fn handle_connection(
     connection_state_ref: Arc<wss::server::ConnectionState>,
 ) {
     use wss::{
-        server::{
-            ClientState,
-            SharedWhiteboardEntry,
-            handle_unauthenticated_client_message,
-            handle_authenticated_client_message,
-        },
-        db::{
-            get_whiteboard_by_id,
-            MongoDBStore,
-            WhiteboardDiff,
-        },
-        protocol::{
-            ServerSocketMessage,
-            ClientError,
-        },
+        db::{MongoDBStore, WhiteboardDiff, get_whiteboard_by_id},
         models::{
-            ClientIdType,
+            CanvasMongoDBView, CanvasObjectMongoDBView, ClientIdType, UserMongoDBView,
             WhiteboardMetadataMongoDBView,
-            CanvasMongoDBView,
-            CanvasObjectMongoDBView,
-            UserMongoDBView,
+        },
+        protocol::{ClientError, ServerSocketMessage},
+        server::{
+            ClientState, SharedWhiteboardEntry, handle_authenticated_client_message,
+            handle_unauthenticated_client_message,
         },
         utils::generate_unique_client_id,
     };
@@ -405,7 +385,8 @@ async fn handle_connection(
                                             );
 
                                             // TODO: make method of Canvas struct
-                                            let canvas_doc = CanvasMongoDBView::from_canvas(&canvas);
+                                            let canvas_doc =
+                                                CanvasMongoDBView::from_canvas(&canvas);
                                             let create_canvas_res =
                                                 canvas_coll.insert_one(&canvas_doc).await;
 
@@ -818,7 +799,7 @@ async fn handle_connection(
                     {
                         let whiteboard = client_state_ref.whiteboard_ref.lock().await;
 
-                        if ! whiteboard.is_active() {
+                        if !whiteboard.is_active() {
                             return;
                         }
                     }
@@ -846,7 +827,8 @@ async fn handle_connection(
                                                 canvas.name()
                                             );
 
-                                            let canvas_doc = CanvasMongoDBView::from_canvas(&canvas);
+                                            let canvas_doc =
+                                                CanvasMongoDBView::from_canvas(&canvas);
                                             let create_canvas_res =
                                                 canvas_coll.insert_one(&canvas_doc).await;
 
@@ -1256,4 +1238,4 @@ async fn handle_connection(
     }
 
     println!("Client {} disconnected", current_client_id);
-}// -- end handle_connection
+} // -- end handle_connection

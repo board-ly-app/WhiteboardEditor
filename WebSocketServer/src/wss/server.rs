@@ -727,15 +727,7 @@ pub async fn handle_unauthenticated_client_message<
 
 #[cfg(test)]
 mod unit_tests {
-    use crate::wss::{
-        self,
-        models,
-        store,
-        db,
-        protocol,
-        server,
-        utils,
-    };
+    use crate::wss::{self, db, models, protocol, server, store, utils};
     use std::collections::HashMap;
 
     use mongodb::bson::oid::ObjectId;
@@ -744,19 +736,12 @@ mod unit_tests {
 
     #[tokio::test]
     async fn handle_invalid_client_message() {
-        use models::{
-            Whiteboard,
-            WhiteboardMetadata,
-            UserSummary,
-        };
-        use server::{
-            ClientState,
-            handle_authenticated_client_message,
-        };
-        use protocol::ServerSocketMessage;
-        use utils::generate_unique_client_id;
         use futures::lock::Mutex;
+        use models::{UserSummary, Whiteboard, WhiteboardMetadata};
+        use protocol::ServerSocketMessage;
+        use server::{ClientState, handle_authenticated_client_message};
         use std::sync::Arc;
+        use utils::generate_unique_client_id;
 
         // not even valid json
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
@@ -808,26 +793,16 @@ mod unit_tests {
 
     #[tokio::test]
     async fn handle_authenticated_client_message_create_shapes() {
+        use chrono::Utc;
+        use futures::lock::Mutex;
         use models::{
-            Whiteboard,
-            WhiteboardMetadata,
+            Canvas, ShapeModel, UserSummary, Whiteboard, WhiteboardMetadata,
             WhiteboardPermissionEnum,
-            Canvas,
-            UserSummary,
-            ShapeModel,
-        };
-        use server::{
-            ClientState,
-            handle_authenticated_client_message,
         };
         use protocol::ServerSocketMessage;
+        use server::{ClientState, handle_authenticated_client_message};
+        use std::{collections::HashMap, sync::Arc};
         use utils::generate_unique_client_id;
-        use futures::lock::Mutex;
-        use chrono::Utc;
-        use std::{
-            collections::HashMap,
-            sync::Arc,
-        };
 
         let f64_prec: f64 = 1.0e-16;
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
@@ -1065,22 +1040,15 @@ mod unit_tests {
 
     #[tokio::test]
     async fn handle_authenticated_client_message_delete_canvas_objects() {
-        use utils::generate_unique_client_id;
+        use futures::lock::Mutex;
         use models::{
-            Whiteboard,
-            ShapeModel,
-            WhiteboardMetadata,
+            Canvas, ShapeModel, UserSummary, Whiteboard, WhiteboardMetadata,
             WhiteboardPermissionEnum,
-            Canvas,
-            UserSummary,
-        };
-        use server::{
-            ClientState,
-            handle_authenticated_client_message,
         };
         use protocol::ServerSocketMessage;
-        use futures::lock::Mutex;
+        use server::{ClientState, handle_authenticated_client_message};
         use std::sync::Arc;
+        use utils::generate_unique_client_id;
 
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
         let canvas_a_id = ObjectId::new();
@@ -1204,7 +1172,8 @@ mod unit_tests {
                             if *canvas_a.shapes() != canvas_objects_final_expected {
                                 panic!(
                                     "Expected final canvas objects to be {:?}; got {:?}",
-                                    canvas_objects_final_expected, canvas_a.shapes()
+                                    canvas_objects_final_expected,
+                                    canvas_a.shapes()
                                 );
                             }
                         } else {
@@ -1238,10 +1207,7 @@ mod unit_tests {
         // TestDatabase/init-db.js for document definitions)
         use crate::bson::oid::ObjectId;
         use chrono::{MappedLocalTime, TimeZone, Utc};
-        use db::{
-            connect_mongodb,
-            get_whiteboard_by_id,
-        };
+        use db::{connect_mongodb, get_whiteboard_by_id};
 
         // -- initialize database connection
         let mongo_uri = "mongodb://test_db:27017/testdb";
@@ -1338,7 +1304,8 @@ mod unit_tests {
         async fn get_whiteboard_metadata_by_id(
             &self,
             whiteboard_id: &models::WhiteboardIdType,
-        ) -> Result<Option<models::WhiteboardMetadata>, Box<dyn std::error::Error + Send + Sync>> {
+        ) -> Result<Option<models::WhiteboardMetadata>, Box<dyn std::error::Error + Send + Sync>>
+        {
             match self.whiteboards_by_id.get(whiteboard_id) {
                 Some(whiteboard) => Ok(Some(whiteboard.metadata().clone())),
                 None => Ok(None),
@@ -1353,28 +1320,20 @@ mod unit_tests {
     // ============================================================================================
     #[tokio::test]
     async fn handle_valid_login_attempt() {
-        use models::{
-            User,
-            Whiteboard,
-            WhiteboardMetadata,
-            WhiteboardPermission,
-            WhiteboardPermissionType,
-            WhiteboardPermissionEnum,
-            UserSummary,
-        };
-        use server::{
-            ClientState,
-            handle_unauthenticated_client_message,
-        };
-        use protocol::ServerSocketMessage;
-        use utils::generate_unique_client_id;
-        use wss::jwt::JWTClaims;
+        use futures::lock::Mutex;
         use hmac::{Hmac, Mac};
         use jwt::SignWithKey;
+        use models::{
+            User, UserSummary, Whiteboard, WhiteboardMetadata, WhiteboardPermission,
+            WhiteboardPermissionEnum, WhiteboardPermissionType,
+        };
         use mongodb::bson::oid::ObjectId;
+        use protocol::ServerSocketMessage;
+        use server::{ClientState, handle_unauthenticated_client_message};
         use sha2::Sha256;
-        use futures::lock::Mutex;
         use std::sync::Arc;
+        use utils::generate_unique_client_id;
+        use wss::jwt::JWTClaims;
 
         let jwt_secret = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz";
         let target_uid_s = "68d5e8d4829da666aece5f48";
@@ -1491,18 +1450,11 @@ mod unit_tests {
     // ============================================================================================
     #[tokio::test]
     async fn fetch_permanent_user_from_mongodb_user_store() {
-        use models::{
-            User,
-            UserMongoDBView,
-            WhiteboardMetadataMongoDBView,
-        };
-        use db::{
-            connect_mongodb,
-            MongoDBStore,
-        };
-        use store::UserStore;
-        use mongodb::bson::oid::ObjectId;
+        use db::{MongoDBStore, connect_mongodb};
+        use models::{User, UserMongoDBView, WhiteboardMetadataMongoDBView};
         use mongodb::Collection;
+        use mongodb::bson::oid::ObjectId;
+        use store::UserStore;
 
         // -- initialize database connection
         let mongo_uri = "mongodb://test_db:27017/testdb";
@@ -1555,16 +1507,9 @@ mod unit_tests {
     // ============================================================================================
     #[tokio::test]
     async fn fetch_temp_user_from_mongodb_user_store() {
+        use db::{MongoDBStore, connect_mongodb};
+        use models::{User, UserMongoDBView, WhiteboardMetadataMongoDBView};
         use mongodb::{Collection, bson::oid::ObjectId};
-        use models::{
-            User,
-            UserMongoDBView,
-            WhiteboardMetadataMongoDBView,
-        };
-        use db::{
-            connect_mongodb,
-            MongoDBStore,
-        };
         use store::UserStore;
 
         // -- initialize database connection
@@ -1610,26 +1555,16 @@ mod unit_tests {
     // ============================================================================================
     #[tokio::test]
     async fn test_create_shapes_nonexistent_canvas_id() {
-        use models::{
-            Whiteboard,
-            WhiteboardMetadata,
-            WhiteboardPermission,
-            WhiteboardPermissionType,
-            WhiteboardPermissionEnum,
-            UserSummary,
-        };
-        use server::{
-            ClientState,
-            handle_authenticated_client_message,
-        };
-        use protocol::{
-            ClientError,
-            ServerSocketMessage::*,
-        };
-        use utils::generate_unique_client_id;
-        use mongodb::bson::oid::ObjectId;
         use futures::lock::Mutex;
+        use models::{
+            UserSummary, Whiteboard, WhiteboardMetadata, WhiteboardPermission,
+            WhiteboardPermissionEnum, WhiteboardPermissionType,
+        };
+        use mongodb::bson::oid::ObjectId;
+        use protocol::{ClientError, ServerSocketMessage::*};
+        use server::{ClientState, handle_authenticated_client_message};
         use std::sync::Arc;
+        use utils::generate_unique_client_id;
 
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
         let test_user_id = ObjectId::new();
