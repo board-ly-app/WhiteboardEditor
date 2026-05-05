@@ -66,6 +66,7 @@ _EOF_
 
 # Copy relevant source code
 COPY ./src/lib.rs ./src/unit_tests.rs ./src
+COPY ./src/wss ./src/wss
 
 # Dummy build file to make Cargo happy
 COPY <<-EOF src/dummy.rs
@@ -139,6 +140,7 @@ RUN \
 
 # Copy relevant source code
 COPY ./src/lib.rs ./src/main.rs ./src
+COPY ./src/wss ./src/wss
 
 # Dummy build file to make Cargo happy
 COPY <<-EOF src/dummy.rs
