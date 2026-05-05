@@ -727,7 +727,15 @@ pub async fn handle_unauthenticated_client_message<
 
 #[cfg(test)]
 mod unit_tests {
-    use crate::*;
+    use crate::wss::{
+        self,
+        models,
+        store,
+        db,
+        protocol,
+        server,
+        utils,
+    };
     use std::collections::HashMap;
 
     use mongodb::bson::oid::ObjectId;
@@ -736,19 +744,33 @@ mod unit_tests {
 
     #[tokio::test]
     async fn handle_invalid_client_message() {
+        use models::{
+            Whiteboard,
+            WhiteboardMetadata,
+            UserSummary,
+        };
+        use server::{
+            ClientState,
+            handle_authenticated_client_message,
+        };
+        use protocol::ServerSocketMessage;
+        use utils::generate_unique_client_id;
+        use futures::lock::Mutex;
+        use std::sync::Arc;
+
         // not even valid json
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
         let client_msg_s = "This is not valid json";
         let test_canvas_id = ObjectId::new();
 
         // -- initialize client state
-        let whiteboard = Whiteboard {
-            id: ObjectId::new(),
-            is_active: true,
-            metadata: WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
-            root_canvas: test_canvas_id,
-            canvases: HashMap::new(),
-        };
+        let whiteboard = Whiteboard::new(
+            ObjectId::new(),
+            true,
+            WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
+            test_canvas_id,
+            HashMap::new(),
+        );
 
         let client_state = ClientState {
             client_id: test_client_id.clone(),
@@ -786,6 +808,27 @@ mod unit_tests {
 
     #[tokio::test]
     async fn handle_authenticated_client_message_create_shapes() {
+        use models::{
+            Whiteboard,
+            WhiteboardMetadata,
+            WhiteboardPermissionEnum,
+            Canvas,
+            UserSummary,
+            ShapeModel,
+        };
+        use server::{
+            ClientState,
+            handle_authenticated_client_message,
+        };
+        use protocol::ServerSocketMessage;
+        use utils::generate_unique_client_id;
+        use futures::lock::Mutex;
+        use chrono::Utc;
+        use std::{
+            collections::HashMap,
+            sync::Arc,
+        };
+
         let f64_prec: f64 = 1.0e-16;
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
         let canvas_a_id = ObjectId::new();
@@ -866,26 +909,26 @@ mod unit_tests {
             canvas_a_id
         );
 
-        let whiteboard = Whiteboard {
-            id: ObjectId::new(),
-            is_active: true,
-            metadata: WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
-            root_canvas: canvas_a_id,
-            canvases: HashMap::from([(
+        let whiteboard = Whiteboard::new(
+            ObjectId::new(),
+            true,
+            WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
+            canvas_a_id,
+            HashMap::from([(
                 canvas_a_id.clone(),
-                Canvas {
-                    id: canvas_a_id.clone(),
-                    width: 512.0,
-                    height: 512.0,
-                    name: String::from("Canvas A"),
-                    time_created: Utc::now(),
-                    time_last_modified: Utc::now(),
-                    parent_canvas: None,
-                    shapes: HashMap::new(),
-                    allowed_users: None, // None = open to all
-                },
+                Canvas::new(
+                    &canvas_a_id,
+                    512.0,
+                    512.0,
+                    "Canvas A",
+                    &Utc::now(),
+                    &Utc::now(),
+                    None,
+                    HashMap::new(),
+                    None, // None = open to all
+                ),
             )]),
-        };
+        );
 
         let client_state = ClientState {
             client_id: test_client_id.clone(),
@@ -1022,6 +1065,23 @@ mod unit_tests {
 
     #[tokio::test]
     async fn handle_authenticated_client_message_delete_canvas_objects() {
+        use utils::generate_unique_client_id;
+        use models::{
+            Whiteboard,
+            ShapeModel,
+            WhiteboardMetadata,
+            WhiteboardPermissionEnum,
+            Canvas,
+            UserSummary,
+        };
+        use server::{
+            ClientState,
+            handle_authenticated_client_message,
+        };
+        use protocol::ServerSocketMessage;
+        use futures::lock::Mutex;
+        use std::sync::Arc;
+
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
         let canvas_a_id = ObjectId::new();
         let object_a_id = ObjectId::new();
@@ -1084,26 +1144,26 @@ mod unit_tests {
             object_a_id.to_string()
         );
 
-        let whiteboard = Whiteboard {
-            id: ObjectId::new(),
-            is_active: true,
-            metadata: WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
-            root_canvas: canvas_a_id,
-            canvases: HashMap::from([(
+        let whiteboard = Whiteboard::new(
+            ObjectId::new(),
+            true,
+            WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
+            canvas_a_id,
+            HashMap::from([(
                 canvas_a_id.clone(),
-                Canvas {
-                    id: canvas_a_id.clone(),
-                    width: 512.0,
-                    height: 512.0,
-                    name: String::from("Canvas A"),
-                    time_created: Utc::now(),
-                    time_last_modified: Utc::now(),
-                    parent_canvas: None,
-                    shapes: canvas_objects_initial.clone(),
-                    allowed_users: None, // None = open to all
-                },
+                Canvas::new(
+                    &canvas_a_id,
+                    512.0,
+                    512.0,
+                    "Canvas A",
+                    &Utc::now(),
+                    &Utc::now(),
+                    None,
+                    canvas_objects_initial.clone(),
+                    None, // None = open to all
+                ),
             )]),
-        };
+        );
 
         let client_state = ClientState {
             client_id: test_client_id.clone(),
@@ -1140,11 +1200,11 @@ mod unit_tests {
                         let whiteboard = client_state.whiteboard_ref.lock().await;
 
                         // Ensure the correct canvas objects remain in the store of canvas objects
-                        if let Some(canvas_a) = whiteboard.canvases.get(&canvas_a_id) {
-                            if canvas_a.shapes != canvas_objects_final_expected {
+                        if let Some(canvas_a) = whiteboard.canvases().get(&canvas_a_id) {
+                            if *canvas_a.shapes() != canvas_objects_final_expected {
                                 panic!(
                                     "Expected final canvas objects to be {:?}; got {:?}",
-                                    canvas_objects_final_expected, canvas_a.shapes
+                                    canvas_objects_final_expected, canvas_a.shapes()
                                 );
                             }
                         } else {
@@ -1178,6 +1238,10 @@ mod unit_tests {
         // TestDatabase/init-db.js for document definitions)
         use crate::bson::oid::ObjectId;
         use chrono::{MappedLocalTime, TimeZone, Utc};
+        use db::{
+            connect_mongodb,
+            get_whiteboard_by_id,
+        };
 
         // -- initialize database connection
         let mongo_uri = "mongodb://test_db:27017/testdb";
@@ -1205,25 +1269,25 @@ mod unit_tests {
 
         println!("Whiteboard Received: {:?}", whiteboard);
 
-        assert!(whiteboard.id == whiteboard_id);
-        assert!(whiteboard.metadata.name() == "Project Alpha");
-        assert!(whiteboard.metadata.user_permissions().len() == 1);
-        assert!(whiteboard.root_canvas == root_canvas_id);
-        assert!(whiteboard.canvases.len() == 4);
-        assert!(whiteboard.canvases.contains_key(&root_canvas_id));
+        assert!(*whiteboard.id() == whiteboard_id);
+        assert!(whiteboard.metadata().name() == "Project Alpha");
+        assert!(whiteboard.metadata().user_permissions().len() == 1);
+        assert!(*whiteboard.root_canvas() == root_canvas_id);
+        assert!(whiteboard.canvases().len() == 4);
+        assert!(whiteboard.canvases().contains_key(&root_canvas_id));
 
         // -- ensure all expected canvases are present
         for canvas_id in &canvas_ids {
-            assert!(whiteboard.canvases.contains_key(canvas_id));
+            assert!(whiteboard.canvases().contains_key(canvas_id));
         } // -- end for canvas_id in &canvas_ids
 
         // -- check contents of root canvas
-        let canvas = whiteboard.canvases.get(&root_canvas_id).unwrap();
+        let canvas = whiteboard.canvases().get(&root_canvas_id).unwrap();
 
-        assert!(canvas.id == root_canvas_id);
-        assert!(f64::abs(canvas.width - 3000.0) < 1.0e-16);
-        assert!(f64::abs(canvas.height - 3000.0) < 1.0e-16);
-        assert!(canvas.name.as_str() == "Canvas Alpha");
+        assert!(*canvas.id() == root_canvas_id);
+        assert!(f64::abs(canvas.width() - 3000.0) < 1.0e-16);
+        assert!(f64::abs(canvas.height() - 3000.0) < 1.0e-16);
+        assert!(canvas.name() == "Canvas Alpha");
 
         let exp_time_created = match Utc.timestamp_opt(1754050200, 0) {
             MappedLocalTime::Single(val) => val,
@@ -1242,10 +1306,10 @@ mod unit_tests {
             }
         };
 
-        assert!(canvas.time_created == exp_time_created);
-        assert!(canvas.time_last_modified == exp_time_last_modified);
-        assert!(canvas.shapes.len() == 0);
-        assert!(canvas.allowed_users.is_none());
+        assert!(*canvas.time_created() == exp_time_created);
+        assert!(*canvas.time_last_modified() == exp_time_last_modified);
+        assert!(canvas.shapes().len() == 0);
+        assert!(canvas.allowed_users().is_none());
     } // -- end fn fetch_whiteboard_from_mongodb()
 
     // === MockStore ==============================================================================
@@ -1254,15 +1318,15 @@ mod unit_tests {
     //
     // ============================================================================================
     struct MockStore {
-        users_by_id: HashMap<UserIdType, User>,
-        whiteboards_by_id: HashMap<WhiteboardIdType, Whiteboard>,
+        users_by_id: HashMap<models::UserIdType, models::User>,
+        whiteboards_by_id: HashMap<models::WhiteboardIdType, models::Whiteboard>,
     } // -- end struct MockStore
 
-    impl UserStore for MockStore {
+    impl store::UserStore for MockStore {
         async fn get_user_by_id(
             &self,
-            user_id: &UserIdType,
-        ) -> Result<Option<User>, Box<dyn std::error::Error + Send + Sync>> {
+            user_id: &models::UserIdType,
+        ) -> Result<Option<models::User>, Box<dyn std::error::Error + Send + Sync>> {
             match self.users_by_id.get(user_id) {
                 Some(user) => Ok(Some(user.clone())),
                 None => Ok(None),
@@ -1270,13 +1334,13 @@ mod unit_tests {
         } // -- end get_user_by_id
     }
 
-    impl WhiteboardMetadataStore for MockStore {
+    impl store::WhiteboardMetadataStore for MockStore {
         async fn get_whiteboard_metadata_by_id(
             &self,
-            whiteboard_id: &WhiteboardIdType,
-        ) -> Result<Option<WhiteboardMetadata>, Box<dyn std::error::Error + Send + Sync>> {
+            whiteboard_id: &models::WhiteboardIdType,
+        ) -> Result<Option<models::WhiteboardMetadata>, Box<dyn std::error::Error + Send + Sync>> {
             match self.whiteboards_by_id.get(whiteboard_id) {
-                Some(whiteboard) => Ok(Some(whiteboard.metadata.clone())),
+                Some(whiteboard) => Ok(Some(whiteboard.metadata().clone())),
                 None => Ok(None),
             }
         } // -- end get_whiteboard_metadata_by_id
@@ -1289,11 +1353,28 @@ mod unit_tests {
     // ============================================================================================
     #[tokio::test]
     async fn handle_valid_login_attempt() {
-        use crate::{JWTClaims, WhiteboardPermission};
+        use models::{
+            User,
+            Whiteboard,
+            WhiteboardMetadata,
+            WhiteboardPermission,
+            WhiteboardPermissionType,
+            WhiteboardPermissionEnum,
+            UserSummary,
+        };
+        use server::{
+            ClientState,
+            handle_unauthenticated_client_message,
+        };
+        use protocol::ServerSocketMessage;
+        use utils::generate_unique_client_id;
+        use wss::jwt::JWTClaims;
         use hmac::{Hmac, Mac};
         use jwt::SignWithKey;
         use mongodb::bson::oid::ObjectId;
         use sha2::Sha256;
+        use futures::lock::Mutex;
+        use std::sync::Arc;
 
         let jwt_secret = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz";
         let target_uid_s = "68d5e8d4829da666aece5f48";
@@ -1328,10 +1409,10 @@ mod unit_tests {
         // -- initialize mock client state
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
 
-        let whiteboard = Whiteboard {
-            id: ObjectId::new(),
-            is_active: true,
-            metadata: WhiteboardMetadata::new(
+        let whiteboard = Whiteboard::new(
+            ObjectId::new(),
+            true,
+            WhiteboardMetadata::new(
                 String::from("Test"),
                 vec![WhiteboardPermission {
                     permission_type: WhiteboardPermissionType::User {
@@ -1342,9 +1423,9 @@ mod unit_tests {
                 }],
                 HashMap::from([(String::from(target_uid_s), WhiteboardPermissionEnum::Edit)]),
             ),
-            root_canvas: ObjectId::new(),
-            canvases: HashMap::new(),
-        };
+            ObjectId::new(),
+            HashMap::new(),
+        );
         let client_state = ClientState {
             client_id: test_client_id.clone(),
             user_summary: Mutex::new(Some(UserSummary {
@@ -1410,7 +1491,18 @@ mod unit_tests {
     // ============================================================================================
     #[tokio::test]
     async fn fetch_permanent_user_from_mongodb_user_store() {
-        use mongodb::{Collection, bson::oid::ObjectId};
+        use models::{
+            User,
+            UserMongoDBView,
+            WhiteboardMetadataMongoDBView,
+        };
+        use db::{
+            connect_mongodb,
+            MongoDBStore,
+        };
+        use store::UserStore;
+        use mongodb::bson::oid::ObjectId;
+        use mongodb::Collection;
 
         // -- initialize database connection
         let mongo_uri = "mongodb://test_db:27017/testdb";
@@ -1464,6 +1556,16 @@ mod unit_tests {
     #[tokio::test]
     async fn fetch_temp_user_from_mongodb_user_store() {
         use mongodb::{Collection, bson::oid::ObjectId};
+        use models::{
+            User,
+            UserMongoDBView,
+            WhiteboardMetadataMongoDBView,
+        };
+        use db::{
+            connect_mongodb,
+            MongoDBStore,
+        };
+        use store::UserStore;
 
         // -- initialize database connection
         let mongo_uri = "mongodb://test_db:27017/testdb";
@@ -1508,7 +1610,26 @@ mod unit_tests {
     // ============================================================================================
     #[tokio::test]
     async fn test_create_shapes_nonexistent_canvas_id() {
-        use ServerSocketMessage::*;
+        use models::{
+            Whiteboard,
+            WhiteboardMetadata,
+            WhiteboardPermission,
+            WhiteboardPermissionType,
+            WhiteboardPermissionEnum,
+            UserSummary,
+        };
+        use server::{
+            ClientState,
+            handle_authenticated_client_message,
+        };
+        use protocol::{
+            ClientError,
+            ServerSocketMessage::*,
+        };
+        use utils::generate_unique_client_id;
+        use mongodb::bson::oid::ObjectId;
+        use futures::lock::Mutex;
+        use std::sync::Arc;
 
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
         let test_user_id = ObjectId::new();
@@ -1535,10 +1656,10 @@ mod unit_tests {
         );
 
         // -- initialize client state
-        let whiteboard = Whiteboard {
-            id: ObjectId::new(),
-            is_active: true,
-            metadata: WhiteboardMetadata::new(
+        let whiteboard = Whiteboard::new(
+            ObjectId::new(),
+            true,
+            WhiteboardMetadata::new(
                 String::from("Test"),
                 vec![WhiteboardPermission {
                     permission_type: WhiteboardPermissionType::User {
@@ -1550,9 +1671,9 @@ mod unit_tests {
                 HashMap::from([(test_user_id.to_string(), WhiteboardPermissionEnum::Edit)]),
             ),
             // no canvases
-            root_canvas: ObjectId::new(),
-            canvases: HashMap::new(),
-        };
+            ObjectId::new(),
+            HashMap::new(),
+        );
 
         let client_state = ClientState {
             client_id: test_client_id.clone(),

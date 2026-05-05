@@ -65,7 +65,6 @@ cp -rp ./target /tmp/test_deps
 _EOF_
 
 # Copy relevant source code
-COPY ./src/unit_tests.rs ./src
 COPY ./src/wss ./src/wss
 
 # Dummy build file to make Cargo happy
