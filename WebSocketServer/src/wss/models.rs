@@ -356,9 +356,9 @@ impl CanvasParentRefClientView {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct CanvasParentRefMongoDBView {
-    canvas_id: ObjectId,
-    origin_x: f64,
-    origin_y: f64,
+    pub canvas_id: ObjectId,
+    pub origin_x: f64,
+    pub origin_y: f64,
 } // -- end struct CanvasParentRefClientView
 
 impl CanvasParentRefMongoDBView {
@@ -438,6 +438,34 @@ impl Canvas {
             },
         }
     } // end pub fn to_client_view(&self) -> CanvasClientView
+
+    pub fn id(&self) -> &CanvasIdType {
+        &self.id
+    }// -- end pub fn id
+
+    pub fn name(&self) -> &str {
+        self.name.as_str()
+    }// -- end pub fn name
+
+    pub fn width(&self) -> f64 {
+        self.width
+    }// -- end pub fn width
+
+    pub fn height(&self) -> f64 {
+        self.height
+    }// -- end pub fn height
+
+    pub fn time_created(&self) -> &chrono::DateTime<Utc> {
+        &self.time_created
+    }// -- end pub fn time_created
+
+    pub fn time_last_modified(&self) -> &chrono::DateTime<Utc> {
+        &self.time_last_modified
+    }// -- end pub fn time_last_modified
+
+    pub fn allowed_users(&self) -> Option<&HashSet<ObjectId>> {
+        self.allowed_users.as_ref()
+    }// -- end pub fn allowed_users
 
     pub fn shapes(&self) -> &HashMap<CanvasObjectIdType, ShapeModel> {
         &self.shapes
@@ -551,6 +579,22 @@ pub struct Whiteboard {
 } // -- end struct Whiteboard
 
 impl Whiteboard {
+    pub fn new(
+        id: WhiteboardIdType,
+        is_active: bool,
+        metadata: WhiteboardMetadata,
+        root_canvas: CanvasIdType,
+        canvases: HashMap<CanvasIdType, Canvas>,
+    ) -> Self {
+        Self {
+            id,
+            is_active,
+            metadata,
+            canvases,
+            root_canvas,
+        }
+    }// -- end pub fn new
+
     pub fn to_client_view(&self) -> WhiteboardClientView {
         // At the moment, the client view is identical to the Canvas type itself, but this may not
         // always be the case.
@@ -585,6 +629,14 @@ impl Whiteboard {
     pub fn metadata_mut(&mut self) -> &mut WhiteboardMetadata {
         &mut self.metadata
     } // -- end pub fn metadata
+
+    pub fn is_active(&self) -> bool {
+        self.is_active
+    }// -- end pub fn is_active
+
+    pub fn root_canvas(&self) -> &CanvasIdType {
+        &self.root_canvas
+    }// -- end pub fn root_canvas
 } // -- end impl Whiteboard
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -634,7 +686,27 @@ impl CanvasMongoDBView {
                 Some(users) => Some(users.iter().map(|uid| uid.clone()).collect()),
             },
         }
-    }
+    }// -- end pub fn to_canvas
+
+    pub fn from_canvas(canvas: &Canvas) -> Self {
+        use super::utils::dt_chrono_utc_to_bson;
+
+        Self {
+            id: canvas.id.clone(),
+            width: canvas.width,
+            height: canvas.height,
+            name: canvas.name.clone(),
+            time_created: dt_chrono_utc_to_bson(&canvas.time_created),
+            time_last_modified: dt_chrono_utc_to_bson(&canvas.time_last_modified),
+            parent_canvas: canvas.parent_canvas.as_ref().map(
+                |parent| CanvasParentRefMongoDBView::from_canvas_parent_ref(parent)
+            ),
+            // canvas_hierarchy: Option<Vec<CanvasMongoDBView>>,
+            canvas_hierarchy: None,
+            shapes: vec![],
+            allowed_users: None,
+        }
+    }// -- end pub fn from_canvas
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
