@@ -10,5 +10,4 @@ pub mod models;
 pub mod protocol;
 pub mod server;
 pub mod store;
-
-mod utils;
+pub mod utils;
