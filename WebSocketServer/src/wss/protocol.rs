@@ -1,0 +1,171 @@
+use serde::{
+    self,
+    Serialize,
+    Deserialize,
+};
+
+use super::models::*;
+
+use std::collections::{
+    HashMap,
+    HashSet,
+};
+
+// === ClientError ================================================================================
+//
+// Enumerates types of errors the server can send to the client. Sent within both the
+// IndividualError and BroadcastError messages.
+//
+// ================================================================================================
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
+pub enum ClientError {
+    // -- previous message from client was invalid in some form (invalid json, non-existent message
+    // type, invalid message format, etc.)
+    InvalidMessage {
+        client_message_raw: String,
+    },
+    // -- client did not send an auth token
+    NotAuthenticated,
+    // -- client not authorized to view this whiteboard at all
+    Unauthorized,
+    // -- client already authorized (cannot re-authenticate within the same connection)
+    AlreadyAuthorized,
+    // -- client's auth token is somehow malformed
+    InvalidAuth,
+    // -- client's auth token has expired
+    AuthTokenExpired,
+    // -- Client attempted to sign in as or access user that doesn't exist
+    UserNotFound {
+        user_id: String,
+    },
+    // -- Client attempted to access whiteboard that doesn't exist
+    WhiteboardNotFound {
+        whiteboard_id: String,
+    },
+    // -- Client attempted to access canvas that doesn't exist
+    CanvasNotFound {
+        canvas_id: String,
+    },
+    NoParentCanvas {
+        canvas_id: String,
+    },
+    // -- client doesn't have permission to perform a given action
+    ActionForbidden {
+        // -- description of the forbidden action that was attempted
+        action: String,
+    },
+    // -- misc. errors not neatly handled by the above common cases
+    Other {
+        // -- descriptive message to send to client
+        // -- make sure it excludes sensitive information
+        message: String,
+    },
+}// -- end ClientError
+
+// === ServerSocketMessage ========================================================================
+//
+// ================================================================================================
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
+pub enum ServerSocketMessage {
+    InitClient {
+        client_id: ClientIdType,
+        whiteboard: WhiteboardClientView,
+        active_clients: HashMap<ClientIdType, UserSummary>,
+    },
+    LoginUsers {
+        users: Vec<UserSummary>,
+    },
+    LogoutUsers {
+        clients: Vec<ClientIdType>,
+    },
+    EditingCanvas {
+        client_id: ClientIdType,
+        canvas_id: String,
+    },
+    // TODO: replace HashMaps with Vectors, so object ids don't need to be cast to strings
+    CreateShapes {
+        client_id: ClientIdType,
+        canvas_id: String,
+        shapes: HashMap<String, ShapeModel>,
+    },
+    UpdateShapes {
+        client_id: ClientIdType,
+        canvas_id: String,
+        shapes: HashMap<String, ShapeModel>,
+    },
+    DeleteCanvasObjects {
+        client_id: ClientIdType,
+        canvas_object_ids: Vec<String>,
+    },
+    CreateCanvas {
+        client_id: ClientIdType,
+        canvas: CanvasClientView,
+    },
+    DeleteCanvases {
+        client_id: ClientIdType,
+        canvas_ids: Vec<String>,
+    },
+    UpdateCanvasAllowedUsers {
+        client_id: ClientIdType,
+        canvas_id: String,
+        allowed_users: Vec<String>,
+    },
+    MergeCanvas {
+        client_id: ClientIdType,
+        canvas_id: String,
+    },
+    DeleteWhiteboard,
+    IndividualError {
+        client_id: ClientIdType,
+        error: ClientError,
+    },
+    BroadcastError {
+        error: ClientError,
+    },
+}// -- end pub enum ServerSocketMessage
+
+// === ClientSocketMessage ========================================================================
+//
+// Enumerates all messages sent from the client to the server.
+//
+// ================================================================================================
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
+pub enum ClientSocketMessage {
+    EditingCanvas {
+        canvas_id: String,
+    },
+    CreateShapes {
+        canvas_id: CanvasIdType,
+        shapes: Vec<ShapeModel>,
+    },
+    UpdateShapes {
+        canvas_id: CanvasIdType,
+        shapes: HashMap<String, ShapeModel>,
+    },
+    DeleteCanvasObjects {
+        canvas_object_ids: Vec<CanvasObjectIdType>,
+    },
+    CreateCanvas {
+        name: String,
+        width: f64,
+        height: f64,
+        parent_canvas: CanvasParentRefClientView,
+        allowed_users: HashSet::<UserIdType>,
+    },
+    DeleteCanvases {
+        canvas_ids: Vec<CanvasIdType>,
+    },
+    Login {
+        jwt: String,
+    },
+    UpdateCanvasAllowedUsers {
+        canvas_id: CanvasIdType,
+        allowed_users: HashSet<UserIdType>,
+    },
+    MergeCanvas {
+        canvas_id: CanvasIdType,
+    },
+}// -- end pub enum ClientSocketMessage
