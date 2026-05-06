@@ -623,7 +623,7 @@ pub async fn handle_unauthenticated_client_message<
 
                     let user = match store.get_user_by_id(&user_id).await {
                         Err(e) => {
-                            println!("Error fetching user {}: {}", user_id, e);
+                            println!("Error fetching user by id: {}", e);
 
                             return Some(ServerSocketMessage::IndividualError {
                                 client_id: client_state.client_id.clone(),
