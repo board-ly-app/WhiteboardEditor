@@ -1,3 +1,11 @@
+// === store.rs ====================================================================================
+//
+// Contains specifications of traits that an interface for some form of storage (i.e. a database)
+// should implement to allow calling functions to fetch objects. Enables creating mocks for database
+// storage.
+//
+// =================================================================================================
+
 use super::models::{User, UserIdType, WhiteboardIdType, WhiteboardMetadata};
 
 // === UserStore ==================================================================================

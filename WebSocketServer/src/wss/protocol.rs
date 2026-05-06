@@ -1,3 +1,9 @@
+// === protocol.rs =================================================================================
+//
+// Contains specifications of message protocols sent to and from the client.
+//
+// =================================================================================================
+
 use serde::{self, Deserialize, Serialize};
 
 use super::models::*;

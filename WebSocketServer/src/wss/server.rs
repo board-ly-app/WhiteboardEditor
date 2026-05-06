@@ -1,3 +1,10 @@
+// === server.rs ===================================================================================
+//
+// Core implementation of the web socket server, including high-level functions for handling
+// messages from the client.
+//
+// =================================================================================================
+
 use super::{db::WhiteboardDiff, models::*, protocol::*, store::*};
 
 use futures::lock::Mutex;

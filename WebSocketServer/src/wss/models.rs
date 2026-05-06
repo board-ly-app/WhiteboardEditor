@@ -1,3 +1,9 @@
+// === models.rs ===================================================================================
+//
+// Contains specifications of objects that the user manipulates via the whiteboard editor interface.
+//
+// =================================================================================================
+
 use chrono::{self, Utc};
 use mongodb::bson::{self, oid::ObjectId};
 use serde::{self, Deserialize, Serialize};

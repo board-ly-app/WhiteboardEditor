@@ -1,3 +1,10 @@
+// === db.rs =======================================================================================
+//
+// Contains functions needed to interface with the MongoDB database. Includes MongoDBStore, which
+// implements the UserStore and WhiteboardMetadataStore traits from store.rs.
+//
+// =================================================================================================
+
 use super::{models::*, store::*};
 
 use mongodb::{Collection, Database, bson::doc};
