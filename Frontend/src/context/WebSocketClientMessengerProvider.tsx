@@ -121,11 +121,8 @@ const WebSocketClientMessengerProvider = ({
   // handles incoming web socket messages
   const handleServerMessage = useCallback(
     (event: MessageEvent): void => {
-      console.log('Raw WebSocket message received:', event.data);
-
       try {
         const msg = JSON.parse(event.data) as SocketServerMessage;
-        console.log('Parsed message:', msg);
 
         switch (msg.type) {
           case 'init_client':
@@ -384,11 +381,11 @@ const WebSocketClientMessengerProvider = ({
             }
             break;
           default:
-            console.log('Server Message unrecognized:', msg);
+            console.error('Server Message unrecognized:', msg);
             throw new Error(`Server Message unrecognized: ${JSON.stringify(msg, null, 2)}`);
         }// end switch (msg.type)
       } catch (e) {
-        console.log('Failed to parse message:', e);
+        console.error('Failed to parse message:', e);
       }
     },
     [dispatch, whiteboardId]
@@ -407,8 +404,6 @@ const WebSocketClientMessengerProvider = ({
           type: "login",
           jwt: authToken,
         };
-
-        console.log('Sending login message:', loginMessage);
 
         messenger.sendLogin(loginMessage);
         setClientMessenger(messenger);

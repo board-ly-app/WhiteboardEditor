@@ -41,7 +41,7 @@ const WhiteboardList = (props: WhiteboardListProps): React.JSX.Element => {
           message
         } = props;
 
-        console.log('Error fetching whiteboards for WhiteboardList:', message);
+        console.error('Error fetching whiteboards for WhiteboardList:', message);
 
         return (
           <div>

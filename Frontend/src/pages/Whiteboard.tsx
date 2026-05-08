@@ -268,10 +268,7 @@ const Whiteboard = ({
     selectWhiteboardById(state, whiteboardId))
   );
 
-  console.log('Current Whiteboard:', currWhiteboard);
-
   const canvases: CanvasData[] = useSelector((state: RootState) => {
-    console.log('Current State:', state);
     return selectCanvasesWithObjectsByWhiteboardId(state, whiteboardId)
   });
 
@@ -351,7 +348,6 @@ const Whiteboard = ({
       try {
         await api.delete(`/whiteboards/${whiteboardId}`);
 
-        console.log('Whiteboard', whiteboardId, 'deleted successfully');
         toast.success(`Whiteboard ${whiteboardId} deleted successfully`, {
           position: "bottom-center",
           hideProgressBar: true,
@@ -746,8 +742,6 @@ const Whiteboard = ({
                         userPermissions: userPermissionsFinal
                       }));
 
-                      console.log('User permissions update submitted successfully');
-
                       // -- display popup alert
                       toast.success('User permissions updated successfully', {
                         position: "bottom-center",
@@ -1008,11 +1002,8 @@ const WrappedWhiteboard = () => {
     data: whiteboardData,
   } = query;
 
-  console.log("Current whiteboard data:", whiteboardData);
-
   // update the state of userPermissions whenever whiteboardData changes
   const [userPermissions, setSharedUsers] = useState<APIWhiteboard['user_permissions']>([]);
-  console.log("Current shared users:", userPermissions);
 
   // -- view/edit/own - determines which actions to enable or disable
   const [ownPermission, setOwnPermission] = useState<UserPermissionEnum | null>(null);
@@ -1038,8 +1029,6 @@ const WrappedWhiteboard = () => {
   const canvasObjectsByCanvas: Record<CanvasIdType, Record<CanvasObjectIdType, CanvasObjectModel>> = useSelector((state: RootState) => (
     selectCanvasObjectsByWhiteboard(state, whiteboardId)
   ));
-
-  console.log("canvasObjects: ", canvasObjectsByCanvas);
 
   // Current tool choice will be saved to localStorage to ensure seamless UX
   // after page reloads.
@@ -1092,7 +1081,6 @@ const WrappedWhiteboard = () => {
           if (!existingShape) continue;
 
           if (objId in canvasObjects) {
-            console.log("updated shape is in canvas objects"); // debug
             changedObjects[objId] = {
               ...canvasObjects[objId],
               ...(objUpdate as Partial<typeof existingShape>),

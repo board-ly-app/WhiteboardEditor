@@ -101,11 +101,10 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   }
   else {
     // Tool mode
-    console.log("tool mode", currentDispatcher, currentTool);
-
     if (!currentDispatcher || currentTool == "hand") {
       return null;
     }
+
     AttributeComponents = currentDispatcher.getAttributes();
   }
 

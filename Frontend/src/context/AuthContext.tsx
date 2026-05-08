@@ -49,7 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           localStorage.setItem(LS_KEY_AUTH_TOKEN, value);
         }
-        console.log('!! NEW AUTH TOKEN (func):', value);// TODO: remove debug
 
         return value;
       });
@@ -62,7 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(LS_KEY_AUTH_TOKEN, value);
       }
 
-      console.log('!! NEW AUTH TOKEN (value):', value);// TODO: remove debug
       setAuthToken(value);
     }
   };// -- end setAuthTokenWrapper
@@ -84,7 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem(LS_KEY_USER, JSON.stringify(value));
         }
 
-        console.log('!! NEW USER (func):', value);// TODO: remove debug
         return value;
       });
     } else {
@@ -96,7 +93,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(LS_KEY_USER, JSON.stringify(value));
       }
 
-      console.log('!! NEW USER (value):', value);// TODO: remove debug
       setUser(value);
     }
   };// -- end setUserWrapper
