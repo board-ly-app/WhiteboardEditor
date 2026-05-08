@@ -236,6 +236,79 @@ export const handleCreateTempWhiteboard = async (
   }
 };// -- end handleCreateTempWhiteboard
 
+export const handleConvertTempToPerm = async (
+  req: Request<{ whiteboardId: string }, any, { authUser: AuthorizedRequestBody['authUser'], user: IUserType }>,
+  res: Response
+) => {
+  const { whiteboardId } = req.params;
+  const tempUserId = req.body.authUser.id;
+  const permanentUserId = req.body.user._id || req.body.user.id;
+
+  try {
+    const whiteboard = await Whiteboard.findById(whiteboardId);
+
+    if (!whiteboard) {
+      return res.status(404).json({ message: "Whiteboard not found" });
+    }
+
+    if (whiteboard.kind !== 'temp_whiteboard') {
+      return res.status(400).json({ message: "Whiteboard is not a temporary whiteboard" });
+    }
+
+    // Check if user has 'own' permission of whiteboard
+    const isOwner = whiteboard.user_permissions.some(perm =>
+      perm.type === 'user' &&
+      perm.user.toString() === tempUserId.toString() &&
+      perm.permission === 'own'
+    )
+
+    if (!isOwner) {
+      return res.status(403).json({ message: `Not the owner of this whiteboard` });
+    }
+
+    const updatedPermissions = whiteboard.user_permissions.map(perm => {
+      if (perm.type === 'user' && perm.user.toString() === tempUserId.toString()) {
+        return {
+          permission: 'own',
+          type: 'user',
+          user: permanentUserId
+        }
+      } else {
+        return perm;
+      }
+    });
+
+    console.log("whiteboard user permissions before conversion:", whiteboard.user_permissions);
+
+    // Convert whiteboard to permanent and change
+    const updatedWhiteboard = await Whiteboard.findOneAndUpdate(
+      { _id: whiteboardId },
+      {
+        $set: {
+          kind: 'permanent_whiteboard',
+          time_created: new Date(Date.now()),
+          user_permissions: updatedPermissions
+        },
+        $unset: {
+          createdAt: 1,
+        }
+      },
+      {
+        new: true,
+        runValidators: false,
+        overwriteDiscriminatorKey: true
+      }
+    );
+
+    console.log("DB Check - New whiteboard:", updatedWhiteboard);
+
+    return res.status(200).json({ message: "Whiteboard converted to permanent successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", err });
+  }
+};
+
+
 // -- Get user's own whiteboards
 export const handleGetOwnWhiteboards = async (
   req: Request<{}, any, AuthorizedRequestBody>,
