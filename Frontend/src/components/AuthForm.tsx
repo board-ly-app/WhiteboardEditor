@@ -114,7 +114,7 @@ const AuthForm = ({
         if ((axiosErr?.response?.status) && (axiosErr.response.status >= 400) && (axiosErr.response.status < 500)) {
           const status = axiosErr.response.status;
 
-          console.log('Authentication request failed with status', status);
+          console.error('Authentication request failed with status', status);
 
           // === Display error to user ===========================================
 

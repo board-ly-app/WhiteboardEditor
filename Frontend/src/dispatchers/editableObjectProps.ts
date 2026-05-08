@@ -25,7 +25,6 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
 
     const stage = ev.target.getStage();
 
-    console.log("Mouse over");
     if (stage) {
       stage.container().style.cursor = 'grab';
     }

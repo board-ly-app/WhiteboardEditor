@@ -472,6 +472,7 @@ const Canvas = (props: CanvasProps) => {
       {childCanvasesData && (
         childCanvasesData.map(canvasData => (
           <Canvas
+            key={canvasData.id}
             {
               ...{
                 ...props,

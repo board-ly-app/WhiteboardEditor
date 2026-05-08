@@ -29,7 +29,14 @@ const Sidebar = ({
     >
       {/** Wrap child(ren) in individual containers which enable pointer events **/}
       {Array.isArray(children)
-        && children.map(child => ( <div className="pointer-events-auto" >{child}</div>))
+        && children.map((child, idx) => (
+          <div
+            key={idx}
+            className="pointer-events-auto"
+          >
+            {child}
+          </div>
+        ))
         || (<div className="pointer-events-auto">{children}</div>)
       }
     </aside>
