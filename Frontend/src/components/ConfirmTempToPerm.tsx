@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 
 export interface ConfirmTempToPermProps {
@@ -7,8 +8,24 @@ export interface ConfirmTempToPermProps {
 const ConfirmTempToPerm = ({
   onCancel
 }: ConfirmTempToPermProps) => {
-  const handleSubmit = () => {
+  const navigate = useNavigate();
 
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    console.log("confirmed");
+
+    const url = new URL(window.location.href);
+    const segments = url.pathname.split('/');
+    const whiteboardId = segments.pop() || segments.pop();
+
+    console.log("whiteboardId", whiteboardId); // TODO: remove debug
+    
+    if (!whiteboardId) {
+      console.error("No whiteboardId found in URL");
+      return;
+    }
+
+    navigate(`/login/?transfer_temp_whiteboard=${whiteboardId}`);
   }
   
   return (
@@ -18,8 +35,13 @@ const ConfirmTempToPerm = ({
       >
         <h1>Logging in will transfer ownership of this whiteboard to your permanent account.</h1>
         <div className="flex flex-row justify-center pt-2 gap-2">
-          <Button>Confirm</Button>
           <Button
+            type="submit"
+          >
+            Confirm
+          </Button>
+          <Button
+            type="button"
             onClick={onCancel}
           >
             Cancel
