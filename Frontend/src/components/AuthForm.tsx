@@ -79,9 +79,11 @@ const AuthForm = ({
     // TODO: Make this dynamic to handle either email or username
     const authSource = "email";
 
+    const tempWhiteboardId = searchParams.get('tempWhiteboardId');
+
     const payload = 
       action === "login"
-      ? { authSource, email, password }
+      ? { authSource, email, password, transferWhiteboardId: tempWhiteboardId }
       : { email, username, password };
 
     try {
@@ -92,9 +94,26 @@ const AuthForm = ({
         token,
       } = res.data;
 
-      // -- ensure fields are not highlit as errors
-      setUiStatus('ok');
+      // -- Attempt to transfer temp whiteboard if applicable
+      const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
+      if (tempWhiteboardId) {
+        try {
+          await api.post(`/whiteboards/${tempWhiteboardId}/convert_temp_to_perm`, {
+            user: { _id: user.id }
+          });
 
+          toast.success("Whiteboard added to your whiteboards!");
+        } catch (err: any) {
+          const message = err.response?.status === 403
+            ? "You must be the owner of the whiteboard to add it to your account."
+            : "Could not transfer whiteboard.";
+            toast.warn(message);
+
+          console.error('Error transferring temp whiteboard:', err);
+        }
+      }
+
+      setUiStatus('ok'); // -- ensure fields are not highlit as errors
       setAuthToken(token);
       setUser(user);
       navigate(redirectUrl);
