@@ -57,6 +57,7 @@ function Toolbar({ toolChoice, onToolChange }: ToolbarProps) {
 
   const renderToolChoice = (choice: ToolChoice): React.JSX.Element => (
     <ToolbarButton
+      key={choice}
       label={getToolChoiceLabel(choice)}
       variant={choice === toolChoice ? 'selected' : 'default'}
       onClick={() => onToolChange(choice)}
