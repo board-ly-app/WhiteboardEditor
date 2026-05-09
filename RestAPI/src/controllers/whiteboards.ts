@@ -291,6 +291,7 @@ export const handleConvertTempToPerm = async (
       { _id: new Types.ObjectId(whiteboardId) },
       {
         $set: {
+          name: 'Trial Whiteboard',
           kind: 'permanent_whiteboard',
           time_created: new Date(),
           user_permissions: updatedPermissions
