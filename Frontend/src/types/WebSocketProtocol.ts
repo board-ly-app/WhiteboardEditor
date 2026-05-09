@@ -184,6 +184,22 @@ export interface ServerMessageEditingCanvas {
   canvasId: CanvasIdType;
 }
 
+// Notifies clients that a given client has selected a certain canvas object,
+// and thus they shouldn't attempt to edit the object themselves.
+export interface ServerMessageSelectedCanvasObject {
+  type: 'selected_canvas_object';
+  clientId: ClientIdType;
+  canvasObjectId: CanvasIdType;
+}
+
+// Notifies clients that a given client has unselected a certain canvas object,
+// and thus they are free to select it themselves.
+export interface ServerMessageUnselectedCanvasObject {
+  type: 'unselected_canvas_object';
+  clientId: ClientIdType;
+  canvasObjectId: CanvasIdType;
+}
+
 // Creates a new shape in a canvas
 export interface ServerMessageCreateShapes {
   type: "create_shapes";
@@ -251,6 +267,8 @@ export type SocketServerMessage =
   | ServerMessageLoginUsers
   | ServerMessageLogoutUsers
   | ServerMessageEditingCanvas
+  | ServerMessageSelectedCanvasObject
+  | ServerMessageUnselectedCanvasObject
   | ServerMessageCreateShapes
   | ServerMessageUpdateShapes
   | ServerMessageCreateCanvas
@@ -277,6 +295,20 @@ export interface ClientMessageLogin {
 export interface ClientMessageEditingCanvas {
   type: 'editing_canvas';
   canvasId: CanvasIdType;
+}
+
+// Notifies clients that a given client has selected a certain canvas object,
+// and thus they shouldn't attempt to edit the object themselves.
+export interface ClientMessageSelectedCanvasObject {
+  type: 'selected_canvas_object';
+  canvasObjectId: CanvasIdType;
+}
+
+// Notifies clients that a given client has unselected a certain canvas object,
+// and thus they are free to select it themselves.
+export interface ClientMessageUnselectedCanvasObject {
+  type: 'unselected_canvas_object';
+  canvasObjectId: CanvasIdType;
 }
 
 // Notify the server that the client has created a new shape.
@@ -334,6 +366,8 @@ export interface ClientMessageMergeCanvas {
 export type SocketClientMessage =
   | ClientMessageLogin
   | ClientMessageEditingCanvas
+  | ClientMessageSelectedCanvasObject
+  | ClientMessageUnselectedCanvasObject
   | ClientMessageCreateShapes
   | ClientMessageUpdateShapes
   | ClientMessageCreateCanvas

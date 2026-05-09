@@ -12,6 +12,9 @@ import activeUsersByWhiteboardReducer, {
 import currentEditorsByCanvasReducer, {
   type CurrentEditorsByCanvasActions,
 } from './activeUsers/currentEditorsByCanvasSlice';
+import currentEditorsByCanvasObjectReducer, {
+  type CurrentEditorsByCanvasObjectActions,
+} from './activeUsers/currentEditorsByCanvasObjectSlice';
 import canvasObjectsReducer, {
   type CanvasObjectsActions,
 } from './canvasObjects/canvasObjectsSlice';
@@ -60,6 +63,7 @@ const rootReducer = combineReducers({
   activeUsers: activeUsersReducer,
   activeUsersByWhiteboard: activeUsersByWhiteboardReducer,
   currentEditorsByCanvas: currentEditorsByCanvasReducer,
+  currentEditorsByCanvasObject: currentEditorsByCanvasObjectReducer,
   canvasObjects: canvasObjectsReducer,
   canvasObjectsByCanvas: canvasObjectsByCanvasReducer,
   selectedCanvasObjects: selectedCanvasObjectsReducer,
@@ -76,6 +80,7 @@ type ActionType =
   | ActiveUsersActions
   | ActiveUsersByWhiteboardActions
   | CurrentEditorsByCanvasActions
+  | CurrentEditorsByCanvasObjectActions
   | CanvasObjectsActions
   | AllowedUsersByCanvasActions
   | CanvasObjectsByCanvasActions

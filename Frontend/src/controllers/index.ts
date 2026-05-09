@@ -29,7 +29,12 @@ import {
 import {
   setCurrentEditorsByCanvas,
   removeCurrentEditorsByCanvas,
-} from './currentEditors';
+} from './currentCanvasEditors';
+
+import {
+  setCurrentEditorsByCanvasObject,
+  removeCurrentEditorsByCanvasObject,
+} from './currentCanvasObjectEditors';
 
 export {
   setCanvasObjects,
@@ -41,6 +46,8 @@ export {
   mergeCanvas,
   setCurrentEditorsByCanvas,
   removeCurrentEditorsByCanvas,
+  setCurrentEditorsByCanvasObject,
+  removeCurrentEditorsByCanvasObject,
   setSelectedCanvasByWhiteboard,
   addWhiteboard,
   deleteWhiteboard,

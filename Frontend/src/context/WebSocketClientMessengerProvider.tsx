@@ -76,6 +76,8 @@ import {
   mergeCanvas,
   setCurrentEditorsByCanvas,
   removeCurrentEditorsByCanvas,
+  setCurrentEditorsByCanvasObject,
+  removeCurrentEditorsByCanvasObject,
   setActiveUsersByWhiteboard,
   addActiveUsersByWhiteboard,
   removeActiveUsers,
@@ -116,7 +118,8 @@ const WebSocketClientMessengerProvider = ({
 
   const [clientMessenger, setClientMessenger] = useState<IWhiteboardClientMessenger | null>(null);
   const webSocketRef = useRef<WebSocket | null>(null);
-  const currentEditorTimeoutsByCanvasRef = useRef<Record<CanvasIdType, number>>({});
+  const currentCanvasEditorTimeoutsByCanvasRef = useRef<Record<CanvasIdType, number>>({});
+  const currentCanvasObjectEditorTimeoutsByCanvasRef = useRef<Record<CanvasIdType, number>>({});
 
   // handles incoming web socket messages
   const handleServerMessage = useCallback(
@@ -164,21 +167,58 @@ const WebSocketClientMessengerProvider = ({
               setCurrentEditorsByCanvas(dispatch, { [canvasId]: clientId });
 
               // -- set current editor timeout
-              const oldCurrentEditorTimeoutId = currentEditorTimeoutsByCanvasRef.current[canvasId];
+              const oldCurrentEditorTimeoutId = currentCanvasEditorTimeoutsByCanvasRef.current[canvasId];
 
               if (oldCurrentEditorTimeoutId) {
                 window.clearTimeout(oldCurrentEditorTimeoutId);
-                currentEditorTimeoutsByCanvasRef.current[canvasId] = 0;
+                currentCanvasEditorTimeoutsByCanvasRef.current[canvasId] = 0;
               }
 
-              currentEditorTimeoutsByCanvasRef.current[canvasId] = window.setTimeout(
+              currentCanvasEditorTimeoutsByCanvasRef.current[canvasId] = window.setTimeout(
                 () => {
                   removeCurrentEditorsByCanvas(dispatch, [canvasId]);
-                  window.clearTimeout(currentEditorTimeoutsByCanvasRef.current[canvasId]);
-                  currentEditorTimeoutsByCanvasRef.current[canvasId] = 0;
+                  window.clearTimeout(currentCanvasEditorTimeoutsByCanvasRef.current[canvasId]);
+                  currentCanvasEditorTimeoutsByCanvasRef.current[canvasId] = 0;
                 },
                 CURRENT_EDITOR_NUM_MILLIS
               );
+            }
+            break;
+          case 'selected_canvas_object':
+            {
+              const {
+                clientId,
+                canvasObjectId,
+              } = msg;
+
+              setCurrentEditorsByCanvasObject(dispatch, { [canvasObjectId]: clientId });
+
+              // -- set current editor timeout
+              const oldCurrentEditorTimeoutId = currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId];
+
+              if (oldCurrentEditorTimeoutId) {
+                window.clearTimeout(oldCurrentEditorTimeoutId);
+                currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId] = 0;
+              }
+
+              currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId] = window.setTimeout(
+                () => {
+                  removeCurrentEditorsByCanvas(dispatch, [canvasObjectId]);
+                  window.clearTimeout(currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId]);
+                  currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId] = 0;
+                },
+                CURRENT_EDITOR_NUM_MILLIS
+              );
+            }
+            break;
+          case 'unselected_canvas_object':
+            {
+              const {
+                canvasObjectId,
+              } = msg;
+
+              removeCurrentEditorsByCanvasObject(dispatch, [canvasObjectId]);
+              window.clearTimeout(currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId]);
             }
             break;
           case 'create_shapes':
@@ -192,18 +232,18 @@ const WebSocketClientMessengerProvider = ({
               setCanvasObjects(dispatch, canvasId, shapes);
               setCurrentEditorsByCanvas(dispatch, { [canvasId]: clientId });
 
-              const oldCurrentEditorTimeoutId = currentEditorTimeoutsByCanvasRef.current[canvasId];
+              const oldCurrentEditorTimeoutId = currentCanvasEditorTimeoutsByCanvasRef.current[canvasId];
 
               if (oldCurrentEditorTimeoutId) {
                 window.clearTimeout(oldCurrentEditorTimeoutId);
-                currentEditorTimeoutsByCanvasRef.current[canvasId] = 0;
+                currentCanvasEditorTimeoutsByCanvasRef.current[canvasId] = 0;
               }
 
-              currentEditorTimeoutsByCanvasRef.current[canvasId] = window.setTimeout(
+              currentCanvasEditorTimeoutsByCanvasRef.current[canvasId] = window.setTimeout(
                 () => {
                   removeCurrentEditorsByCanvas(dispatch, [canvasId]);
-                  window.clearTimeout(currentEditorTimeoutsByCanvasRef.current[canvasId]);
-                  currentEditorTimeoutsByCanvasRef.current[canvasId] = 0;
+                  window.clearTimeout(currentCanvasEditorTimeoutsByCanvasRef.current[canvasId]);
+                  currentCanvasEditorTimeoutsByCanvasRef.current[canvasId] = 0;
                 },
                 CURRENT_EDITOR_NUM_MILLIS
               );
@@ -220,18 +260,18 @@ const WebSocketClientMessengerProvider = ({
               setCanvasObjects(dispatch, canvasId, shapes);
               setCurrentEditorsByCanvas(dispatch, { [canvasId]: clientId });
 
-              const oldCurrentEditorTimeoutId = currentEditorTimeoutsByCanvasRef.current[canvasId];
+              const oldCurrentEditorTimeoutId = currentCanvasEditorTimeoutsByCanvasRef.current[canvasId];
 
               if (oldCurrentEditorTimeoutId) {
                 clearTimeout(oldCurrentEditorTimeoutId);
-                currentEditorTimeoutsByCanvasRef.current[canvasId] = 0;
+                currentCanvasEditorTimeoutsByCanvasRef.current[canvasId] = 0;
               }
 
-              currentEditorTimeoutsByCanvasRef.current[canvasId] = window.setTimeout(
+              currentCanvasEditorTimeoutsByCanvasRef.current[canvasId] = window.setTimeout(
                 () => {
                   removeCurrentEditorsByCanvas(dispatch, [canvasId]);
-                  clearTimeout(currentEditorTimeoutsByCanvasRef.current[canvasId]);
-                  currentEditorTimeoutsByCanvasRef.current[canvasId] = 0;
+                  clearTimeout(currentCanvasEditorTimeoutsByCanvasRef.current[canvasId]);
+                  currentCanvasEditorTimeoutsByCanvasRef.current[canvasId] = 0;
                 },
                 CURRENT_EDITOR_NUM_MILLIS
               );
@@ -271,8 +311,16 @@ const WebSocketClientMessengerProvider = ({
                 canvasObjectIds,
               } = msg;
 
+              // -- clear any associated timeouts
+              for (const canvasObjectId of canvasObjectIds) {
+                if (canvasObjectId in currentCanvasObjectEditorTimeoutsByCanvasRef.current) {
+                  window.clearTimeout(currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId]);
+                }
+              }// -- end for canvasObjectId
+
               removeSelectedCanvasObjects(dispatch, canvasObjectIds);
               removeCanvasObjects(dispatch, canvasObjectIds);
+              removeCurrentEditorsByCanvasObject(dispatch, canvasObjectIds);
           }
           break;
           case 'merge_canvas':
