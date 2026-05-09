@@ -285,8 +285,6 @@ export const handleConvertTempToPerm = async (
       }
     });
 
-    console.log("whiteboard user permissions before conversion:", whiteboard.user_permissions);
-
     await Whiteboard.collection.updateOne(
       { _id: new Types.ObjectId(whiteboardId) },
       {
@@ -308,6 +306,45 @@ export const handleConvertTempToPerm = async (
   }
 };
 
+export const handleChangeWhiteboardName = async (
+  req: Request<{ whiteboardId: string }, any, AuthorizedRequestBody & { newName: string }>,
+  res: Response
+) => {
+  const { whiteboardId } = req.params;
+  const { newName, authUser } = req.body;
+  const userId = authUser.id;
+  
+  try {
+    const whiteboard = await Whiteboard.findById(whiteboardId);
+
+    if (!whiteboard) {
+      return res.status(404).json({ message: "Whiteboard not found" });
+    }
+
+    const hasPermission = whiteboard.user_permissions.some(perm =>
+      perm.type === 'user' &&
+      perm.user.toString() === userId.toString() &&
+      (perm.permission === 'own' || perm.permission === 'edit')
+    );
+
+    if (!hasPermission) {
+      return res.status(403).json({ message: "You do not have permission to change the name of this whiteboard" });
+    } 
+    
+    await Whiteboard.collection.updateOne(
+      { _id: new Types.ObjectId(whiteboardId) },
+      {
+        $set: {
+          name: newName,
+        }
+      }
+    );
+
+    return res.status(200).json({ message: "Whiteboard name updated successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error" });
+  }
+}
 
 // -- Get user's own whiteboards
 export const handleGetOwnWhiteboards = async (
