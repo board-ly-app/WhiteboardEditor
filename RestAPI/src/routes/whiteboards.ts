@@ -16,6 +16,7 @@ import {
   handlePutThumbnail,
   handleCreateTempWhiteboard,
   handleConvertTempToPerm,
+  handleChangeWhiteboardName,
 } from "../controllers/whiteboards";
 
 const router = Router();
@@ -37,6 +38,9 @@ router.get('/:whiteboardId', handleGetWhiteboardById);
 
 // -- Convert a temp whiteboard to a permanent one
 router.post('/:whiteboardId/convert_temp_to_perm', handleConvertTempToPerm);
+
+// -- Rename a whiteboard
+router.put('/:whiteboardId/newName', handleChangeWhiteboardName);
 
 // -- Delete a whiteboard identified by its ID
 router.delete('/:whiteboardId', handleDeleteWhiteboard);
