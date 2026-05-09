@@ -12,13 +12,10 @@ const ConfirmTempToPerm = ({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log("confirmed");
 
     const url = new URL(window.location.href);
     const segments = url.pathname.split('/');
     const whiteboardId = segments.pop() || segments.pop();
-
-    console.log("whiteboardId", whiteboardId); // TODO: remove debug
     
     if (!whiteboardId) {
       console.error("No whiteboardId found in URL");
