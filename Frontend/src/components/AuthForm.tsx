@@ -13,7 +13,7 @@ import {
 
 // -- third-party imports
 
-import {
+import axios, {
   type AxiosResponse,
   type AxiosError,
 } from 'axios';
@@ -121,11 +121,17 @@ const AuthForm = ({
           isTransferring = true;
 
           toast.success("Whiteboard added to your whiteboards!");
-        } catch (err: any) {
-          const message = err.response?.status === 403
-            ? "You must be the owner of the whiteboard to add it to your account."
-            : "Could not transfer whiteboard.";
+        } catch (err: unknown) {
+          if (axios.isAxiosError(err)) {
+            const message = 
+              err.response?.status === 403
+                ? "You must be the owner of the whiteboard to add it to your account."
+                : "Could not transfer whiteboard.";
+            
             toast.warn(message);
+          } else {
+            toast.warn("Could not transfer whiteboard.");
+          }
 
           console.error('Error transferring temp whiteboard:', err);
         }
