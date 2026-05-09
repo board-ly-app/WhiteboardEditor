@@ -142,6 +142,24 @@ pub async fn handle_authenticated_client_message(
                         canvas_id,
                     })
                 }
+                SelectedCanvasObject {
+                    canvas_object_id,
+                } => {
+                    // -- echo back to other clients
+                    Some(ServerSocketMessage::SelectedCanvasObject {
+                        client_id: client_state.client_id.clone(),
+                        canvas_object_id: canvas_object_id.to_string(),
+                    })
+                }
+                UnselectedCanvasObject {
+                    canvas_object_id,
+                } => {
+                    // -- echo back to other clients
+                    Some(ServerSocketMessage::UnselectedCanvasObject {
+                        client_id: client_state.client_id.clone(),
+                        canvas_object_id: canvas_object_id.to_string(),
+                    })
+                }
                 CreateShapes {
                     canvas_id,
                     ref shapes,

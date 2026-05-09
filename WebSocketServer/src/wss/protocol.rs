@@ -68,6 +68,8 @@ pub enum ClientError {
 
 // === ServerSocketMessage ========================================================================
 //
+// Enumerates all messages sent from the server to the client.
+//
 // ================================================================================================
 #[derive(Debug, Clone, Serialize)]
 #[serde(
@@ -86,6 +88,14 @@ pub enum ServerSocketMessage {
     },
     LogoutUsers {
         clients: Vec<ClientIdType>,
+    },
+    SelectedCanvasObject {
+        client_id: ClientIdType,
+        canvas_object_id: String,
+    },
+    UnselectedCanvasObject {
+        client_id: ClientIdType,
+        canvas_object_id: String,
     },
     EditingCanvas {
         client_id: ClientIdType,
@@ -147,6 +157,12 @@ pub enum ServerSocketMessage {
 pub enum ClientSocketMessage {
     EditingCanvas {
         canvas_id: String,
+    },
+    SelectedCanvasObject {
+        canvas_object_id: CanvasObjectIdType,
+    },
+    UnselectedCanvasObject {
+        canvas_object_id: CanvasObjectIdType,
     },
     CreateShapes {
         canvas_id: CanvasIdType,
