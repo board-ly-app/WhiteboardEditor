@@ -266,41 +266,40 @@ export const handleConvertTempToPerm = async (
       return res.status(403).json({ message: `Not the owner of this whiteboard` });
     }
 
+    const permUserObjectId = new Types.ObjectId(permanentUserId);
+
     const updatedPermissions = whiteboard.user_permissions.map(perm => {
       if (perm.type === 'user' && perm.user.toString() === tempUserId.toString()) {
         return {
           permission: 'own',
           type: 'user',
-          user: permanentUserId
+          user: permUserObjectId,
+          _id: new Types.ObjectId()
         }
       } else {
+        if (perm.type === 'user') {
+          perm.user = new Types.ObjectId(perm.user.toString());
+        }
+
         return perm;
       }
     });
 
     console.log("whiteboard user permissions before conversion:", whiteboard.user_permissions);
 
-    // Convert whiteboard to permanent and change
-    const updatedWhiteboard = await Whiteboard.findOneAndUpdate(
-      { _id: whiteboardId },
+    await Whiteboard.collection.updateOne(
+      { _id: new Types.ObjectId(whiteboardId) },
       {
         $set: {
           kind: 'permanent_whiteboard',
-          time_created: new Date(Date.now()),
+          time_created: new Date(),
           user_permissions: updatedPermissions
         },
         $unset: {
-          createdAt: 1,
+          createdAt: ""
         }
-      },
-      {
-        new: true,
-        runValidators: false,
-        overwriteDiscriminatorKey: true
       }
     );
-
-    console.log("DB Check - New whiteboard:", updatedWhiteboard);
 
     return res.status(200).json({ message: "Whiteboard converted to permanent successfully" });
   } catch (err) {
