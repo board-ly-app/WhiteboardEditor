@@ -22,7 +22,7 @@ const ConfirmTempToPerm = ({
       return;
     }
 
-    navigate(`/login/?transfer_temp_whiteboard=${whiteboardId}`);
+    navigate(`/login/?transfer_temp_whiteboard=${whiteboardId}&redirect=/whiteboard/${whiteboardId}`);
   }
   
   return (
