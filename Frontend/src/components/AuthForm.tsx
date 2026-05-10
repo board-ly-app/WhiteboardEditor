@@ -12,7 +12,7 @@ import {
 
 // -- third-party imports
 
-import {
+import axios, {
   type AxiosResponse,
   type AxiosError,
 } from 'axios';
@@ -41,6 +41,11 @@ import {
   type AuthLoginSuccessResponse,
 } from '@/types/APIProtocol';
 
+import { 
+  useModal 
+} from "./Modal";
+import ChangeNameTrialWhiteboard from "./ChangeNameTrialWhiteboard";
+
 interface AuthFormProps {
   initialAction: "login" | "signup";
 }
@@ -53,6 +58,7 @@ const AuthForm = ({
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [transferringWhiteboardId, setTransferringWhiteboardId] = useState<string | null>(null);
 
   // -- ui state
   const [uiStatus, setUiStatus] = useState<'ok' | 'err_user' | 'err_system'>('ok');
@@ -66,6 +72,11 @@ const AuthForm = ({
     decodeURIComponent(searchParams.get('redirect') || '')
     : '/dashboard';
   const authContext = useContext(AuthContext);
+  const {
+    Modal: ChangeNameModal,
+    openModal: openChangeNameModal,
+    closeModal: closeChangeNameModal,
+  } = useModal();
 
   if (! authContext) {
     throw new Error('AuthContext not provided');
@@ -83,16 +94,19 @@ const AuthForm = ({
   // TODO: Make this dynamic to handle either email or username
   const authSource = "email";
 
+    const tempWhiteboardId = searchParams.get('tempWhiteboardId');
+    let isTransferring = false;
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
 
       setSubmitButtonStatus('pending');
 
-      const payload = 
-        action === "login"
-        ? { authSource, email, password }
-        : { email, username, password };
+    const payload = 
+      action === "login"
+      ? { authSource, email, password, transferWhiteboardId: tempWhiteboardId }
+      : { email, username, password };
 
       try {
         const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
@@ -102,14 +116,46 @@ const AuthForm = ({
           token,
         } = res.data;
 
-        // -- ensure fields are not highlit as errors
-        setUiStatus('ok');
+      // -- Attempt to transfer temp whiteboard if applicable
+      const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
+      if (tempWhiteboardId) {
+        try {
+          await api.post(`/whiteboards/${tempWhiteboardId}/convert_temp_to_perm`, {
+            user: { _id: user.id }
+          });
 
-        setAuthToken(token);
-        setUser(user);
+          setTransferringWhiteboardId(tempWhiteboardId);
+
+          // -- Prompt user to change name of whiteboard from default "Trial Whiteboard"
+          openChangeNameModal();
+          isTransferring = true;
+
+          toast.success("Whiteboard added to your whiteboards!");
+        } catch (err: unknown) {
+          if (axios.isAxiosError(err)) {
+            const message = 
+              err.response?.status === 403
+                ? "You must be the owner of the whiteboard to add it to your account."
+                : "Could not transfer whiteboard.";
+            
+            toast.warn(message);
+          } else {
+            toast.warn("Could not transfer whiteboard.");
+          }
+
+          console.error('Error transferring temp whiteboard:', err);
+        }
+      }
+
+      setUiStatus('ok'); // -- ensure fields are not highlit as errors
+      setAuthToken(token);
+      setUser(user);
+
+      if (!isTransferring) {
         navigate(redirectUrl);
-      } catch (err: unknown) {
-        const axiosErr = err as AxiosError;
+      }
+    } catch (err: unknown) {
+      const axiosErr = err as AxiosError;
 
         if ((axiosErr?.response?.status) && (axiosErr.response.status >= 400) && (axiosErr.response.status < 500)) {
           const status = axiosErr.response.status;
@@ -175,6 +221,26 @@ const AuthForm = ({
     setUiStatus('ok');
 
     navigate(action === "login" ? "/signup" : "/login");
+  }
+
+  const handleConfirmNameChange = async (nameFromModal: string) => {
+    if (transferringWhiteboardId) {
+      try {
+        await api.put(`/whiteboards/${transferringWhiteboardId}/newName`, {
+          newName: nameFromModal,
+        });
+
+        toast.success("Whiteboard name updated!");
+      } catch (err) {
+        console.error('Error changing whiteboard name:', err);
+
+        const toastMessage = "Whiteboard added to your account, but there was an error updating its name.";
+        toast.warn(toastMessage);
+      }
+    }
+
+    closeChangeNameModal();
+    navigate(redirectUrl);
   }
 
   return (
@@ -245,6 +311,19 @@ const AuthForm = ({
           {action === "login" ? "Create a New Account!" : "Log In"}
         </button>
       </div>
+
+      {/* Modal for changing the name of converted temp to permanent whiteboard */}
+      <ChangeNameModal
+        zIndex={20}
+        className='p-8 rounded-sm'>
+          <ChangeNameTrialWhiteboard
+            onConfirm={handleConfirmNameChange}
+            onSkip={() => {
+              closeChangeNameModal();
+              navigate(redirectUrl);
+            }}
+          />
+      </ChangeNameModal>
     </div>
   );
 };// -- end AuthForm

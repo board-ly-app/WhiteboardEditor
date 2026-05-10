@@ -236,6 +236,116 @@ export const handleCreateTempWhiteboard = async (
   }
 };// -- end handleCreateTempWhiteboard
 
+export const handleConvertTempToPerm = async (
+  req: Request<{ whiteboardId: string }, any, { authUser: AuthorizedRequestBody['authUser'], user: IUserType }>,
+  res: Response
+) => {
+  const { whiteboardId } = req.params;
+  const tempUserId = req.body.authUser.id;
+  const permanentUserId = req.body.user._id || req.body.user.id;
+
+  try {
+    const whiteboard = await Whiteboard.findById(whiteboardId);
+
+    if (!whiteboard) {
+      return res.status(404).json({ message: "Whiteboard not found" });
+    }
+
+    if (whiteboard.kind !== 'temp_whiteboard') {
+      return res.status(400).json({ message: "Whiteboard is not a temporary whiteboard" });
+    }
+
+    // Check if user has 'own' permission of whiteboard
+    const isOwner = whiteboard.user_permissions.some(perm =>
+      perm.type === 'user' &&
+      perm.user.toString() === tempUserId.toString() &&
+      perm.permission === 'own'
+    )
+
+    if (!isOwner) {
+      return res.status(403).json({ message: `Not the owner of this whiteboard` });
+    }
+
+    const permUserObjectId = new Types.ObjectId(permanentUserId);
+
+    const updatedPermissions = whiteboard.user_permissions.map(perm => {
+      if (perm.type === 'user' && perm.user.toString() === tempUserId.toString()) {
+        return {
+          permission: 'own',
+          type: 'user',
+          user: permUserObjectId,
+          _id: new Types.ObjectId()
+        }
+      } else {
+        if (perm.type === 'user') {
+          perm.user = new Types.ObjectId(perm.user.toString());
+        }
+
+        return perm;
+      }
+    });
+
+    await Whiteboard.collection.updateOne(
+      { _id: new Types.ObjectId(whiteboardId) },
+      {
+        $set: {
+          name: 'Trial Whiteboard',
+          kind: 'permanent_whiteboard',
+          time_created: new Date(),
+          user_permissions: updatedPermissions
+        },
+        $unset: {
+          createdAt: ""
+        }
+      }
+    );
+
+    return res.status(200).json({ message: "Whiteboard converted to permanent successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", err });
+  }
+};
+
+export const handleChangeWhiteboardName = async (
+  req: Request<{ whiteboardId: string }, any, AuthorizedRequestBody & { newName: string }>,
+  res: Response
+) => {
+  const { whiteboardId } = req.params;
+  const { newName, authUser } = req.body;
+  const userId = authUser.id;
+  
+  try {
+    const whiteboard = await Whiteboard.findById(whiteboardId);
+
+    if (!whiteboard) {
+      return res.status(404).json({ message: "Whiteboard not found" });
+    }
+
+    const hasPermission = whiteboard.user_permissions.some(perm =>
+      perm.type === 'user' &&
+      perm.user.toString() === userId.toString() &&
+      (perm.permission === 'own' || perm.permission === 'edit')
+    );
+
+    if (!hasPermission) {
+      return res.status(403).json({ message: "You do not have permission to change the name of this whiteboard" });
+    } 
+    
+    await Whiteboard.collection.updateOne(
+      { _id: new Types.ObjectId(whiteboardId) },
+      {
+        $set: {
+          name: newName,
+        }
+      }
+    );
+
+    return res.status(200).json({ message: "Whiteboard name updated successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
 // -- Get user's own whiteboards
 export const handleGetOwnWhiteboards = async (
   req: Request<{}, any, AuthorizedRequestBody>,
