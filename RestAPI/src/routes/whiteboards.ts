@@ -1,6 +1,7 @@
 import {
   Router,
 } from "express";
+import rateLimit from "express-rate-limit";
 
 // --- local imports
 import {
@@ -21,6 +22,13 @@ import {
 
 const router = Router();
 
+const convertTempToPermLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // limit each IP to 30 convert requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // -- all routes authenticated
 router.use(authenticateJWT);
 
@@ -37,7 +45,7 @@ router.get("/own", handleGetOwnWhiteboards);
 router.get('/:whiteboardId', handleGetWhiteboardById);
 
 // -- Convert a temp whiteboard to a permanent one
-router.post('/:whiteboardId/convert_temp_to_perm', handleConvertTempToPerm);
+router.post('/:whiteboardId/convert_temp_to_perm', convertTempToPermLimiter, handleConvertTempToPerm);
 
 // -- Rename a whiteboard
 router.put('/:whiteboardId/newName', handleChangeWhiteboardName);
