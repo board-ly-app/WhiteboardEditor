@@ -45,15 +45,16 @@ jobs:
           # cd to repo dir
           cd ${{ secrets.EC2_TEST_DEPLOYMENT_DIR }}
 
-          # Ensure all services are running
-          N_SERVICES_RUNNING="$(docker compose ps --quiet --status running | wc -l)"
+          # Ensure all pods are running
+          N_PODS="$(kubectl -n whiteboard-editor get pods | grep -ve STATUS | wc -l)"
+          N_PODS_READY="$(kubectl -n whiteboard-editor get pods | grep -ve STATUS | grep -e '1/1' | wc -l)"
 
-          if test "${N_SERVICES_RUNNING}" -eq 4
+          if test "${N_PODS_READY}" -eq "${N_PODS}"
           then
             echo "** All Services Running **"
             exit 0
           else
-            echo "** Only ${N_SERVICES_RUNNING} / 4 Services Running **"
+            echo "** Only ${N_PODS_READY} / ${N_PODS} Pods Running **"
             exit 1
           fi
           _EOF_

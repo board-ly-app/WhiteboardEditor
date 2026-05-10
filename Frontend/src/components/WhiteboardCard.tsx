@@ -100,45 +100,45 @@ function WhiteboardCard({
   } = useModal();
 
   // -- miscellaneous callback functions
-  const handleSubmitDeleteWhiteboard = useCallback(() => {
-      api.delete(`/whiteboards/${id}`).
-        then(() => {
-          console.log('Whiteboard', id, 'deleted successfully');
+  const handleSubmitDeleteWhiteboard = useCallback(
+    async () => {
+      try {
+        await api.delete(`/whiteboards/${id}`);
 
-          // make sure list of own whiteboards is refreshed
-          queryClient.invalidateQueries({
-            queryKey: [user.id, 'dashboard', 'whiteboards', 'own'],
-          });
+        console.log('Whiteboard', id, 'deleted successfully');
 
-          toast.success(`Whiteboard ${id} deleted successfully`, {
-            position: "bottom-center",
-            hideProgressBar: true,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "colored",
-            transition: Bounce,
-          });
-        })
-        .catch((e: AxiosError) => {
-          console.error(`FAILED TO DELETE WHITEBOARD (${e.code}): ${JSON.stringify(e.response, null, 2)}`);
-          toast.error(`Error fetching whiteboard: ${e}`, {
-            position: "bottom-center",
-            hideProgressBar: true,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "colored",
-            transition: Bounce,
-          });
-        })
-        .finally(() => {
-          closeDeletionModal();
+        // make sure list of own whiteboards is refreshed
+        queryClient.invalidateQueries({
+          queryKey: [user.id, 'dashboard', 'whiteboards', 'own'],
         });
+
+        toast.success(`Whiteboard ${id} deleted successfully`, {
+          position: "bottom-center",
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Bounce,
+        });
+      } catch (err: unknown) {
+        const e = err as AxiosError;
+
+        console.error(`FAILED TO DELETE WHITEBOARD (${e.code}): ${JSON.stringify(e.response, null, 2)}`);
+        toast.error(`Error fetching whiteboard: ${e}`, {
+          position: "bottom-center",
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Bounce,
+        });
+      }
     },
-    [closeDeletionModal, id, queryClient, user.id]
+    [id, queryClient, user.id]
   );// -- end handleSubmitDeleteWhiteboard
 
   const isOwnWhiteboard = userPermissions.find(

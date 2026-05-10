@@ -1,15 +1,14 @@
 // -- std imports
-
 import {
   useState,
   useContext,
+  useCallback,
 } from "react";
 
 import {
   useNavigate,
   useLocation,
 } from 'react-router-dom';
-
 
 // -- third-party imports
 
@@ -28,6 +27,11 @@ import AuthContext from '@/context/AuthContext';
 import AuthInput from "@/components/AuthInput";
 import { useUser } from "@/hooks/useUser";
 import api from '@/api/axios';
+
+import {
+  Button,
+  type ButtonStatus,
+} from '@/components/ui/button';
 
 import {
   APP_NAME,
@@ -82,29 +86,35 @@ const AuthForm = ({
     setAuthToken,
   } = authContext;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const [submitButtonStatus, setSubmitButtonStatus] = useState<ButtonStatus>('enabled');
 
-    const endpoint = action === "login" ? "/auth/login" : "/users";
+  // -- derived state
+  const endpoint = (action === "login") ? "/auth/login" : "/users";
 
-    // TODO: Make this dynamic to handle either email or username
-    const authSource = "email";
+  // TODO: Make this dynamic to handle either email or username
+  const authSource = "email";
 
     const tempWhiteboardId = searchParams.get('tempWhiteboardId');
     let isTransferring = false;
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+
+      setSubmitButtonStatus('pending');
 
     const payload = 
       action === "login"
       ? { authSource, email, password, transferWhiteboardId: tempWhiteboardId }
       : { email, username, password };
 
-    try {
-      const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
+      try {
+        const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
 
-      const {
-        user,
-        token,
-      } = res.data;
+        const {
+          user,
+          token,
+        } = res.data;
 
       // -- Attempt to transfer temp whiteboard if applicable
       const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
@@ -147,49 +157,64 @@ const AuthForm = ({
     } catch (err: unknown) {
       const axiosErr = err as AxiosError;
 
-      if ((axiosErr?.response?.status) && (axiosErr.response.status >= 400) && (axiosErr.response.status < 500)) {
-        const status = axiosErr.response.status;
+        if ((axiosErr?.response?.status) && (axiosErr.response.status >= 400) && (axiosErr.response.status < 500)) {
+          const status = axiosErr.response.status;
 
-        console.log('Authentication request failed with status', status);
+          console.error('Authentication request failed with status', status);
 
-        // === Display error to user ===========================================
+          // === Display error to user ===========================================
 
-        // -- ensure fields are highlit
-        setUiStatus('err_user');
+          // -- ensure fields are highlit
+          setUiStatus('err_user');
 
-        // -- display popup alert
-        toast.error('Authentication Failed. Try again.', {
-          position: "bottom-center",
-          autoClose: 10000,
-          hideProgressBar: false,
-          closeOnClick: false,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "colored",
-          transition: Bounce,
-        });
-      } else {
-        console.error('Error handling authentication:', err);
+          // -- display popup alert
+          toast.error('Authentication Failed. Try again.', {
+            position: "bottom-center",
+            autoClose: 10000,
+            hideProgressBar: false,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+        } else {
+          console.error('Error handling authentication:', err);
 
-        // -- notify user of a system error (fields not highlit)
-        setUiStatus('err_system');
+          // -- notify user of a system error (fields not highlit)
+          setUiStatus('err_system');
 
-        // -- display error to user
-        toast.error('Error handling authentication.', {
-          position: "bottom-center",
-          autoClose: 10000,
-          hideProgressBar: false,
-          closeOnClick: false,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "colored",
-          transition: Bounce,
-        });
+          // -- display error to user
+          toast.error('Error handling authentication.', {
+            position: "bottom-center",
+            autoClose: 10000,
+            hideProgressBar: false,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+        }
+      } finally {
+        setSubmitButtonStatus('enabled');
       }
-    }
-  }
+    },
+    [
+      action,
+      endpoint,
+      email,
+      navigate,
+      password,
+      redirectUrl,
+      setAuthToken,
+      setUser,
+      username,
+      setSubmitButtonStatus,
+    ]
+  );// -- end const handleSubmit
 
   const handleToggle = () => {
     // -- remove highlighting
@@ -265,12 +290,13 @@ const AuthForm = ({
             variant={uiStatus === 'err_user' ? 'error' : 'default'}
           />
         )}
-        <button
+        <Button
           type="submit"
+          status={submitButtonStatus}
           className="w-full font-medium text-h2-text py-2 my-2 rounded-lg border-border border-1 bg-button-300 hover:bg-button-hover hover:cursor-pointer shadow-md"
         >
           {action === "login" ? "Log In" : "Sign Up"}
-        </button>
+        </Button>
       </form>
 
       {/* Toggle Login/Signup */}

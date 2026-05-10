@@ -1,4 +1,5 @@
 import {
+  useState,
   useContext,
   useCallback,
 } from "react";
@@ -16,6 +17,11 @@ import {
   toast,
   Bounce,
 } from 'react-toastify';
+
+import {
+  type ButtonStatus,
+  Button,
+} from '@/components/ui/button';
 
 import {
   useModal,
@@ -61,12 +67,19 @@ export default function AccountSettings() {
   const { user, setUser } = useContext(AuthContext)!;
   const { Modal, openModal, closeModal } = useModal();
 
+  // -- button statuses
+  const [updateProfileStatus, setUpdateProfileStatus] = useState<ButtonStatus>('enabled');
+  const [updateSecuritySettingsStatus, setUpdateSecuritySettingsStatus] = useState<ButtonStatus>('enabled');
+  const [deleteAccountStatus, setDeleteAccountStatus] = useState<ButtonStatus>('enabled');
+
   const onSubmitProfile = useCallback(
     async ({
       value,
     }: {
       value: ProfileType,
     }) => {
+      setUpdateProfileStatus('pending');
+
       try {
         const res : AxiosResponse<User> = await api.patch("/users/me", {
           username: value.username,
@@ -86,6 +99,8 @@ export default function AccountSettings() {
           // redirect to login
           navigate(`/login?redirect=${locationEncoded}`);
         }
+      } finally {
+        setUpdateProfileStatus('enabled');
       }
     },
     [navigate, locationEncoded, setUser]
@@ -104,6 +119,8 @@ export default function AccountSettings() {
     }: {
       value: SecureFieldsType,
     }) => {
+      setUpdateSecuritySettingsStatus('pending');
+
       try {
         const res : AxiosResponse<User> = await api.patch("/users/me", {
             email: value.email,
@@ -125,6 +142,8 @@ export default function AccountSettings() {
           // redirect to login
           navigate(`/login?redirect=${locationEncoded}`);
         }
+      } finally {
+        setUpdateSecuritySettingsStatus('enabled');
       }
     },
     [setUser, navigate, locationEncoded]
@@ -161,6 +180,8 @@ export default function AccountSettings() {
     }: {
       value: DeleteFormFieldsType,
     }) => {
+      setDeleteAccountStatus('pending');
+
       try {
         const res = await api.request({
           method: 'delete',
@@ -207,6 +228,8 @@ export default function AccountSettings() {
           // -- redirect to login
           navigate(`/login?redirect=${locationEncoded}`);
         }
+      } finally {
+        setDeleteAccountStatus('enabled');
       }
     },
     [setUser, navigate, locationEncoded]
@@ -253,9 +276,13 @@ export default function AccountSettings() {
                   </>
                 )}
               </profileForm.Field>
-              <button type="submit" className="px-4 py-2 bg-black text-white rounded">
+              <Button
+                type="submit"
+                status={updateProfileStatus}
+                className="px-4 py-2 bg-black text-white rounded"
+              >
                 Update Profile
-              </button>
+              </Button>
             </form>
           </div>
 
@@ -339,9 +366,13 @@ export default function AccountSettings() {
                   </>
                 )}
               </securityForm.Field>
-              <button type="submit" className="px-4 py-2 bg-black text-white rounded">
+              <Button
+                type="submit"
+                status={updateSecuritySettingsStatus}
+                className="px-4 py-2 bg-black text-white rounded"
+              >
                 Update Security Settings
-              </button>
+              </Button>
             </form>
           </div>
 
@@ -365,9 +396,13 @@ export default function AccountSettings() {
                   />
                 )}
               </deleteForm.Field>
-              <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded">
+              <Button
+                type="submit"
+                status={deleteAccountStatus}
+                className="px-4 py-2 bg-red-600 text-white rounded"
+              >
                 Delete Account
-              </button>
+              </Button>
             </form>
 
             <Modal>

@@ -167,6 +167,9 @@ const Dashboard = (): React.JSX.Element => {
             transition: Bounce,
           });
         }
+
+        // -- propagate error to caller
+        throw err;
       }
     },
     [navigate, location]

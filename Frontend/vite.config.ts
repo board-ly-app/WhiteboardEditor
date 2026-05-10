@@ -25,6 +25,9 @@ if (fs.existsSync(envFilePath)) {
 // Port at which to redirect proxy
 const SERVER_PORT = process.env.WHITEBOARD_EDITOR_HTTP_PORT || '8080';
 
+// Working hostname
+const HOSTNAME : string | null = process.env.WHITEBOARD_EDITOR_DOMAIN || null;
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -37,6 +40,7 @@ export default defineConfig({
     }
   },
   server: {
+    allowedHosts: (HOSTNAME && [HOSTNAME] || [] ),
     proxy: {
       '/api': {
         target: `http://localhost:${SERVER_PORT}`,

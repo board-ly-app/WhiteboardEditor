@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whiteboard-editor-frontend
+  namespace: whiteboard-editor
+  labels:
+    app: whiteboard-editor.frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: whiteboard-editor.frontend
+  template:
+    metadata:
+      labels:
+        app: whiteboard-editor.frontend
+    spec:
+      containers:
+      - name: whiteboard-editor-frontend
+        image: ${WHITEBOARD_EDITOR_CR_URI}/frontend:${WHITEBOARD_EDITOR_TAG}
+        imagePullPolicy: Never
+        ports:
+          - containerPort: 3000

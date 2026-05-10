@@ -1,11 +1,12 @@
 // -- std imports
 import {
-  useState
+  useState,
+  useCallback,
 } from 'react';
 
 // -- third-party imports
 import {
-  X
+  X,
 } from 'lucide-react';
 
 // -- local imports
@@ -13,16 +14,25 @@ import {
 import {
   USER_PERMISSION_TYPES,
   type UserPermission,
-  type UserPermissionEnum
+  type UserPermissionEnum,
 } from '@/types/APIProtocol';
 
 import {
-  Button
+  type ButtonStatus,
+  Button,
 } from '@/components/ui/button';
 
 import {
-  Input
+  Input,
 } from '@/components/ui/input';
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export interface ShareWhiteboardFormData {
   userPermissions: UserPermission[];
@@ -30,12 +40,12 @@ export interface ShareWhiteboardFormData {
 
 export interface ShareWhiteboardFormProps {
   initUserPermissions: UserPermission[];
-  onSubmit: (data: ShareWhiteboardFormData) => void;
+  onSubmit: (data: ShareWhiteboardFormData) => Promise<unknown>;
 }
 
 const ShareWhiteboardForm = ({
   initUserPermissions,
-  onSubmit
+  onSubmit,
 }: ShareWhiteboardFormProps): React.JSX.Element => {
   // -- prop-derived state
   const initPermissionsByKey: Record<string, UserPermission> = Object.fromEntries(
@@ -80,38 +90,47 @@ const ShareWhiteboardForm = ({
   const [newUserPermType, setNewUserPermType] = useState<UserPermissionEnum>(
     USER_PERMISSION_TYPES[0] as UserPermissionEnum
   );
+  const [buttonStatus, setButtonStatus] = useState<ButtonStatus>('enabled');
 
   // -- derived state
   const permissions: UserPermission[] = Object.values(permissionsByKey);
 
-  const handleChangeNewEmail = (ev: React.ChangeEvent<HTMLInputElement>) => {
-    ev.preventDefault();
-    setNewEmail(ev.target.value);
-  };
+  const handleChangeNewEmail = useCallback(
+    (ev: React.ChangeEvent<HTMLInputElement>) => {
+      ev.preventDefault();
+      setNewEmail(ev.target.value);
+    },
+    [setNewEmail]
+  );
 
-  const handleChangePermType = (ev: React.ChangeEvent<HTMLSelectElement>) => {
-    ev.preventDefault();
-    setNewUserPermType(ev.target.value as UserPermissionEnum);
-  };
+  const handleChangePermType = useCallback(
+    (value: string) => {
+      setNewUserPermType(value as UserPermissionEnum);
+    },
+    [setNewUserPermType]
+  );
 
-  const handleAddNewEmail = (ev: React.MouseEvent<HTMLButtonElement>) => {
-    ev.preventDefault();
+  const handleAddNewEmail = useCallback(
+    (ev: React.MouseEvent<HTMLButtonElement>) => {
+      ev.preventDefault();
 
-    setNewEmail(newEmail => {
-      if (newEmail) {
-        setPermissionsByKey(prev => ({
-          ...prev,
-          [newEmail]: ({
-            type: 'email',
-            email: newEmail,
-            permission: newUserPermType
-          })
-        }));
-      }
+      setNewEmail(newEmail => {
+        if (newEmail) {
+          setPermissionsByKey(prev => ({
+            ...prev,
+            [newEmail]: ({
+              type: 'email',
+              email: newEmail,
+              permission: newUserPermType
+            })
+          }));
+        }
 
-      return "";
-    });
-  };
+        return "";
+      });
+    },
+    [setNewEmail, setPermissionsByKey, newUserPermType]
+  );
 
   const makeHandleRemoveByKey = (key: string) => () => {
     setPermissionsByKey(prev => {
@@ -183,15 +202,22 @@ const ShareWhiteboardForm = ({
     );
   };
 
-  const handleSubmit = (ev: React.FormEvent<HTMLFormElement>) => {
-    ev.preventDefault();
+  const handleSubmit = useCallback(
+    (ev: React.FormEvent<HTMLFormElement>) => {
+      ev.preventDefault();
 
-    const data: ShareWhiteboardFormData = ({
-      userPermissions: Object.values(permissionsByKey)
-    });
+      const data: ShareWhiteboardFormData = ({
+        userPermissions: Object.values(permissionsByKey)
+      });
 
-    onSubmit(data);
-  };
+      setButtonStatus('pending');
+      onSubmit(data)
+        .finally(() => {
+          setButtonStatus('enabled');
+        });
+    },
+    [onSubmit, setButtonStatus, permissionsByKey]
+  );
 
   return (
     <div className="w-200 p-0 m-4 mt-0 flex flex-col flex-shrink">
@@ -221,16 +247,16 @@ const ShareWhiteboardForm = ({
             >
               Permission:
             </label>
-            <select
-              name="permission-type"
-              value={newUserPermType}
-              onChange={handleChangePermType}
-              className="hover:cursor-pointer mr-2"
-            >
-              {USER_PERMISSION_TYPES.map(perm => (
-                <option key={perm} value={perm}>{perm}</option>
-              ))}
-            </select>
+            <Select value={newUserPermType} onValueChange={handleChangePermType}>
+              <SelectTrigger id="permission-type" className="hover:cursor-pointer mr-2 w-auto">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {USER_PERMISSION_TYPES.map(perm => (
+                  <SelectItem key={perm} value={perm}>{perm}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Button
               variant="secondary"
@@ -275,6 +301,7 @@ const ShareWhiteboardForm = ({
         <div className="flex flex-row justify-center">
           <Button
             type="submit"
+            status={buttonStatus}
             className="w-1/2"
           >
             Update User Permissions

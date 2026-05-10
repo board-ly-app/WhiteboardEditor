@@ -63,7 +63,7 @@ export type UserPermissionEnum =
   | 'own'
 ;
 
-export const USER_PERMISSION_TYPES = [
+export const USER_PERMISSION_TYPES : UserPermissionEnum[] = [
   'view',
   'edit',
   'own'
