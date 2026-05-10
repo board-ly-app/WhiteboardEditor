@@ -29,6 +29,13 @@ const convertTempToPermLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const changeWhiteboardNameLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 60, // limit each IP to 60 rename requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // -- all routes authenticated
 router.use(authenticateJWT);
 
@@ -48,7 +55,7 @@ router.get('/:whiteboardId', handleGetWhiteboardById);
 router.post('/:whiteboardId/convert_temp_to_perm', convertTempToPermLimiter, handleConvertTempToPerm);
 
 // -- Rename a whiteboard
-router.put('/:whiteboardId/newName', handleChangeWhiteboardName);
+router.put('/:whiteboardId/newName', changeWhiteboardNameLimiter, handleChangeWhiteboardName);
 
 // -- Delete a whiteboard identified by its ID
 router.delete('/:whiteboardId', handleDeleteWhiteboard);
