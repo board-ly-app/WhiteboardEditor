@@ -27,6 +27,14 @@ import {
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
+  selectCurrentEditorByCanvasObject,
+} from '@/store/activeUsers/activeUsersSelectors';
+
+import {
+  type ClientSummary,
+} from '@/types/ClientSummary';
+
+import {
   setSelectedCanvasObjects,
 } from '@/controllers';
 
@@ -46,10 +54,10 @@ interface EditableTextProps extends EditableObjectProps {
   color: string;
   x: number;
   y: number;
-  width: number;    
-  height: number;   
+  width: number;
+  height: number;
   rotation: number;
-  draggable: boolean; 
+  draggable: boolean;
   shapeModel: TextModel;
   handleUpdateShapes: (shapes: Record<CanvasObjectIdType, ShapeModel>) => void
 }
@@ -87,6 +95,10 @@ const EditableText = ({
 
   const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
     (state: RootState) => selectSelectedCanvasObjects(state)
+  );
+
+  const clientSummary : ClientSummary | null = useSelector(
+    (state: RootState) => selectCurrentEditorByCanvasObject(state, id)
   );
 
   useEffect(() => {
@@ -165,6 +177,12 @@ const EditableText = ({
     handleUpdateShapes(update);
   }, [handleUpdateShapes, id, shapeModel]);
 
+  const selectedProps = clientSummary ? {
+    shadowColor: clientSummary.color,
+    shadowBlur: 20,
+    shadowOpacity: 1.0,
+  } : {};
+
   return (
     <Group>
       <Text
@@ -190,8 +208,9 @@ const EditableText = ({
         onMouseDown={onMouseDown}
         onMouseOut={onMouseOut}
         onMouseOver={onMouseOver}
-        onTransform={onTransform} 
+        onTransform={onTransform}
         onTransformEnd={onTransformEnd}
+        {...selectedProps}
       />
       {isEditing && textRef.current && draggable && (
         <TextEditor

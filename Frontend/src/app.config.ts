@@ -15,6 +15,20 @@ export const CURRENT_EDITOR_NUM_MILLIS = 5000;
 // shouldn't appear in exported images.
 export const KONVA_NODE_UI_ONLY_KEY = 'is_ui_element';
 
+// -- Color used to indicate the user's client when interacting with objects in
+// the whiteboard (i.e. selected shapes, canvases).
+export const USER_CLIENT_COLOR = 'green';
+
+// -- Default colors assigned to clients other than the user themself.
+export const DEFAULT_CLIENT_COLORS = [
+  'red',
+  'blue',
+  'orange',
+  'magenta',
+  'pink',
+  'purple',
+];
+
 // -- Number of milliseconds to display a notification when a whiteboard is
 // deleted, before redirecting the user to their dashboard.
 export const WHITEBOARD_DELETED_NOTIFICATION_NUM_MILLIS = 5000;

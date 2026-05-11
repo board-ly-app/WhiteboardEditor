@@ -462,9 +462,14 @@ const Canvas = (props: CanvasProps) => {
       {
         Object.entries(shapes).filter(([_id, sh]) => !!sh).map(([id, shape]) => {
           const renderDispatcher = dispatcherMap[shape.type] || defaultDispatcher;
-          const { renderShape } = renderDispatcher;
+          const {
+            renderShape,
+          } = renderDispatcher;
 
-          return renderShape(id, shape, areShapesDraggable, handleObjectUpdateShapes);
+          return renderShape(
+            id, shape, areShapesDraggable,
+            handleObjectUpdateShapes
+          );
         })
       }
 

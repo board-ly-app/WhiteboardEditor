@@ -11,7 +11,7 @@ import {
 
 import Konva from "konva";
 
-import { Circle, Group, type KonvaNodeEvents } from "react-konva";
+import { Circle, Group, Line, type KonvaNodeEvents } from "react-konva";
 
 import {
   store,
@@ -23,8 +23,16 @@ import {
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
+  selectCurrentEditorByCanvasObject,
+} from '@/store/activeUsers/activeUsersSelectors';
+
+import {
   setSelectedCanvasObjects,
 } from '@/controllers';
+
+import {
+  type ClientSummary,
+} from '@/types/ClientSummary';
 
 import type { CanvasObjectIdType, VectorModel } from "@/types/CanvasObjectModel";
 import type { EditableObjectProps } from "@/dispatchers/editableObjectProps";
@@ -61,6 +69,10 @@ const EditableVector = <VectorType extends VectorModel>({
     (state: RootState) => selectSelectedCanvasObjects(state)
   );
   const isSelected = (id in selectedCanvasObjectIds);
+
+  const clientSummary : ClientSummary | null = useSelector(
+    (state: RootState) => selectCurrentEditorByCanvasObject(state, id)
+  );
 
   const handleSelect = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -164,8 +176,20 @@ const EditableVector = <VectorType extends VectorModel>({
     onDragEnd: handleVectorDragEnd,
   }
 
+  const childStrokeWidth = (children.props.strokeWidth as number | undefined) ?? 2;
+
   return (
     <Group>
+      {clientSummary && (
+        <Line
+          points={localPoints}
+          stroke={clientSummary.color}
+          strokeWidth={childStrokeWidth + 6}
+          lineCap={children.props.lineCap}
+          lineJoin={children.props.lineJoin}
+          listening={false}
+        />
+      )}
       {React.cloneElement(children, {
         id,
         ref: vectorRef,
