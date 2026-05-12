@@ -43,7 +43,7 @@ export const selectCurrentEditorByCanvas = (
 export const selectCurrentEditorByCanvasObject = (
   state: RootState,
   canvasObjectId: CanvasObjectIdType
-): ClientSummary | null => {
+): UserSummary | null => {
   const clientId = state
     .currentEditorsByCanvasObject
     .currentEditorsByCanvasObject[canvasObjectId];
@@ -51,14 +51,26 @@ export const selectCurrentEditorByCanvasObject = (
   if (! clientId) {
     return null;
   } else {
-    const userSummary = state.activeUsers[clientId];
-    const canvasId = state.canvasObjectsByCanvas.canvasesByCanvasObjects[canvasObjectId];
-    const whiteboardId = state.canvasesByWhiteboard.whiteboardsByCanvas[canvasId];
-    const color = state.activeUsersByWhiteboard.clientsByWhiteboard[whiteboardId][clientId].color;
-
-    return {
-      ...userSummary,
-      color
-    };
+    return state.activeUsers[clientId];
   }
 };// -- end selectCurrentEditorByCanvasObject
+
+export const selectClientColorByWhiteboard = (
+  state: RootState,
+  whiteboardId: WhiteboardIdType,
+  clientId: ClientIdType | null,
+): string | null => {
+  if (! clientId) {
+    return null;
+  } else if (! (whiteboardId in state.activeUsersByWhiteboard.clientsByWhiteboard)) {
+    return null;
+  } else {
+    const clientsById = state.activeUsersByWhiteboard.clientsByWhiteboard[whiteboardId];
+
+    if (! (clientId in clientsById)) {
+      return null;
+    } else {
+      return clientsById[clientId].color;
+    }
+  }
+};// -- end selectClientColorByWhiteboard

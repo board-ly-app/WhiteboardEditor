@@ -3,6 +3,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useContext,
 } from "react";
 
 import {
@@ -28,11 +29,14 @@ import {
 
 import {
   selectCurrentEditorByCanvasObject,
+  selectClientColorByWhiteboard,
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import {
-  type ClientSummary,
-} from '@/types/ClientSummary';
+  type UserSummary,
+} from '@/types/WebSocketProtocol';
+
+import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
   setSelectedCanvasObjects,
@@ -91,14 +95,30 @@ const EditableText = ({
   const trRef = useRef<Konva.Transformer>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
 
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
+    throw new Error('No whiteboard context provided');
+  }
+
+  const {
+    whiteboardId,
+  } = whiteboardContext;
+
   useSnapping(textRef, snappingMonitor);
 
   const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
     (state: RootState) => selectSelectedCanvasObjects(state)
   );
 
-  const clientSummary : ClientSummary | null = useSelector(
+  const userSummary : UserSummary | null = useSelector(
     (state: RootState) => selectCurrentEditorByCanvasObject(state, id)
+  );
+
+  const editorColor : string | null = useSelector(
+    (state: RootState) => selectClientColorByWhiteboard(
+      state, whiteboardId, userSummary?.clientId ?? null
+    )
   );
 
   useEffect(() => {
@@ -177,8 +197,8 @@ const EditableText = ({
     handleUpdateShapes(update);
   }, [handleUpdateShapes, id, shapeModel]);
 
-  const selectedProps = clientSummary ? {
-    shadowColor: clientSummary.color,
+  const selectedProps = editorColor ? {
+    shadowColor: editorColor,
     shadowBlur: 20,
     shadowOpacity: 1.0,
   } : {};

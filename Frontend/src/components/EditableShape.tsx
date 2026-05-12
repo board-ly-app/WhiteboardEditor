@@ -30,6 +30,7 @@ import {
 
 import {
   selectCurrentEditorByCanvasObject,
+  selectClientColorByWhiteboard,
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import type { 
@@ -37,8 +38,8 @@ import type {
 } from "@/dispatchers/editableObjectProps";
 
 import {
-  type ClientSummary,
-} from '@/types/ClientSummary';
+  type UserSummary,
+} from '@/types/WebSocketProtocol';
 
 import type { 
   CanvasObjectIdType, 
@@ -46,6 +47,8 @@ import type {
 } from "@/types/CanvasObjectModel";
 
 import editableObjectProps from "@/dispatchers/editableObjectProps";
+
+import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
   ClientMessengerContext,
@@ -84,6 +87,16 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   const trRef = useRef<Konva.Transformer>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
 
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
+    throw new Error('No whiteboard context provided');
+  }
+
+  const {
+    whiteboardId,
+  } = whiteboardContext;
+
   useSnapping(shapeRef, snappingMonitor);
 
   const {
@@ -108,9 +121,16 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     (state: RootState) => selectSelectedCanvasObjects(state)
   );
 
-  const clientSummary : ClientSummary | null = useSelector(
+  const userSummary : UserSummary | null = useSelector(
     (state: RootState) => selectCurrentEditorByCanvasObject(state, id)
   );
+
+  const editorColor : string | null = useSelector(
+    (state: RootState) => selectClientColorByWhiteboard(
+      state, whiteboardId, userSummary?.clientId ?? null
+    )
+  );
+
   const isSelected = (id in selectedCanvasObjectIds);
 
   // Transformer attach/detach
@@ -123,7 +143,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       ev.cancelBubble = true;
 
-      if ((! clientSummary) || (clientSummary.userId != user.id)) {
+      if ((! userSummary) || (userSummary.userId != user.id)) {
         // -- Identify the current user as the current selector
         clientMessenger?.sendSelectedCanvasObject({
           type: 'selected_canvas_object',
@@ -132,7 +152,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
         setSelectedCanvasObjects(dispatch, [id]);
       }
     },
-    [dispatch, id, clientSummary, user, clientMessenger]
+    [dispatch, id, userSummary, user, clientMessenger]
   );
 
   // Click outside to deselect
@@ -186,9 +206,9 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   };
 
   // -- used to indicate when the shape is selected by a user
-  const selectedProps = clientSummary ?
+  const selectedProps = editorColor ?
   {
-    shadowColor: clientSummary.color,
+    shadowColor: editorColor,
     shadowBlur: 20,
     shadowOpacity: 1.0,
   } : {};

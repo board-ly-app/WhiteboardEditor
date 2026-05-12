@@ -3,6 +3,7 @@ import React, {
   useRef,
   useState,
   useCallback,
+  useContext,
 } from "react";
 
 import {
@@ -24,15 +25,18 @@ import {
 
 import {
   selectCurrentEditorByCanvasObject,
+  selectClientColorByWhiteboard,
 } from '@/store/activeUsers/activeUsersSelectors';
+
+import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
   setSelectedCanvasObjects,
 } from '@/controllers';
 
 import {
-  type ClientSummary,
-} from '@/types/ClientSummary';
+  type UserSummary,
+} from '@/types/WebSocketProtocol';
 
 import type { CanvasObjectIdType, VectorModel } from "@/types/CanvasObjectModel";
 import type { EditableObjectProps } from "@/dispatchers/editableObjectProps";
@@ -63,6 +67,16 @@ const EditableVector = <VectorType extends VectorModel>({
   const vectorRef = useRef<Konva.Shape>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
 
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
+    throw new Error('No whiteboard context provided');
+  }
+
+  const {
+    whiteboardId,
+  } = whiteboardContext;
+
   useSnapping(vectorRef, snappingMonitor);
 
   const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
@@ -70,8 +84,14 @@ const EditableVector = <VectorType extends VectorModel>({
   );
   const isSelected = (id in selectedCanvasObjectIds);
 
-  const clientSummary : ClientSummary | null = useSelector(
+  const userSummary : UserSummary | null = useSelector(
     (state: RootState) => selectCurrentEditorByCanvasObject(state, id)
+  );
+
+  const editorColor : string | null = useSelector(
+    (state: RootState) => selectClientColorByWhiteboard(
+      state, whiteboardId, userSummary?.clientId ?? null
+    )
   );
 
   const handleSelect = useCallback(
@@ -180,10 +200,10 @@ const EditableVector = <VectorType extends VectorModel>({
 
   return (
     <Group>
-      {clientSummary && (
+      {editorColor && (
         <Line
           points={localPoints}
-          stroke={clientSummary.color}
+          stroke={editorColor}
           strokeWidth={childStrokeWidth + 6}
           lineCap={children.props.lineCap}
           lineJoin={children.props.lineJoin}
