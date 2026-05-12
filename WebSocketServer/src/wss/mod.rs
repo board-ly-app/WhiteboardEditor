@@ -19,4 +19,5 @@ pub mod db;
 pub mod jwt;
 pub mod models;
 pub mod store;
+pub mod collections;
 pub mod utils;

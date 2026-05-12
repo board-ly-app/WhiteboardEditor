@@ -53,6 +53,11 @@ pub enum ClientError {
     NoParentCanvas {
         canvas_id: String,
     },
+    // -- Another user has selected the resource the client has attempted to edit
+    CanvasObjectAlreadySelected {
+        // -- id of the selecting client
+        client_id: ClientIdType,
+    },
     // -- client doesn't have permission to perform a given action
     ActionForbidden {
         // -- description of the forbidden action that was attempted

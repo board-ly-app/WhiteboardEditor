@@ -164,6 +164,7 @@ async fn handle_connection(
             ClientState, SharedWhiteboardEntry, handle_authenticated_client_message,
             handle_unauthenticated_client_message,
         },
+        collections,
         utils::generate_unique_client_id,
     };
 
@@ -253,6 +254,7 @@ async fn handle_connection(
                             broadcaster: tx.clone(),
                             active_clients: Arc::new(Mutex::new(HashMap::new())),
                             diffs: Arc::new(Mutex::new(Vec::new())),
+                            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
                         };
 
                         // insert whiteboard into cache
@@ -286,6 +288,9 @@ async fn handle_connection(
         whiteboard_ref: Arc::clone(&shared_whiteboard_entry.whiteboard_ref),
         active_clients: Arc::clone(&shared_whiteboard_entry.active_clients),
         diffs: Arc::clone(&shared_whiteboard_entry.diffs),
+        selectors_to_canvas_objects: Arc::clone(
+            &shared_whiteboard_entry.selectors_to_canvas_objects
+        ),
     });
 
     let send_task = {
@@ -362,11 +367,11 @@ async fn handle_connection(
                     if let Ok(msg_s) = msg.to_str() {
                         println!("Raw message: {}", msg_s);
 
-                        let resp =
+                        let resps =
                             handle_unauthenticated_client_message(&client_state_ref, &store, msg_s)
                                 .await;
 
-                        if let Some(ref resp) = resp {
+                        for resp in &resps {
                             println!("Client response: {:?}", resp);
                         }
 
@@ -768,7 +773,7 @@ async fn handle_connection(
                         }
 
                         // -- send response to clients, if requested
-                        if let Some(resp) = resp {
+                        for resp in resps {
                             tx.send(resp).ok();
                         }
                     }
@@ -806,10 +811,10 @@ async fn handle_connection(
                     if let Ok(msg_s) = msg.to_str() {
                         println!("Raw message: {}", msg_s);
 
-                        let resp =
+                        let resps =
                             handle_authenticated_client_message(&client_state_ref, msg_s).await;
 
-                        if let Some(ref resp) = resp {
+                        for resp in &resps {
                             println!("Client response: {:?}", resp);
                         }
 
@@ -1210,7 +1215,7 @@ async fn handle_connection(
                         }
 
                         // -- send response to clients, if requested
-                        if let Some(resp) = resp {
+                        for resp in resps {
                             tx.send(resp).ok();
                         }
                     }
@@ -1227,8 +1232,11 @@ async fn handle_connection(
     // Clean up when client disconnects
     {
         let mut clients = shared_whiteboard_entry.active_clients.lock().await;
+        let mut selectors_to_canvas_objects = shared_whiteboard_entry
+            .selectors_to_canvas_objects.lock().await;
 
         clients.remove(&current_client_id);
+        selectors_to_canvas_objects.remove_key(&current_client_id);
 
         // -- notify other clients of client disconnect
         let _ = tx.send(ServerSocketMessage::LogoutUsers {
