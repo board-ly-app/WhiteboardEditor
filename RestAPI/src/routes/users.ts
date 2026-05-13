@@ -9,6 +9,7 @@ import {
   handleDeleteOwnUser,
   handleGetSharedWhiteboardsByUser,
   handleCreateTempUser,
+  handleConvertTempUser,
 } from "../controllers/users";
 
 import {
@@ -25,12 +26,10 @@ router.post("/", async (
   req: Request<{}, {}, CreatePermanentUserRequest>,
   res: Response
 ) => {
-    // TODO: secure logging to scrub credentials
-    console.log('Received POST /users:', req.body);
     await handleCreateUser(req, res);
 });
 
-// === POST /users/temp ======================================================
+// === POST /users/temp ========================================================
 //
 // Create a temporary user account for trial whiteboard use.
 //
@@ -39,6 +38,13 @@ router.post("/temp", handleCreateTempUser);
 
 // --- Routes below are authenticated
 router.use(authenticateJWT);
+
+// === POST /users/convert_temp ================================================
+//
+// Converts a temporary user account to a permanent one.
+//
+// =============================================================================
+router.post("/convert_temp", handleConvertTempUser);
 
 // === GET /users/:userId ======================================================
 //
