@@ -15,6 +15,7 @@ import Header, {
 
 import HeaderButton from '@/components/HeaderButton';
 import ConfirmTempToPerm from './ConfirmTempToPerm';
+import { useState } from 'react';
 
 export type HeaderUnauthedProps = HeaderProps;
 
@@ -30,15 +31,31 @@ const HeaderUnauthed = ({
       openModal: openConfirmationModal,
       closeModal: closeConfirmationModal,
     } = useModal();
+
+  const pathname = location.pathname;
+  const [action, setAction] = useState<"login" | "signup">("login");
   
   const handleLogin = () => {
-    if (location.pathname.startsWith("/login")) {
+    if (pathname.startsWith("/login")) {
       console.log("from login");
       navigate("/login");
     } 
-    else if (location.pathname.startsWith("/whiteboard")) {
-      console.log("from whiteboard, open modal");
+    else if (pathname.startsWith("/whiteboard")) {
+      console.log("log in from whiteboard, open modal");
+      openConfirmationModal();
+    }
+  };
 
+  const handleSignup = () => {
+    if (pathname.startsWith("/signup")) {
+      console.log("from signup");
+      navigate("/signup");
+    } 
+    else if (pathname.startsWith("/whiteboard")) {
+      console.log("action: ", action);
+      console.log("create account from whiteboard, open modal");
+      setAction("signup");
+      console.log("action after setAction: ", action);
       openConfirmationModal();
     }
   };
@@ -62,7 +79,7 @@ const HeaderUnauthed = ({
           ),
           (
             <HeaderButton 
-              to="/signup"
+              onClick={handleSignup}
               title="Create Account"
             />
           ),
@@ -75,6 +92,7 @@ const HeaderUnauthed = ({
         className='p-8 rounded-sm'>
           <ConfirmTempToPerm
             onCancel={handleCancel}
+            action={action}
           />
       </ConfirmationModal>
     </div>

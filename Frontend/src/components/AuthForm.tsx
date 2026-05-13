@@ -94,8 +94,8 @@ const AuthForm = ({
   // TODO: Make this dynamic to handle either email or username
   const authSource = "email";
 
-    const tempWhiteboardId = searchParams.get('tempWhiteboardId');
-    let isTransferring = false;
+  const tempWhiteboardId = searchParams.get('tempWhiteboardId');
+  let isTransferring = false;
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -108,13 +108,13 @@ const AuthForm = ({
       ? { authSource, email, password, transferWhiteboardId: tempWhiteboardId }
       : { email, username, password };
 
-      try {
-        const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
+    try {
+      const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
 
-        const {
-          user,
-          token,
-        } = res.data;
+      const {
+        user,
+        token,
+      } = res.data;
 
       // -- Attempt to transfer temp whiteboard if applicable
       const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
