@@ -3,9 +3,9 @@ import type {
 } from '@/store';
 
 import type {
+  ClientIdType,
   WhiteboardIdType,
   CanvasIdType,
-  UserIdType,
 } from '@/types/WebSocketProtocol';
 
 import type {
@@ -80,11 +80,20 @@ export const selectCanvasObjectsByWhiteboard = (
   }
 };
 
+// === selectSelectedCanvasObjectsByWhiteboard =================================
+//
+// Fetches canvas objects within a given whiteboard selected by a given user.
+//
+// =============================================================================
 export const selectSelectedCanvasObjectsByWhiteboard = (
   state: RootState,
   whiteboardId: WhiteboardIdType,
-  userId: UserIdType,
+  clientId: ClientIdType | null,
 ): CanvasObjectIdType[] => {
+  if (! clientId) {
+    return [];
+  }
+
   const canvasIdSet = state.canvasesByWhiteboard.canvasesByWhiteboard[whiteboardId];
 
   if (! canvasIdSet) {
@@ -102,7 +111,7 @@ export const selectSelectedCanvasObjectsByWhiteboard = (
       for (const objId of Object.keys(canvasObjectIdSet)) {
         const canvasObject = state.canvasObjects[objId];
 
-        if (canvasObject && state.selectorsByCanvasObject.selectorsByCanvasObject[objId] == userId) {
+        if (canvasObject && state.selectorsByCanvasObject.selectorsByCanvasObject[objId] === clientId) {
           out.push(objId);
         }
       }// -- end for objId

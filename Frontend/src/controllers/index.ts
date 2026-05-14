@@ -1,6 +1,11 @@
 // re-import constituent functions
 
 import {
+  setClientId,
+  unsetClientId
+} from './client';
+
+import {
   setCanvasObjects,
   removeCanvasObjects,
 } from './canvasObjects';
@@ -33,6 +38,8 @@ import {
 } from './currentCanvasEditors';
 
 export {
+  setClientId,
+  unsetClientId,
   setCanvasObjects,
   removeCanvasObjects,
   addCanvas,

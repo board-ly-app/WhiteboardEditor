@@ -18,6 +18,7 @@ import {
 } from '@/hooks/useUser';
 
 import {
+  type ClientIdType,
   type CanvasIdType,
 } from '@/types/WebSocketProtocol';
 
@@ -27,14 +28,18 @@ import {
 } from '@/reducers/shapeAttributesReducer';
 
 import {
+  type RootState,
+} from '@/store';
+
+import {
+  selectClientId,
+} from '@/store/client/clientSelectors';
+
+import {
   getShapeType,
   selectCanvasObjectById,
   selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
-
-import {
-  type RootState,
-} from '@/store';
 
 import {
   selectSelectedCanvasByWhiteboard,
@@ -79,15 +84,19 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
     currentDispatcher,
   } = whiteboardContext;
 
+  const clientId : ClientIdType | null = useSelector(
+    (state: RootState) => selectClientId(state)
+  );
+
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
     (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)
   );
 
-  const selectedCanvasObjectIds : CanvasObjectIdType[] = Object.keys(useSelector(
+  const selectedCanvasObjectIds : CanvasObjectIdType[] = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
-      state, whiteboardId, user.id
+      state, whiteboardId, clientId
     )
-  ));
+  );
 
   // TODO: Change this for multiple select, right now only handles one shape
   const firstShapeId = selectedCanvasObjectIds[0];
@@ -100,6 +109,10 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
       ? selectCanvasObjectById(state, firstShapeId)
       : undefined
   );
+
+  if (! clientId) {
+    return null;
+  }
 
   if (currentTool === 'create_canvas') return null;
 
@@ -115,7 +128,7 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   }
   else {
     // Tool mode
-    if (!currentDispatcher || currentTool == "hand") {
+    if (!currentDispatcher || currentTool === "hand") {
       return null;
     }
 

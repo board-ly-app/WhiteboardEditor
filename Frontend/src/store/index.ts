@@ -3,6 +3,9 @@ import {
   combineReducers,
 } from '@reduxjs/toolkit'
 
+import clientReducer, {
+  type ClientActions,
+} from './client/clientSlice';
 import activeUsersReducer, {
   type ActiveUsersActions,
 } from './activeUsers/activeUsersSlice';
@@ -57,6 +60,7 @@ import {
 } from '@/store/whiteboards/deleteWhiteboardsReducer';
 
 const rootReducer = combineReducers({
+  client: clientReducer,
   activeUsers: activeUsersReducer,
   activeUsersByWhiteboard: activeUsersByWhiteboardReducer,
   selectorsByCanvasObject: selectorsByCanvasObjectReducer,
@@ -73,6 +77,7 @@ const rootReducer = combineReducers({
 });// -- end rootReducer
 
 type ActionType =
+  | ClientActions
   | ActiveUsersActions
   | ActiveUsersByWhiteboardActions
   | SelectorsByCanvasObjectActions

@@ -28,6 +28,7 @@ import {
 import {
   CURRENT_EDITOR_NUM_MILLIS,
   WHITEBOARD_DELETED_NOTIFICATION_NUM_MILLIS,
+  USER_CLIENT_COLOR,
   DEFAULT_CLIENT_COLORS,
 } from '@/app.config';
 
@@ -49,7 +50,6 @@ import {
   type ClientIdType,
   type ClientMessageLogin,
   type SocketServerMessage,
-  type UserSummary,
   type CanvasIdType,
 } from '@/types/WebSocketProtocol';
 
@@ -75,6 +75,7 @@ import {
 } from '@/store';
 
 import {
+  setClientId,
   addWhiteboard,
   deleteWhiteboard,
   setWhiteboardStatus,
@@ -137,33 +138,33 @@ const WebSocketClientMessengerProvider = ({
   const handleServerMessage = useCallback(
     (event: MessageEvent): void => {
       try {
-        console.log('!! WS MESSAGE: ', event.data);
         const msg = JSON.parse(event.data) as SocketServerMessage;
 
         switch (msg.type) {
           case 'init_client':
             {
               const {
+                clientId,
                 whiteboard,
                 activeClients,
                 selectorsByCanvasObjects,
               } = msg;
 
-              const activeUsers: UserSummary[] = Object.values(activeClients);
-              const clientSummaries : ClientSummary[] = [];
-
-              // -- initialize client summaries
-              for (const user of activeUsers) {
-                const color = clientColorStackRef.current.popColor();
+              const clientSummaries : ClientSummary[] = Object.values(activeClients).map(user => {
+                const color = user.clientId === clientId ?
+                  USER_CLIENT_COLOR
+                  : clientColorStackRef.current.popColor();
                 const clientSummary = {
                   ...user,
                   color
                 };
 
                 summariesByClientRef.current[user.clientId] = clientSummary;
-                clientSummaries.push(clientSummary);
-              }//-- end for user
 
+                return clientSummary;
+              });
+
+              setClientId(dispatch, clientId);
               addWhiteboard(dispatch, whiteboard);
               setActiveUsersByWhiteboard(dispatch, whiteboardId, clientSummaries);
               setSelectorsByCanvasObject(dispatch, selectorsByCanvasObjects);
