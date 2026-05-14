@@ -22,6 +22,10 @@ import {
 } from '@/store';
 
 import {
+  selectClientId,
+} from '@/store/client/clientSelectors';
+
+import {
   selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
@@ -32,10 +36,7 @@ import {
 import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
-  useUser,
-} from '@/hooks/useUser';
-
-import {
+  type ClientIdType,
   type ClientMessageDeleteCanvasObjects,
 } from '@/types/WebSocketProtocol';
 
@@ -58,14 +59,6 @@ const DeleteShapesButton = () => {
     whiteboardId,
   } = whiteboardContext;
 
-  const {
-    user,
-  } = useUser();
-
-  if (! user) {
-    throw new Error('No authenticated user provided');
-  }
-
   const clientMessengerContext = useContext(ClientMessengerContext);
 
   if (! clientMessengerContext) {
@@ -76,9 +69,13 @@ const DeleteShapesButton = () => {
     clientMessenger,
   } = clientMessengerContext;
 
+  const clientId : ClientIdType | null = useSelector(
+    (state: RootState) => selectClientId(state)
+  );
+
   const selectedCanvasObjectIds : CanvasObjectIdType[] = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
-      state, whiteboardId, user.id
+      state, whiteboardId, clientId
     )
   );
 
