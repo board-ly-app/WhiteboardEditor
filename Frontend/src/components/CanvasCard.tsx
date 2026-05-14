@@ -31,6 +31,7 @@ import type {
 } from '@/components/Tool';
 
 import {
+  type ClientIdType,
   type WhiteboardIdType,
   type CanvasIdType,
   type CanvasData,
@@ -47,16 +48,16 @@ import {
 } from '@/context/ClientMessengerContext';
 
 import {
-  useUser,
-} from '@/hooks/useUser';
-
-import {
   type ShapeAttributesState,
 } from '@/reducers/shapeAttributesReducer';
 
 import {
   type RootState,
 } from '@/store';
+
+import {
+  selectClientId,
+} from '@/store/client/clientSelectors';
 
 import {
   selectAllowedUsersByCanvas,
@@ -117,14 +118,6 @@ function CanvasCard({
   }
 
   const {
-    user,
-  } = useUser();
-
-  if (! user) {
-    throw new Error('No authenticated user provided');
-  }
-
-  const {
     tooltipText,
     editingText,
     canvasGroupRefsByIdRef,
@@ -160,6 +153,10 @@ function CanvasCard({
 
   const selectedCanvas : CanvasData | null = canvasesById[selectedCanvasId ?? ''] || null;
 
+  const clientId : ClientIdType | null = useSelector(
+    (state: RootState) => selectClientId(state)
+  );
+
   const allowedUserIds = useSelector(
     // ['', ''] is effectively a null canvas key
     (state: RootState) => selectAllowedUsersByCanvas(state, selectedCanvasId ?? '')
@@ -167,7 +164,7 @@ function CanvasCard({
 
   const selectedCanvasObjects = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
-      state, whiteboardId, user.id
+      state, whiteboardId, clientId
     )
   );
 
