@@ -89,10 +89,6 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     throw new Error('No authenticated user');
   }
 
-  const editor = useSelector(
-    (state: RootState) => selectSelectorByCanvasObject(state, id)
-  );
-
   const clientMessengerContext = useContext(ClientMessengerContext);
 
   if (! clientMessengerContext) {
@@ -102,6 +98,12 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   const {
     clientMessenger,
   } = clientMessengerContext;
+
+  const editor = useSelector(
+    (state: RootState) => selectSelectorByCanvasObject(state, id)
+  );
+
+  const isDraggable = draggable && ((! editor) || editor.userId === user.id);
 
   useSnapping(shapeRef, snappingMonitor);
 
@@ -113,8 +115,8 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   // Transformer attach/detach
   useEffect(() => {
     if (!trRef.current || !shapeRef.current) return;
-    trRef.current.nodes(isSelected ? [shapeRef.current] : []);
-  }, [isSelected]);
+    trRef.current.nodes(editor ? [shapeRef.current] : []);
+  }, [editor]);
 
   const handleSelect = useCallback(
     (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -160,7 +162,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   // Override onDragEnd to reselect at end
   const {
     onDragEnd,
-  } = editableObjectProps(shapeModel, draggable, handleUpdateShapes);
+  } = editableObjectProps(shapeModel, isDraggable, handleUpdateShapes);
 
   const shapeOnDragStart = useCallback(
     () => {
@@ -178,7 +180,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   );
 
   const shapeEditableProps = {
-    ...editableObjectProps(shapeModel, draggable, handleUpdateShapes),
+    ...editableObjectProps(shapeModel, isDraggable, handleUpdateShapes),
     onDragStart: shapeOnDragStart,
     onDragEnd: shapeOnDragEnd,
   };
@@ -188,7 +190,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
       {React.cloneElement(children, {
         id,
         ref: shapeRef,
-        draggable,
+        draggable: isDraggable,
         onClick: handleSelect,
         onTap: handleSelect,
         ...shapeEditableProps,
@@ -198,6 +200,10 @@ const EditableShape = <ShapeType extends ShapeModel> ({
           ref={trRef}
           borderEnabled={true}
           borderStroke={editor.color}
+          borderStrokeWidth={(! isSelected) && 5 || undefined}
+          resizeEnabled={isSelected}
+          rotateEnabled={isSelected}
+          flipEnabled={isSelected}
         />
       )}
     </Group>
