@@ -94,6 +94,11 @@ const EditableVector = <VectorType extends VectorModel>({
     [editor, clientId]
   );
 
+  const isDraggable : boolean = useMemo(
+    () => draggable && isSelected,
+    [draggable, isSelected]
+  );
+
   const handleSelect = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       e.cancelBubble = true;
@@ -177,7 +182,7 @@ const EditableVector = <VectorType extends VectorModel>({
 
   // Override the onDragEnd handler for vectors to change points rather than x, y
   const vectorEditableProps = {
-    ...editableObjectProps(shapeModel, draggable, handleUpdateShapes),
+    ...editableObjectProps(shapeModel, isDraggable, handleUpdateShapes),
     onDragStart: () => handleVectorDragStart(),
     onDragEnd: handleVectorDragEnd,
   }
@@ -199,14 +204,14 @@ const EditableVector = <VectorType extends VectorModel>({
       {React.cloneElement(children, {
         id,
         ref: vectorRef,
-        draggable,
+        draggable: isDraggable,
         onClick: handleSelect,
         onTap: handleSelect,
         hitStrokeWidth: 20,
         ...vectorEditableProps,
       })}
 
-      {isSelected && draggable && (
+      {isDraggable && (
         <>
           <Circle
             x={localPoints[0]}
