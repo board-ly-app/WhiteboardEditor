@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  useCallback,
 } from 'react';
 
 import {
@@ -236,6 +237,19 @@ function CanvasCard({
     }
   }, [width, height])
 
+  const handleUnselect = useCallback(
+    () => {
+      // -- Indicate that user has unselected object(s)
+      for (const objId of selectedCanvasObjects) {
+        clientMessenger?.sendUnselectedCanvasObject({
+          type: 'unselected_canvas_object',
+          canvasObjectId: objId,
+        });
+      }// -- end for objId
+    },
+    [clientMessenger, selectedCanvasObjects]
+  );// -- end handleUnselect
+
   useEffect(
     () => {
       if (containerRef.current) {
@@ -302,6 +316,7 @@ function CanvasCard({
         <Stage
           width={width}
           height={height}
+          onClick={handleUnselect}
         >
           <Layer
           >

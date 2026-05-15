@@ -125,32 +125,6 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     [id, clientMessenger, editor]
   );
 
-  // Click outside to deselect
-  // TODO: move this functionality to the canvas level, to avoid sending
-  // duplicate messages
-  const unselectListener = useCallback(
-    (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      if (ev.target !== shapeRef.current) {
-        // -- Indicate that user has unselected object
-        clientMessenger?.sendUnselectedCanvasObject({
-          type: 'unselected_canvas_object',
-          canvasObjectId: id,
-        });
-      }
-    },
-    [shapeRef, clientMessenger, id]
-  );
-
-  useEffect(() => {
-    const stage = shapeRef.current?.getStage();
-    if (!stage) return;
-
-    stage.on("click", unselectListener);
-    return () => {
-      stage.off("click", unselectListener)
-    };
-  }, [unselectListener]);
-
   // Override onDragEnd to reselect at end
   const {
     onDragEnd,
