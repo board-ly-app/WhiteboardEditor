@@ -39,6 +39,20 @@ impl <K: Clone + std::hash::Hash + Ord, V: Clone + std::hash::Hash + Ord> OneToM
     }// -- end pub fn len
 
     pub fn insert(&mut self, key: K, value: V) {
+        // -- remove old value => key mapping, if present
+        if let Some(old_key) = self.keys_by_value.get(&value) {
+            let to_remove_key = if let Some(values_set) = self.values_by_key.get_mut(old_key) {
+                values_set.remove(&value);
+
+                values_set.is_empty()
+            } else {
+                false
+            };// -- end let to_remove_key
+
+            if to_remove_key {
+                self.values_by_key.remove(old_key);
+            }
+        }
         if let Some(values_set) = self.values_by_key.get_mut(&key) {
             values_set.insert(value.clone());
         } else {
