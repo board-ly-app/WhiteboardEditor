@@ -118,20 +118,13 @@ const EditableText = ({
 
   // attach Transformer for editing when selected
   useEffect(() => {
-    if (trRef.current) {
-      if (isSelected && textRef.current) {
-        trRef.current.nodes([textRef.current]);
-      }
-      else {
-        trRef.current.nodes([]);
-      }
-    }
-  }, [isSelected])
+    if (!trRef.current || !textRef.current) return;
+    trRef.current.nodes(editor ? [textRef.current] : []);
+  }, [editor]);
   
   const handleSelect = useCallback((ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     ev.cancelBubble = true;
 
-    // TODO: re-implement to instead send selection message to server
     if (! editor) {
       clientMessenger?.sendSelectedCanvasObject({
         type: 'selected_canvas_object',
@@ -209,7 +202,12 @@ const EditableText = ({
       {editor && (
         <Transformer
           ref={trRef}
+          borderEnabled={true}
           borderStroke={editor.color}
+          borderStrokeWidth={(! isSelected) && 2 || undefined}
+          resizeEnabled={isSelected}
+          rotateEnabled={isSelected}
+          flipEnabled={isSelected}
           boundBoxFunc={(_oldBox, newBox) => ({
             ...newBox,
             width: Math.max(30, newBox.width),
