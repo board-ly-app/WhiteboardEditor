@@ -257,14 +257,8 @@ export interface ServerMessageDeleteWhiteboard {
   type: 'delete_whiteboard';
 }
 
-export interface ServerMessageIndividualError {
-  type: 'individual_error';
-  clientId: ClientIdType;
-  error: ClientError;
-}
-
-export interface ServerMessageBroadcastError {
-  type: 'broadcast_error';
+export interface ServerMessageError {
+  type: 'error';
   error: ClientError;
 }
 
@@ -284,8 +278,7 @@ export type SocketServerMessage =
   | ServerMessageDeleteCanvasObjects
   | ServerMessageMergeCanvas
   | ServerMessageDeleteWhiteboard
-  | ServerMessageIndividualError
-  | ServerMessageBroadcastError
+  | ServerMessageError
 ;
 
 // ========================== CLIENT → SERVER ==================================

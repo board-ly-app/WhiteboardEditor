@@ -385,8 +385,7 @@ const WebSocketClientMessengerProvider = ({
               );
           }
           break;
-          case 'individual_error':
-          case 'broadcast_error':
+          case 'error':
             {
               const {
                 error,

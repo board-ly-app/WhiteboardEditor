@@ -89,12 +89,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     clientMessenger,
   } = clientMessengerContext;
 
-  // const clientId = useSelector((state: RootState) => selectClientId(state));
-  const clientId = useSelector((state: RootState) => {
-    console.log('!! activeUsers: ', state.activeUsers);
-    console.log('!! client: ', state.client);
-    return selectClientId(state);
-  });
+  const clientId = useSelector((state: RootState) => selectClientId(state));
 
   const editor = useSelector(
     (state: RootState) => selectSelectorByCanvasObject(state, id)
