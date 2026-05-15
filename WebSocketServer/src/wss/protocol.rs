@@ -71,9 +71,9 @@ pub enum ClientError {
     },
 } // -- end ClientError
 
-// === ServerSocketMessage ========================================================================
+// === ServerSocketIndividualMessage ===============================================================
 //
-// Enumerates all messages sent from the server to the client.
+// Enumerates all messages sent from the server to an individual client.
 //
 // ================================================================================================
 #[derive(Debug, Clone, Serialize)]
@@ -82,13 +82,30 @@ pub enum ClientError {
     rename_all = "snake_case",
     rename_all_fields = "camelCase"
 )]
-pub enum ServerSocketMessage {
+pub enum ServerSocketIndividualMessage {
     InitClient {
         client_id: ClientIdType,
         whiteboard: WhiteboardClientView,
         active_clients: HashMap<ClientIdType, UserSummary>,
         selectors_by_canvas_objects: HashMap<String, String>,
     },
+    Error {
+        error: ClientError,
+    },
+}// -- end pub enum ServerSocketIndividualMessage
+
+// === ServerSocketBroadcastMessage ================================================================
+//
+// Enumerates all messages sent from the server to all clients.
+//
+// ================================================================================================
+#[derive(Debug, Clone, Serialize)]
+#[serde(
+    tag = "type",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+pub enum ServerSocketBroadcastMessage {
     LoginUsers {
         users: Vec<UserSummary>,
     },
@@ -140,14 +157,22 @@ pub enum ServerSocketMessage {
         canvas_id: String,
     },
     DeleteWhiteboard,
-    IndividualError {
-        client_id: ClientIdType,
+    Error {
         error: ClientError,
     },
-    BroadcastError {
-        error: ClientError,
+}// -- end pub enum ServerSocketMessage
+
+#[derive(Debug, Clone)]
+pub enum ServerSocketMessage {
+    // -- Messages to send to an individual client
+    Individual {
+        target_client_id: ClientIdType,
+        msg: ServerSocketIndividualMessage,
     },
-} // -- end pub enum ServerSocketMessage
+    Broadcast {
+        msg: ServerSocketBroadcastMessage,
+    },
+}// -- end pub enum ServerSocketMessage
 
 // === ClientSocketMessage ========================================================================
 //

@@ -24,7 +24,7 @@ async fn main() -> process::ExitCode {
     use wss::{
         db::connect_mongodb,
         models::{WhiteboardIdType, WhiteboardMongoDBView},
-        protocol::ServerSocketMessage,
+        protocol::{ServerSocketMessage,ServerSocketBroadcastMessage},
         server::{ConnectionState, ProgramState},
     };
 
@@ -104,7 +104,9 @@ async fn main() -> process::ExitCode {
                                             // deleted
                                             let _ = whiteboard_entry
                                                 .broadcaster
-                                                .send(ServerSocketMessage::DeleteWhiteboard);
+                                                .send(ServerSocketMessage::Broadcast {
+                                                    msg: ServerSocketBroadcastMessage::DeleteWhiteboard,
+                                                });
 
                                             // TODO: end connections
                                             // whiteboard_entry.broadcaster.closed
@@ -159,7 +161,12 @@ async fn handle_connection(
             CanvasMongoDBView, CanvasObjectMongoDBView, ClientIdType, UserMongoDBView,
             WhiteboardMetadataMongoDBView,
         },
-        protocol::{ClientError, ServerSocketMessage},
+        protocol::{
+            ClientError,
+            ServerSocketMessage,
+            ServerSocketBroadcastMessage,
+            ServerSocketIndividualMessage,
+        },
         server::{
             ClientState, SharedWhiteboardEntry, handle_authenticated_client_message,
             handle_unauthenticated_client_message,
@@ -206,8 +213,7 @@ async fn handle_connection(
                     Err(e) => {
                         eprintln!("Could not fetch whiteboard from database: {}", e);
 
-                        let err_msg = ServerSocketMessage::IndividualError {
-                            client_id: current_client_id.clone(),
+                        let err_msg = ServerSocketIndividualMessage::Error {
                             error: ClientError::Other {
                                 message: format!(
                                     "Error occurred fetching whiteboard {}",
@@ -228,8 +234,7 @@ async fn handle_connection(
                             "Connection error; could not fetch whiteboard: not found in database"
                         );
 
-                        let err_msg = ServerSocketMessage::IndividualError {
-                            client_id: current_client_id.clone(),
+                        let err_msg = ServerSocketIndividualMessage::Error {
                             error: ClientError::WhiteboardNotFound {
                                 whiteboard_id: whiteboard_id.to_string(),
                             },
@@ -302,15 +307,15 @@ async fn handle_connection(
             while let Ok(msg) = rx.recv().await {
                 match msg {
                     // -- These messages are only sent to individual clients
-                    InitClient { ref client_id, .. } | IndividualError { ref client_id, .. } => {
-                        if let Ordering::Equal = client_id.cmp(&current_client_id) {
+                    Individual { ref target_client_id, ref msg } => {
+                        if let Ordering::Equal = target_client_id.cmp(&current_client_id) {
                             let json = serde_json::to_string(&msg).unwrap();
                             if user_ws_tx.send(Message::text(json)).await.is_err() {
                                 break;
                             }
                         }
                     },
-                    _ => {
+                    Broadcast { msg } => {
                         let json = serde_json::to_string(&msg).unwrap();
                         if user_ws_tx.send(Message::text(json)).await.is_err() {
                             break;
@@ -334,10 +339,12 @@ async fn handle_connection(
                     eprintln!(
                         "Database connection error; could not fetch whiteboard - no default database defined in mongo uri"
                     );
-                    let err_msg = ServerSocketMessage::IndividualError {
-                        client_id: current_client_id.clone(),
-                        error: ClientError::Other {
-                            message: format!("Error fetching whiteboard {}", whiteboard_id),
+                    let err_msg = ServerSocketMessage::Individual {
+                        target_client_id: current_client_id.clone(),
+                        msg: ServerSocketIndividualMessage::Error {
+                            error: ClientError::Other {
+                                message: format!("Error fetching whiteboard {}", whiteboard_id),
+                            },
                         },
                     };
 
@@ -791,8 +798,10 @@ async fn handle_connection(
                         // First, notify all clients of new login
                         if let Some(ref user_summary) = *client_state_ref.user_summary.lock().await
                         {
-                            tx.send(ServerSocketMessage::LoginUsers {
-                                users: vec![user_summary.clone()],
+                            tx.send(ServerSocketMessage::Broadcast {
+                                msg: ServerSocketBroadcastMessage::LoginUsers {
+                                    users: vec![user_summary.clone()],
+                                },
                             })
                             .ok();
                         }
@@ -1245,8 +1254,10 @@ async fn handle_connection(
         selectors_to_canvas_objects.remove_key(&current_client_id);
 
         // -- notify other clients of client disconnect
-        let _ = tx.send(ServerSocketMessage::LogoutUsers {
-            clients: Vec::<ClientIdType>::from_iter([current_client_id.clone()]),
+        let _ = tx.send(ServerSocketMessage::Broadcast {
+            msg: ServerSocketBroadcastMessage::LogoutUsers {
+                clients: Vec::<ClientIdType>::from_iter([current_client_id.clone()]),
+            },
         });
     }
 
