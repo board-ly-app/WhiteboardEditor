@@ -4,10 +4,6 @@ import {
 } from '@reduxjs/toolkit';
 
 import {
-  DEFAULT_CLIENT_COLORS,
-} from '@/app.config';
-
-import {
   type ClientIdType,
   type WhiteboardIdType,
 } from '@/types/WebSocketProtocol';
@@ -16,82 +12,15 @@ import {
   removeWhiteboards as removeWhiteboardsReducer,
 } from '@/store/whiteboards/whiteboardsSlice';
 
-interface AvailableColorsState {
-  // -- array of currently available colors
-  colors: string[];
-  // -- numbers used to procedurally generate rgb colors
-  proceduralRGB: [number, number, number];
-}
-
-// -- stores extra information that comes along with whiteboard => activeUser
-// relation
-interface ClientRelation {
-  clientId: ClientIdType;
-  color: string;
-}
-
-type AvailableColorsByWhiteboardState = Record<WhiteboardIdType, AvailableColorsState>;
-
 interface ActiveUsersByWhiteboardState {
-  clientsByWhiteboard: Record<WhiteboardIdType, Record<ClientIdType, ClientRelation>>;
+  clientsByWhiteboard: Record<WhiteboardIdType, Record<ClientIdType, ClientIdType>>;
   whiteboardsByClient: Record<ClientIdType, WhiteboardIdType>;
-  // -- used to allocate unique colors to clients per-whiteboard
-  availableColorsByWhiteboard: AvailableColorsByWhiteboardState;
 };
 
 const initialState : ActiveUsersByWhiteboardState = {
   clientsByWhiteboard: {},
   whiteboardsByClient: {},
-  availableColorsByWhiteboard: {},
 };
-
-const popAvailableClientColor = (
-  availableColorsByWhiteboard: AvailableColorsByWhiteboardState,
-  whiteboardId: WhiteboardIdType
-): string => {
-  if (! (whiteboardId in availableColorsByWhiteboard)) {
-    // -- initialize new entry for whiteboard
-    const [poppedColor, ...colors] = DEFAULT_CLIENT_COLORS;
-
-    availableColorsByWhiteboard[whiteboardId] = {
-      colors,
-      proceduralRGB: [256, 256, 0],
-    };
-
-    return poppedColor;
-  } else {
-    // -- Get next color from existing entry
-    const availableColorsEntry = availableColorsByWhiteboard[whiteboardId];
-
-    if (availableColorsEntry.colors) {
-      const [poppedColor, ...colors] = availableColorsEntry.colors;
-
-      availableColorsByWhiteboard[whiteboardId].colors = colors;
-
-      return poppedColor;
-    } else {
-      // -- Generate a new color by rotating proceduralRGB and toning down
-      // the first value
-      const [r, g, b] = availableColorsEntry.proceduralRGB;
-
-      availableColorsByWhiteboard[whiteboardId].proceduralRGB = [b * 0.8, r, g];
-
-      return `rgb(${r},${g},${b})`;
-    }
-  }
-};// -- end popAvailableClientColor
-
-const pushAvailableClientColor = (
-  availableColorsByWhiteboard: AvailableColorsByWhiteboardState,
-  whiteboardId: WhiteboardIdType,
-  color: string
-) => {
-  if (whiteboardId in availableColorsByWhiteboard) {
-    const availableColorsEntry = availableColorsByWhiteboard[whiteboardId];
-
-    availableColorsEntry.colors = [color, ...availableColorsEntry.colors];
-  }
-};// -- end pushAvailableClientColor
 
 export const activeUsersByWhiteboardSlice = createSlice({
   name: 'activeUsersByWhiteboard',
@@ -101,21 +30,17 @@ export const activeUsersByWhiteboardSlice = createSlice({
       const {
         clientsByWhiteboard,
         whiteboardsByClient,
-        availableColorsByWhiteboard,
       } = state;
 
-      for (const [whiteboardId, clientIds] of Object.entries(action.payload)) {
-        clientsByWhiteboard[whiteboardId] = Object.fromEntries(clientIds.map(clientId => {
-          // -- allocate a unique color for each client
-          const color = popAvailableClientColor(availableColorsByWhiteboard, whiteboardId);
-
-          return [clientId, { clientId, color }];
-        }));
+      for (const [wid, clientIds] of Object.entries(action.payload)) {
+        clientsByWhiteboard[wid] = Object.fromEntries(clientIds.map(clientId => [
+          clientId, clientId
+        ]));
 
         for (const clientId of clientIds) {
-          whiteboardsByClient[clientId] = whiteboardId;
+          whiteboardsByClient[clientId] = wid;
         }// -- end for clientId
-      }// -- end for whiteboardId, clientIds
+      }// -- end for wid, clientIds
 
       return state;
     },
@@ -126,31 +51,26 @@ export const activeUsersByWhiteboardSlice = createSlice({
       const {
         clientsByWhiteboard,
         whiteboardsByClient,
-        availableColorsByWhiteboard,
       } = state;
 
-      for (const [whiteboardId, clientIds] of Object.entries(action.payload)) {
-        if (whiteboardId in clientsByWhiteboard) {
-          for (const clientId of clientIds) {
-            // -- allocate a unique color for each client
-            const color = popAvailableClientColor(availableColorsByWhiteboard, whiteboardId);
+      for (const [wid, clientIds] of Object.entries(action.payload)) {
+        const newClientsSet = Object.fromEntries(clientIds.map(clientId => [
+          clientId, clientId
+        ]));
 
-            clientsByWhiteboard[whiteboardId][clientId] = { clientId, color };
-            whiteboardsByClient[clientId] = whiteboardId;
-          }// -- end for clientId
+        if (wid in clientsByWhiteboard) {
+          clientsByWhiteboard[wid] = {
+            ...clientsByWhiteboard[wid],
+            ...newClientsSet,
+          };
         } else {
-          clientsByWhiteboard[whiteboardId] = Object.fromEntries(clientIds.map(clientId => {
-            // -- allocate a unique color for each client
-            const color = popAvailableClientColor(availableColorsByWhiteboard, whiteboardId);
-
-            return [clientId, { clientId, color }];
-          }));
-
-          for (const clientId of clientIds) {
-            whiteboardsByClient[clientId] = whiteboardId;
-          }// -- end for clientId
+          clientsByWhiteboard[wid] = newClientsSet;
         }
-      }// -- end for whiteboardId, userSummariesByWhiteboardId
+
+        for (const clientId of clientIds) {
+          whiteboardsByClient[clientId] = wid;
+        }// -- end for clientId
+      }// -- end for wid, clientIds
 
       return state;
     },
@@ -158,19 +78,11 @@ export const activeUsersByWhiteboardSlice = createSlice({
       const {
         clientsByWhiteboard,
         whiteboardsByClient,
-        availableColorsByWhiteboard,
       } = state;
 
       for (const clientId of action.payload) {
         if (clientId in whiteboardsByClient) {
           // Push colors back onto available colors stack
-          const whiteboardId = whiteboardsByClient[clientId];
-
-          pushAvailableClientColor(
-            availableColorsByWhiteboard,
-            clientId,
-            clientsByWhiteboard[whiteboardId][clientId].color
-          );
           delete clientsByWhiteboard[whiteboardsByClient[clientId]][clientId];
           delete whiteboardsByClient[clientId];
         }
@@ -182,13 +94,10 @@ export const activeUsersByWhiteboardSlice = createSlice({
       const {
         clientsByWhiteboard,
         whiteboardsByClient,
-        availableColorsByWhiteboard,
       } = state;
 
       for (const whiteboardId of action.payload) {
         if (whiteboardId in clientsByWhiteboard) {
-          delete availableColorsByWhiteboard[whiteboardId];
-
           for (const clientId of Object.keys(clientsByWhiteboard[whiteboardId])) {
             delete whiteboardsByClient[clientId];
           }// -- end for clientId

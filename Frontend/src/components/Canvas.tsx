@@ -75,8 +75,11 @@ import type {
 import {
   type CanvasIdType,
   type CanvasData,
-  type UserSummary,
 } from '@/types/WebSocketProtocol';
+
+import {
+  type ClientSummary,
+} from '@/types/ClientSummary';
 
 import {
   type ShapeAttributesState,
@@ -167,7 +170,7 @@ const Canvas = (props: CanvasProps) => {
     (state: RootState) => selectAllowedUsersByCanvas(state, canvasId || '')
   );
 
-  const currentEditor : UserSummary | null = useSelector((state: RootState) => (
+  const currentEditor : ClientSummary | null = useSelector((state: RootState) => (
     selectCurrentEditorByCanvas(state, canvasId)
   ));
 
@@ -389,10 +392,12 @@ const Canvas = (props: CanvasProps) => {
 
   const editingText = useMemo(
     () => {
-      if (currentEditor?.userId === user?.id) {
+      if (! currentEditor) {
+        return '';
+      } else if (currentEditor.userId === user?.id) {
         return "You are currently editing";
       } else {
-        return `${currentEditor?.username} is currently editing`;
+        return `${currentEditor.username} is currently editing`;
       }
     },
     [currentEditor, user]
@@ -433,7 +438,7 @@ const Canvas = (props: CanvasProps) => {
   const [canvasFrameColor, canvasFrameWidth] = useMemo(
     () => {
       if (currentEditor && (currentEditor.userId !== user?.id)) {
-        return ['red', 4];
+        return [currentEditor.color, 4];
       } else if (isCanvasSelected) {
         return ['green', 4];
       } else {

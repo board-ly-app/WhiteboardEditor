@@ -34,6 +34,7 @@ import {
 import {
   ChevronDown,
   X,
+  Circle,
 } from 'lucide-react';
 
 import Konva from 'konva';
@@ -137,8 +138,11 @@ import type {
   CanvasIdType,
   WhiteboardIdType,
   WhiteboardAttribs,
-  UserSummary,
 } from '@/types/WebSocketProtocol';
+
+import {
+  type ClientSummary,
+} from '@/types/ClientSummary';
 
 import {
   type OperationDispatcher,
@@ -257,12 +261,12 @@ const Whiteboard = ({
     color: '#000000',
   });
 
-  const activeUsers : Record<ClientIdType, UserSummary> = useSelector((state: RootState) => (
-    selectActiveUsersByWhiteboard(state, whiteboardId)
-  )) || {};
+  const activeUsers : Record<ClientIdType, ClientSummary> = useSelector(
+    (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId)
+  ) || {};
 
-  const currWhiteboard: WhiteboardAttribs | null = useSelector((state: RootState) => (
-    selectWhiteboardById(state, whiteboardId))
+  const currWhiteboard: WhiteboardAttribs | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)
   );
 
   const canvases: CanvasData[] = useSelector((state: RootState) => {
@@ -584,8 +588,18 @@ const Whiteboard = ({
           <DropdownMenuContent>
             <div className="flex flex-col">
               {Object.values(activeUsers).map((u) => (
-                <DropdownMenuLabel key={u.clientId}>
-                  {u.username}
+                <DropdownMenuLabel
+                  key={u.clientId}
+                  className="flex flex-row content-center"
+                >
+                  <Circle
+                    size={20}
+                    stroke={u.color}
+                    strokeWidth={4}
+                  />
+                  <span className="pl-2">
+                    {u.username}
+                  </span>
                 </DropdownMenuLabel>
               ))}
             </div>
