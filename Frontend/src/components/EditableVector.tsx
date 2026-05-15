@@ -20,6 +20,10 @@ import {
 } from '@/store';
 
 import {
+  selectClientId,
+} from '@/store/client/clientSelectors';
+
+import {
   selectSelectorByCanvasObject,
 } from '@/store/activeUsers/activeUsersSelectors';
 
@@ -29,13 +33,12 @@ import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
 
-import {
-  useUser,
-} from '@/hooks/useUser';
-
 import type { CanvasObjectIdType, VectorModel } from "@/types/CanvasObjectModel";
 import type { EditableObjectProps } from "@/dispatchers/editableObjectProps";
 import editableObjectProps from "@/dispatchers/editableObjectProps";
+import {
+  type ClientIdType,
+} from '@/types/WebSocketProtocol';
 import {
   SnappingMonitor,
   useSnapping,
@@ -76,23 +79,19 @@ const EditableVector = <VectorType extends VectorModel>({
     clientMessenger,
   } = clientMessengerContext;
 
-  const {
-    user,
-  } = useUser();
-
-  if (! user) {
-    throw new Error('No authenticated user provided');
-  }
-
   useSnapping(vectorRef, snappingMonitor);
+
+  const clientId : ClientIdType | null = useSelector(
+    (state: RootState) => selectClientId(state)
+  );
 
   const editor = useSelector(
     (state: RootState) => selectSelectorByCanvasObject(state, id)
   );
 
   const isSelected = useMemo(
-    () => user.id === editor?.userId,
-    [user, editor]
+    () => editor?.clientId === clientId,
+    [editor, clientId]
   );
 
   const handleSelect = useCallback(

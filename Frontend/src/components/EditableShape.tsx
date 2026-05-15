@@ -21,9 +21,12 @@ import {
 
 // Local imports
 import {
-  store,
   type RootState,
 } from '@/store';
+
+import {
+  selectClientId,
+} from '@/store/client/clientSelectors';
 
 import {
   selectSelectorByCanvasObject,
@@ -47,10 +50,6 @@ import {
 } from '@/context/ClientMessengerContext';
 
 import {
-  useUser,
-} from '@/hooks/useUser';
-
-import {
   SnappingMonitor,
   useSnapping,
 } from "@/hooks/useSnapping";
@@ -70,7 +69,6 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   handleUpdateShapes,
   children,
 }: EditableShapeProps<ShapeType>) => {
-  const dispatch = store.dispatch;
   const shapeRef = useRef<Konva.Shape>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
@@ -79,14 +77,6 @@ const EditableShape = <ShapeType extends ShapeModel> ({
 
   if (! whiteboardContext) {
     throw new Error('No whiteboard context provided');
-  }
-
-  const {
-    user,
-  } = useUser();
-
-  if (! user) {
-    throw new Error('No authenticated user');
   }
 
   const clientMessengerContext = useContext(ClientMessengerContext);
@@ -99,17 +89,24 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     clientMessenger,
   } = clientMessengerContext;
 
+  // const clientId = useSelector((state: RootState) => selectClientId(state));
+  const clientId = useSelector((state: RootState) => {
+    console.log('!! activeUsers: ', state.activeUsers);
+    console.log('!! client: ', state.client);
+    return selectClientId(state);
+  });
+
   const editor = useSelector(
     (state: RootState) => selectSelectorByCanvasObject(state, id)
   );
 
-  const isDraggable = draggable && ((! editor) || editor.userId === user.id);
+  const isDraggable = draggable && ((! editor) || editor.clientId === clientId);
 
   useSnapping(shapeRef, snappingMonitor);
 
   const isSelected : boolean = useMemo(
-    () => user.id === editor?.userId,
-    [user, editor]
+    () => editor?.clientId === clientId,
+    [editor, clientId]
   );
 
   // Transformer attach/detach
@@ -130,7 +127,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
         });
       }
     },
-    [dispatch, id, clientMessenger, editor]
+    [id, clientMessenger, editor]
   );
 
   // Click outside to deselect
@@ -157,7 +154,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     return () => {
       stage.off("click", unselectListener)
     };
-  }, [dispatch, shapeRef.current, unselectListener]);
+  }, [unselectListener]);
 
   // Override onDragEnd to reselect at end
   const {

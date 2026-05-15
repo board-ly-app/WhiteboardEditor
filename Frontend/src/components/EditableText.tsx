@@ -25,12 +25,12 @@ import {
 } from '@/store';
 
 import {
-  selectSelectorByCanvasObject,
-} from '@/store/activeUsers/activeUsersSelectors';
+  selectClientId,
+} from '@/store/client/clientSelectors';
 
 import {
-  useUser,
-} from '@/hooks/useUser';
+  selectSelectorByCanvasObject,
+} from '@/store/activeUsers/activeUsersSelectors';
 
 import WhiteboardContext from '@/context/WhiteboardContext';
 import {
@@ -107,21 +107,15 @@ const EditableText = ({
 
   useSnapping(textRef, snappingMonitor);
 
+  const clientId = useSelector((state: RootState) => selectClientId(state));
+
   const editor = useSelector(
     (state: RootState) => selectSelectorByCanvasObject(state, id)
   );
 
-  const {
-    user,
-  } = useUser();
-
-  if (! user) {
-    throw new Error('No authenticated user provided');
-  }
-
   const isSelected : boolean = useMemo(
-    () => user.id === editor?.userId,
-    [user, editor]
+    () => editor?.clientId === clientId,
+    [editor, clientId]
   );
 
   // attach Transformer for editing when selected
@@ -146,7 +140,7 @@ const EditableText = ({
         canvasObjectId: id,
       });
     }
-  }, [isEditing, editor, clientMessenger, id]);
+  }, [editor, clientMessenger, id]);
 
   // deselect when clicking outside of text node
   useEffect(() => {
