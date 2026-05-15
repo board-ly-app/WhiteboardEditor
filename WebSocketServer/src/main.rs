@@ -297,20 +297,26 @@ async fn handle_connection(
         let current_client_id = current_client_id.clone();
 
         tokio::spawn(async move {
+            use ServerSocketMessage::*;
+
             while let Ok(msg) = rx.recv().await {
-                if let ServerSocketMessage::IndividualError { ref client_id, .. } = msg {
-                    if let Ordering::Equal = client_id.cmp(&current_client_id) {
+                match msg {
+                    // -- These messages are only sent to individual clients
+                    InitClient { ref client_id, .. } | IndividualError { ref client_id, .. } => {
+                        if let Ordering::Equal = client_id.cmp(&current_client_id) {
+                            let json = serde_json::to_string(&msg).unwrap();
+                            if user_ws_tx.send(Message::text(json)).await.is_err() {
+                                break;
+                            }
+                        }
+                    },
+                    _ => {
                         let json = serde_json::to_string(&msg).unwrap();
                         if user_ws_tx.send(Message::text(json)).await.is_err() {
                             break;
                         }
-                    }
-                } else {
-                    let json = serde_json::to_string(&msg).unwrap();
-                    if user_ws_tx.send(Message::text(json)).await.is_err() {
-                        break;
-                    }
-                }
+                    },
+                };// -- end match msg
             }
         })
     }; // -- end send_task
