@@ -95,8 +95,8 @@ const EditableVector = <VectorType extends VectorModel>({
   );
 
   const isDraggable : boolean = useMemo(
-    () => draggable && isSelected,
-    [draggable, isSelected]
+    () => draggable && (isSelected || (! editor)),
+    [draggable, isSelected, editor]
   );
 
   const handleSelect = useCallback(
@@ -174,16 +174,10 @@ const EditableVector = <VectorType extends VectorModel>({
     setLocalPoints(shapeModel.points);
   }, [shapeModel.points]);
 
-  const handleVectorDragStart = useCallback(
-    () => {
-    },
-    []
-  );
-
   // Override the onDragEnd handler for vectors to change points rather than x, y
   const vectorEditableProps = {
     ...editableObjectProps(shapeModel, isDraggable, handleUpdateShapes),
-    onDragStart: () => handleVectorDragStart(),
+    onDragStart: handleSelect,
     onDragEnd: handleVectorDragEnd,
   }
 
@@ -211,14 +205,14 @@ const EditableVector = <VectorType extends VectorModel>({
         ...vectorEditableProps,
       })}
 
-      {isDraggable && (
+      {editor && (
         <>
           <Circle
             x={localPoints[0]}
             y={localPoints[1]}
             radius={6}
             fill="#ddd"
-            stroke={editor?.color ?? "#5b6263ff"}
+            stroke={editor.color}
             strokeWidth={2}
             draggable
             onDragMove={(e) => handleAnchorDragMove(0, e)}

@@ -20,7 +20,6 @@ import {
 } from 'react-redux';
 
 import {
-  store,
   type RootState,
 } from '@/store';
 
@@ -82,7 +81,6 @@ const EditableText = ({
   onTransform,
   onTransformEnd,
 }: EditableTextProps) => {
-  const dispatch = store.dispatch;
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
   const textRef = useRef<Konva.Text>(null);
@@ -142,30 +140,6 @@ const EditableText = ({
     }
   }, [editor, clientMessenger, id]);
 
-  // deselect when clicking outside of text node
-  useEffect(() => {
-    if (isEditing) return;
-
-    // TODO: figure out what to do with this
-    const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      if (e.evt.detail === 2) {
-        return;
-      }
-      // if (e.target !== textRef.current) {
-      //   setIsSelected(false);
-      //   setSelectedCanvasObjects(dispatch, []);
-      // }
-    };
-
-    const stage = textRef.current?.getStage();
-    if (!stage) return;
-    stage.on("click", handleStageClick);
-    return () => {
-      stage.off("click", handleStageClick);
-    };
-  }, [isEditing, dispatch]);
-
-
   const handleTextDblClick = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (!draggable) return;
 
@@ -214,6 +188,7 @@ const EditableText = ({
         onDblTap={handleTextDblClick}
         listening={!isEditing && draggable}
         visible={!isEditing}
+        onDragStart={handleSelect}
         onDragEnd={onDragEnd}
         onMouseUp={onMouseUp}
         onMouseDown={onMouseDown}

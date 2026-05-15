@@ -130,12 +130,6 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     onDragEnd,
   } = editableObjectProps(shapeModel, isDraggable, handleUpdateShapes);
 
-  const shapeOnDragStart = useCallback(
-    () => {
-    },
-    []
-  );
-
   const shapeOnDragEnd = useCallback(
     (ev: Konva.KonvaEventObject<DragEvent>) => {
       if (onDragEnd) {
@@ -147,7 +141,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
 
   const shapeEditableProps = {
     ...editableObjectProps(shapeModel, isDraggable, handleUpdateShapes),
-    onDragStart: shapeOnDragStart,
+    onDragStart: handleSelect,
     onDragEnd: shapeOnDragEnd,
   };
 
