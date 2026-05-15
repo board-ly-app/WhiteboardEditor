@@ -28,6 +28,7 @@ import {
 import {
   CURRENT_EDITOR_NUM_MILLIS,
   WHITEBOARD_DELETED_NOTIFICATION_NUM_MILLIS,
+  DEFAULT_CLIENT_COLORS,
 } from '@/app.config';
 
 import {
@@ -45,11 +46,16 @@ import {
 } from '@/store/allowedUsers/allowedUsersByCanvasSlice';
 
 import {
+  type ClientIdType,
   type ClientMessageLogin,
   type SocketServerMessage,
   type UserSummary,
   type CanvasIdType,
 } from '@/types/WebSocketProtocol';
+
+import {
+  type ClientSummary,
+} from '@/types/ClientSummary';
 
 import {
   type IWhiteboardClientMessenger,
@@ -58,6 +64,10 @@ import {
 import {
   WhiteboardSocketMessenger,
 } from '@/services/whiteboardSocketMessenger';
+
+import {
+  ClientColorStack,
+} from '@/services/ClientColorStack';
 
 // -- program state
 import {
@@ -70,17 +80,16 @@ import {
   setWhiteboardStatus,
   setCanvasObjects,
   removeCanvasObjects,
-  removeSelectedCanvasObjects,
   addCanvas,
   deleteCanvas,
   mergeCanvas,
   setCurrentEditorsByCanvas,
   removeCurrentEditorsByCanvas,
-  setCurrentEditorsByCanvasObject,
-  removeCurrentEditorsByCanvasObject,
   setActiveUsersByWhiteboard,
   addActiveUsersByWhiteboard,
+  removeSelectorsByCanvasObject,
   removeActiveUsers,
+  setSelectorsByCanvasObject,
 } from '@/controllers';
 
 // -- type declarations
@@ -118,24 +127,46 @@ const WebSocketClientMessengerProvider = ({
 
   const [clientMessenger, setClientMessenger] = useState<IWhiteboardClientMessenger | null>(null);
   const webSocketRef = useRef<WebSocket | null>(null);
+  const clientColorStackRef = useRef<ClientColorStack>(
+    new ClientColorStack(DEFAULT_CLIENT_COLORS, [256, 256, 0])
+  );
+  const summariesByClientRef = useRef<Record<ClientIdType, ClientSummary>>({});
   const currentCanvasEditorTimeoutsByCanvasRef = useRef<Record<CanvasIdType, number>>({});
-  const currentCanvasObjectEditorTimeoutsByCanvasRef = useRef<Record<CanvasIdType, number>>({});
 
   // handles incoming web socket messages
   const handleServerMessage = useCallback(
     (event: MessageEvent): void => {
       try {
+        console.log('!! WS MESSAGE: ', event.data);
         const msg = JSON.parse(event.data) as SocketServerMessage;
 
         switch (msg.type) {
           case 'init_client':
             {
-              const { whiteboard, activeClients } = msg;
+              const {
+                whiteboard,
+                activeClients,
+                selectorsByCanvasObjects,
+              } = msg;
 
               const activeUsers: UserSummary[] = Object.values(activeClients);
+              const clientSummaries : ClientSummary[] = [];
+
+              // -- initialize client summaries
+              for (const user of activeUsers) {
+                const color = clientColorStackRef.current.popColor();
+                const clientSummary = {
+                  ...user,
+                  color
+                };
+
+                summariesByClientRef.current[user.clientId] = clientSummary;
+                clientSummaries.push(clientSummary);
+              }//-- end for user
 
               addWhiteboard(dispatch, whiteboard);
-              setActiveUsersByWhiteboard(dispatch, whiteboardId, activeUsers);
+              setActiveUsersByWhiteboard(dispatch, whiteboardId, clientSummaries);
+              setSelectorsByCanvasObject(dispatch, selectorsByCanvasObjects);
             }
             break;
           case 'login_users': 
@@ -144,7 +175,21 @@ const WebSocketClientMessengerProvider = ({
                 users,
               } = msg;
 
-              addActiveUsersByWhiteboard(dispatch, whiteboardId, users);
+              const clientSummaries : ClientSummary[] = [];
+
+              // -- assign colors to clients
+              for (const user of users) {
+                const color = clientColorStackRef.current.popColor();
+                const clientSummary = {
+                  ...user,
+                  color,
+                };
+
+                summariesByClientRef.current[user.clientId] = clientSummary;
+                clientSummaries.push(clientSummary);
+              }//-- end for user
+
+              addActiveUsersByWhiteboard(dispatch, whiteboardId, clientSummaries);
             } 
             break;
           case 'logout_users': 
@@ -152,6 +197,18 @@ const WebSocketClientMessengerProvider = ({
               const {
                 users,
               } = msg;
+
+              // -- retire client colors
+              for (const clientId of users) {
+                if (clientId in summariesByClientRef.current) {
+                  const {
+                    color,
+                  } = summariesByClientRef.current[clientId];
+
+                  clientColorStackRef.current.pushColor(color);
+                  delete summariesByClientRef.current[clientId];
+                }
+              }// -- end for user
 
               // -- remove logged out users
               removeActiveUsers(dispatch, users);
@@ -191,24 +248,8 @@ const WebSocketClientMessengerProvider = ({
                 canvasObjectId,
               } = msg;
 
-              setCurrentEditorsByCanvasObject(dispatch, { [canvasObjectId]: clientId });
-
-              // -- set current editor timeout
-              const oldCurrentEditorTimeoutId = currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId];
-
-              if (oldCurrentEditorTimeoutId) {
-                window.clearTimeout(oldCurrentEditorTimeoutId);
-                currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId] = 0;
-              }
-
-              currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId] = window.setTimeout(
-                () => {
-                  removeCurrentEditorsByCanvas(dispatch, [canvasObjectId]);
-                  window.clearTimeout(currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId]);
-                  currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId] = 0;
-                },
-                CURRENT_EDITOR_NUM_MILLIS
-              );
+              // -- Set selector
+              setSelectorsByCanvasObject(dispatch, { [canvasObjectId]: clientId });
             }
             break;
           case 'unselected_canvas_object':
@@ -217,8 +258,8 @@ const WebSocketClientMessengerProvider = ({
                 canvasObjectId,
               } = msg;
 
-              removeCurrentEditorsByCanvasObject(dispatch, [canvasObjectId]);
-              window.clearTimeout(currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId]);
+              // -- Remove client color from canvas object
+              removeSelectorsByCanvasObject(dispatch, [canvasObjectId]);
             }
             break;
           case 'create_shapes':
@@ -311,16 +352,8 @@ const WebSocketClientMessengerProvider = ({
                 canvasObjectIds,
               } = msg;
 
-              // -- clear any associated timeouts
-              for (const canvasObjectId of canvasObjectIds) {
-                if (canvasObjectId in currentCanvasObjectEditorTimeoutsByCanvasRef.current) {
-                  window.clearTimeout(currentCanvasObjectEditorTimeoutsByCanvasRef.current[canvasObjectId]);
-                }
-              }// -- end for canvasObjectId
-
-              removeSelectedCanvasObjects(dispatch, canvasObjectIds);
               removeCanvasObjects(dispatch, canvasObjectIds);
-              removeCurrentEditorsByCanvasObject(dispatch, canvasObjectIds);
+              removeSelectorsByCanvasObject(dispatch, canvasObjectIds);
           }
           break;
           case 'merge_canvas':
@@ -407,6 +440,10 @@ const WebSocketClientMessengerProvider = ({
                 case 'action_forbidden':
                   console.error(`Socket error: action ${error.action} not permitted`);
                   popupErrorMsg = `You are not authorized to ${error.action}`;
+                  break;
+                case 'canvas_object_already_selected':
+                  console.error('Canvas object already selected by client', error.clientId);
+                  popupErrorMsg = "Canvas object already selected by another user";
                   break;
                 case 'other':
                   console.error('Socket error:', error.message);

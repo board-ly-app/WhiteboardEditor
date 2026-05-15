@@ -67,10 +67,6 @@ import {
 } from '@/store';
 
 import {
-  setSelectedCanvasObjects,
-} from '@/controllers';
-
-import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
 
@@ -89,6 +85,7 @@ import {
 
 import {
   selectCanvasObjectsByWhiteboard,
+  selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import WhiteboardContext, {
@@ -276,6 +273,12 @@ const Whiteboard = ({
     (state: RootState) => state.childCanvasesByCanvas.childCanvasesByCanvas
   );
 
+  const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
+    (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
+      state, whiteboardId, user.id
+    )
+  );
+
   const {
     Modal: ShareModal,
     openModal: openShareModal,
@@ -300,10 +303,16 @@ const Whiteboard = ({
   // Used within Toolbar
   const handleToolChange = useCallback(
     (choice : ToolChoice) => {
-      setSelectedCanvasObjects(dispatch, []);
       setCurrentTool(choice);
+
+      for (const objId of selectedCanvasObjects) {
+        clientMessenger?.sendUnselectedCanvasObject({
+          type: 'unselected_canvas_object',
+          canvasObjectId: objId,
+        });
+      }// -- end for objId
     },
-    [dispatch, setCurrentTool]
+    [dispatch, setCurrentTool, selectedCanvasObjects]
   );
 
   const whiteboardStatus = useSelector(

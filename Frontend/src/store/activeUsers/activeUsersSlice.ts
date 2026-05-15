@@ -13,20 +13,25 @@ import {
 // -- local imports
 import {
   type ClientIdType,
-  type UserSummary,
 } from '@/types/WebSocketProtocol';
 
-type ActiveUsersSliceState = Record<ClientIdType, UserSummary>;
+import {
+  type ClientSummary,
+} from '@/types/ClientSummary';
+
+type ActiveUsersSliceState = Record<ClientIdType, ClientSummary>;
+
+const initialState : ActiveUsersSliceState = {};
 
 const activeUsersSlice = createSlice({
   name: 'activeUsers',
-  initialState: {} as ActiveUsersSliceState,
+  initialState,
   reducers: {
-    setActiveUsers(state, action: PayloadAction<UserSummary[]>) {
+    setActiveUsers(state, action: PayloadAction<ClientSummary[]>) {
       return {
         ...state,
-        ...Object.fromEntries(action.payload.map(userSummary => [
-          userSummary.clientId, userSummary
+        ...Object.fromEntries(action.payload.map(clientSummary => [
+          clientSummary.clientId, clientSummary
         ]))
       };
     },

@@ -4,11 +4,8 @@ import {
   useEffect,
   useCallback,
   useContext,
+  useMemo,
 } from "react";
-
-import {
-  useSelector,
-} from 'react-redux';
 
 import {
   Group,
@@ -19,33 +16,31 @@ import {
 import Konva from "konva";
 
 import {
+  useSelector,
+} from 'react-redux';
+
+import {
   store,
   type RootState,
 } from '@/store';
 
 import {
-  selectSelectedCanvasObjects,
-} from '@/store/canvasObjects/canvasObjectsSelectors';
-
-import {
-  selectCurrentEditorByCanvasObject,
-  selectClientColorByWhiteboard,
+  selectSelectorByCanvasObject,
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import {
-  type UserSummary,
-} from '@/types/WebSocketProtocol';
+  useUser,
+} from '@/hooks/useUser';
 
 import WhiteboardContext from '@/context/WhiteboardContext';
-
 import {
-  setSelectedCanvasObjects,
-} from '@/controllers';
+  ClientMessengerContext,
+} from '@/context/ClientMessengerContext';
 
 import TextEditor from "./TextEditor";
 
 import { type EditableObjectProps } from "@/dispatchers/editableObjectProps";
-import type { CanvasObjectIdType, ShapeModel, TextModel } from "@/types/CanvasObjectModel";
+import type { CanvasObjectIdType, ShapeModel, TextRecord } from "@/types/CanvasObjectModel";
 import {
   SnappingMonitor,
   useSnapping,
@@ -62,7 +57,7 @@ interface EditableTextProps extends EditableObjectProps {
   height: number;
   rotation: number;
   draggable: boolean;
-  shapeModel: TextModel;
+  shapeRecord: TextRecord;
   handleUpdateShapes: (shapes: Record<CanvasObjectIdType, ShapeModel>) => void
 }
 
@@ -77,7 +72,7 @@ const EditableText = ({
   height,
   rotation,
   draggable,
-  shapeModel,
+  shapeRecord,
   handleUpdateShapes,
   onMouseOver,
   onMouseOut,
@@ -88,7 +83,6 @@ const EditableText = ({
   onTransformEnd,
 }: EditableTextProps) => {
   const dispatch = store.dispatch;
-  const [isSelected, setIsSelected] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
   const textRef = useRef<Konva.Text>(null);
@@ -100,30 +94,35 @@ const EditableText = ({
   if (! whiteboardContext) {
     throw new Error('No whiteboard context provided');
   }
+  
+  const clientMessengerContext = useContext(ClientMessengerContext);
+
+  if (! clientMessengerContext) {
+    throw new Error('No client messenger context provided');
+  }
 
   const {
-    whiteboardId,
-  } = whiteboardContext;
+    clientMessenger,
+  } = clientMessengerContext;
 
   useSnapping(textRef, snappingMonitor);
 
-  const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
-    (state: RootState) => selectSelectedCanvasObjects(state)
+  const editor = useSelector(
+    (state: RootState) => selectSelectorByCanvasObject(state, id)
   );
 
-  const userSummary : UserSummary | null = useSelector(
-    (state: RootState) => selectCurrentEditorByCanvasObject(state, id)
-  );
+  const {
+    user,
+  } = useUser();
 
-  const editorColor : string | null = useSelector(
-    (state: RootState) => selectClientColorByWhiteboard(
-      state, whiteboardId, userSummary?.clientId ?? null
-    )
-  );
+  if (! user) {
+    throw new Error('No authenticated user provided');
+  }
 
-  useEffect(() => {
-    setIsSelected(id in selectedCanvasObjectIds);
-  }, [selectedCanvasObjectIds, setIsSelected, id]);
+  const isSelected : boolean = useMemo(
+    () => user.id === editor?.userId,
+    [user, editor]
+  );
 
   // attach Transformer for editing when selected
   useEffect(() => {
@@ -140,24 +139,28 @@ const EditableText = ({
   const handleSelect = useCallback((ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     ev.cancelBubble = true;
 
-    if (! isEditing) {
-      setIsSelected(true);
-      setSelectedCanvasObjects(dispatch, [id]);
+    // TODO: re-implement to instead send selection message to server
+    if (! editor) {
+      clientMessenger?.sendSelectedCanvasObject({
+        type: 'selected_canvas_object',
+        canvasObjectId: id,
+      });
     }
-  }, [isEditing, dispatch, id]);
+  }, [isEditing, editor, clientMessenger, id]);
 
   // deselect when clicking outside of text node
   useEffect(() => {
     if (isEditing) return;
 
+    // TODO: figure out what to do with this
     const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       if (e.evt.detail === 2) {
         return;
       }
-      if (e.target !== textRef.current) {
-        setIsSelected(false);
-        setSelectedCanvasObjects(dispatch, []);
-      }
+      // if (e.target !== textRef.current) {
+      //   setIsSelected(false);
+      //   setSelectedCanvasObjects(dispatch, []);
+      // }
     };
 
     const stage = textRef.current?.getStage();
@@ -175,7 +178,7 @@ const EditableText = ({
     e.cancelBubble = true;
 
     setIsEditing(true);
-    setIsSelected(false); 
+    // setIsSelected(false); 
   }, [draggable]);
 
   const handleTextChange = useCallback((newText: string): void => {
@@ -184,7 +187,7 @@ const EditableText = ({
 
     const update = {
       [id]: {
-        ...shapeModel,
+        ...shapeRecord,
         text: newText,
         x: node.x(),
         y: node.y(),
@@ -195,13 +198,7 @@ const EditableText = ({
     };
 
     handleUpdateShapes(update);
-  }, [handleUpdateShapes, id, shapeModel]);
-
-  const selectedProps = editorColor ? {
-    shadowColor: editorColor,
-    shadowBlur: 20,
-    shadowOpacity: 1.0,
-  } : {};
+  }, [handleUpdateShapes, id, shapeRecord]);
 
   return (
     <Group>
@@ -230,7 +227,6 @@ const EditableText = ({
         onMouseOver={onMouseOver}
         onTransform={onTransform}
         onTransformEnd={onTransformEnd}
-        {...selectedProps}
       />
       {isEditing && textRef.current && draggable && (
         <TextEditor
@@ -241,9 +237,10 @@ const EditableText = ({
           }}
         />
       )} 
-      {isSelected && !isEditing && draggable && (
+      {editor && (
         <Transformer
           ref={trRef}
+          borderStroke={editor.color}
           boundBoxFunc={(_oldBox, newBox) => ({
             ...newBox,
             width: Math.max(30, newBox.width),

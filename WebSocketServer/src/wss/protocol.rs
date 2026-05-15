@@ -87,6 +87,7 @@ pub enum ServerSocketMessage {
         client_id: ClientIdType,
         whiteboard: WhiteboardClientView,
         active_clients: HashMap<ClientIdType, UserSummary>,
+        selectors_by_canvas_objects: HashMap<String, String>,
     },
     LoginUsers {
         users: Vec<UserSummary>,

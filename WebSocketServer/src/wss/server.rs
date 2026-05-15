@@ -804,11 +804,22 @@ pub async fn handle_unauthenticated_client_message<
                         }
 
                         // -- initialize client
-                        vec![ServerSocketMessage::InitClient {
-                            client_id: client_state.client_id.clone(),
-                            whiteboard: client_state.whiteboard_ref.lock().await.to_client_view(),
-                            active_clients,
-                        }]
+                        {
+                            let whiteboard = client_state.whiteboard_ref.lock().await;
+                            let selectors_to_canvas_objects = client_state
+                                .selectors_to_canvas_objects
+                                .lock().await;
+
+                            vec![ServerSocketMessage::InitClient {
+                                client_id: client_state.client_id.clone(),
+                                whiteboard: whiteboard.to_client_view(),
+                                active_clients,
+                                selectors_by_canvas_objects: selectors_to_canvas_objects
+                                    .iter_key_value()
+                                    .map(|(selector_id, obj_id)| (obj_id.to_hex(), selector_id.clone()))
+                                    .collect()
+                            }]
+                        }
                     } else {
                         // User has no valid permission; send back an error message
                         vec![ServerSocketMessage::IndividualError {
@@ -1528,6 +1539,7 @@ mod unit_tests {
                 client_id,
                 whiteboard: whiteboard_view,
                 active_clients,
+                selectors_by_canvas_objects,
             } => {
                 let user_perm = client_state.user_whiteboard_permission.lock().await;
 
@@ -1545,6 +1557,7 @@ mod unit_tests {
                         }
                     )])
                 );
+                assert_eq!(selectors_by_canvas_objects, HashMap::new());
             }
             bad_resp => {
                 panic!("Expected InitClient message, got {:?}", bad_resp);

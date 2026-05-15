@@ -13,8 +13,8 @@ import type {
 } from '@/types/OperationDispatcher';
 import type {
   CanvasObjectIdType,
-  CanvasObjectModel,
-  TextModel
+  CanvasObjectRecord,
+  TextRecord
 } from '@/types/CanvasObjectModel';
 import type {
   EventCoords
@@ -111,11 +111,11 @@ const useTextDispatcher = ({
 
   const renderShape = (
     key: string | number,
-    model: CanvasObjectModel,
+    record: CanvasObjectRecord,
     isDraggable: boolean,
-    handleUpdateShapes: (shapes: Record<CanvasObjectIdType, CanvasObjectModel>) => void
+    handleUpdateShapes: (shapes: Record<CanvasObjectIdType, CanvasObjectRecord>) => void
   ): React.JSX.Element | null => {
-    if (model.type !== 'text') {
+    if (record.type !== 'text') {
       return null;
     } else {
       const {
@@ -127,7 +127,7 @@ const useTextDispatcher = ({
         width,
         height,
         rotation,
-      } = model;
+      } = record;
 
       return (
         <EditableText
@@ -142,9 +142,9 @@ const useTextDispatcher = ({
           height={height}
           draggable={isDraggable}
           rotation={rotation}
-          shapeModel={model}
+          shapeRecord={record}
           handleUpdateShapes={handleUpdateShapes}
-          {...editableObjectProps<TextModel>(model, isDraggable, handleUpdateShapes)}
+          {...editableObjectProps<TextRecord>(record, isDraggable, handleUpdateShapes)}
         />
       )
     }

@@ -37,10 +37,6 @@ import {
 } from "@/types/WebSocketProtocol";
 
 import {
-  type CanvasObjectIdType,
-} from '@/types/CanvasObjectModel';
-
-import {
   type User,
 } from '@/types/APIProtocol';
 
@@ -49,6 +45,10 @@ import UserCacheContext from '@/context/UserCacheContext';
 import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
+
+import {
+  useUser,
+} from '@/hooks/useUser';
 
 import {
   type ShapeAttributesState,
@@ -117,6 +117,14 @@ function CanvasCard({
   }
 
   const {
+    user,
+  } = useUser();
+
+  if (! user) {
+    throw new Error('No authenticated user provided');
+  }
+
+  const {
     tooltipText,
     editingText,
     canvasGroupRefsByIdRef,
@@ -155,6 +163,12 @@ function CanvasCard({
   const allowedUserIds = useSelector(
     // ['', ''] is effectively a null canvas key
     (state: RootState) => selectAllowedUsersByCanvas(state, selectedCanvasId ?? '')
+  );
+
+  const selectedCanvasObjects = useSelector(
+    (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
+      state, whiteboardId, user.id
+    )
   );
 
   useEffect(
@@ -224,11 +238,6 @@ function CanvasCard({
       container.scrollTop = (height - container.clientHeight) / 2;
     }
   }, [width, height])
-
-  // -- handle deletion keypresses
-  const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
-    (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(state, whiteboardId)
-  );
 
   useEffect(
     () => {

@@ -4,11 +4,8 @@ import React, {
   useCallback,
   useState,
   useContext,
+  useMemo,
 } from "react";
-
-import {
-  useSelector,
-} from 'react-redux';
 
 import { 
   Group, 
@@ -18,6 +15,10 @@ import {
 
 import type Konva from "konva";
 
+import {
+  useSelector,
+} from 'react-redux';
+
 // Local imports
 import {
   store,
@@ -25,25 +26,16 @@ import {
 } from '@/store';
 
 import {
-  selectSelectedCanvasObjects,
-} from '@/store/canvasObjects/canvasObjectsSelectors';
-
-import {
-  selectCurrentEditorByCanvasObject,
-  selectClientColorByWhiteboard,
+  selectSelectorByCanvasObject,
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import type { 
   EditableObjectProps 
 } from "@/dispatchers/editableObjectProps";
 
-import {
-  type UserSummary,
-} from '@/types/WebSocketProtocol';
-
 import type { 
   CanvasObjectIdType, 
-  ShapeModel, 
+  ShapeModel,
 } from "@/types/CanvasObjectModel";
 
 import editableObjectProps from "@/dispatchers/editableObjectProps";
@@ -58,9 +50,6 @@ import {
   useUser,
 } from '@/hooks/useUser';
 
-import {
-  setSelectedCanvasObjects,
-} from '@/controllers';
 import {
   SnappingMonitor,
   useSnapping,
@@ -80,7 +69,6 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   draggable,
   handleUpdateShapes,
   children,
-  ...props
 }: EditableShapeProps<ShapeType>) => {
   const dispatch = store.dispatch;
   const shapeRef = useRef<Konva.Shape>(null);
@@ -94,18 +82,16 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   }
 
   const {
-    whiteboardId,
-  } = whiteboardContext;
-
-  useSnapping(shapeRef, snappingMonitor);
-
-  const {
     user,
-  }= useUser();
+  } = useUser();
 
   if (! user) {
     throw new Error('No authenticated user');
   }
+
+  const editor = useSelector(
+    (state: RootState) => selectSelectorByCanvasObject(state, id)
+  );
 
   const clientMessengerContext = useContext(ClientMessengerContext);
 
@@ -117,21 +103,12 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     clientMessenger,
   } = clientMessengerContext;
 
-  const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
-    (state: RootState) => selectSelectedCanvasObjects(state)
-  );
+  useSnapping(shapeRef, snappingMonitor);
 
-  const userSummary : UserSummary | null = useSelector(
-    (state: RootState) => selectCurrentEditorByCanvasObject(state, id)
+  const isSelected : boolean = useMemo(
+    () => user.id === editor?.userId,
+    [user, editor]
   );
-
-  const editorColor : string | null = useSelector(
-    (state: RootState) => selectClientColorByWhiteboard(
-      state, whiteboardId, userSummary?.clientId ?? null
-    )
-  );
-
-  const isSelected = (id in selectedCanvasObjectIds);
 
   // Transformer attach/detach
   useEffect(() => {
@@ -143,39 +120,42 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       ev.cancelBubble = true;
 
-      if ((! userSummary) || (userSummary.userId != user.id)) {
+      if (! editor) {
         // -- Identify the current user as the current selector
         clientMessenger?.sendSelectedCanvasObject({
           type: 'selected_canvas_object',
           canvasObjectId: id,
         });
-        setSelectedCanvasObjects(dispatch, [id]);
       }
     },
-    [dispatch, id, userSummary, user, clientMessenger]
+    [dispatch, id, clientMessenger, editor]
   );
 
   // Click outside to deselect
-  useEffect(() => {
-    const stage = shapeRef.current?.getStage();
-    if (!stage) return;
-
-    const listener = (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+  // TODO: move this functionality to the canvas level, to avoid sending
+  // duplicate messages
+  const unselectListener = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       if (ev.target !== shapeRef.current) {
         // -- Indicate that user has unselected object
         clientMessenger?.sendUnselectedCanvasObject({
           type: 'unselected_canvas_object',
           canvasObjectId: id,
         });
-        setSelectedCanvasObjects(dispatch, []);
       }
-    };
+    },
+    [shapeRef, clientMessenger, id]
+  );
 
-    stage.on("click", listener);
+  useEffect(() => {
+    const stage = shapeRef.current?.getStage();
+    if (!stage) return;
+
+    stage.on("click", unselectListener);
     return () => {
-      stage.off("click", listener)
+      stage.off("click", unselectListener)
     };
-  }, [dispatch, id, clientMessenger]);
+  }, [dispatch, shapeRef.current, unselectListener]);
 
   // Override onDragEnd to reselect at end
   const {
@@ -184,9 +164,8 @@ const EditableShape = <ShapeType extends ShapeModel> ({
 
   const shapeOnDragStart = useCallback(
     () => {
-      setSelectedCanvasObjects(dispatch, []);
     },
-    [dispatch]
+    []
   );
 
   const shapeOnDragEnd = useCallback(
@@ -194,9 +173,8 @@ const EditableShape = <ShapeType extends ShapeModel> ({
       if (onDragEnd) {
         onDragEnd(ev);
       }
-      setSelectedCanvasObjects(dispatch, [id]);
     },
-    [dispatch, onDragEnd, id]
+    [onDragEnd]
   );
 
   const shapeEditableProps = {
@@ -204,14 +182,6 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     onDragStart: shapeOnDragStart,
     onDragEnd: shapeOnDragEnd,
   };
-
-  // -- used to indicate when the shape is selected by a user
-  const selectedProps = editorColor ?
-  {
-    shadowColor: editorColor,
-    shadowBlur: 20,
-    shadowOpacity: 1.0,
-  } : {};
 
   return (
     <Group>
@@ -222,10 +192,14 @@ const EditableShape = <ShapeType extends ShapeModel> ({
         onClick: handleSelect,
         onTap: handleSelect,
         ...shapeEditableProps,
-        ...selectedProps,
-        ...props
       })}
-      {draggable && <Transformer ref={trRef} />}
+      {editor && (
+        <Transformer
+          ref={trRef}
+          borderEnabled={true}
+          borderStroke={editor.color}
+        />
+      )}
     </Group>
   );
 }

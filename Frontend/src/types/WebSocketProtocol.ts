@@ -134,6 +134,11 @@ export interface ClientErrorActionForbidden {
   action: string;
 }
 
+export interface ClientErrorCanvasObjectAlreadySelected {
+  type: 'canvas_object_already_selected';
+  clientId: string;
+}
+
 // -- misc. errors not neatly handled by the above common cases
 export interface ClientErrorOther {
   type: 'other';
@@ -154,6 +159,7 @@ export type ClientError =
   | ClientErrorWhiteboardNotFound
   | ClientErrorCanvasNotFound
   | ClientErrorActionForbidden
+  | ClientErrorCanvasObjectAlreadySelected
   | ClientErrorOther
 ;
 
@@ -163,6 +169,7 @@ export interface ServerMessageInitClient {
   clientId: ClientIdType;
   whiteboard: WhiteboardData;
   activeClients: Record<ClientIdType, UserSummary>;
+  selectorsByCanvasObjects: Record<CanvasObjectIdType, ClientIdType>;
 }
 
 export interface ServerMessageLoginUsers {

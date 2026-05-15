@@ -9,12 +9,12 @@ import activeUsersReducer, {
 import activeUsersByWhiteboardReducer, {
   type ActiveUsersByWhiteboardActions,
 } from './activeUsers/activeUsersByWhiteboardSlice';
+import selectorsByCanvasObjectReducer, {
+  type SelectorsByCanvasObjectActions,
+} from './activeUsers/selectorsByCanvasObjectSlice';
 import currentEditorsByCanvasReducer, {
   type CurrentEditorsByCanvasActions,
 } from './activeUsers/currentEditorsByCanvasSlice';
-import currentEditorsByCanvasObjectReducer, {
-  type CurrentEditorsByCanvasObjectActions,
-} from './activeUsers/currentEditorsByCanvasObjectSlice';
 import canvasObjectsReducer, {
   type CanvasObjectsActions,
 } from './canvasObjects/canvasObjectsSlice';
@@ -24,9 +24,6 @@ import allowedUsersByCanvasReducer, {
 import canvasObjectsByCanvasReducer, {
   type CanvasObjectsByCanvasActions,
 } from './canvasObjects/canvasObjectsByCanvasSlice';
-import selectedCanvasObjectsReducer, {
-  type SelectedCanvasObjectsActions,
-} from './canvasObjects/selectedCanvasObjectsSlice';
 import canvasesReducer, {
   type CanvasesActions,
 } from './canvases/canvasesSlice';
@@ -62,11 +59,10 @@ import {
 const rootReducer = combineReducers({
   activeUsers: activeUsersReducer,
   activeUsersByWhiteboard: activeUsersByWhiteboardReducer,
+  selectorsByCanvasObject: selectorsByCanvasObjectReducer,
   currentEditorsByCanvas: currentEditorsByCanvasReducer,
-  currentEditorsByCanvasObject: currentEditorsByCanvasObjectReducer,
   canvasObjects: canvasObjectsReducer,
   canvasObjectsByCanvas: canvasObjectsByCanvasReducer,
-  selectedCanvasObjects: selectedCanvasObjectsReducer,
   allowedUsersByCanvas: allowedUsersByCanvasReducer,
   canvases: canvasesReducer,
   childCanvasesByCanvas: childCanvasesByCanvasReducer,
@@ -79,12 +75,11 @@ const rootReducer = combineReducers({
 type ActionType =
   | ActiveUsersActions
   | ActiveUsersByWhiteboardActions
+  | SelectorsByCanvasObjectActions
   | CurrentEditorsByCanvasActions
-  | CurrentEditorsByCanvasObjectActions
   | CanvasObjectsActions
   | AllowedUsersByCanvasActions
   | CanvasObjectsByCanvasActions
-  | SelectedCanvasObjectsActions
   | CanvasesActions
   | ChildCanvasesByCanvasActions
   | CanvasesByWhiteboardActions

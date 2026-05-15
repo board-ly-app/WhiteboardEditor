@@ -4,12 +4,15 @@
 //
 // =============================================================================
 
-import type {
-  WhiteboardIdType,
-  CanvasIdType
-} from '@/types/WebSocketProtocol';
+import {
+  type ClientSummary,
+} from '@/types/ClientSummary';
 
 export type ShapeColor = string;
+
+export interface RecordBase {
+  editor?: ClientSummary,
+}
 
 // -- string represents Mongo ObjectId
 export type CanvasObjectIdType = string;
@@ -17,20 +20,6 @@ export type CanvasObjectIdType = string;
 export interface CanvasObjectBase {
   strokeColor: ShapeColor;
   strokeWidth: number;
-}
-
-// === CanvasObjectRecord ======================================================
-//
-// Include unique identifiers for storage within state management.
-//
-// =============================================================================
-export interface ObjectID {
-  id: CanvasObjectIdType;
-}
-
-export interface ObjectUID extends ObjectID {
-  canvasId: CanvasIdType;
-  whiteboardId: WhiteboardIdType;
 }
 
 export interface ShapeModelAttributes {
@@ -50,8 +39,7 @@ export interface RectModel extends ShapeModelBase {
   height: number;
 }
 
-export type RectRecord = RectModel & ObjectID;
-export type RectRecordFull = RectModel & ObjectUID;
+export interface RectRecord extends RectModel, RecordBase {}
 
 export interface EllipseModel extends ShapeModelBase {
   type: 'ellipse';
@@ -59,16 +47,14 @@ export interface EllipseModel extends ShapeModelBase {
   radiusY: number;
 }
 
-export type EllipseRecord = EllipseModel & ObjectID;
-export type EllipseRecordFull = EllipseModel & ObjectUID;
+export interface EllipseRecord extends EllipseModel, RecordBase {}
 
 export interface VectorModel extends CanvasObjectBase {
   type: 'vector';
   points: number[];
 }
 
-export type VectorRecord = VectorModel & ObjectID;
-export type VectorRecordFull = VectorModel & ObjectUID;
+export interface VectorRecord extends VectorModel, RecordBase {}
 
 // TODO: Pull out common fields and extend if possible
 export interface TextModel extends ShapeModelAttributes {
@@ -79,13 +65,10 @@ export interface TextModel extends ShapeModelAttributes {
   rotation: number;
 }
 
-export type TextRecord = TextModel & ObjectID;
-export type TextRecordFull = TextModel & ObjectUID;
+export interface TextRecord extends TextModel, RecordBase {}
 
 export type ShapeModel = RectModel | EllipseModel | TextModel;
 export type ShapeRecord = RectRecord | EllipseRecord | TextRecord;
-export type ShapeRecordFull = RectRecordFull | EllipseRecordFull | TextRecordFull;
 
 export type CanvasObjectModel = ShapeModel | VectorModel;
 export type CanvasObjectRecord = ShapeRecord | VectorRecord;
-export type CanvasObjectRecordFull = ShapeRecordFull | VectorRecordFull;

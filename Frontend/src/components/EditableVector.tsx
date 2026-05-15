@@ -4,39 +4,34 @@ import React, {
   useState,
   useCallback,
   useContext,
+  useMemo,
 } from "react";
-
-import {
-  useSelector,
-} from 'react-redux';
 
 import Konva from "konva";
 
 import { Circle, Group, Line, type KonvaNodeEvents } from "react-konva";
 
 import {
-  store,
+  useSelector,
+} from 'react-redux';
+
+import {
   type RootState,
 } from '@/store';
 
 import {
-  selectSelectedCanvasObjects,
-} from '@/store/canvasObjects/canvasObjectsSelectors';
-
-import {
-  selectCurrentEditorByCanvasObject,
-  selectClientColorByWhiteboard,
+  selectSelectorByCanvasObject,
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
-  setSelectedCanvasObjects,
-} from '@/controllers';
+  ClientMessengerContext,
+} from '@/context/ClientMessengerContext';
 
 import {
-  type UserSummary,
-} from '@/types/WebSocketProtocol';
+  useUser,
+} from '@/hooks/useUser';
 
 import type { CanvasObjectIdType, VectorModel } from "@/types/CanvasObjectModel";
 import type { EditableObjectProps } from "@/dispatchers/editableObjectProps";
@@ -60,9 +55,7 @@ const EditableVector = <VectorType extends VectorModel>({
   draggable,
   handleUpdateShapes,
   children,
-  ...props
 }: EditableVectorProps<VectorType>) => {
-  const dispatch = store.dispatch;
   const [localPoints, setLocalPoints] = useState(shapeModel.points);
   const vectorRef = useRef<Konva.Shape>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
@@ -73,51 +66,48 @@ const EditableVector = <VectorType extends VectorModel>({
     throw new Error('No whiteboard context provided');
   }
 
+  const clientMessengerContext = useContext(ClientMessengerContext);
+
+  if (! clientMessengerContext) {
+    throw new Error('No client messenger context provided');
+  }
+
   const {
-    whiteboardId,
-  } = whiteboardContext;
+    clientMessenger,
+  } = clientMessengerContext;
+
+  const {
+    user,
+  } = useUser();
+
+  if (! user) {
+    throw new Error('No authenticated user provided');
+  }
 
   useSnapping(vectorRef, snappingMonitor);
 
-  const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
-    (state: RootState) => selectSelectedCanvasObjects(state)
-  );
-  const isSelected = (id in selectedCanvasObjectIds);
-
-  const userSummary : UserSummary | null = useSelector(
-    (state: RootState) => selectCurrentEditorByCanvasObject(state, id)
+  const editor = useSelector(
+    (state: RootState) => selectSelectorByCanvasObject(state, id)
   );
 
-  const editorColor : string | null = useSelector(
-    (state: RootState) => selectClientColorByWhiteboard(
-      state, whiteboardId, userSummary?.clientId ?? null
-    )
+  const isSelected = useMemo(
+    () => user.id === editor?.userId,
+    [user, editor]
   );
 
   const handleSelect = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       e.cancelBubble = true;
-      setSelectedCanvasObjects(dispatch, [id]);
-    },
-    [dispatch, id]
-  );
 
-  // Click outside to deselect
-  useEffect(() => {
-    const stage = vectorRef.current?.getStage();
-    if (!stage) return;
-
-    const listener = (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      if (ev.target !== vectorRef.current) {
-        setSelectedCanvasObjects(dispatch, []);
+      if (! editor) {
+        clientMessenger?.sendSelectedCanvasObject({
+          type: 'selected_canvas_object',
+          canvasObjectId: id,
+        });
       }
-    };
-
-    stage.on("click", listener);
-    return () => {
-      stage.off("click", listener);
-    };
-  }, [dispatch]);
+    },
+    [id, clientMessenger, editor]
+  );
 
   const handleAnchorDragMove = useCallback(
     (index: number, e: Konva.KonvaEventObject<DragEvent>) => {
@@ -172,10 +162,8 @@ const EditableVector = <VectorType extends VectorModel>({
       handleUpdateShapes({
         [id]: { ...shapeModel, points: updatedPoints } as VectorType,
       });
-
-      setSelectedCanvasObjects(dispatch, [id]);
     },
-    [handleUpdateShapes, shapeModel, setLocalPoints, dispatch]
+    [handleUpdateShapes, shapeModel, setLocalPoints]
   );
 
   useEffect(() => {
@@ -184,9 +172,8 @@ const EditableVector = <VectorType extends VectorModel>({
 
   const handleVectorDragStart = useCallback(
     () => {
-      setSelectedCanvasObjects(dispatch, []);
     },
-    [dispatch]
+    []
   );
 
   // Override the onDragEnd handler for vectors to change points rather than x, y
@@ -200,10 +187,10 @@ const EditableVector = <VectorType extends VectorModel>({
 
   return (
     <Group>
-      {editorColor && (
+      {editor && (
         <Line
           points={localPoints}
-          stroke={editorColor}
+          stroke={editor.color}
           strokeWidth={childStrokeWidth + 6}
           lineCap={children.props.lineCap}
           lineJoin={children.props.lineJoin}
@@ -218,7 +205,6 @@ const EditableVector = <VectorType extends VectorModel>({
         onTap: handleSelect,
         hitStrokeWidth: 20,
         ...vectorEditableProps,
-        ...props,
       })}
 
       {isSelected && draggable && (
@@ -228,7 +214,7 @@ const EditableVector = <VectorType extends VectorModel>({
             y={localPoints[1]}
             radius={6}
             fill="#ddd"
-            stroke="#5b6263ff"
+            stroke={editor?.color ?? "#5b6263ff"}
             strokeWidth={2}
             draggable
             onDragMove={(e) => handleAnchorDragMove(0, e)}
@@ -247,7 +233,7 @@ const EditableVector = <VectorType extends VectorModel>({
             y={localPoints[3]}
             radius={6}
             fill="#ddd"
-            stroke="#5b6263ff"
+            stroke={editor?.color ?? "#5b6263ff"}
             strokeWidth={2}
             draggable
             onDragMove={(e) => handleAnchorDragMove(1, e)}

@@ -14,6 +14,10 @@ import {
 import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
+  useUser,
+} from '@/hooks/useUser';
+
+import {
   type CanvasIdType,
 } from '@/types/WebSocketProtocol';
 
@@ -25,7 +29,7 @@ import {
 import {
   getShapeType,
   selectCanvasObjectById,
-  selectSelectedCanvasObjects,
+  selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
@@ -61,6 +65,14 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   }
 
   const {
+    user,
+  } = useUser();
+
+  if (! user) {
+    throw new Error('No authenticated user provided');
+  }
+
+  const {
     whiteboardId,
     handleUpdateShapes,
     currentTool,
@@ -72,7 +84,9 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   );
 
   const selectedCanvasObjectIds : CanvasObjectIdType[] = Object.keys(useSelector(
-    (state: RootState) => selectSelectedCanvasObjects(state)
+    (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
+      state, whiteboardId, user.id
+    )
   ));
 
   // TODO: Change this for multiple select, right now only handles one shape

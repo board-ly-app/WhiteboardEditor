@@ -3,8 +3,6 @@
 import {
   setCanvasObjects,
   removeCanvasObjects,
-  setSelectedCanvasObjects,
-  removeSelectedCanvasObjects,
 } from './canvasObjects';
 
 import {
@@ -24,6 +22,9 @@ import {
   addActiveUsersByWhiteboard,
   setActiveUsersByWhiteboard,
   removeActiveUsers,
+  setSelectorsByCanvasObject,
+  removeSelectorsByCanvasObject,
+  removeCanvasObjectsBySelector,
 } from './activeUsers';
 
 import {
@@ -31,23 +32,14 @@ import {
   removeCurrentEditorsByCanvas,
 } from './currentCanvasEditors';
 
-import {
-  setCurrentEditorsByCanvasObject,
-  removeCurrentEditorsByCanvasObject,
-} from './currentCanvasObjectEditors';
-
 export {
   setCanvasObjects,
   removeCanvasObjects,
-  setSelectedCanvasObjects,
-  removeSelectedCanvasObjects,
   addCanvas,
   deleteCanvas,
   mergeCanvas,
   setCurrentEditorsByCanvas,
   removeCurrentEditorsByCanvas,
-  setCurrentEditorsByCanvasObject,
-  removeCurrentEditorsByCanvasObject,
   setSelectedCanvasByWhiteboard,
   addWhiteboard,
   deleteWhiteboard,
@@ -55,4 +47,7 @@ export {
   addActiveUsersByWhiteboard,
   setActiveUsersByWhiteboard,
   removeActiveUsers,
+  setSelectorsByCanvasObject,
+  removeSelectorsByCanvasObject,
+  removeCanvasObjectsBySelector,
 };
