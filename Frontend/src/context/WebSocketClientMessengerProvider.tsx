@@ -128,6 +128,7 @@ const WebSocketClientMessengerProvider = ({
 
   const [clientMessenger, setClientMessenger] = useState<IWhiteboardClientMessenger | null>(null);
   const webSocketRef = useRef<WebSocket | null>(null);
+  const clientIdRef = useRef<ClientIdType | null>(null);
   const clientColorStackRef = useRef<ClientColorStack>(
     new ClientColorStack(DEFAULT_CLIENT_COLORS, [256, 256, 0])
   );
@@ -164,6 +165,8 @@ const WebSocketClientMessengerProvider = ({
                 return clientSummary;
               });
 
+              clientIdRef.current = clientId;
+
               setClientId(dispatch, clientId);
               addWhiteboard(dispatch, whiteboard);
               setActiveUsersByWhiteboard(dispatch, whiteboardId, clientSummaries);
@@ -176,19 +179,19 @@ const WebSocketClientMessengerProvider = ({
                 users,
               } = msg;
 
-              const clientSummaries : ClientSummary[] = [];
-
-              // -- assign colors to clients
-              for (const user of users) {
-                const color = clientColorStackRef.current.popColor();
+              const clientSummaries : ClientSummary[] = Object.values(users).map(user => {
+                const color = user.clientId === clientIdRef.current ?
+                  USER_CLIENT_COLOR
+                  : clientColorStackRef.current.popColor();
                 const clientSummary = {
                   ...user,
-                  color,
+                  color
                 };
 
                 summariesByClientRef.current[user.clientId] = clientSummary;
-                clientSummaries.push(clientSummary);
-              }//-- end for user
+
+                return clientSummary;
+              });
 
               addActiveUsersByWhiteboard(dispatch, whiteboardId, clientSummaries);
             } 
