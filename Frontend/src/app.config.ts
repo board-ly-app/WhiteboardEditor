@@ -17,7 +17,7 @@ export const KONVA_NODE_UI_ONLY_KEY = 'is_ui_element';
 
 // -- Color used to indicate the user's client when interacting with objects in
 // the whiteboard (i.e. selected shapes, canvases).
-export const USER_CLIENT_COLOR = 'green';
+export const USER_CLIENT_COLOR = '#44ff44';
 
 // -- Default colors assigned to clients other than the user themself.
 export const DEFAULT_CLIENT_COLORS = [
@@ -27,6 +27,7 @@ export const DEFAULT_CLIENT_COLORS = [
   'magenta',
   'pink',
   'purple',
+  'green',
 ];
 
 // -- Number of milliseconds to display a notification when a whiteboard is
