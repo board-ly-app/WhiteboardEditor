@@ -214,7 +214,7 @@ const EditableVector = <VectorType extends VectorModel>({
             fill="#ddd"
             stroke={editor.color}
             strokeWidth={2}
-            draggable
+            draggable={isDraggable}
             onDragMove={(e) => handleAnchorDragMove(0, e)}
             onDragEnd={(e) => handleAnchorDragEnd(0, e)}
             onMouseOver={(e) => {
@@ -233,7 +233,7 @@ const EditableVector = <VectorType extends VectorModel>({
             fill="#ddd"
             stroke={editor?.color ?? "#5b6263ff"}
             strokeWidth={2}
-            draggable
+            draggable={isDraggable}
             onDragMove={(e) => handleAnchorDragMove(1, e)}
             onDragEnd={(e) => handleAnchorDragEnd(1, e)}
             onMouseOver={(e) => {
