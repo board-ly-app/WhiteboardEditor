@@ -110,7 +110,11 @@ export const handleConvertTempUser = async (
 ) => {
   try {
     const { email, username, password, authUser } = req.body;
-    const tempUserId = authUser.id;
+    const tempUserIdRaw = authUser?.id;
+    if (!Types.ObjectId.isValid(tempUserIdRaw)) {
+      return res.status(400).json({ error: "Invalid user id." });
+    }
+    const tempUserId = new Types.ObjectId(tempUserIdRaw);
     
     // --- Hash password ---
     const hashed = await bcrypt.hash(password, 10);
