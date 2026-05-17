@@ -42,7 +42,7 @@ COPY --from=builder ${DEST_DIR}/dist ./dist
 
 # Copy node_modules from cache
 RUN \
-  --mount=type=cache,id=node_modules,target=${DEST_DIR}/node_modules_cache \
+  --mount=type=cache,id=rest_api.node_modules,target=${DEST_DIR}/node_modules_cache \
   cp -rp ./node_modules_cache ./node_modules
 
 # Run app
