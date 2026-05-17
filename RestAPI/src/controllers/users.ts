@@ -131,7 +131,9 @@ export const handleConvertTempUser = async (
     );
 
     const user = await User.findOne({
-      '_id': tempUserId,
+      '_id': {
+        "$eq": tempUserId
+      },
       'kind': 'permanent',
     });
 
