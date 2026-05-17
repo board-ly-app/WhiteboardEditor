@@ -47,7 +47,7 @@ import {
 import ChangeNameTrialWhiteboard from "./ChangeNameTrialWhiteboard";
 
 interface AuthFormProps {
-  initialAction: "login" | "signup";
+    initialAction: "login" | "signup";
 }
 
 const AuthForm = ({
@@ -64,15 +64,10 @@ const AuthForm = ({
   const [uiStatus, setUiStatus] = useState<'ok' | 'err_user' | 'err_system'>('ok');
 
   const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
   const navigate = useNavigate();
   const { user, setUser } = useUser();
   const tempUser = user?.kind === 'temp' ? user : null;
-  const tempUserId = tempUser ? { id: tempUser.id } : null;
   const action = initialAction;
-  const redirectUrl = searchParams.has('redirect') ?
-    decodeURIComponent(searchParams.get('redirect') || '')
-    : '/dashboard';
   const authContext = useContext(AuthContext);
   const {
     Modal: ChangeNameModal,
@@ -90,18 +85,21 @@ const AuthForm = ({
 
   const [submitButtonStatus, setSubmitButtonStatus] = useState<ButtonStatus>('enabled');
 
-  // -- derived state
-  let endpoint = (action === "login") ? "/auth/login" : "/users";
-
   // TODO: Make this dynamic to handle either email or username
   const authSource = "email";
-
-  const tempWhiteboardId = searchParams.get('tempWhiteboardId');
-  let isTransferring = false;
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+
+      // -- derived state
+      const searchParams = new URLSearchParams(location.search);
+      const tempWhiteboardId = searchParams.get('tempWhiteboardId');
+      const redirectUrl = searchParams.has('redirect') ?
+        decodeURIComponent(searchParams.get('redirect') || '')
+        : '/dashboard';
+      const tempUserId = tempUser ? { id: tempUser.id } : null;
+      let endpoint = (action === "login") ? "/auth/login" : "/users";
 
       setSubmitButtonStatus('pending');
 
@@ -124,6 +122,7 @@ const AuthForm = ({
       : { email, username, password };
 
     try {
+      let isTransferring = false;
       const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
       
       if (tempWhiteboardId && action === "signup" && tempUser !== null) {
@@ -228,44 +227,69 @@ const AuthForm = ({
     },
     [
       action,
-      endpoint,
       email,
       navigate,
       password,
-      redirectUrl,
       setAuthToken,
       setUser,
       username,
       setSubmitButtonStatus,
+      openChangeNameModal,
+      tempUser,
+      location.search,
     ]
   );// -- end const handleSubmit
 
-  const handleToggle = () => {
-    // -- remove highlighting
-    setUiStatus('ok');
+  const handleToggle = useCallback(
+      () => {
+        // -- remove highlighting
+        setUiStatus('ok');
 
-    navigate(action === "login" ? "/signup" : "/login");
-  }
+        navigate(action === "login" ? "/signup" : "/login");
+      },
+      [setUiStatus, navigate, action]
+  );// -- end handleToggle
 
-  const handleConfirmNameChange = async (nameFromModal: string) => {
-    if (transferringWhiteboardId) {
-      try {
-        await api.put(`/whiteboards/${transferringWhiteboardId}/newName`, {
-          newName: nameFromModal,
-        });
+  const handleConfirmNameChange = useCallback(
+    async (nameFromModal: string) => {
+      const searchParams = new URLSearchParams(location.search);
+      const redirectUrl = searchParams.has('redirect') ?
+        decodeURIComponent(searchParams.get('redirect') || '')
+        : '/dashboard';
 
-        toast.success("Whiteboard name updated!");
-      } catch (err) {
-        console.error('Error changing whiteboard name:', err);
+      if (transferringWhiteboardId) {
+        try {
+          await api.put(`/whiteboards/${transferringWhiteboardId}/newName`, {
+            newName: nameFromModal,
+          });
 
-        const toastMessage = "Whiteboard added to your account, but there was an error updating its name.";
-        toast.warn(toastMessage);
+          toast.success("Whiteboard name updated!");
+        } catch (err) {
+          console.error('Error changing whiteboard name:', err);
+
+          const toastMessage = "Whiteboard added to your account, but there was an error updating its name.";
+          toast.warn(toastMessage);
+        }
       }
-    }
 
-    closeChangeNameModal();
-    navigate(redirectUrl);
-  }
+      closeChangeNameModal();
+      navigate(redirectUrl);
+    },
+    [location.search, closeChangeNameModal, navigate, transferringWhiteboardId]
+  );// -- end handleConfirmNameChange
+  
+  const handleSkipNameChange = useCallback(
+    () => {
+      const searchParams = new URLSearchParams(location.search);
+      const redirectUrl = searchParams.has('redirect') ?
+        decodeURIComponent(searchParams.get('redirect') || '')
+        : '/dashboard';
+
+      closeChangeNameModal();
+      navigate(redirectUrl);
+    },
+    [location.search, closeChangeNameModal, navigate]
+  );// -- end handleSkipNameChange
 
   return (
     <div className="flex flex-col w-75 sm:w-95 md:w-120">
@@ -342,10 +366,7 @@ const AuthForm = ({
         className='p-8 rounded-sm'>
           <ChangeNameTrialWhiteboard
             onConfirm={handleConfirmNameChange}
-            onSkip={() => {
-              closeChangeNameModal();
-              navigate(redirectUrl);
-            }}
+            onSkip={handleSkipNameChange}
           />
       </ChangeNameModal>
     </div>
