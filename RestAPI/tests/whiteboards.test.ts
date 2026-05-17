@@ -1020,7 +1020,7 @@ describe("Whiteboards API", () => {
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
     const userCollection = mongoose.connection.collection('users');
 
-    let tempWhiteboard = await whiteboardCollection.findOne({ name: "Temp Whiteboard"});
+    let tempWhiteboard = await whiteboardCollection.findOne({ name: "Temp Whiteboard 1"});
     let user = await userCollection.findOne({ username: 'alice' });
     
     expect(tempWhiteboard).not.toBeNull();
@@ -1032,6 +1032,7 @@ describe("Whiteboards API", () => {
     
     expect(tempWhiteboard).toHaveProperty('createdAt');
     expect(tempWhiteboard).not.toHaveProperty('time_created');
+    expect(tempWhiteboard.kind).toBe('temp_whiteboard');
 
     // get the temp user that owns the temp whiteboard
     let tempUser = tempWhiteboard.user_permissions.find((perm: any) => perm.permission === 'own' && perm.type === 'user')?.user;
@@ -1060,12 +1061,58 @@ describe("Whiteboards API", () => {
 
     expect(updatedBoard).not.toHaveProperty('createdAt');
     expect(updatedBoard).toHaveProperty('time_created');
+    expect(updatedBoard.kind).toBe('permanent_whiteboard');
 
     let ownerPerm = updatedBoard.user_permissions.find((perm: any) => perm.permission === 'own' && perm.type === 'user');
     
     expect(ownerPerm).not.toBeNull();
     expect(ownerPerm.user.toString()).toBe(user._id.toString());
   });
+  
+  // Also add check for different user than temp owner trying to convert
+  it('should not allow a user that is not the temp owner to convert a temporary whiteboard to a permanent whiteboard', async () => {
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+    const userCollection = mongoose.connection.collection('users');
+
+    let tempWhiteboard = await whiteboardCollection.findOne({ name: "Temp Whiteboard 2"});
+    let user = await userCollection.findOne({ username: 'alice' });
+    
+    expect(tempWhiteboard).not.toBeNull();
+    expect(user).not.toBeNull();
+    
+    if ((! tempWhiteboard) || (! user)) {
+      return;
+    }
+
+    expect(tempWhiteboard).toHaveProperty('createdAt');
+    expect(tempWhiteboard).not.toHaveProperty('time_created');
+    expect(tempWhiteboard.kind).toBe('temp_whiteboard');
+
+    const authToken = jwt.sign(
+      { sub: user._id.toString() },
+      JWT_SECRET!,
+      { expiresIn: '1h' }
+    );
+
+    await request(app)
+      .post(`/api/v1/whiteboards/${tempWhiteboard._id}/convert_temp_to_perm`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        user: { _id: user._id }
+      })
+      .expect(403);
+
+    let updatedWhiteboard = await whiteboardCollection.findOne({ _id: tempWhiteboard._id });
+
+    expect(updatedWhiteboard).not.toBeNull();
+
+    if (! updatedWhiteboard) {
+      return;
+    }
+
+    expect(updatedWhiteboard).toHaveProperty('createdAt');
+    expect(updatedWhiteboard).not.toHaveProperty('time_created');
+    expect(updatedWhiteboard.kind).toBe('temp_whiteboard');
+  });
 });
 
-// Also add check for unauthed user trying to convert, should fail and keep board as temp
