@@ -1015,4 +1015,57 @@ describe("Whiteboards API", () => {
         .toBe(deletedUserEmail);
     }
   );
+
+  it('should convert a temporary whiteboard to a permanent whiteboard', async () => {
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+    const userCollection = mongoose.connection.collection('users');
+
+    let tempWhiteboard = await whiteboardCollection.findOne({ name: "Temp Whiteboard"});
+    let user = await userCollection.findOne({ username: 'alice' });
+    
+    expect(tempWhiteboard).not.toBeNull();
+    expect(user).not.toBeNull();
+    
+    if ((! tempWhiteboard) || (! user)) {
+      return;
+    }
+    
+    expect(tempWhiteboard).toHaveProperty('createdAt');
+    expect(tempWhiteboard).not.toHaveProperty('time_created');
+
+    // get the temp user that owns the temp whiteboard
+    let tempUser = tempWhiteboard.user_permissions.find((perm: any) => perm.permission === 'own' && perm.type === 'user')?.user;
+
+    const authToken = jwt.sign(
+      { sub: tempUser!._id.toString(), isTemp: true },
+      JWT_SECRET!,
+      { expiresIn: '1h' }
+    );
+
+    await request(app)
+      .post(`/api/v1/whiteboards/${tempWhiteboard._id}/convert_temp_to_perm`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        user: { _id: user._id }
+      })
+      .expect(200);
+
+    const updatedBoard = await whiteboardCollection.findOne({ _id: tempWhiteboard._id });
+
+    expect(updatedBoard).not.toBeNull();
+
+    if (! updatedBoard) {
+      return;
+    }
+
+    expect(updatedBoard).not.toHaveProperty('createdAt');
+    expect(updatedBoard).toHaveProperty('time_created');
+
+    let ownerPerm = updatedBoard.user_permissions.find((perm: any) => perm.permission === 'own' && perm.type === 'user');
+    
+    expect(ownerPerm).not.toBeNull();
+    expect(ownerPerm.user.toString()).toBe(user._id.toString());
+  });
 });
+
+// Also add check for unauthed user trying to convert, should fail and keep board as temp
