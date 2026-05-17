@@ -1,5 +1,6 @@
 // -- std imports
 import { Request, Response, Router } from "express";
+import rateLimit from "express-rate-limit";
 
 // -- local imports
 import {
@@ -21,6 +22,13 @@ import type {
 } from "../models/User";
 
 const router = Router();
+
+const convertTempRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit convert attempts per IP per window
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 router.post("/", async (
   req: Request<{}, {}, CreatePermanentUserRequest>,
@@ -44,7 +52,7 @@ router.use(authenticateJWT);
 // Converts a temporary user account to a permanent one.
 //
 // =============================================================================
-router.post("/convert_temp", handleConvertTempUser);
+router.post("/convert_temp", convertTempRateLimiter, handleConvertTempUser);
 
 // === GET /users/:userId ======================================================
 //
