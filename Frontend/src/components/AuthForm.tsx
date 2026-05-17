@@ -115,7 +115,7 @@ const AuthForm = ({
       authUser?: { id: string } | null;
     };
 
-    let payload: LoginPayload | SignupPayload = 
+    const payload: LoginPayload | SignupPayload = 
       action === "login"
       ? { authSource, email, password, transferWhiteboardId: tempWhiteboardId }
       : { email, username, password };
