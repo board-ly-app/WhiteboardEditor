@@ -1,5 +1,6 @@
 // -- std imports
 import { Request, Response, Router } from "express";
+import rateLimit from "express-rate-limit";
 
 // -- local imports
 import {
@@ -9,6 +10,7 @@ import {
   handleDeleteOwnUser,
   handleGetSharedWhiteboardsByUser,
   handleCreateTempUser,
+  handleConvertTempUser,
 } from "../controllers/users";
 
 import {
@@ -21,16 +23,21 @@ import type {
 
 const router = Router();
 
+const convertTempRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit convert attempts per IP per window
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 router.post("/", async (
   req: Request<{}, {}, CreatePermanentUserRequest>,
   res: Response
 ) => {
-    // TODO: secure logging to scrub credentials
-    console.log('Received POST /users:', req.body);
     await handleCreateUser(req, res);
 });
 
-// === POST /users/temp ======================================================
+// === POST /users/temp ========================================================
 //
 // Create a temporary user account for trial whiteboard use.
 //
@@ -39,6 +46,13 @@ router.post("/temp", handleCreateTempUser);
 
 // --- Routes below are authenticated
 router.use(authenticateJWT);
+
+// === POST /users/convert_temp ================================================
+//
+// Converts a temporary user account to a permanent one.
+//
+// =============================================================================
+router.post("/convert_temp", convertTempRateLimiter, handleConvertTempUser);
 
 // === GET /users/:userId ======================================================
 //

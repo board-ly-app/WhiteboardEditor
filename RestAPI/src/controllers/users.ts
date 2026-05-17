@@ -38,6 +38,7 @@ import {
   type CreatePermanentUserRequest,
   type DeletePermanentUserRequest,
   isIPermanentUser,
+  ConvertTempUserRequest,
 } from "../models/User";
 
 import {
@@ -70,8 +71,7 @@ export const handleCreateUser = async (
 
     // --- Hash password ---
     const hashed = await bcrypt.hash(password, 10);
-
-    // --- Create user ---
+    
     const user = new User({
       username,
       email,
@@ -99,7 +99,73 @@ export const handleCreateUser = async (
   }
 };
 
-// === POST /users/temp ======================================================
+// === POST /users/convert_temp ================================================
+//
+// Convert a temporary user account to permanent.
+//
+// =============================================================================
+export const handleConvertTempUser = async (
+  req: Request<{}, {}, ConvertTempUserRequest>,
+  res: Response
+) => {
+  try {
+    const { email, username, password, authUser } = req.body;
+    const tempUserIdRaw = authUser?.id;
+    if (!Types.ObjectId.isValid(tempUserIdRaw)) {
+      return res.status(400).json({ error: "Invalid user id." });
+    }
+    const tempUserId = new Types.ObjectId(tempUserIdRaw);
+    
+    // --- Hash password ---
+    const hashed = await bcrypt.hash(password, 10);
+
+    User.collection.updateOne(
+      { _id: tempUserId },
+      { 
+        $set: {
+          username,
+          email,
+          kind: 'permanent',
+          passwordHashed: hashed,
+        },
+        $unset: {
+          createdAt: ""
+        }
+      }
+    );
+
+    const user = await User.findOne({
+      '_id': {
+        "$eq": tempUserId
+      },
+      'kind': 'permanent',
+    });
+
+    if (! user) {
+      return res.status(400).json({ error: "Could not find temp user to convert." });
+    }
+    
+    const userFinal = await user.save();
+
+    // --- Automatically log in user via service ---
+    try {
+      const loginResult = await permanentUserLoginService("username", username, password);
+      return res.status(201).json({
+        user: userFinal.toPublicView(),
+        token: loginResult.token
+      });
+    } catch (err: any) {
+      console.error("Login after signup failed: ", err);   
+      return res.status(500).json({ message: 'Unexpected login failure' })   
+    }
+    
+  } catch (err: any) {
+    console.error("Create temp user failed: ", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+// === POST /users/temp ========================================================
 //
 // Create a temporary user account for trial whiteboard use.
 //

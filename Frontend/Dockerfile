@@ -9,11 +9,10 @@ COPY . .
 # Install dependencies and build.
 # Cache node_modules for future builds.
 RUN \
-  --mount=type=cache,id=frontend.npm_home,target=${HOME}/.npm \
-  --mount=type=cache,id=frontend.node_modules,target=/app/node_modules \
-  npm install --prefer-offline && \
-  npm ci && \
-  npm run build
+  --mount=type=cache,id=frontend_yarn_home,target=${HOME}/.yarn \
+  --mount=type=cache,id=frontend_node_modules,target=/app/node_modules \
+  yarn install --prefer-offline && \
+  yarn build
 
 # ---- Stage 2: Serve with a static web server ----
 FROM nginx:stable-alpine AS release

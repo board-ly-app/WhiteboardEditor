@@ -33,9 +33,9 @@ export const permanentUserLoginService = async (
   const user: IUserType | null = await (async () => {
     switch (authSource) {
       case 'email':
-        return await User.findOne({ email: identifier });
+        return await User.findOne({ email: { '$eq': identifier } });
       case 'username':
-        return await User.findOne({ username: identifier });
+        return await User.findOne({ username: { '$eq': identifier } });
       default:
         return null;
     }

@@ -162,6 +162,10 @@ export interface CreatePermanentUserRequest extends IPermanentUserModel {
   password: string;
 }
 
+export interface ConvertTempUserRequest extends IPermanentUserModel, AuthorizedRequestBody {
+  password: string;
+}
+
 // -- for PATCH
 export type PatchPermanentUserData = Partial<CreatePermanentUserRequest>;
 
