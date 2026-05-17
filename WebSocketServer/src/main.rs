@@ -24,7 +24,7 @@ async fn main() -> process::ExitCode {
     use wss::{
         db::connect_mongodb,
         models::{WhiteboardIdType, WhiteboardMongoDBView},
-        protocol::ServerSocketMessage,
+        protocol::{ServerSocketMessage,ServerSocketBroadcastMessage},
         server::{ConnectionState, ProgramState},
     };
 
@@ -104,7 +104,9 @@ async fn main() -> process::ExitCode {
                                             // deleted
                                             let _ = whiteboard_entry
                                                 .broadcaster
-                                                .send(ServerSocketMessage::DeleteWhiteboard);
+                                                .send(ServerSocketMessage::Broadcast {
+                                                    msg: ServerSocketBroadcastMessage::DeleteWhiteboard,
+                                                });
 
                                             // TODO: end connections
                                             // whiteboard_entry.broadcaster.closed
@@ -159,11 +161,17 @@ async fn handle_connection(
             CanvasMongoDBView, CanvasObjectMongoDBView, ClientIdType, UserMongoDBView,
             WhiteboardMetadataMongoDBView,
         },
-        protocol::{ClientError, ServerSocketMessage},
+        protocol::{
+            ClientError,
+            ServerSocketMessage,
+            ServerSocketBroadcastMessage,
+            ServerSocketIndividualMessage,
+        },
         server::{
             ClientState, SharedWhiteboardEntry, handle_authenticated_client_message,
             handle_unauthenticated_client_message,
         },
+        collections,
         utils::generate_unique_client_id,
     };
 
@@ -205,8 +213,7 @@ async fn handle_connection(
                     Err(e) => {
                         eprintln!("Could not fetch whiteboard from database: {}", e);
 
-                        let err_msg = ServerSocketMessage::IndividualError {
-                            client_id: current_client_id.clone(),
+                        let err_msg = ServerSocketIndividualMessage::Error {
                             error: ClientError::Other {
                                 message: format!(
                                     "Error occurred fetching whiteboard {}",
@@ -227,8 +234,7 @@ async fn handle_connection(
                             "Connection error; could not fetch whiteboard: not found in database"
                         );
 
-                        let err_msg = ServerSocketMessage::IndividualError {
-                            client_id: current_client_id.clone(),
+                        let err_msg = ServerSocketIndividualMessage::Error {
                             error: ClientError::WhiteboardNotFound {
                                 whiteboard_id: whiteboard_id.to_string(),
                             },
@@ -253,6 +259,7 @@ async fn handle_connection(
                             broadcaster: tx.clone(),
                             active_clients: Arc::new(Mutex::new(HashMap::new())),
                             diffs: Arc::new(Mutex::new(Vec::new())),
+                            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
                         };
 
                         // insert whiteboard into cache
@@ -286,26 +293,35 @@ async fn handle_connection(
         whiteboard_ref: Arc::clone(&shared_whiteboard_entry.whiteboard_ref),
         active_clients: Arc::clone(&shared_whiteboard_entry.active_clients),
         diffs: Arc::clone(&shared_whiteboard_entry.diffs),
+        selectors_to_canvas_objects: Arc::clone(
+            &shared_whiteboard_entry.selectors_to_canvas_objects
+        ),
     });
 
     let send_task = {
         let current_client_id = current_client_id.clone();
 
         tokio::spawn(async move {
+            use ServerSocketMessage::*;
+
             while let Ok(msg) = rx.recv().await {
-                if let ServerSocketMessage::IndividualError { ref client_id, .. } = msg {
-                    if let Ordering::Equal = client_id.cmp(&current_client_id) {
+                match msg {
+                    // -- These messages are only sent to individual clients
+                    Individual { ref target_client_id, ref msg } => {
+                        if let Ordering::Equal = target_client_id.cmp(&current_client_id) {
+                            let json = serde_json::to_string(&msg).unwrap();
+                            if user_ws_tx.send(Message::text(json)).await.is_err() {
+                                break;
+                            }
+                        }
+                    },
+                    Broadcast { msg } => {
                         let json = serde_json::to_string(&msg).unwrap();
                         if user_ws_tx.send(Message::text(json)).await.is_err() {
                             break;
                         }
-                    }
-                } else {
-                    let json = serde_json::to_string(&msg).unwrap();
-                    if user_ws_tx.send(Message::text(json)).await.is_err() {
-                        break;
-                    }
-                }
+                    },
+                };// -- end match msg
             }
         })
     }; // -- end send_task
@@ -323,10 +339,12 @@ async fn handle_connection(
                     eprintln!(
                         "Database connection error; could not fetch whiteboard - no default database defined in mongo uri"
                     );
-                    let err_msg = ServerSocketMessage::IndividualError {
-                        client_id: current_client_id.clone(),
-                        error: ClientError::Other {
-                            message: format!("Error fetching whiteboard {}", whiteboard_id),
+                    let err_msg = ServerSocketMessage::Individual {
+                        target_client_id: current_client_id.clone(),
+                        msg: ServerSocketIndividualMessage::Error {
+                            error: ClientError::Other {
+                                message: format!("Error fetching whiteboard {}", whiteboard_id),
+                            },
                         },
                     };
 
@@ -362,11 +380,11 @@ async fn handle_connection(
                     if let Ok(msg_s) = msg.to_str() {
                         println!("Raw message: {}", msg_s);
 
-                        let resp =
+                        let resps =
                             handle_unauthenticated_client_message(&client_state_ref, &store, msg_s)
                                 .await;
 
-                        if let Some(ref resp) = resp {
+                        for resp in &resps {
                             println!("Client response: {:?}", resp);
                         }
 
@@ -768,7 +786,7 @@ async fn handle_connection(
                         }
 
                         // -- send response to clients, if requested
-                        if let Some(resp) = resp {
+                        for resp in resps {
                             tx.send(resp).ok();
                         }
                     }
@@ -780,8 +798,10 @@ async fn handle_connection(
                         // First, notify all clients of new login
                         if let Some(ref user_summary) = *client_state_ref.user_summary.lock().await
                         {
-                            tx.send(ServerSocketMessage::LoginUsers {
-                                users: vec![user_summary.clone()],
+                            tx.send(ServerSocketMessage::Broadcast {
+                                msg: ServerSocketBroadcastMessage::LoginUsers {
+                                    users: vec![user_summary.clone()],
+                                },
                             })
                             .ok();
                         }
@@ -806,10 +826,10 @@ async fn handle_connection(
                     if let Ok(msg_s) = msg.to_str() {
                         println!("Raw message: {}", msg_s);
 
-                        let resp =
+                        let resps =
                             handle_authenticated_client_message(&client_state_ref, msg_s).await;
 
-                        if let Some(ref resp) = resp {
+                        for resp in &resps {
                             println!("Client response: {:?}", resp);
                         }
 
@@ -1210,7 +1230,7 @@ async fn handle_connection(
                         }
 
                         // -- send response to clients, if requested
-                        if let Some(resp) = resp {
+                        for resp in resps {
                             tx.send(resp).ok();
                         }
                     }
@@ -1227,12 +1247,17 @@ async fn handle_connection(
     // Clean up when client disconnects
     {
         let mut clients = shared_whiteboard_entry.active_clients.lock().await;
+        let mut selectors_to_canvas_objects = shared_whiteboard_entry
+            .selectors_to_canvas_objects.lock().await;
 
         clients.remove(&current_client_id);
+        selectors_to_canvas_objects.remove_key(&current_client_id);
 
         // -- notify other clients of client disconnect
-        let _ = tx.send(ServerSocketMessage::LogoutUsers {
-            clients: Vec::<ClientIdType>::from_iter([current_client_id.clone()]),
+        let _ = tx.send(ServerSocketMessage::Broadcast {
+            msg: ServerSocketBroadcastMessage::LogoutUsers {
+                clients: Vec::<ClientIdType>::from_iter([current_client_id.clone()]),
+            },
         });
     }
 

@@ -22,7 +22,11 @@ import {
 } from '@/store';
 
 import {
-  selectSelectedCanvasObjects,
+  selectClientId,
+} from '@/store/client/clientSelectors';
+
+import {
+  selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
@@ -32,6 +36,7 @@ import {
 import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
+  type ClientIdType,
   type ClientMessageDeleteCanvasObjects,
 } from '@/types/WebSocketProtocol';
 
@@ -50,6 +55,10 @@ const DeleteShapesButton = () => {
     throw new Error('No WhiteboardContext provided to DeleteShapesButton');
   }
 
+  const {
+    whiteboardId,
+  } = whiteboardContext;
+
   const clientMessengerContext = useContext(ClientMessengerContext);
 
   if (! clientMessengerContext) {
@@ -60,9 +69,15 @@ const DeleteShapesButton = () => {
     clientMessenger,
   } = clientMessengerContext;
 
-  const selectedCanvasObjectIds : CanvasObjectIdType[] = Object.keys(useSelector(
-    (state: RootState) => selectSelectedCanvasObjects(state)
-  ));
+  const clientId : ClientIdType | null = useSelector(
+    (state: RootState) => selectClientId(state)
+  );
+
+  const selectedCanvasObjectIds : CanvasObjectIdType[] = useSelector(
+    (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
+      state, whiteboardId, clientId
+    )
+  );
 
   const handleSubmit = useCallback(
     () => {

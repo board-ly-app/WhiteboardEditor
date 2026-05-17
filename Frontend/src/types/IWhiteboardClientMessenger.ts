@@ -16,6 +16,8 @@ import {
   type ClientMessageCreateShapes,
   type ClientMessageDeleteCanvasObjects,
   type ClientMessageEditingCanvas,
+  type ClientMessageSelectedCanvasObject,
+  type ClientMessageUnselectedCanvasObject,
   type ClientMessageCreateCanvas,
   type ClientMessageUpdateShapes,
 } from '@/types/WebSocketProtocol';
@@ -27,6 +29,8 @@ export interface IWhiteboardClientMessenger {
   sendCreateShapes: (msg: ClientMessageCreateShapes) => unknown;
   sendDeleteCanvasObjects: (msg: ClientMessageDeleteCanvasObjects) => unknown;
   sendEditingCanvas: (msg: ClientMessageEditingCanvas) => unknown;
+  sendSelectedCanvasObject: (msg: ClientMessageSelectedCanvasObject) => unknown;
+  sendUnselectedCanvasObject: (msg: ClientMessageUnselectedCanvasObject) => unknown;
   sendCreateCanvas: (msg: ClientMessageCreateCanvas) => unknown;
   sendMergeCanvas: (msg: ClientMessageMergeCanvas) => unknown;
   sendUpdateShapes: (msg: ClientMessageUpdateShapes) => unknown;

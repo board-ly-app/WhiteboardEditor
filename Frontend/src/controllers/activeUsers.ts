@@ -4,14 +4,27 @@ import {
 } from '@/store';
 
 import {
-  type UserSummary,
   type ClientIdType,
   type WhiteboardIdType,
 } from "@/types/WebSocketProtocol";
 
 import {
+  type CanvasObjectIdType,
+} from '@/types/CanvasObjectModel';
+
+import {
+  type ClientSummary,
+} from '@/types/ClientSummary';
+
+import {
   setActiveUsers,
 } from '@/store/activeUsers/activeUsersSlice';
+
+import {
+  setSelectorsByCanvasObject as reducerSetSelectorsByCanvasObject,
+  removeSelectorsByCanvasObject as reducerRemoveSelectorsByCanvasObject,
+  removeCanvasObjectsBySelector as reducerRemoveCanvasObjectsBySelector,
+} from '@/store/activeUsers/selectorsByCanvasObjectSlice';
 
 import {
   addActiveUsersByWhiteboard as addActiveUsersByWhiteboardReducer,
@@ -22,22 +35,22 @@ import {
 export const addActiveUsersByWhiteboard = (
   dispatch: AppDispatch,
   whiteboardId: WhiteboardIdType,
-  userSummaries: UserSummary[],
+  clientSummaries: ClientSummary[],
 ) => {
-  dispatch(setActiveUsers(userSummaries));
+  dispatch(setActiveUsers(clientSummaries));
   dispatch(addActiveUsersByWhiteboardReducer({
-    [whiteboardId]: userSummaries.map(userSummary => userSummary.clientId),
+    [whiteboardId]: clientSummaries.map(clientSummary => clientSummary.clientId),
   }));
 };
 
 export const setActiveUsersByWhiteboard = (
   dispatch: AppDispatch,
   whiteboardId: WhiteboardIdType,
-  userSummaries: UserSummary[],
+  clientSummaries: ClientSummary[],
 ) => {
-  dispatch(setActiveUsers(userSummaries));
+  dispatch(setActiveUsers(clientSummaries));
   dispatch(setActiveUsersByWhiteboardReducer({
-    [whiteboardId]: userSummaries.map(userSummary => userSummary.clientId)
+    [whiteboardId]: clientSummaries.map(clientSummary => clientSummary.clientId)
   }));
 };
 
@@ -46,4 +59,25 @@ export const removeActiveUsers = (
   userClientIds: ClientIdType[]
 ) => {
   dispatch(removeActiveUsersReducer(userClientIds));
+};
+
+export const setSelectorsByCanvasObject = (
+  dispatch: AppDispatch,
+  selectorsByCanvasObject: Record<CanvasObjectIdType, ClientIdType>,
+) => {
+  dispatch(reducerSetSelectorsByCanvasObject(selectorsByCanvasObject));
+};
+
+export const removeSelectorsByCanvasObject = (
+  dispatch: AppDispatch,
+  objectIds: CanvasObjectIdType[],
+) => {
+  dispatch(reducerRemoveSelectorsByCanvasObject(objectIds));
+};
+
+export const removeCanvasObjectsBySelector = (
+  dispatch: AppDispatch,
+  selectors: ClientIdType[],
+) => {
+  dispatch(reducerRemoveCanvasObjectsBySelector(selectors));
 };

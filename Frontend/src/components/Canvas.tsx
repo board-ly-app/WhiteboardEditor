@@ -12,6 +12,7 @@ import {
   useContext,
   useEffect,
   useCallback,
+  useMemo,
 } from 'react';
 
 import {
@@ -74,8 +75,11 @@ import type {
 import {
   type CanvasIdType,
   type CanvasData,
-  type UserSummary,
 } from '@/types/WebSocketProtocol';
+
+import {
+  type ClientSummary,
+} from '@/types/ClientSummary';
 
 import {
   type ShapeAttributesState,
@@ -166,13 +170,25 @@ const Canvas = (props: CanvasProps) => {
     (state: RootState) => selectAllowedUsersByCanvas(state, canvasId || '')
   );
 
-  const currentEditor : UserSummary | null = useSelector((state: RootState) => (
+  const currentEditor : ClientSummary | null = useSelector((state: RootState) => (
     selectCurrentEditorByCanvas(state, canvasId)
   ));
 
-  const userHasAccess = user?.id
-    ? allowedUserIds === undefined || allowedUserIds.length === 0 || allowedUserIds.includes(user.id)
-    : false;
+  // const userHasAccess = user?.id
+  //   ? allowedUserIds === undefined || allowedUserIds.length === 0 || allowedUserIds.includes(user.id)
+  //   : false;
+  const userHasAccess : boolean = useMemo(
+    () => {
+      if (user?.id) {
+        return allowedUserIds === undefined
+          || allowedUserIds.length === 0
+          || allowedUserIds.includes(user.id);
+      } else {
+        return false;
+      }
+    },
+    [user, allowedUserIds]
+  );
 
   const groupRef = useRef<Konva.Group | null>(null);
 
@@ -185,27 +201,31 @@ const Canvas = (props: CanvasProps) => {
 
   // In the future, we may wrap onAddShapes with some other logic.
   // For now, it's just an alias.
-  const addShapes = (shapes: CanvasObjectModel[]) => {
-    if (clientMessenger) {
-      clientMessenger.sendCreateShapes({
-        type: 'create_shapes',
-        canvasId,
-        shapes
-      });
+  const addShapes = useCallback(
+    (shapes: CanvasObjectModel[]) => {
+      if (clientMessenger) {
+        clientMessenger.sendCreateShapes({
+          type: 'create_shapes',
+          canvasId,
+          shapes
+        });
 
-      // Switch to hand tool after shape creation
-      setCurrentTool("hand");
-    }
-  };// -- end addShapes
+        // Switch to hand tool after shape creation
+        setCurrentTool("hand");
+      }
+    },
+    [clientMessenger, setCurrentTool]
+  );// -- end addShapes
 
-  const notifyStartEditing = () => {
-    if (clientMessenger) {
-      clientMessenger.sendEditingCanvas({
+  const notifyStartEditing = useCallback(
+    () => {
+      clientMessenger?.sendEditingCanvas({
         type: 'editing_canvas',
         canvasId,
       });
-    }
-  };// -- end notifyStartEditing
+    },
+    [clientMessenger]
+  );// -- end notifyStartEditing
   
   const defaultDispatcher = useMockDispatcher({
     shapeAttributes,
@@ -216,48 +236,80 @@ const Canvas = (props: CanvasProps) => {
     addShapes
   });
 
-  const dispatcherMap : Record<ToolChoice, OperationDispatcher> = {
-    'hand': useHandDispatcher({
-      shapeAttributes,
-      addShapes,
-      onStartEditing: notifyStartEditing,
-    }),
-    'rect': useRectangleDispatcher({
-      shapeAttributes,
-      addShapes,
-      onStartEditing: notifyStartEditing,
-    }),
-    'ellipse': useEllipseDispatcher({
-      shapeAttributes,
-      addShapes,
-      onStartEditing: notifyStartEditing,
-    }),
-    'vector': useVectorDispatcher({
-      shapeAttributes,
-      addShapes,
-      onStartEditing: notifyStartEditing,
-    }),
-    'text': useTextDispatcher({
-      shapeAttributes,
-      addShapes,
-      onStartEditing: notifyStartEditing,
-    }),
-    'create_canvas': useCreateCanvasDispatcher({
-      shapeAttributes,
-      addShapes,
-      onCreate: (dimensions: NewCanvasDimensions) => {
-        onSelectCanvasDimensions(canvasId, dimensions);
-      },
-    }),
-  };
+  const handDispatcher = useHandDispatcher({
+    shapeAttributes,
+    addShapes,
+    onStartEditing: notifyStartEditing,
+  });
 
-  let dispatcher: OperationDispatcher;
+  const rectDispatcher = useRectangleDispatcher({
+    shapeAttributes,
+    addShapes,
+    onStartEditing: notifyStartEditing,
+  });
 
-  if (! userHasAccess) {
-    dispatcher = inaccessibleDispatcher;
-  } else {
-    dispatcher = dispatcherMap[currentTool] || defaultDispatcher;
-  }
+  const ellipseDispatcher = useEllipseDispatcher({
+    shapeAttributes,
+    addShapes,
+    onStartEditing: notifyStartEditing,
+  });
+
+  const vectorDispatcher = useVectorDispatcher({
+    shapeAttributes,
+    addShapes,
+    onStartEditing: notifyStartEditing,
+  });
+
+  const textDispatcher = useTextDispatcher({
+    shapeAttributes,
+    addShapes,
+    onStartEditing: notifyStartEditing,
+  });
+
+  const createCanvasDispatcher = useCreateCanvasDispatcher({
+    shapeAttributes,
+    addShapes,
+    onCreate: (dimensions: NewCanvasDimensions) => {
+      onSelectCanvasDimensions(canvasId, dimensions);
+    },
+  });
+
+  const getDispatcher: (tool: ToolChoice) => OperationDispatcher = useCallback(
+    (tool: ToolChoice) => {
+      if (! userHasAccess) {
+        return inaccessibleDispatcher;
+      } else {
+        switch (tool) {
+          case 'hand':
+            return handDispatcher;
+          case 'rect':
+            return rectDispatcher;
+          case 'ellipse':
+            return ellipseDispatcher;
+          case 'vector':
+            return vectorDispatcher;
+          case 'text':
+            return textDispatcher;
+          case 'create_canvas':
+            return createCanvasDispatcher;
+          default:
+            return defaultDispatcher;
+        }// -- end switch (currentTool)
+      }
+    },
+    [
+      userHasAccess,
+      handDispatcher,
+      rectDispatcher,
+      ellipseDispatcher,
+      vectorDispatcher,
+      textDispatcher,
+      createCanvasDispatcher,
+      defaultDispatcher,
+    ]
+  );
+
+  const dispatcher : OperationDispatcher = getDispatcher(currentTool);
 
   useEffect(() => {
     if (currentDispatcher !== dispatcher) {
@@ -323,17 +375,33 @@ const Canvas = (props: CanvasProps) => {
   // TODO: delegate draggability to tool definitions
   const areShapesDraggable = ((ownPermission !== 'view') && (currentTool === 'hand') && userHasAccess);
 
-  const tooltipText = ownPermission === 'view' ? 
-    'You are in view-only mode'
-    : getTooltipText();
+  const tooltipText = useMemo(
+    () => {
+      if (ownPermission === 'view') {
+        return "You are in view-only mode";
+      } else {
+        return getTooltipText();
+      }
+    },
+    [ownPermission, getTooltipText]
+  );
 
   useEffect(() => {
     setWhiteboardTooltipText(tooltipText);
-  }, [tooltipText]);
+  }, [tooltipText, setWhiteboardTooltipText]);
 
-  const editingText = currentEditor?.userId === user?.id ?
-    'You are currently editing'
-    : `${currentEditor?.username} is currently editing`;
+  const editingText = useMemo(
+    () => {
+      if (! currentEditor) {
+        return '';
+      } else if (currentEditor.userId === user?.id) {
+        return "You are currently editing";
+      } else {
+        return `${currentEditor.username} is currently editing`;
+      }
+    },
+    [currentEditor, user]
+  );
 
   // Set editingText in context for main canvas
   useEffect(
@@ -345,7 +413,7 @@ const Canvas = (props: CanvasProps) => {
         setEditingText("");
       }
     },
-    [editingText, currentEditor, setEditingText]
+    [editingText, currentEditor, setEditingText, parentCanvas]
   );
 
   const childCanvasesData : CanvasData[] = childCanvasesByCanvas[canvasId] ?
@@ -361,49 +429,58 @@ const Canvas = (props: CanvasProps) => {
       originY: 0,
   };
 
-  const isCanvasSelected = (canvasId === selectedCanvasId);
+  // const isCanvasSelected = (canvasId === selectedCanvasId);
+  const isCanvasSelected = useMemo(
+    () => (canvasId === selectedCanvasId),
+    [canvasId, selectedCanvasId]
+  );
 
-  let canvasFrameColor : 'black' | 'green' | 'red';
-  let canvasFrameWidth : number;
-
-  if (currentEditor && (currentEditor.userId !== user?.id)) {
-    canvasFrameColor = 'red';
-    canvasFrameWidth = 4;
-  } else if (isCanvasSelected) {
-    canvasFrameColor = 'green';
-    canvasFrameWidth = 4;
-  } else {
-    canvasFrameColor = 'black';
-    canvasFrameWidth = 1;
-  }
-
-  const handleMouseOver = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    ev.cancelBubble = true;
-
-    const stage = ev.target.getStage();
-
-    if (stage) {
-      if (! isCanvasSelected) {
-        // indicate that canvas is selectable
-        stage.container().style.cursor = 'pointer';
+  const [canvasFrameColor, canvasFrameWidth] = useMemo(
+    () => {
+      if (currentEditor && (currentEditor.userId !== user?.id)) {
+        return [currentEditor.color, 4];
+      } else if (isCanvasSelected) {
+        return ['green', 4];
       } else {
-        stage.container().style.cursor = 'default';
+        return ['black', 1];
       }
-    }
-  };// -- end handleMouseOver
+    },
+    [currentEditor, user, isCanvasSelected]
+  );// -- end [canvasFrameColor, canvasFrameWidth]
 
-  const handleMouseOut = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    ev.cancelBubble = true;
+  const handleMouseOver = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      ev.cancelBubble = true;
 
-    const stage = ev.target.getStage();
+      const stage = ev.target.getStage();
 
-    if (stage) {
-      if (! isCanvasSelected) {
-        // indicate that canvas is selectable
-        stage.container().style.cursor = 'default';
+      if (stage) {
+        if (! isCanvasSelected) {
+          // indicate that canvas is selectable
+          stage.container().style.cursor = 'pointer';
+        } else {
+          stage.container().style.cursor = 'default';
+        }
       }
-    }
-  };// -- end handleMouseOut
+    },
+    [isCanvasSelected]
+  );// -- end handleMouseOver
+
+  const handleMouseOut = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      ev.cancelBubble = true;
+
+      const stage = ev.target.getStage();
+
+      if (stage) {
+        if (! isCanvasSelected) {
+          // indicate that canvas is selectable
+          stage.container().style.cursor = 'default';
+        }
+      }
+    },
+    [isCanvasSelected]
+  );// -- end handleMouseOut
 
   // get the CSS variable from :root (index.css)
   const rootStyles = getComputedStyle(document.documentElement);
@@ -461,10 +538,15 @@ const Canvas = (props: CanvasProps) => {
       {/** Shapes **/}
       {
         Object.entries(shapes).filter(([_id, sh]) => !!sh).map(([id, shape]) => {
-          const renderDispatcher = dispatcherMap[shape.type] || defaultDispatcher;
-          const { renderShape } = renderDispatcher;
+          const renderDispatcher = getDispatcher(shape.type);
+          const {
+            renderShape,
+          } = renderDispatcher;
 
-          return renderShape(id, shape, areShapesDraggable, handleObjectUpdateShapes);
+          return renderShape(
+            id, shape, areShapesDraggable,
+            handleObjectUpdateShapes
+          );
         })
       }
 

@@ -3,11 +3,9 @@ import {
   useState,
   useEffect,
   useCallback,
+  useContext,
+  useMemo,
 } from "react";
-
-import {
-  useSelector,
-} from 'react-redux';
 
 import {
   Group,
@@ -18,22 +16,30 @@ import {
 import Konva from "konva";
 
 import {
-  store,
+  useSelector,
+} from 'react-redux';
+
+import {
   type RootState,
 } from '@/store';
 
 import {
-  selectSelectedCanvasObjects,
-} from '@/store/canvasObjects/canvasObjectsSelectors';
+  selectClientId,
+} from '@/store/client/clientSelectors';
 
 import {
-  setSelectedCanvasObjects,
-} from '@/controllers';
+  selectSelectorByCanvasObject,
+} from '@/store/activeUsers/activeUsersSelectors';
+
+import WhiteboardContext from '@/context/WhiteboardContext';
+import {
+  ClientMessengerContext,
+} from '@/context/ClientMessengerContext';
 
 import TextEditor from "./TextEditor";
 
 import { type EditableObjectProps } from "@/dispatchers/editableObjectProps";
-import type { CanvasObjectIdType, ShapeModel, TextModel } from "@/types/CanvasObjectModel";
+import type { CanvasObjectIdType, ShapeModel, TextRecord } from "@/types/CanvasObjectModel";
 import {
   SnappingMonitor,
   useSnapping,
@@ -46,11 +52,11 @@ interface EditableTextProps extends EditableObjectProps {
   color: string;
   x: number;
   y: number;
-  width: number;    
-  height: number;   
+  width: number;
+  height: number;
   rotation: number;
-  draggable: boolean; 
-  shapeModel: TextModel;
+  draggable: boolean;
+  shapeRecord: TextRecord;
   handleUpdateShapes: (shapes: Record<CanvasObjectIdType, ShapeModel>) => void
 }
 
@@ -65,7 +71,7 @@ const EditableText = ({
   height,
   rotation,
   draggable,
-  shapeModel,
+  shapeRecord,
   handleUpdateShapes,
   onMouseOver,
   onMouseOut,
@@ -75,67 +81,57 @@ const EditableText = ({
   onTransform,
   onTransformEnd,
 }: EditableTextProps) => {
-  const dispatch = store.dispatch;
-  const [isSelected, setIsSelected] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
   const textRef = useRef<Konva.Text>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
 
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
+    throw new Error('No whiteboard context provided');
+  }
+  
+  const clientMessengerContext = useContext(ClientMessengerContext);
+
+  if (! clientMessengerContext) {
+    throw new Error('No client messenger context provided');
+  }
+
+  const {
+    clientMessenger,
+  } = clientMessengerContext;
+
   useSnapping(textRef, snappingMonitor);
 
-  const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
-    (state: RootState) => selectSelectedCanvasObjects(state)
+  const clientId = useSelector((state: RootState) => selectClientId(state));
+
+  const editor = useSelector(
+    (state: RootState) => selectSelectorByCanvasObject(state, id)
   );
 
-  useEffect(() => {
-    setIsSelected(id in selectedCanvasObjectIds);
-  }, [selectedCanvasObjectIds, setIsSelected, id]);
+  const isSelected : boolean = useMemo(
+    () => editor?.clientId === clientId,
+    [editor, clientId]
+  );
 
   // attach Transformer for editing when selected
   useEffect(() => {
-    if (trRef.current) {
-      if (isSelected && textRef.current) {
-        trRef.current.nodes([textRef.current]);
-      }
-      else {
-        trRef.current.nodes([]);
-      }
-    }
-  }, [isSelected])
+    if (!trRef.current || !textRef.current) return;
+    trRef.current.nodes(editor ? [textRef.current] : []);
+  }, [editor]);
   
   const handleSelect = useCallback((ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     ev.cancelBubble = true;
 
-    if (! isEditing) {
-      setIsSelected(true);
-      setSelectedCanvasObjects(dispatch, [id]);
+    if (! editor) {
+      clientMessenger?.sendSelectedCanvasObject({
+        type: 'selected_canvas_object',
+        canvasObjectId: id,
+      });
     }
-  }, [isEditing, dispatch, id]);
-
-  // deselect when clicking outside of text node
-  useEffect(() => {
-    if (isEditing) return;
-
-    const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      if (e.evt.detail === 2) {
-        return;
-      }
-      if (e.target !== textRef.current) {
-        setIsSelected(false);
-        setSelectedCanvasObjects(dispatch, []);
-      }
-    };
-
-    const stage = textRef.current?.getStage();
-    if (!stage) return;
-    stage.on("click", handleStageClick);
-    return () => {
-      stage.off("click", handleStageClick);
-    };
-  }, [isEditing, dispatch]);
-
+  }, [editor, clientMessenger, id]);
 
   const handleTextDblClick = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (!draggable) return;
@@ -143,7 +139,7 @@ const EditableText = ({
     e.cancelBubble = true;
 
     setIsEditing(true);
-    setIsSelected(false); 
+    // setIsSelected(false); 
   }, [draggable]);
 
   const handleTextChange = useCallback((newText: string): void => {
@@ -152,7 +148,7 @@ const EditableText = ({
 
     const update = {
       [id]: {
-        ...shapeModel,
+        ...shapeRecord,
         text: newText,
         x: node.x(),
         y: node.y(),
@@ -163,7 +159,7 @@ const EditableText = ({
     };
 
     handleUpdateShapes(update);
-  }, [handleUpdateShapes, id, shapeModel]);
+  }, [handleUpdateShapes, id, shapeRecord]);
 
   return (
     <Group>
@@ -185,12 +181,13 @@ const EditableText = ({
         onDblTap={handleTextDblClick}
         listening={!isEditing && draggable}
         visible={!isEditing}
+        onDragStart={handleSelect}
         onDragEnd={onDragEnd}
         onMouseUp={onMouseUp}
         onMouseDown={onMouseDown}
         onMouseOut={onMouseOut}
         onMouseOver={onMouseOver}
-        onTransform={onTransform} 
+        onTransform={onTransform}
         onTransformEnd={onTransformEnd}
       />
       {isEditing && textRef.current && draggable && (
@@ -202,9 +199,15 @@ const EditableText = ({
           }}
         />
       )} 
-      {isSelected && !isEditing && draggable && (
+      {editor && (
         <Transformer
           ref={trRef}
+          borderEnabled={true}
+          borderStroke={editor.color}
+          borderStrokeWidth={(! isSelected) && 4 || undefined}
+          resizeEnabled={isSelected}
+          rotateEnabled={isSelected}
+          flipEnabled={isSelected}
           boundBoxFunc={(_oldBox, newBox) => ({
             ...newBox,
             width: Math.max(30, newBox.width),

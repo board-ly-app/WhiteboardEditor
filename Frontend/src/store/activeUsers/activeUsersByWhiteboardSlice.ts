@@ -32,36 +32,45 @@ export const activeUsersByWhiteboardSlice = createSlice({
         whiteboardsByClient,
       } = state;
 
-      for (const [whiteboardId, clientIds] of Object.entries(action.payload)) {
-        clientsByWhiteboard[whiteboardId] = Object.fromEntries(clientIds.map(clientId => [clientId, clientId]));
+      for (const [wid, clientIds] of Object.entries(action.payload)) {
+        clientsByWhiteboard[wid] = Object.fromEntries(clientIds.map(clientId => [
+          clientId, clientId
+        ]));
 
         for (const clientId of clientIds) {
-          whiteboardsByClient[clientId] = whiteboardId;
+          whiteboardsByClient[clientId] = wid;
         }// -- end for clientId
-      }// -- end for whiteboardId, clientIds
+      }// -- end for wid, clientIds
 
       return state;
     },
-    addActiveUsersByWhiteboard(state: ActiveUsersByWhiteboardState, action: PayloadAction<Record<WhiteboardIdType, ClientIdType[]>>) {
+    addActiveUsersByWhiteboard(
+      state: ActiveUsersByWhiteboardState,
+      action: PayloadAction<Record<WhiteboardIdType, ClientIdType[]>>
+    ) {
       const {
         clientsByWhiteboard,
         whiteboardsByClient,
       } = state;
 
-      for (const [whiteboardId, clientIds] of Object.entries(action.payload)) {
-        if (whiteboardId in clientsByWhiteboard) {
-          for (const clientId of clientIds) {
-            clientsByWhiteboard[whiteboardId][clientId] = clientId;
-            whiteboardsByClient[clientId] = whiteboardId;
-          }// -- end for clientId
-        } else {
-          clientsByWhiteboard[whiteboardId] = Object.fromEntries(clientIds.map(clientId => [clientId, clientId]));
+      for (const [wid, clientIds] of Object.entries(action.payload)) {
+        const newClientsSet = Object.fromEntries(clientIds.map(clientId => [
+          clientId, clientId
+        ]));
 
-          for (const clientId of clientIds) {
-            whiteboardsByClient[clientId] = whiteboardId;
-          }// -- end for clientId
+        if (wid in clientsByWhiteboard) {
+          clientsByWhiteboard[wid] = {
+            ...clientsByWhiteboard[wid],
+            ...newClientsSet,
+          };
+        } else {
+          clientsByWhiteboard[wid] = newClientsSet;
         }
-      }// -- end for whiteboardId, userSummariesByWhiteboardId
+
+        for (const clientId of clientIds) {
+          whiteboardsByClient[clientId] = wid;
+        }// -- end for clientId
+      }// -- end for wid, clientIds
 
       return state;
     },
@@ -73,6 +82,7 @@ export const activeUsersByWhiteboardSlice = createSlice({
 
       for (const clientId of action.payload) {
         if (clientId in whiteboardsByClient) {
+          // Push colors back onto available colors stack
           delete clientsByWhiteboard[whiteboardsByClient[clientId]][clientId];
           delete whiteboardsByClient[clientId];
         }

@@ -3,32 +3,42 @@ import React, {
   useRef,
   useState,
   useCallback,
+  useContext,
+  useMemo,
 } from "react";
+
+import Konva from "konva";
+
+import { Circle, Group, Line, type KonvaNodeEvents } from "react-konva";
 
 import {
   useSelector,
 } from 'react-redux';
 
-import Konva from "konva";
-
-import { Circle, Group, type KonvaNodeEvents } from "react-konva";
-
 import {
-  store,
   type RootState,
 } from '@/store';
 
 import {
-  selectSelectedCanvasObjects,
-} from '@/store/canvasObjects/canvasObjectsSelectors';
+  selectClientId,
+} from '@/store/client/clientSelectors';
 
 import {
-  setSelectedCanvasObjects,
-} from '@/controllers';
+  selectSelectorByCanvasObject,
+} from '@/store/activeUsers/activeUsersSelectors';
+
+import WhiteboardContext from '@/context/WhiteboardContext';
+
+import {
+  ClientMessengerContext,
+} from '@/context/ClientMessengerContext';
 
 import type { CanvasObjectIdType, VectorModel } from "@/types/CanvasObjectModel";
 import type { EditableObjectProps } from "@/dispatchers/editableObjectProps";
 import editableObjectProps from "@/dispatchers/editableObjectProps";
+import {
+  type ClientIdType,
+} from '@/types/WebSocketProtocol';
 import {
   SnappingMonitor,
   useSnapping,
@@ -48,44 +58,60 @@ const EditableVector = <VectorType extends VectorModel>({
   draggable,
   handleUpdateShapes,
   children,
-  ...props
 }: EditableVectorProps<VectorType>) => {
-  const dispatch = store.dispatch;
   const [localPoints, setLocalPoints] = useState(shapeModel.points);
   const vectorRef = useRef<Konva.Shape>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
 
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
+    throw new Error('No whiteboard context provided');
+  }
+
+  const clientMessengerContext = useContext(ClientMessengerContext);
+
+  if (! clientMessengerContext) {
+    throw new Error('No client messenger context provided');
+  }
+
+  const {
+    clientMessenger,
+  } = clientMessengerContext;
+
   useSnapping(vectorRef, snappingMonitor);
 
-  const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
-    (state: RootState) => selectSelectedCanvasObjects(state)
+  const clientId : ClientIdType | null = useSelector(
+    (state: RootState) => selectClientId(state)
   );
-  const isSelected = (id in selectedCanvasObjectIds);
+
+  const editor = useSelector(
+    (state: RootState) => selectSelectorByCanvasObject(state, id)
+  );
+
+  const isSelected = useMemo(
+    () => editor?.clientId === clientId,
+    [editor, clientId]
+  );
+
+  const isDraggable : boolean = useMemo(
+    () => draggable && (isSelected || (! editor)),
+    [draggable, isSelected, editor]
+  );
 
   const handleSelect = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       e.cancelBubble = true;
-      setSelectedCanvasObjects(dispatch, [id]);
-    },
-    [dispatch, id]
-  );
 
-  // Click outside to deselect
-  useEffect(() => {
-    const stage = vectorRef.current?.getStage();
-    if (!stage) return;
-
-    const listener = (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      if (ev.target !== vectorRef.current) {
-        setSelectedCanvasObjects(dispatch, []);
+      if (! editor) {
+        clientMessenger?.sendSelectedCanvasObject({
+          type: 'selected_canvas_object',
+          canvasObjectId: id,
+        });
       }
-    };
-
-    stage.on("click", listener);
-    return () => {
-      stage.off("click", listener);
-    };
-  }, [dispatch]);
+    },
+    [id, clientMessenger, editor]
+  );
 
   const handleAnchorDragMove = useCallback(
     (index: number, e: Konva.KonvaEventObject<DragEvent>) => {
@@ -140,53 +166,55 @@ const EditableVector = <VectorType extends VectorModel>({
       handleUpdateShapes({
         [id]: { ...shapeModel, points: updatedPoints } as VectorType,
       });
-
-      setSelectedCanvasObjects(dispatch, [id]);
     },
-    [handleUpdateShapes, shapeModel, setLocalPoints, dispatch]
+    [handleUpdateShapes, shapeModel, setLocalPoints]
   );
 
   useEffect(() => {
     setLocalPoints(shapeModel.points);
   }, [shapeModel.points]);
 
-  const handleVectorDragStart = useCallback(
-    () => {
-      setSelectedCanvasObjects(dispatch, []);
-    },
-    [dispatch]
-  );
-
   // Override the onDragEnd handler for vectors to change points rather than x, y
   const vectorEditableProps = {
-    ...editableObjectProps(shapeModel, draggable, handleUpdateShapes),
-    onDragStart: () => handleVectorDragStart(),
+    ...editableObjectProps(shapeModel, isDraggable, handleUpdateShapes),
+    onDragStart: handleSelect,
     onDragEnd: handleVectorDragEnd,
   }
 
+  const childStrokeWidth = (children.props.strokeWidth as number | undefined) ?? 2;
+
   return (
     <Group>
+      {editor && (
+        <Line
+          points={localPoints}
+          stroke={editor.color}
+          strokeWidth={childStrokeWidth + 6}
+          lineCap={children.props.lineCap}
+          lineJoin={children.props.lineJoin}
+          listening={false}
+        />
+      )}
       {React.cloneElement(children, {
         id,
         ref: vectorRef,
-        draggable,
+        draggable: isDraggable,
         onClick: handleSelect,
         onTap: handleSelect,
         hitStrokeWidth: 20,
         ...vectorEditableProps,
-        ...props,
       })}
 
-      {isSelected && draggable && (
+      {editor && (
         <>
           <Circle
             x={localPoints[0]}
             y={localPoints[1]}
             radius={6}
             fill="#ddd"
-            stroke="#5b6263ff"
+            stroke={editor.color}
             strokeWidth={2}
-            draggable
+            draggable={isDraggable}
             onDragMove={(e) => handleAnchorDragMove(0, e)}
             onDragEnd={(e) => handleAnchorDragEnd(0, e)}
             onMouseOver={(e) => {
@@ -203,9 +231,9 @@ const EditableVector = <VectorType extends VectorModel>({
             y={localPoints[3]}
             radius={6}
             fill="#ddd"
-            stroke="#5b6263ff"
+            stroke={editor?.color ?? "#5b6263ff"}
             strokeWidth={2}
-            draggable
+            draggable={isDraggable}
             onDragMove={(e) => handleAnchorDragMove(1, e)}
             onDragEnd={(e) => handleAnchorDragEnd(1, e)}
             onMouseOver={(e) => {

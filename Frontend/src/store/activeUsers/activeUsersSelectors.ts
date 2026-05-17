@@ -4,22 +4,44 @@ import type {
 
 import {
   type ClientIdType,
-  type UserSummary,
   type WhiteboardIdType,
   type CanvasIdType,
 } from '@/types/WebSocketProtocol';
 
-export const selectActiveUsersByWhiteboard = (state: RootState, wid: WhiteboardIdType) : Record<ClientIdType, UserSummary> => {
+import {
+  type CanvasObjectIdType,
+} from '@/types/CanvasObjectModel';
+
+import {
+  type ClientSummary,
+} from '@/types/ClientSummary';
+
+export const selectActiveUsersByWhiteboard = (
+  state: RootState,
+  wid: WhiteboardIdType
+) : Record<ClientIdType, ClientSummary> => {
   return Object.fromEntries(
-    Object.keys(state.activeUsersByWhiteboard.clientsByWhiteboard[wid] || {}).map(clientId => [
-      clientId, state.activeUsers[clientId]
-    ])
+    Object.keys(state.activeUsersByWhiteboard.clientsByWhiteboard[wid] || {})
+      .map(clientId => [clientId, state.activeUsers[clientId]])
   );
 };
 
 export const selectCurrentEditorByCanvas = (
   state: RootState,
   canvasId: CanvasIdType
-): UserSummary | null => {
+): ClientSummary | null => {
   return state.activeUsers[state.currentEditorsByCanvas.currentEditorsByCanvas[canvasId]] || null;
+};
+
+export const selectSelectorByCanvasObject = (
+  state: RootState,
+  objId: CanvasObjectIdType,
+): ClientSummary | null => {
+  const clientId = state.selectorsByCanvasObject.selectorsByCanvasObject[objId];
+
+  if (! clientId) {
+    return null;
+  } else {
+    return state.activeUsers[clientId];
+  }
 };

@@ -53,6 +53,11 @@ pub enum ClientError {
     NoParentCanvas {
         canvas_id: String,
     },
+    // -- Another user has selected the resource the client has attempted to edit
+    CanvasObjectAlreadySelected {
+        // -- id of the selecting client
+        client_id: ClientIdType,
+    },
     // -- client doesn't have permission to perform a given action
     ActionForbidden {
         // -- description of the forbidden action that was attempted
@@ -66,7 +71,9 @@ pub enum ClientError {
     },
 } // -- end ClientError
 
-// === ServerSocketMessage ========================================================================
+// === ServerSocketIndividualMessage ===============================================================
+//
+// Enumerates all messages sent from the server to an individual client.
 //
 // ================================================================================================
 #[derive(Debug, Clone, Serialize)]
@@ -75,17 +82,43 @@ pub enum ClientError {
     rename_all = "snake_case",
     rename_all_fields = "camelCase"
 )]
-pub enum ServerSocketMessage {
+pub enum ServerSocketIndividualMessage {
     InitClient {
         client_id: ClientIdType,
         whiteboard: WhiteboardClientView,
         active_clients: HashMap<ClientIdType, UserSummary>,
+        selectors_by_canvas_objects: HashMap<String, String>,
     },
+    Error {
+        error: ClientError,
+    },
+}// -- end pub enum ServerSocketIndividualMessage
+
+// === ServerSocketBroadcastMessage ================================================================
+//
+// Enumerates all messages sent from the server to all clients.
+//
+// ================================================================================================
+#[derive(Debug, Clone, Serialize)]
+#[serde(
+    tag = "type",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+pub enum ServerSocketBroadcastMessage {
     LoginUsers {
         users: Vec<UserSummary>,
     },
     LogoutUsers {
         clients: Vec<ClientIdType>,
+    },
+    SelectedCanvasObject {
+        client_id: ClientIdType,
+        canvas_object_id: String,
+    },
+    UnselectedCanvasObject {
+        client_id: ClientIdType,
+        canvas_object_id: String,
     },
     EditingCanvas {
         client_id: ClientIdType,
@@ -124,14 +157,22 @@ pub enum ServerSocketMessage {
         canvas_id: String,
     },
     DeleteWhiteboard,
-    IndividualError {
-        client_id: ClientIdType,
+    Error {
         error: ClientError,
     },
-    BroadcastError {
-        error: ClientError,
+}// -- end pub enum ServerSocketMessage
+
+#[derive(Debug, Clone)]
+pub enum ServerSocketMessage {
+    // -- Messages to send to an individual client
+    Individual {
+        target_client_id: ClientIdType,
+        msg: ServerSocketIndividualMessage,
     },
-} // -- end pub enum ServerSocketMessage
+    Broadcast {
+        msg: ServerSocketBroadcastMessage,
+    },
+}// -- end pub enum ServerSocketMessage
 
 // === ClientSocketMessage ========================================================================
 //
@@ -147,6 +188,12 @@ pub enum ServerSocketMessage {
 pub enum ClientSocketMessage {
     EditingCanvas {
         canvas_id: String,
+    },
+    SelectedCanvasObject {
+        canvas_object_id: CanvasObjectIdType,
+    },
+    UnselectedCanvasObject {
+        canvas_object_id: CanvasObjectIdType,
     },
     CreateShapes {
         canvas_id: CanvasIdType,

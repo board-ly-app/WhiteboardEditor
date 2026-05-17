@@ -3,11 +3,9 @@ import React, {
   useRef, 
   useCallback,
   useState,
+  useContext,
+  useMemo,
 } from "react";
-
-import {
-  useSelector,
-} from 'react-redux';
 
 import { 
   Group, 
@@ -17,15 +15,22 @@ import {
 
 import type Konva from "konva";
 
+import {
+  useSelector,
+} from 'react-redux';
+
 // Local imports
 import {
-  store,
   type RootState,
 } from '@/store';
 
 import {
-  selectSelectedCanvasObjects,
-} from '@/store/canvasObjects/canvasObjectsSelectors';
+  selectClientId,
+} from '@/store/client/clientSelectors';
+
+import {
+  selectSelectorByCanvasObject,
+} from '@/store/activeUsers/activeUsersSelectors';
 
 import type { 
   EditableObjectProps 
@@ -33,14 +38,17 @@ import type {
 
 import type { 
   CanvasObjectIdType, 
-  ShapeModel, 
+  ShapeModel,
 } from "@/types/CanvasObjectModel";
 
 import editableObjectProps from "@/dispatchers/editableObjectProps";
 
+import WhiteboardContext from '@/context/WhiteboardContext';
+
 import {
-  setSelectedCanvasObjects,
-} from '@/controllers';
+  ClientMessengerContext,
+} from '@/context/ClientMessengerContext';
+
 import {
   SnappingMonitor,
   useSnapping,
@@ -60,91 +68,104 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   draggable,
   handleUpdateShapes,
   children,
-  ...props
 }: EditableShapeProps<ShapeType>) => {
-  const dispatch = store.dispatch;
   const shapeRef = useRef<Konva.Shape>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
 
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
+    throw new Error('No whiteboard context provided');
+  }
+
+  const clientMessengerContext = useContext(ClientMessengerContext);
+
+  if (! clientMessengerContext) {
+    throw new Error('No client messenger context provided');
+  }
+
+  const {
+    clientMessenger,
+  } = clientMessengerContext;
+
+  const clientId = useSelector((state: RootState) => selectClientId(state));
+
+  const editor = useSelector(
+    (state: RootState) => selectSelectorByCanvasObject(state, id)
+  );
+
+  const isDraggable = draggable && ((! editor) || editor.clientId === clientId);
+
   useSnapping(shapeRef, snappingMonitor);
 
-  const selectedCanvasObjectIds : Record<CanvasObjectIdType, CanvasObjectIdType> = useSelector(
-    (state: RootState) => selectSelectedCanvasObjects(state)
+  const isSelected : boolean = useMemo(
+    () => editor?.clientId === clientId,
+    [editor, clientId]
   );
-  const isSelected = (id in selectedCanvasObjectIds);
 
   // Transformer attach/detach
   useEffect(() => {
     if (!trRef.current || !shapeRef.current) return;
-    trRef.current.nodes(isSelected ? [shapeRef.current] : []);
-  }, [isSelected]);
+    trRef.current.nodes(editor ? [shapeRef.current] : []);
+  }, [editor]);
 
   const handleSelect = useCallback(
     (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       ev.cancelBubble = true;
-      setSelectedCanvasObjects(dispatch, [id]);
-    },
-    [dispatch, id]
-  );
 
-  // Click outside to deselect
-  useEffect(() => {
-    const stage = shapeRef.current?.getStage();
-    if (!stage) return;
-
-    const listener = (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      if (ev.target !== shapeRef.current) {
-        setSelectedCanvasObjects(dispatch, []);
+      if (! editor) {
+        // -- Identify the current user as the current selector
+        clientMessenger?.sendSelectedCanvasObject({
+          type: 'selected_canvas_object',
+          canvasObjectId: id,
+        });
       }
-    };
-
-    stage.on("click", listener);
-    return () => {
-      stage.off("click", listener)
-    };
-  }, [dispatch]);
+    },
+    [id, clientMessenger, editor]
+  );
 
   // Override onDragEnd to reselect at end
   const {
     onDragEnd,
-  } = editableObjectProps(shapeModel, draggable, handleUpdateShapes);
-
-  const shapeOnDragStart = useCallback(
-    () => {
-      setSelectedCanvasObjects(dispatch, []);
-    },
-    [dispatch]
-  );
+  } = editableObjectProps(shapeModel, isDraggable, handleUpdateShapes);
 
   const shapeOnDragEnd = useCallback(
     (ev: Konva.KonvaEventObject<DragEvent>) => {
       if (onDragEnd) {
         onDragEnd(ev);
       }
-      setSelectedCanvasObjects(dispatch, [id]);
     },
-    [dispatch, onDragEnd, id]
+    [onDragEnd]
   );
 
   const shapeEditableProps = {
-    ...editableObjectProps(shapeModel, draggable, handleUpdateShapes),
-    onDragStart: shapeOnDragStart,
+    ...editableObjectProps(shapeModel, isDraggable, handleUpdateShapes),
+    onDragStart: handleSelect,
     onDragEnd: shapeOnDragEnd,
-  }
+  };
 
   return (
     <Group>
       {React.cloneElement(children, {
         id,
         ref: shapeRef,
-        draggable,
+        draggable: isDraggable,
         onClick: handleSelect,
         onTap: handleSelect,
         ...shapeEditableProps,
-        ...props
       })}
-      {draggable && <Transformer ref={trRef} />}
+      {editor && (
+        <Transformer
+          ref={trRef}
+          borderEnabled={true}
+          borderStroke={editor.color}
+          borderStrokeWidth={(! isSelected) && 4 || undefined}
+          resizeEnabled={isSelected}
+          rotateEnabled={isSelected}
+          flipEnabled={isSelected}
+        />
+      )}
     </Group>
   );
 }

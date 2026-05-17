@@ -18,8 +18,8 @@ COPY . .
 # Cache node_modules for future builds.
 # Then, copy to /app directory for persistence, to allow in-image testing.
 RUN \
-  --mount=type=cache,id=yarn_home,target=${HOME}/.yarn \
-  --mount=type=cache,id=node_modules,target=${BUILD_DIR}/node_modules \
+  --mount=type=cache,id=rest_api.yarn_home,target=${HOME}/.yarn \
+  --mount=type=cache,id=rest_api.node_modules,target=${BUILD_DIR}/node_modules \
   yarn install --prefer-offline && \
   yarn tsc && \
   cp -rp . ${DEST_DIR}
@@ -42,7 +42,7 @@ COPY --from=builder ${DEST_DIR}/dist ./dist
 
 # Copy node_modules from cache
 RUN \
-  --mount=type=cache,id=node_modules,target=${DEST_DIR}/node_modules_cache \
+  --mount=type=cache,id=rest_api.node_modules,target=${DEST_DIR}/node_modules_cache \
   cp -rp ./node_modules_cache ./node_modules
 
 # Run app

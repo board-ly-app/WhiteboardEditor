@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  useCallback,
 } from 'react';
 
 import {
@@ -31,14 +32,11 @@ import type {
 } from '@/components/Tool';
 
 import {
+  type ClientIdType,
   type WhiteboardIdType,
   type CanvasIdType,
   type CanvasData,
 } from "@/types/WebSocketProtocol";
-
-import {
-  type CanvasObjectIdType,
-} from '@/types/CanvasObjectModel';
 
 import {
   type User,
@@ -57,6 +55,10 @@ import {
 import {
   type RootState,
 } from '@/store';
+
+import {
+  selectClientId,
+} from '@/store/client/clientSelectors';
 
 import {
   selectAllowedUsersByCanvas,
@@ -152,9 +154,19 @@ function CanvasCard({
 
   const selectedCanvas : CanvasData | null = canvasesById[selectedCanvasId ?? ''] || null;
 
+  const clientId : ClientIdType | null = useSelector(
+    (state: RootState) => selectClientId(state)
+  );
+
   const allowedUserIds = useSelector(
     // ['', ''] is effectively a null canvas key
     (state: RootState) => selectAllowedUsersByCanvas(state, selectedCanvasId ?? '')
+  );
+
+  const selectedCanvasObjects = useSelector(
+    (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
+      state, whiteboardId, clientId
+    )
   );
 
   useEffect(
@@ -225,10 +237,18 @@ function CanvasCard({
     }
   }, [width, height])
 
-  // -- handle deletion keypresses
-  const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
-    (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(state, whiteboardId)
-  );
+  const handleUnselect = useCallback(
+    () => {
+      // -- Indicate that user has unselected object(s)
+      for (const objId of selectedCanvasObjects) {
+        clientMessenger?.sendUnselectedCanvasObject({
+          type: 'unselected_canvas_object',
+          canvasObjectId: objId,
+        });
+      }// -- end for objId
+    },
+    [clientMessenger, selectedCanvasObjects]
+  );// -- end handleUnselect
 
   useEffect(
     () => {
@@ -296,6 +316,7 @@ function CanvasCard({
         <Stage
           width={width}
           height={height}
+          onClick={handleUnselect}
         >
           <Layer
           >

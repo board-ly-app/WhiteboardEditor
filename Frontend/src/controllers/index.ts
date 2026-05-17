@@ -1,10 +1,13 @@
 // re-import constituent functions
 
 import {
+  setClientId,
+  unsetClientId
+} from './client';
+
+import {
   setCanvasObjects,
   removeCanvasObjects,
-  setSelectedCanvasObjects,
-  removeSelectedCanvasObjects,
 } from './canvasObjects';
 
 import {
@@ -24,18 +27,21 @@ import {
   addActiveUsersByWhiteboard,
   setActiveUsersByWhiteboard,
   removeActiveUsers,
+  setSelectorsByCanvasObject,
+  removeSelectorsByCanvasObject,
+  removeCanvasObjectsBySelector,
 } from './activeUsers';
 
 import {
   setCurrentEditorsByCanvas,
   removeCurrentEditorsByCanvas,
-} from './currentEditors';
+} from './currentCanvasEditors';
 
 export {
+  setClientId,
+  unsetClientId,
   setCanvasObjects,
   removeCanvasObjects,
-  setSelectedCanvasObjects,
-  removeSelectedCanvasObjects,
   addCanvas,
   deleteCanvas,
   mergeCanvas,
@@ -48,4 +54,7 @@ export {
   addActiveUsersByWhiteboard,
   setActiveUsersByWhiteboard,
   removeActiveUsers,
+  setSelectorsByCanvasObject,
+  removeSelectorsByCanvasObject,
+  removeCanvasObjectsBySelector,
 };

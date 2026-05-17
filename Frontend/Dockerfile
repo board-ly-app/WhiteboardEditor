@@ -9,8 +9,8 @@ COPY . .
 # Install dependencies and build.
 # Cache node_modules for future builds.
 RUN \
-  --mount=type=cache,id=npm_home,target=${HOME}/.npm \
-  --mount=type=cache,id=node_modules,target=/app/node_modules \
+  --mount=type=cache,id=frontend.npm_home,target=${HOME}/.npm \
+  --mount=type=cache,id=frontend.node_modules,target=/app/node_modules \
   npm install --prefer-offline && \
   npm ci && \
   npm run build
