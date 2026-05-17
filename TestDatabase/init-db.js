@@ -407,6 +407,20 @@ const whiteboards = [
       },
     ],
   },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece0408'),
+    name: "Temp Whiteboard",
+    kind: "temp_whiteboard",
+    createdAt: new Date("2025-08-02T12:10:00.000Z"),
+    root_canvas: new ObjectId('68d5e8d4829da666aece020c'),
+    user_permissions: [
+      {
+        type: 'user',
+        user: new ObjectId('68d5e8d4829da666aece0107'), // TempUser68d5e8d4829da666aece0107
+        permission: 'own',
+      },
+    ],
+  },
 ];
 
 db.whiteboards.insertMany(whiteboards);
