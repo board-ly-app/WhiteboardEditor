@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
+import { useCallback } from "react";
 
 export interface ConfirmTempToPermProps {
   onCancel: () => void,
@@ -26,21 +27,21 @@ const ConfirmTempToPerm = ({
 
   const encodedWhiteboardUrl = encodeURIComponent(`/whiteboard/${whiteboardId}`);
 
-  const handleLogin = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const redirectUrl = `/login/?transfer_temp_whiteboard=${whiteboardId}&redirect=${encodedWhiteboardUrl}`;
 
     navigate(redirectUrl);
-  }
+  }, [navigate, whiteboardId, encodedWhiteboardUrl]);
 
-  const handleSingup = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSingup = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const redirectUrl = `/signup/?transfer_temp_whiteboard=${whiteboardId}&redirect=${encodedWhiteboardUrl}`;
 
     navigate(redirectUrl);
-  }
+  }, [navigate, whiteboardId, encodedWhiteboardUrl]);
 
   switch (action) {
     case 'login':

@@ -15,7 +15,7 @@ import Header, {
 
 import HeaderButton from '@/components/HeaderButton';
 import ConfirmTempToPerm from './ConfirmTempToPerm';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 export type HeaderUnauthedProps = HeaderProps;
 
@@ -35,7 +35,7 @@ const HeaderUnauthed = ({
   const pathname = location.pathname;
   const [action, setAction] = useState<"login" | "signup">("login");
   
-  const handleLogin = () => {
+  const handleLogin = useCallback(() => {
     if (pathname.startsWith("/login")) {
       console.log("from login");
       navigate("/login");
@@ -44,9 +44,9 @@ const HeaderUnauthed = ({
       console.log("log in from whiteboard, open modal");
       openConfirmationModal();
     }
-  };
+  }, [pathname, navigate, openConfirmationModal]);
 
-  const handleSignup = () => {
+  const handleSignup = useCallback(() => {
     if (pathname.startsWith("/signup")) {
       console.log("from signup");
       navigate("/signup");
@@ -58,11 +58,11 @@ const HeaderUnauthed = ({
       console.log("action after setAction: ", action);
       openConfirmationModal();
     }
-  };
+  }, [pathname, navigate, openConfirmationModal, setAction]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     closeConfirmationModal();
-  }
+  }, [closeConfirmationModal]);
 
   return (
     <div>
