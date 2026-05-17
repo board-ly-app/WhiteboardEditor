@@ -20,9 +20,8 @@ const ConfirmTempToPerm = ({
   const segments = url.pathname.split('/');
   const whiteboardId = segments.pop() || segments.pop();
   
-  if (!whiteboardId) {
-    console.error("No whiteboardId found in URL");
-    return;
+  if (! whiteboardId) {
+    throw new Error('No whiteboardId found in URL');
   }
 
   const encodedWhiteboardUrl = encodeURIComponent(`/whiteboard/${whiteboardId}`);
