@@ -119,7 +119,7 @@ export const handleConvertTempUser = async (
     // --- Hash password ---
     const hashed = await bcrypt.hash(password, 10);
 
-    User.collection.updateOne(
+    await User.collection.updateOne(
       { _id: tempUserId },
       { 
         $set: {

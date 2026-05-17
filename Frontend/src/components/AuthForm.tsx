@@ -98,7 +98,6 @@ const AuthForm = ({
       const redirectUrl = searchParams.has('redirect') ?
         decodeURIComponent(searchParams.get('redirect') || '')
         : '/dashboard';
-      const tempUserId = tempUser ? { id: tempUser.id } : null;
       let endpoint = (action === "login") ? "/auth/login" : "/users";
 
       setSubmitButtonStatus('pending');
@@ -116,7 +115,7 @@ const AuthForm = ({
       authUser?: { id: string } | null;
     };
 
-    let payload: LoginPayload | SignupPayload = 
+    const payload: LoginPayload | SignupPayload = 
       action === "login"
       ? { authSource, email, password, transferWhiteboardId: tempWhiteboardId }
       : { email, username, password };
@@ -127,10 +126,6 @@ const AuthForm = ({
       
       if (tempWhiteboardId && action === "signup" && tempUser !== null) {
         endpoint = "/users/convert_temp";
-        payload = {
-          ...payload,
-          authUser: tempUserId
-        }
       }
       
       const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
