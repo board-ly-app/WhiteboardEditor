@@ -66,7 +66,9 @@ const AuthForm = ({
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const navigate = useNavigate();
-  const { setUser } = useUser();
+  const { user, setUser } = useUser();
+  const tempUser = user?.kind === 'temp' ? user : null;
+  const tempUserId = tempUser ? { id: tempUser.id } : null;
   const action = initialAction;
   const redirectUrl = searchParams.has('redirect') ?
     decodeURIComponent(searchParams.get('redirect') || '')
@@ -89,7 +91,7 @@ const AuthForm = ({
   const [submitButtonStatus, setSubmitButtonStatus] = useState<ButtonStatus>('enabled');
 
   // -- derived state
-  const endpoint = (action === "login") ? "/auth/login" : "/users";
+  let endpoint = (action === "login") ? "/auth/login" : "/users";
 
   // TODO: Make this dynamic to handle either email or username
   const authSource = "email";
@@ -103,21 +105,43 @@ const AuthForm = ({
 
       setSubmitButtonStatus('pending');
 
-    const payload = 
+    type LoginPayload = { 
+      authSource: string; 
+      email: string; 
+      password: string; 
+      transferWhiteboardId: string | null; 
+    };
+    type SignupPayload = { 
+      email: string; 
+      username: string; 
+      password: string; 
+      authUser?: { id: string } | null;
+    };
+
+    let payload: LoginPayload | SignupPayload = 
       action === "login"
       ? { authSource, email, password, transferWhiteboardId: tempWhiteboardId }
       : { email, username, password };
 
     try {
+      const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
+      
+      if (tempWhiteboardId && action === "signup" && tempUser !== null) {
+        endpoint = "/users/convert_temp";
+        payload = {
+          ...payload,
+          authUser: tempUserId
+        }
+      }
+      
       const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
-
+      
       const {
         user,
         token,
       } = res.data;
 
       // -- Attempt to transfer temp whiteboard if applicable
-      const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
       if (tempWhiteboardId) {
         try {
           await api.post(`/whiteboards/${tempWhiteboardId}/convert_temp_to_perm`, {
