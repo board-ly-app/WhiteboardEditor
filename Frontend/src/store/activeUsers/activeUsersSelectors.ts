@@ -14,6 +14,7 @@ import {
 
 import {
   type ClientSummary,
+  type CursorPosition,
 } from '@/types/ClientSummary';
 
 export const selectActiveUsersByWhiteboard = (
@@ -44,4 +45,18 @@ export const selectSelectorByCanvasObject = (
   } else {
     return state.activeUsers[clientId];
   }
+};
+
+export const selectCursorPositionsByClients = (
+  state: RootState,
+  clientIds: ClientIdType[],
+): Record<ClientIdType, CursorPosition> => {
+  const cursorPositionsByClient = state.cursorPositionsByClient;
+
+  return Object.fromEntries(
+    clientIds.map(clientId => clientId in cursorPositionsByClient ?
+      [clientId, cursorPositionsByClient[clientId]]
+      : null)
+    .filter(entry => entry !== null)
+  );
 };

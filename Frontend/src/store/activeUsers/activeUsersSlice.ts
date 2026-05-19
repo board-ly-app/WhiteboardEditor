@@ -45,37 +45,17 @@ const activeUsersSlice = createSlice({
 
       return newState;
     },
-    setClientCursorPos(state, action: PayloadAction<Record<ClientIdType, { x: number; y: number; }>>) {
-      for (const [clientId, cursorPos] of Object.entries(action.payload)) {
-        if (clientId in state) {
-          state[clientId].cursorPos = cursorPos;
-        }
-      }// -- end for clientId, cursorPos
-
-      return state;
-    },
-    unsetClientCursorPos(state, action: PayloadAction<ClientIdType[]>) {
-      for (const clientId of action.payload) {
-        delete state[clientId];
-      }// -- end for clientId
-
-      return state;
-    },
   },
 });// -- end activeUsersSlice
 
 export const {
   setActiveUsers,
   removeActiveUsers,
-  setClientCursorPos,
-  unsetClientCursorPos,
 } = activeUsersSlice.actions;
 
 export type ActiveUsersActions =
   | ReturnType<typeof setActiveUsers>
   | ReturnType<typeof removeActiveUsers>
-  | ReturnType<typeof setClientCursorPos>
-  | ReturnType<typeof unsetClientCursorPos>
 ;
 
 export default activeUsersSlice.reducer;

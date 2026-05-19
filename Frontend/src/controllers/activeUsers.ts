@@ -18,8 +18,12 @@ import {
 
 import {
   setActiveUsers,
-  setClientCursorPos as reducerSetClientCursorPos,
 } from '@/store/activeUsers/activeUsersSlice';
+
+import {
+  setCursorPosByClient,
+  unsetCursorPosByClient,
+} from '@/store/activeUsers/cursorPositionsByActiveUserSlice';
 
 import {
   setSelectorsByCanvasObject as reducerSetSelectorsByCanvasObject,
@@ -60,6 +64,7 @@ export const removeActiveUsers = (
   userClientIds: ClientIdType[]
 ) => {
   dispatch(removeActiveUsersReducer(userClientIds));
+  dispatch(unsetCursorPosByClient(userClientIds));
 };
 
 export const setSelectorsByCanvasObject = (
@@ -89,7 +94,14 @@ export const setClientCursorPos = (
   x: number,
   y: number,
 ) => {
-  dispatch(reducerSetClientCursorPos({
+  dispatch(setCursorPosByClient({
     [clientId]: { x, y },
   }));
+};
+
+export const unsetClientCursorPos = (
+  dispatch: AppDispatch,
+  clientId: ClientIdType,
+) => {
+  dispatch(unsetCursorPosByClient([clientId]));
 };

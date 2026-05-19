@@ -41,6 +41,7 @@ import {
 
 import {
   type ClientSummary,
+  type CursorPosition,
 } from '@/types/ClientSummary';
 
 import {
@@ -63,6 +64,7 @@ import {
 
 import {
   selectActiveUsersByWhiteboard,
+  selectCursorPositionsByClients,
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import {
@@ -148,6 +150,10 @@ const CanvasCard = ({
 
   const activeUsers : Record<ClientIdType, ClientSummary> = useSelector(
     (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId)
+  );
+
+  const cursorPositionsByClient : Record<ClientIdType, CursorPosition> = useSelector(
+    (state: RootState) => selectCursorPositionsByClients(state, Object.keys(activeUsers))
   );
 
   const clientMessengerContext = useContext(ClientMessengerContext);
@@ -390,15 +396,15 @@ const CanvasCard = ({
 
           {/** Display other users' cursors **/}
           <Layer>
-            {Object.values(activeUsers).map(u => u.cursorPos && (
+            {Object.entries(cursorPositionsByClient).map(([clientId, cursorPos]) => (
               <Circle
-                x={u.cursorPos.x}
-                y={u.cursorPos.y}
+                x={cursorPos.x}
+                y={cursorPos.y}
                 width={10}
                 height={10}
-                fill={u.color}
+                fill={activeUsers[clientId].color}
               />
-            ) || null)}
+            ))}
           </Layer>
         </Stage>
       </div>
