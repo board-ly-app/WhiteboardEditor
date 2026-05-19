@@ -206,7 +206,7 @@ const CanvasCard = ({
       const timeoutId = window.setInterval(
         () => {
           if (stageRef.current) {
-            const pos = stageRef.current.getPointerPosition();
+            const pos = stageRef.current.getRelativePointerPosition();
 
             if (pos) {
               const { x, y } = pos;
@@ -393,7 +393,7 @@ const CanvasCard = ({
             {Object.values(activeUsers).map(u => u.cursorPos && (
               <Circle
                 x={u.cursorPos.x}
-                y={u.cursorPos.x}
+                y={u.cursorPos.y}
                 width={10}
                 height={10}
                 fill={u.color}
