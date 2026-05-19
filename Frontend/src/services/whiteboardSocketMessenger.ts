@@ -4,6 +4,7 @@
 
 // -- local imports
 import {
+  type ClientMessageSetCursorPos,
   type ClientMessageLogin,
   type ClientMessageEditingCanvas,
   type ClientMessageSelectedCanvasObject,
@@ -27,6 +28,10 @@ class WhiteboardSocketMessenger {
   #sendMessage(msg: object) {
     this.#socket.send(JSON.stringify(msg));
   }// -- end sendMessage
+
+  sendSetCursorPos(msg: ClientMessageSetCursorPos) {
+    this.#sendMessage(msg);
+  }// -- end sendSetCursorPos
 
   sendUpdateCanvasAllowedUsers(msg: ClientMessageUpdateAllowedUsers) {
     this.#sendMessage(msg);

@@ -31,6 +31,7 @@ import {
   setSelectorsByCanvasObject,
   removeSelectorsByCanvasObject,
   removeCanvasObjectsBySelector,
+  setClientCursorPos,
 } from './activeUsers';
 
 import {
@@ -41,6 +42,7 @@ import {
 export {
   setClientId,
   unsetClientId,
+  setClientCursorPos,
   setCanvasObjects,
   removeCanvasObjects,
   addCanvas,
