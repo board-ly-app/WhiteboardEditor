@@ -9,6 +9,7 @@
 // -- local imports
 
 import {
+  type ClientMessageSetCursorPos,
   type ClientMessageUpdateAllowedUsers,
   type ClientMessageLogin,
   type ClientMessageDeleteCanvases,
@@ -23,6 +24,7 @@ import {
 } from '@/types/WebSocketProtocol';
 
 export interface IWhiteboardClientMessenger {
+  sendSetCursorPos: (msg: ClientMessageSetCursorPos) => unknown;
   sendUpdateCanvasAllowedUsers: (msg: ClientMessageUpdateAllowedUsers) => unknown;
   sendLogin: (msg: ClientMessageLogin) => unknown;
   sendDeleteCanvases: (msg: ClientMessageDeleteCanvases) => unknown;

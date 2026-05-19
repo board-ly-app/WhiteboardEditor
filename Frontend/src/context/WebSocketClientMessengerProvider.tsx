@@ -76,6 +76,7 @@ import {
 
 import {
   setClientId,
+  setClientCursorPos,
   addWhiteboard,
   deleteWhiteboard,
   setWhiteboardStatus,
@@ -386,6 +387,18 @@ const WebSocketClientMessengerProvider = ({
                 },
                 WHITEBOARD_DELETED_NOTIFICATION_NUM_MILLIS
               );
+          }
+          break;
+          case 'set_cursor_pos':
+          {
+            const {
+              clientId,
+              x,
+              y,
+            } = msg;
+
+            // -- update cursor in state store
+            setClientCursorPos(dispatch, clientId, x, y);
           }
           break;
           case 'error':

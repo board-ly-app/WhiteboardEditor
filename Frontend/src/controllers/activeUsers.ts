@@ -18,6 +18,7 @@ import {
 
 import {
   setActiveUsers,
+  setClientCursorPos as reducerSetClientCursorPos,
 } from '@/store/activeUsers/activeUsersSlice';
 
 import {
@@ -80,4 +81,15 @@ export const removeCanvasObjectsBySelector = (
   selectors: ClientIdType[],
 ) => {
   dispatch(reducerRemoveCanvasObjectsBySelector(selectors));
+};
+
+export const setClientCursorPos = (
+  dispatch: AppDispatch,
+  clientId: ClientIdType,
+  x: number,
+  y: number,
+) => {
+  dispatch(reducerSetClientCursorPos({
+    [clientId]: { x, y },
+  }));
 };

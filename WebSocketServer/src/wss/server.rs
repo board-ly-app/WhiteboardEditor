@@ -214,6 +214,18 @@ pub async fn handle_authenticated_client_message(
                         },
                     }// -- end match
                 }
+                SetCursorPos {
+                    x,
+                    y,
+                } => {
+                    // -- UI-only feature; just relay the message to the other clients
+                    vec![ServerSocketMessage::BroadcastRest {
+                        src_client_id: client_state.client_id.clone(),
+                        msg: ServerSocketBroadcastRestMessage::SetCursorPos {
+                            client_id: client_state.client_id.clone(), x, y,
+                        },
+                    }]
+                }
                 CreateShapes {
                     canvas_id,
                     ref shapes,

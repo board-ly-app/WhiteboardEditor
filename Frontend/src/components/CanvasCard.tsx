@@ -19,9 +19,12 @@ import {
   type AxiosError,
 } from 'axios';
 
+import Konva from 'konva';
+
 import {
   Stage,
   Layer,
+  Circle,
 } from 'react-konva';
 
 import Canvas from "./Canvas";
@@ -37,6 +40,10 @@ import {
   type CanvasIdType,
   type CanvasData,
 } from "@/types/WebSocketProtocol";
+
+import {
+  type ClientSummary,
+} from '@/types/ClientSummary';
 
 import {
   type User,
@@ -55,6 +62,10 @@ import {
 import {
   type RootState,
 } from '@/store';
+
+import {
+  selectActiveUsersByWhiteboard,
+} from '@/store/activeUsers/activeUsersSelectors';
 
 import {
   selectClientId,
@@ -129,6 +140,10 @@ function CanvasCard({
     (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)
   );
 
+  const activeUsers : Record<ClientIdType, ClientSummary> = useSelector(
+    (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId)
+  );
+
   const clientMessengerContext = useContext(ClientMessengerContext);
 
   if (! clientMessengerContext) {
@@ -167,6 +182,35 @@ function CanvasCard({
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
       state, whiteboardId, clientId
     )
+  );
+
+  // -- set up interval to broadcast cursor position
+  const stageRef = useRef<Konva.Stage | null>(null);
+
+  useEffect(
+    () => {
+      const timeoutId = window.setInterval(
+        () => {
+          if (stageRef.current) {
+            const pos = stageRef.current.getPointerPosition();
+
+            if (pos) {
+              const { x, y } = pos;
+
+              clientMessenger?.sendSetCursorPos({
+                type: 'set_cursor_pos', x, y
+              });
+            }
+          }
+        },
+        1000
+      );
+
+      return () => {
+        window.clearTimeout(timeoutId);
+      };
+    },
+    [stageRef, clientMessenger]
   );
 
   useEffect(
@@ -314,6 +358,7 @@ function CanvasCard({
         }}
       >
         <Stage
+          ref={stageRef}
           width={width}
           height={height}
           onClick={handleUnselect}
@@ -331,6 +376,19 @@ function CanvasCard({
                 onSelectCanvasDimensions,
               }}
             />
+          </Layer>
+
+          {/** Display other users' cursors **/}
+          <Layer>
+            {Object.values(activeUsers).map(u => u.cursorPos && (
+              <Circle
+                x={u.cursorPos.x}
+                y={u.cursorPos.x}
+                width={10}
+                height={10}
+                fill={u.color}
+              />
+            ) || null)}
           </Layer>
         </Stage>
       </div>

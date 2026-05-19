@@ -321,6 +321,14 @@ async fn handle_connection(
                             break;
                         }
                     },
+                    BroadcastRest { ref src_client_id, ref msg } => {
+                        if ! matches!(src_client_id.cmp(&current_client_id), Ordering::Equal) {
+                            let json = serde_json::to_string(&msg).unwrap();
+                            if user_ws_tx.send(Message::text(json)).await.is_err() {
+                                break;
+                            }
+                        }
+                    },
                 };// -- end match msg
             }
         })

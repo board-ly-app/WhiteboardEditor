@@ -257,6 +257,13 @@ export interface ServerMessageDeleteWhiteboard {
   type: 'delete_whiteboard';
 }
 
+export interface ServerMessageSetCursorPos {
+  type: 'set_cursor_pos';
+  clientId: ClientIdType;
+  x: number;
+  y: number;
+}
+
 export interface ServerMessageError {
   type: 'error';
   error: ClientError;
@@ -278,6 +285,7 @@ export type SocketServerMessage =
   | ServerMessageDeleteCanvasObjects
   | ServerMessageMergeCanvas
   | ServerMessageDeleteWhiteboard
+  | ServerMessageSetCursorPos
   | ServerMessageError
 ;
 
@@ -362,6 +370,12 @@ export interface ClientMessageMergeCanvas {
   canvasId: CanvasIdType;
 }
 
+export interface ClientMessageSetCursorPos {
+  type: 'set_cursor_pos';
+  x: number;
+  y: number;
+}
+
 // Tagged union of all possible client-server messages
 export type SocketClientMessage =
   | ClientMessageLogin
@@ -375,4 +389,5 @@ export type SocketClientMessage =
   | ClientMessageUpdateAllowedUsers
   | ClientMessageDeleteCanvasObjects
   | ClientMessageMergeCanvas
+  | ClientMessageSetCursorPos
 ;
