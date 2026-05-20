@@ -60,12 +60,20 @@ import {
 } from '@/controllers';
 
 import {
+  selectCanvasObjectIdsByCanvas,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
+
+import {
   useUser,
 } from '@/hooks/useUser';
 
 import {
   type ToolChoice,
 } from '@/components/Tool';
+
+import {
+  CanvasObject,
+} from '@/components/CanvasObject';
 
 import type {
   CanvasObjectIdType,
@@ -119,7 +127,6 @@ const Canvas = (props: CanvasProps) => {
     parentCanvas,
     width,
     height,
-    shapes,
     shapeAttributes,
     currentTool,
     childCanvasesByCanvas,
@@ -143,7 +150,6 @@ const Canvas = (props: CanvasProps) => {
 
   const {
     whiteboardId,
-    handleUpdateShapes,
     setCurrentTool,
     ownPermission,
     currentDispatcher,
@@ -174,6 +180,10 @@ const Canvas = (props: CanvasProps) => {
     selectCurrentEditorByCanvas(state, canvasId)
   ));
 
+  const canvasObjectsIds : CanvasObjectIdType[] | null = useSelector(
+    (state: RootState) => selectCanvasObjectIdsByCanvas(state, canvasId)
+  );
+
   // const userHasAccess = user?.id
   //   ? allowedUserIds === undefined || allowedUserIds.length === 0 || allowedUserIds.includes(user.id)
   //   : false;
@@ -191,13 +201,6 @@ const Canvas = (props: CanvasProps) => {
   );
 
   const groupRef = useRef<Konva.Group | null>(null);
-
-  const handleObjectUpdateShapes = useCallback(
-    (shapes: Record<CanvasObjectIdType, CanvasObjectModel>) => {
-      handleUpdateShapes(canvasId, shapes);
-    },
-    [handleUpdateShapes, canvasId]
-  );
 
   // In the future, we may wrap onAddShapes with some other logic.
   // For now, it's just an alias.
@@ -535,19 +538,17 @@ const Canvas = (props: CanvasProps) => {
         {getPreview()}
       </Group>
 
-      {/** Shapes **/}
+      {/** Canvas Objects **/}
       {
-        Object.entries(shapes).filter(([_id, sh]) => !!sh).map(([id, shape]) => {
-          const renderDispatcher = getDispatcher(shape.type);
-          const {
-            renderShape,
-          } = renderDispatcher;
-
-          return renderShape(
-            id, shape, areShapesDraggable,
-            handleObjectUpdateShapes
-          );
-        })
+        canvasObjectsIds && (
+          canvasObjectsIds.map(objId => (
+            <CanvasObject
+              id={objId}
+              canvasId={canvasId}
+              isDraggable={areShapesDraggable}
+            />
+          ))
+        ) || null
       }
 
       {/** Layer child canvases on top **/}

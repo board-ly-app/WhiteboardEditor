@@ -4,10 +4,6 @@ import type {
   OperationDispatcher,
   OperationDispatcherProps
 } from '@/types/OperationDispatcher';
-import type {
-  CanvasObjectIdType,
-  CanvasObjectModel
-} from '@/types/CanvasObjectModel';
 
 // === useMockDispatcher =======================================================
 // Use as a dummy for unimplemented functionalities.
@@ -29,12 +25,6 @@ const useMockDispatcher = (_props: OperationDispatcherProps<null>): OperationDis
     },
     getPreview: () => null,
     getAttributes: () => [],
-    renderShape: (
-      _key: string | number,
-      _model: CanvasObjectModel,
-      _isDraggable: boolean,
-      _handleUpdateShapes: (shapes: Record<CanvasObjectIdType, CanvasObjectModel>) => void
-    ) => null,
     getTooltipText: () => "TODO: implement"
   });
 };

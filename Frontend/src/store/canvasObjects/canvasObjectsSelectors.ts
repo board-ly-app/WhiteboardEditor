@@ -46,6 +46,22 @@ export const selectCanvasObjectsByCanvas = (
   }
 };
 
+export const selectCanvasObjectIdsByCanvas = (
+  state: RootState,
+  canvasId: CanvasIdType,
+): CanvasObjectIdType[] | null => {
+  const objectIds: Record<CanvasObjectIdType, CanvasObjectIdType> | null
+    = (canvasId in state.canvasObjectsByCanvas.canvasObjectsByCanvas) ?
+    state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId]
+    : null;
+
+  if (objectIds === null) {
+    return null;
+  } else {
+    return Object.keys(objectIds);
+  }
+};// -- end selectCanvasObjectIdsByCanvas
+
 export const selectCanvasObjectsByWhiteboard = (
   state: RootState,
   whiteboardId: WhiteboardIdType

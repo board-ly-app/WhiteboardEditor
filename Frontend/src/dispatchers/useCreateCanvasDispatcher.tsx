@@ -11,11 +11,6 @@ import type {
   OperationDispatcherProps
 } from '@/types/OperationDispatcher';
 
-import type {
-  CanvasObjectIdType,
-  CanvasObjectModel,
-} from '@/types/CanvasObjectModel';
-
 import {
   type NewCanvasDimensions,
 } from '@/types/CreateCanvas';
@@ -111,15 +106,6 @@ const useCreateCanvasDispatcher = ({
     }
   };
 
-  const renderShape = (
-    _key: string | number,
-    _model: CanvasObjectModel,
-    _isDraggable: boolean,
-    _handleUpdateShapes: (shapes: Record<CanvasObjectIdType, CanvasObjectModel>) => void
-  ): React.JSX.Element | null => {
-    throw new Error('Canvas is not a valid shape type');
-  };
-
   const getAttributes = (): AttributeDefinition[] => {
     return [];
   }
@@ -139,7 +125,6 @@ const useCreateCanvasDispatcher = ({
     handleCancel,
     getPreview,
     getAttributes,
-    renderShape,
     getTooltipText,
   });
 };// end useCreateCanvasDispatcher

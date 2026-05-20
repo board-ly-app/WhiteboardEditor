@@ -5,21 +5,13 @@ import React, {
 import Konva from 'konva';
 import { Rect } from 'react-konva';
 
-import EditableText from '@/components/EditableText';
-
 import type {
   OperationDispatcher,
   OperationDispatcherProps
 } from '@/types/OperationDispatcher';
 import type {
-  CanvasObjectIdType,
-  CanvasObjectRecord,
-  TextRecord
-} from '@/types/CanvasObjectModel';
-import type {
   EventCoords
 } from '@/types/EventCoords';
-import editableObjectProps from './editableObjectProps';
 import { getAttributesByShape, type AttributeDefinition } from '@/types/Attribute';
 
 // === useTextDispatcher ==================================================
@@ -109,47 +101,6 @@ const useTextDispatcher = ({
     }
   };
 
-  const renderShape = (
-    key: string | number,
-    record: CanvasObjectRecord,
-    isDraggable: boolean,
-    handleUpdateShapes: (shapes: Record<CanvasObjectIdType, CanvasObjectRecord>) => void
-  ): React.JSX.Element | null => {
-    if (record.type !== 'text') {
-      return null;
-    } else {
-      const {
-        fontSize,
-        text,
-        color,
-        x,
-        y,
-        width,
-        height,
-        rotation,
-      } = record;
-
-      return (
-        <EditableText
-          key={key}
-          id={`${key}`}
-          fontSize={fontSize}
-          text={text}
-          color={color}
-          x={x}
-          y={y}
-          width={width}
-          height={height}
-          draggable={isDraggable}
-          rotation={rotation}
-          shapeRecord={record}
-          handleUpdateShapes={handleUpdateShapes}
-          {...editableObjectProps<TextRecord>(record, isDraggable, handleUpdateShapes)}
-        />
-      )
-    }
-  };
-
   const getAttributes = (): AttributeDefinition[] => getAttributesByShape('text');
 
   const getTooltipText = () => {
@@ -167,7 +118,6 @@ const useTextDispatcher = ({
     handleCancel,
     getPreview,
     getAttributes,
-    renderShape,
     getTooltipText,
   });
 }

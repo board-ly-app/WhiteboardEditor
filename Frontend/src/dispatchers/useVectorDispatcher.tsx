@@ -11,14 +11,8 @@ import type {
   OperationDispatcherProps
 } from '@/types/OperationDispatcher';
 import type {
-  CanvasObjectIdType,
-  CanvasObjectModel,
-  VectorModel,
-} from '@/types/CanvasObjectModel';
-import type {
   EventCoords
 } from '@/types/EventCoords';
-import EditableVector from '@/components/EditableVector';
 import { getAttributesByShape, type AttributeDefinition } from '@/types/Attribute';
 
 // === useVectorDispatcher =====================================================
@@ -96,35 +90,6 @@ const useVectorDispatcher = ({
     }
   };
 
-  const renderShape = (
-    key: string | number,
-    model: CanvasObjectModel,
-    isDraggable: boolean,
-    handleUpdateShapes: (shapes: Record<CanvasObjectIdType, CanvasObjectModel>) => void
-  ): React.JSX.Element | null => {
-    if (model.type !== 'vector') {
-      return null;
-    } else {
-      const { strokeColor, strokeWidth, points } = model;
-
-      return (
-        <EditableVector<VectorModel>
-          key={key}
-          id={`${key}`}
-          draggable={isDraggable}
-          shapeModel={model}
-          handleUpdateShapes={handleUpdateShapes}
-        >
-          <Line
-            points={points}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-          />
-        </EditableVector>
-      );
-    }
-  };
-
   const getAttributes = (): AttributeDefinition[] => getAttributesByShape('vector');
 
   const getTooltipText = () => {
@@ -142,7 +107,6 @@ const useVectorDispatcher = ({
     handleCancel,
     getPreview,
     getAttributes,
-    renderShape,
     getTooltipText
   });
 };// end useVectorDispatcher

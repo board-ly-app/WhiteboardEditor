@@ -11,15 +11,9 @@ import type {
   OperationDispatcherProps
 } from '@/types/OperationDispatcher';
 import type {
-  CanvasObjectIdType,
-  CanvasObjectModel,
-  RectModel
-} from '@/types/CanvasObjectModel';
-import type {
   EventCoords
 } from '@/types/EventCoords';
 
-import EditableShape from '@/components/EditableShape';
 import { getAttributesByShape, type AttributeDefinition } from '@/types/Attribute';
 
 // === useRectangleDispatcher ==================================================
@@ -107,49 +101,6 @@ const useRectangleDispatcher = ({
     }
   };
 
-  const renderShape = (
-    key: string | number,
-    model: CanvasObjectModel,
-    isDraggable: boolean,
-    handleUpdateShapes: (shapes: Record<CanvasObjectIdType, CanvasObjectModel>) => void
-  ): React.JSX.Element | null => {
-    if (model.type !== 'rect') {
-      return null;
-    } else {
-      const {
-        x,
-        y,
-        fillColor,
-        strokeColor,
-        strokeWidth,
-        width,
-        height,
-        rotation,
-      } = model;
-
-      return (
-        <EditableShape<RectModel>
-          key={key}
-          id={`${key}`}
-          draggable={isDraggable}
-          shapeModel={model}
-          handleUpdateShapes={handleUpdateShapes}
-        >
-          <Rect
-            x={x}
-            y={y}
-            width={width}
-            height={height}
-            fill={fillColor}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            rotation={rotation}
-          />
-        </EditableShape>
-      );
-    }
-  };
-
   const getAttributes = (): AttributeDefinition[] => getAttributesByShape('rect');
 
   const getTooltipText = () => {
@@ -167,7 +118,6 @@ const useRectangleDispatcher = ({
     handleCancel,
     getPreview,
     getAttributes,
-    renderShape,
     getTooltipText,
   });
 };// end useRectangleDispatcher

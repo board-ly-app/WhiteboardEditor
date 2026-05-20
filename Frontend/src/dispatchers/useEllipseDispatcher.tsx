@@ -11,15 +11,9 @@ import type {
   OperationDispatcherProps
 } from '@/types/OperationDispatcher';
 import type {
-  CanvasObjectIdType,
-  CanvasObjectModel,
-  EllipseModel
-} from '@/types/CanvasObjectModel';
-import type {
   EventCoords
 } from '@/types/EventCoords';
 
-import EditableShape from '@/components/EditableShape';
 import { getAttributesByShape, type AttributeDefinition } from '@/types/Attribute';
 
 // === useEllipseDispatcher ====================================================
@@ -117,49 +111,6 @@ const useEllipseDispatcher = ({
     }
   };
 
-  const renderShape = (
-    key: string | number,
-    model: CanvasObjectModel,
-    isDraggable: boolean,
-    handleUpdateShapes: (shapes: Record<CanvasObjectIdType, CanvasObjectModel>) => void
-  ): React.JSX.Element | null => {
-    if (model.type !== 'ellipse') {
-      return null;
-    } else {
-      const { 
-        x, 
-        y, 
-        radiusX, 
-        radiusY, 
-        fillColor, 
-        strokeColor, 
-        strokeWidth,
-        rotation,
-      } = model;
-
-      return (
-        <EditableShape<EllipseModel>
-          key={key}
-          id={`${key}`}
-          draggable={isDraggable}
-          shapeModel={model}
-          handleUpdateShapes={handleUpdateShapes}
-        >
-          <Ellipse
-            x={x}
-            y={y}
-            radiusX={radiusX}
-            radiusY={radiusY}
-            fill={fillColor}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            rotation={rotation}
-          />
-        </EditableShape>
-      );
-    }
-  };
-
   const getAttributes = (): AttributeDefinition[] => getAttributesByShape('ellipse'); 
 
   const getTooltipText = () => {
@@ -177,7 +128,6 @@ const useEllipseDispatcher = ({
     handleCancel,
     getPreview,
     getAttributes,
-    renderShape,
     getTooltipText
   });
 };// end useEllipseDispatcher
