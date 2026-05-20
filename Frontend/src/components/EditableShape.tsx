@@ -36,9 +36,13 @@ import type {
   EditableObjectProps 
 } from "@/dispatchers/editableObjectProps";
 
-import type { 
-  CanvasObjectIdType, 
-  ShapeModel,
+import {
+  type CanvasIdType,
+} from '@/types/WebSocketProtocol';
+
+import { 
+  type CanvasObjectModel,
+  type ShapeModel,
 } from "@/types/CanvasObjectModel";
 
 import editableObjectProps from "@/dispatchers/editableObjectProps";
@@ -54,9 +58,11 @@ import {
 
 interface EditableShapeProps<ShapeType extends ShapeModel> extends EditableObjectProps {
   id: string;
+  canvasId: CanvasIdType;
   shapeModel: ShapeType;
   draggable: boolean;
-  handleUpdateShapes: (shapes: Record<CanvasObjectIdType, ShapeType>) => void;
+  onUpdateObject: (updatedObject: CanvasObjectModel) => unknown;
+  onTransformEnd: (ev: Konva.KonvaEventObject<Event>) => unknown;
   children: React.ReactElement<Konva.NodeConfig & KonvaNodeEvents>;
 }
 
@@ -64,7 +70,8 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   id,
   shapeModel,
   draggable,
-  handleUpdateShapes,
+  onUpdateObject,
+  onTransformEnd,
   children,
 }: EditableShapeProps<ShapeType>) => {
   const shapeRef = useRef<Konva.Shape>(null);
@@ -118,9 +125,10 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   );
 
   // Override onDragEnd to reselect at end
+  const editableProps = editableObjectProps(shapeModel, isDraggable, onUpdateObject);
   const {
     onDragEnd,
-  } = editableObjectProps(shapeModel, isDraggable, handleUpdateShapes);
+  } = editableProps;
 
   const shapeOnDragEnd = useCallback(
     (ev: Konva.KonvaEventObject<DragEvent>) => {
@@ -132,7 +140,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   );
 
   const shapeEditableProps = {
-    ...editableObjectProps(shapeModel, isDraggable, handleUpdateShapes),
+    ...editableProps,
     onDragStart: handleSelect,
     onDragEnd: shapeOnDragEnd,
   };
@@ -145,6 +153,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
         draggable: isDraggable,
         onClick: handleSelect,
         onTap: handleSelect,
+        onTransformEnd,
         ...shapeEditableProps,
       })}
       {editor && (
