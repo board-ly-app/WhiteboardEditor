@@ -43,8 +43,6 @@ import type {
 
 import editableObjectProps from "@/dispatchers/editableObjectProps";
 
-import WhiteboardContext from '@/context/WhiteboardContext';
-
 import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
@@ -72,12 +70,6 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   const shapeRef = useRef<Konva.Shape>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
-
-  const whiteboardContext = useContext(WhiteboardContext);
-
-  if (! whiteboardContext) {
-    throw new Error('No whiteboard context provided');
-  }
 
   const clientMessengerContext = useContext(ClientMessengerContext);
 

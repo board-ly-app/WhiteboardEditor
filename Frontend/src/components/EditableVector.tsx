@@ -27,8 +27,6 @@ import {
   selectSelectorByCanvasObject,
 } from '@/store/activeUsers/activeUsersSelectors';
 
-import WhiteboardContext from '@/context/WhiteboardContext';
-
 import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
@@ -62,12 +60,6 @@ const EditableVector = <VectorType extends VectorModel>({
   const [localPoints, setLocalPoints] = useState(shapeModel.points);
   const vectorRef = useRef<Konva.Shape>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
-
-  const whiteboardContext = useContext(WhiteboardContext);
-
-  if (! whiteboardContext) {
-    throw new Error('No whiteboard context provided');
-  }
 
   const clientMessengerContext = useContext(ClientMessengerContext);
 

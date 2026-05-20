@@ -31,7 +31,6 @@ import {
   selectSelectorByCanvasObject,
 } from '@/store/activeUsers/activeUsersSelectors';
 
-import WhiteboardContext from '@/context/WhiteboardContext';
 import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
@@ -86,12 +85,6 @@ const EditableText = ({
   const textRef = useRef<Konva.Text>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
-
-  const whiteboardContext = useContext(WhiteboardContext);
-
-  if (! whiteboardContext) {
-    throw new Error('No whiteboard context provided');
-  }
   
   const clientMessengerContext = useContext(ClientMessengerContext);
 
