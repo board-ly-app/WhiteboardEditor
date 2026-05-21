@@ -10,10 +10,6 @@ import Konva from 'konva';
 
 // -- local imports
 import type {
-  ToolChoice
-} from '@/components/Tool';
-
-import type {
   CanvasObjectIdType,
   CanvasObjectModel,
 } from '@/types/CanvasObjectModel';
@@ -31,16 +27,13 @@ import type { OperationDispatcher } from '@/types/OperationDispatcher';
 
 export interface WhiteboardContextType {
   handleUpdateShapes: (canvasId: CanvasIdType, shapes: Record<CanvasObjectIdType, Partial<CanvasObjectModel>>) => unknown;
-  currentTool: ToolChoice;
-  setCurrentTool: React.Dispatch<React.SetStateAction<ToolChoice>>;
   whiteboardId: WhiteboardIdType;
   userPermissions: UserPermission[];
   setSharedUsers: React.Dispatch<React.SetStateAction<UserPermission[]>>;
   newCanvasAllowedUsers: string[];
   setNewCanvasAllowedUsers: React.Dispatch<React.SetStateAction<string[]>>;
   // -- view/edit/own permission - determines which actions to enable/disable
-  currentDispatcher: OperationDispatcher | null;
-  setCurrentDispatcher: React.Dispatch<React.SetStateAction<OperationDispatcher | null>>;
+  currentDispatcherRef: RefObject<OperationDispatcher | null>;
   // -- tracks refs to Canvas groups (Konva Groups serve as frames for each Canvas)
   canvasGroupRefsByIdRef: RefObject<Record<CanvasIdType, RefObject<Konva.Group | null>>>;
   tooltipText: string;
@@ -55,16 +48,13 @@ const WhiteboardContext = createContext<WhiteboardContextType | undefined>(undef
 
 const WhiteboardProvider = ({
   handleUpdateShapes,
-  currentTool,
-  setCurrentTool,
   whiteboardId,
   children,
   userPermissions,
   setSharedUsers,
   newCanvasAllowedUsers,
   setNewCanvasAllowedUsers,
-  currentDispatcher,
-  setCurrentDispatcher,
+  currentDispatcherRef,
   canvasGroupRefsByIdRef,
   tooltipText,
   setTooltipText,
@@ -77,15 +67,12 @@ const WhiteboardProvider = ({
   return (
     <WhiteboardContext.Provider value={{
       handleUpdateShapes,
-      currentTool,
-      setCurrentTool,
       whiteboardId,
       userPermissions,
       setSharedUsers,
       newCanvasAllowedUsers,
       setNewCanvasAllowedUsers,
-      currentDispatcher,
-      setCurrentDispatcher,
+      currentDispatcherRef,
       canvasGroupRefsByIdRef,
       tooltipText,
       setTooltipText,

@@ -119,7 +119,7 @@ const CanvasCard = ({
     tooltipText,
     editingText,
     canvasGroupRefsByIdRef,
-    currentDispatcher,
+    currentDispatcherRef,
   } = whiteboardContext;
 
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
@@ -280,7 +280,7 @@ const CanvasCard = ({
               break;
             case 'Escape':
             case 'Esc':
-              currentDispatcher?.handleCancel();
+              currentDispatcherRef.current?.handleCancel();
               break;
           }
         };// -- end handleKeyDown
@@ -295,7 +295,7 @@ const CanvasCard = ({
         };
       }
     },
-    [containerRef, clientMessenger, selectedCanvasObjects, currentDispatcher]
+    [containerRef, clientMessenger, selectedCanvasObjects, currentDispatcherRef]
   );
 
   return (
@@ -323,7 +323,7 @@ const CanvasCard = ({
             {/** Sub-canvases will be rendered recursively by Canvas component **/}
             <Canvas
               {...{
-                ...rootCanvas,
+                id: rootCanvasId,
                 shapeAttributes,
                 currentTool,
                 onSelectCanvasDimensions,

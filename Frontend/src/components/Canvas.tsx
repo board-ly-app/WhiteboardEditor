@@ -63,6 +63,7 @@ import {
 
 import {
   setSelectedCanvasByWhiteboard,
+  updateWhiteboard,
 } from '@/controllers';
 
 import {
@@ -146,9 +147,7 @@ const Canvas = ({
 
   const {
     whiteboardId,
-    setCurrentTool,
-    currentDispatcher,
-    setCurrentDispatcher,
+    currentDispatcherRef,
     canvasGroupRefsByIdRef,
     setTooltipText : setWhiteboardTooltipText,
     setEditingText,
@@ -228,10 +227,12 @@ const Canvas = ({
         });
 
         // Switch to hand tool after shape creation
-        setCurrentTool("hand");
+        updateWhiteboard(dispatch, whiteboardId, {
+          currentTool: "hand",
+        });
       }
     },
-    [clientMessenger, setCurrentTool]
+    [clientMessenger, canvasId, dispatch, whiteboardId]
   );// -- end addShapes
 
   const notifyStartEditing = useCallback(
@@ -329,10 +330,10 @@ const Canvas = ({
   const dispatcher : OperationDispatcher = getDispatcher(currentTool);
 
   useEffect(() => {
-    if (currentDispatcher !== dispatcher) {
-      setCurrentDispatcher(dispatcher);
+    if (currentDispatcherRef.current !== dispatcher) {
+      currentDispatcherRef.current = dispatcher;
     }
-  }, [currentTool]);
+  }, [dispatcher]);
 
   // -- track ref to group enclosing the contents of this Canvas
   useEffect(

@@ -88,7 +88,7 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   const {
     whiteboardId,
     handleUpdateShapes,
-    currentDispatcher,
+    currentDispatcherRef,
   } = whiteboardContext;
 
   const currentTool : ToolChoice | null = useSelector(
@@ -135,19 +135,19 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
     return null;
   }
   
-  let AttributeComponents: AttributeDefinition[];
+  let attributeComponents: AttributeDefinition[];
 
   if (currentTool === "hand" && shapeType) {
     // Shape edit mode
-    AttributeComponents = getAttributesByShape(shapeType);
+    attributeComponents = getAttributesByShape(shapeType);
   }
   else {
     // Tool mode
-    if (!currentDispatcher || currentTool === "hand") {
+    if (currentTool === "hand") {
       return null;
     }
 
-    AttributeComponents = currentDispatcher.getAttributes();
+    attributeComponents = currentDispatcherRef.current?.getAttributes() ?? [];
   }
 
   return (
@@ -159,7 +159,7 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
           ev.preventDefault();
         }}
       >
-        {AttributeComponents.map(({ Component, key }) => (
+        {attributeComponents.map(({ Component, key }) => (
           <Component
             key={key}
             selectedShapeIds={selectedCanvasObjectIds}

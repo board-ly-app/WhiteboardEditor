@@ -57,11 +57,13 @@ const whiteboardsSlice = createSlice({
 export const {
   setWhiteboards,
   removeWhiteboards,
+  updateWhiteboardsById,
 } = whiteboardsSlice.actions;
 
 export type WhiteboardsActions =
   | ReturnType<typeof setWhiteboards>
   | ReturnType<typeof removeWhiteboards>
+  | ReturnType<typeof updateWhiteboardsById>
 ;
 
 export const {

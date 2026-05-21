@@ -136,8 +136,11 @@ import type {
   CanvasData,
   CanvasIdType,
   WhiteboardIdType,
-  WhiteboardAttribs,
 } from '@/types/WebSocketProtocol';
+
+import {
+  type WhiteboardState,
+} from '@/types/Store';
 
 import {
   type ClientSummary,
@@ -156,11 +159,15 @@ import {
 import HeaderUnauthed from '@/components/HeaderUnauthed';
 import { useUser } from '@/hooks/useUser';
 
+import {
+  updateWhiteboard,
+} from '@/controllers';
+
 type ComponentStatus = 
-  | { status: 'ready'; currWhiteboard: WhiteboardAttribs; }
+  | { status: 'ready'; currWhiteboard: WhiteboardState; }
   | { status: 'pending'; }
   | { status: 'error'; error: AxiosError; }
-  | { status: 'deleting'; currWhiteboard: WhiteboardAttribs; }
+  | { status: 'deleting'; currWhiteboard: WhiteboardState; }
   | { status: 'deleted'; }
 ;
 
@@ -205,8 +212,6 @@ const Whiteboard = ({
   const {
     whiteboardId,
     userPermissions,
-    currentTool,
-    setCurrentTool,
   } = whiteboardContext;
 
   const {
@@ -267,8 +272,40 @@ const Whiteboard = ({
     (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId)
   ) || {};
 
-  const currWhiteboard: WhiteboardAttribs | null = useSelector(
+  const currWhiteboard: WhiteboardState | null = useSelector(
     (state: RootState) => selectWhiteboardById(state, whiteboardId)
+  );
+
+  // Current tool choice will be saved to localStorage to ensure seamless UX
+  // after page reloads.
+  // TODO: save default tool choice ('hand') in a separate config file.
+  // const [currentTool, setCurrentTool] = useState<ToolChoice>('hand');
+  const LS_CURRENT_TOOL_KEY = 'current_tool';
+
+  // -- Reload previous current tool on page refresh
+  useEffect(
+    () => {
+      const savedTool : ToolChoice | null = localStorage.getItem(LS_CURRENT_TOOL_KEY) as ToolChoice | null;
+
+      if (savedTool) {
+        updateWhiteboard(dispatch, whiteboardId, {
+          currentTool: savedTool,
+        });
+      }
+    },
+    [dispatch, whiteboardId]
+  );
+
+  const currentTool : ToolChoice | null = currWhiteboard?.currentTool ?? null;
+
+  // -- make sure to save to localStorage whenever current tool changes
+  useEffect(
+    () => {
+      if (currentTool) {
+        localStorage.setItem(LS_CURRENT_TOOL_KEY, currentTool);
+      }
+    },
+    [currentTool]
   );
 
   const canvases: CanvasData[] = useSelector((state: RootState) => {
@@ -305,7 +342,9 @@ const Whiteboard = ({
   // Used within Toolbar
   const handleToolChange = useCallback(
     (choice : ToolChoice) => {
-      setCurrentTool(choice);
+      updateWhiteboard(dispatch, whiteboardId, {
+        currentTool: choice,
+      });
 
       for (const objId of selectedCanvasObjects) {
         clientMessenger?.sendUnselectedCanvasObject({
@@ -314,7 +353,7 @@ const Whiteboard = ({
         });
       }// -- end for objId
     },
-    [dispatch, setCurrentTool, selectedCanvasObjects]
+    [dispatch, selectedCanvasObjects, clientMessenger, whiteboardId]
   );
 
   const whiteboardStatus = useSelector(
@@ -515,7 +554,10 @@ const Whiteboard = ({
       
       canvasesSorted.sort((a, b) => new Date(a.timeCreated) < new Date(b.timeCreated) ? -1 : 1);
       
-      const title = currWhiteboard.name;
+      const {
+        name: title,
+        currentTool,
+      } = currWhiteboard;
       
       // --- misc functions
       const handleCreateCanvasDimensions = (parentCanvasId: CanvasIdType, dimensions: NewCanvasDimensions) => {
@@ -838,6 +880,10 @@ const Whiteboard = ({
       const {
         currWhiteboard,
       } = status;
+
+      const {
+        currentTool,
+      } = currWhiteboard;
       
       const rootCanvasId = currWhiteboard.rootCanvas;
       
@@ -947,7 +993,6 @@ const WrappedWhiteboard = () => {
   const authContext = useContext(AuthContext);
   const clientMessengerContext = useContext(ClientMessengerContext);
   const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);
-  const [currentDispatcher, setCurrentDispatcher] = useState<OperationDispatcher | null>(null);
   const [tooltipText, setTooltipText] = useState<string>("");
   const [editingText, setEditingText] = useState<string>("");
 
@@ -1011,35 +1056,10 @@ const WrappedWhiteboard = () => {
     selectCanvasObjectsByWhiteboard(state, whiteboardId)
   ));
 
-  // Current tool choice will be saved to localStorage to ensure seamless UX
-  // after page reloads.
-  // TODO: save default tool choice ('hand') in a separate config file.
-  // const [currentTool, setCurrentTool] = useState<ToolChoice>('hand');
-  const LS_CURRENT_TOOL_KEY = 'current_tool';
-  const CURRENT_TOOL_DEFAULT : ToolChoice = 'hand'
-
-  const [currentTool, setCurrentTool] = useState<ToolChoice>((): ToolChoice => {
-    const savedTool : string | null = localStorage.getItem(LS_CURRENT_TOOL_KEY);
-
-    if (! savedTool) {
-      // return default choice
-      return CURRENT_TOOL_DEFAULT;
-    } else {
-      // just trust that the retrieved tool is a valid tool
-      return savedTool as ToolChoice;
-    }
-  });
-
-  // -- make sure to save to localStorage whenever current tool changes
-  useEffect(
-    () => {
-      localStorage.setItem(LS_CURRENT_TOOL_KEY, currentTool);
-    },
-    [currentTool]
-  );
-
   // -- track refs to canvas groups (frames)
   const canvasGroupRefsByIdRef: RefObject<Record<CanvasIdType, RefObject<Konva.Group | null>>> = useRef({});
+
+  const currentDispatcherRef = useRef<OperationDispatcher | null>(null);
 
   // -- transform canvas object diffs into full updated shapes
   const handleUpdateShapes = useCallback(
@@ -1082,15 +1102,12 @@ const WrappedWhiteboard = () => {
   return (
     <WhiteboardProvider
       handleUpdateShapes={handleUpdateShapes}
-      currentTool={currentTool}
-      setCurrentTool={setCurrentTool}
       whiteboardId={whiteboardId}
       userPermissions={userPermissions}
       setSharedUsers={setSharedUsers}
       newCanvasAllowedUsers={newCanvasAllowedUsers}
       setNewCanvasAllowedUsers={setNewCanvasAllowedUsers}
-      currentDispatcher={currentDispatcher}
-      setCurrentDispatcher={setCurrentDispatcher}
+      currentDispatcherRef={currentDispatcherRef}
       canvasGroupRefsByIdRef={canvasGroupRefsByIdRef}
       tooltipText={tooltipText}
       setTooltipText={setTooltipText}
