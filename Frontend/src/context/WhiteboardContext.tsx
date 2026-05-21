@@ -23,10 +23,10 @@ import type {
   WhiteboardIdType,
 } from '@/types/WebSocketProtocol';
 
-import type {
-  UserPermission,
-  UserPermissionEnum,
-} from '@/types/APIProtocol'
+import {
+  type UserPermission,
+} from '@/types/UserPermission'
+
 import type { OperationDispatcher } from '@/types/OperationDispatcher';
 
 export interface WhiteboardContextType {
@@ -39,8 +39,6 @@ export interface WhiteboardContextType {
   newCanvasAllowedUsers: string[];
   setNewCanvasAllowedUsers: React.Dispatch<React.SetStateAction<string[]>>;
   // -- view/edit/own permission - determines which actions to enable/disable
-  ownPermission: UserPermissionEnum | null;
-  setOwnPermission: React.Dispatch<React.SetStateAction<UserPermissionEnum | null>>;
   currentDispatcher: OperationDispatcher | null;
   setCurrentDispatcher: React.Dispatch<React.SetStateAction<OperationDispatcher | null>>;
   // -- tracks refs to Canvas groups (Konva Groups serve as frames for each Canvas)
@@ -55,28 +53,24 @@ export type WhiteboardProvidersProps = WhiteboardContextType;
 
 const WhiteboardContext = createContext<WhiteboardContextType | undefined>(undefined);
 
-const WhiteboardProvider = (props: PropsWithChildren<WhiteboardProvidersProps>): React.JSX.Element => {
-  const {
-    handleUpdateShapes,
-    currentTool,
-    setCurrentTool,
-    whiteboardId,
-    children,
-    userPermissions,
-    setSharedUsers,
-    newCanvasAllowedUsers,
-    setNewCanvasAllowedUsers,
-    ownPermission,
-    setOwnPermission,
-    currentDispatcher,
-    setCurrentDispatcher,
-    canvasGroupRefsByIdRef,
-    tooltipText,
-    setTooltipText,
-    editingText,
-    setEditingText,
-  } = props;
-
+const WhiteboardProvider = ({
+  handleUpdateShapes,
+  currentTool,
+  setCurrentTool,
+  whiteboardId,
+  children,
+  userPermissions,
+  setSharedUsers,
+  newCanvasAllowedUsers,
+  setNewCanvasAllowedUsers,
+  currentDispatcher,
+  setCurrentDispatcher,
+  canvasGroupRefsByIdRef,
+  tooltipText,
+  setTooltipText,
+  editingText,
+  setEditingText,
+}: PropsWithChildren<WhiteboardProvidersProps>): React.JSX.Element => {
   console.log('!! WHITEBOARD_CONTEXT RERENDER');
   console.log('!! NL');
 
@@ -90,8 +84,6 @@ const WhiteboardProvider = (props: PropsWithChildren<WhiteboardProvidersProps>):
       setSharedUsers,
       newCanvasAllowedUsers,
       setNewCanvasAllowedUsers,
-      ownPermission,
-      setOwnPermission,
       currentDispatcher,
       setCurrentDispatcher,
       canvasGroupRefsByIdRef,

@@ -62,7 +62,17 @@ export const addWhiteboard = (
     allowedUsersByCanvas,
   } = normalizeWhiteboard(whiteboard);
 
-  dispatch(setWhiteboards(whiteboards));
+  // -- add default whiteboard settings
+  dispatch(setWhiteboards(Object.fromEntries(Object.entries(whiteboards).map(
+    ([wid, attribs]) => [
+      wid, {
+        ...attribs,
+        currentTool: "hand",
+        tooltipText: "",
+        editingText: "",
+      }
+    ]
+  ))));
   dispatch(setCanvases(canvases));
   dispatch(setCanvasObjects(canvasObjects));
   dispatch(setChildCanvasesByCanvas(childCanvasesByCanvas));

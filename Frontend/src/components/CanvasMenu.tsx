@@ -40,6 +40,14 @@ import {
   selectCanvasById,
 } from '@/store/canvases/canvasesSelectors';
 
+import {
+  selectWhiteboardPermissionByUser,
+} from '@/store/whiteboards/whiteboardsSelectors';
+
+import {
+  useUser,
+} from '@/hooks/useUser';
+
 import WhiteboardContext from "@/context/WhiteboardContext";
 
 import {
@@ -60,7 +68,7 @@ import {
 } from "@/store/allowedUsers/allowedUsersByCanvasSlice";
 
 import {
-  selectWhiteboardById
+  selectWhiteboardById,
 } from '@/store/whiteboards/whiteboardsSelectors';
 
 import {
@@ -96,10 +104,21 @@ const CanvasMenu = ({
     throw new Error("CanvasMenu must be used inside a WhiteboardProvider");
   }
 
+  const {
+    user,
+  } = useUser();
+
+  if (! user) {
+    throw new Error('No authenticated user provided');
+  }
+
   const { 
-    ownPermission,
     canvasGroupRefsByIdRef,
   } = whiteboardContext;
+
+  const ownPermission = useSelector(
+    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id)
+  );
 
   // -- unpack ClientMessenger context
   const clientMessengerContext = useContext(ClientMessengerContext);

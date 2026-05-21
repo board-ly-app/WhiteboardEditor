@@ -40,7 +40,7 @@ import {
 
 import {
   type User,
-} from '@/types/APIProtocol';
+} from '@/types/User';
 
 import UserCacheContext from '@/context/UserCacheContext';
 
@@ -160,7 +160,6 @@ const CanvasCard = ({
   );
 
   const allowedUserIds = useSelector(
-    // ['', ''] is effectively a null canvas key
     (state: RootState) => selectAllowedUsersByCanvas(state, selectedCanvasId ?? '')
   );
 

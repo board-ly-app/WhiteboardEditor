@@ -6,7 +6,7 @@ import HeaderUnauthed from "@/components/HeaderUnauthed";
 import Page from "@/components/Page";
 import {
   type User,
-} from '@/types/APIProtocol';
+} from '@/types/User';
 import {
   useUser,
 } from "@/hooks/useUser";

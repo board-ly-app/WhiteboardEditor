@@ -4,22 +4,22 @@ import {
 } from '@reduxjs/toolkit'
 
 // -- local imports
-import type {
-  CanvasIdType,
+import {
+  type UserIdType,
+  type CanvasIdType,
 } from '@/types/WebSocketProtocol';
 
 const allowedUsersByCanvasSlice = createSlice({
   name: 'allowedUsersByCanvas',
-  // Will store data in a <whiteboard_id, canvas_id> => string[] format
-  initialState: {} as Record<string, string[]>,
+  initialState: {} as Record<CanvasIdType, UserIdType[]>,
   reducers: {
-    setAllowedUsersByCanvas(state, action: PayloadAction<Record<string, string[]>>) {
+    setAllowedUsersByCanvas(state, action: PayloadAction<Record<CanvasIdType, UserIdType[]>>) {
       return {
         ...state,
         ...action.payload
       };
     },
-    addAllowedUsersByCanvas(state, action: PayloadAction<Record<string, string[]>>) {
+    addAllowedUsersByCanvas(state, action: PayloadAction<Record<CanvasIdType, UserIdType[]>>) {
       const out = { ...state };
 
       Object.entries(action.payload).forEach(([id, users]) => {

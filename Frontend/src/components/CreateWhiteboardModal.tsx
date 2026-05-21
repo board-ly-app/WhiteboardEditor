@@ -15,7 +15,7 @@ import {
   USER_PERMISSION_TYPES,
   type UserPermission,
   type UserPermissionEnum
-} from '@/types/APIProtocol';
+} from '@/types/UserPermission';
 
 // -- ui
 import {

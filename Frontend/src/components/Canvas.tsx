@@ -58,6 +58,10 @@ import {
 } from '@/store/canvases/canvasesSelectors';
 
 import {
+  selectWhiteboardPermissionByUser,
+} from '@/store/whiteboards/whiteboardsSelectors';
+
+import {
   setSelectedCanvasByWhiteboard,
 } from '@/controllers';
 
@@ -143,7 +147,6 @@ const Canvas = ({
   const {
     whiteboardId,
     setCurrentTool,
-    ownPermission,
     currentDispatcher,
     setCurrentDispatcher,
     canvasGroupRefsByIdRef,
@@ -177,6 +180,14 @@ const Canvas = ({
     user,
   } = useUser();
 
+  if (! user) {
+    throw new Error('No authenticated user provided');
+  }
+
+  const ownPermission = useSelector(
+    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id)
+  );
+
   const allowedUserIds = useSelector(
     // '' is effectively a null canvas id
     (state: RootState) => selectAllowedUsersByCanvas(state, canvasId || '')
@@ -190,9 +201,6 @@ const Canvas = ({
     (state: RootState) => selectCanvasObjectIdsByCanvas(state, canvasId)
   );
 
-  // const userHasAccess = user?.id
-  //   ? allowedUserIds === undefined || allowedUserIds.length === 0 || allowedUserIds.includes(user.id)
-  //   : false;
   const userHasAccess : boolean = useMemo(
     () => {
       if (user?.id) {

@@ -46,7 +46,7 @@ import Page from '@/components/Page';
 import HeaderAuthed from "@/components/HeaderAuthed";
 import {
   type User,
-} from '@/types/APIProtocol';
+} from '@/types/User';
 import {
   useUser,
 } from "@/hooks/useUser";

@@ -9,11 +9,26 @@ import {
 } from '@/types/WebSocketProtocol';
 
 import {
+  type WhiteboardState,
+} from '@/types/Store';
+
+import {
+  type UserIdType,
+} from '@/types/WebSocketProtocol';
+
+import {
+  type UserPermissionEnum,
+} from '@/types/UserPermission';
+
+import {
   type WhiteboardStatusEnum,
 } from '@/store/whiteboards/whiteboardStatusSlice';
 
-export const selectWhiteboardById = (state: RootState, whiteboardId: WhiteboardIdType) => (
-  state.whiteboards[whiteboardId]
+export const selectWhiteboardById = (
+  state: RootState,
+  whiteboardId: WhiteboardIdType | null
+): WhiteboardState | null => (
+  whiteboardId && state.whiteboards[whiteboardId] || null
 );
 
 export const selectCanvasesForWhiteboard = (
@@ -39,3 +54,17 @@ export const selectWhiteboardStatus = (
 ): WhiteboardStatusEnum | undefined => {
   return state.whiteboardStatus.statusesByWhiteboard[whiteboardId];
 };
+
+export const selectWhiteboardPermissionByUser = (
+  state: RootState,
+  whiteboardId: WhiteboardIdType,
+  userId: UserIdType,
+): UserPermissionEnum | null => {
+  if (! (whiteboardId in state.whiteboards)) {
+    return null;
+  } else {
+    const whiteboard = state.whiteboards[whiteboardId];
+
+    return whiteboard.permissionsByUserId[userId]?.permission ?? null;
+  }
+};// -- end selectWhiteboardPermissionByUser

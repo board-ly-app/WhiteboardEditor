@@ -19,7 +19,7 @@ import {
 // -- local imports
 import {
   type User,
-} from '@/types/APIProtocol';
+} from '@/types/User';
 
 import {
   cn,

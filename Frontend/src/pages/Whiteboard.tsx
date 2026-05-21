@@ -56,8 +56,6 @@ import {
 import {
   axiosResponseIsError,
   type Whiteboard as APIWhiteboard,
-  type UserPermissionEnum,
-  type UserPermission,
   type ErrorResponse as APIErrorResponse,
 } from '@/types/APIProtocol';
 
@@ -78,6 +76,7 @@ import {
 import {
   selectWhiteboardById,
   selectWhiteboardStatus,
+  selectWhiteboardPermissionByUser,
 } from '@/store/whiteboards/whiteboardsSelectors';
 
 import {
@@ -180,7 +179,7 @@ const Whiteboard = ({
   const { user } = useUser();
 
   if (!user) {
-    throw new Error('No user found');
+    throw new Error('No authenticated user found');
   }
 
   const dispatch = store.dispatch;
@@ -206,7 +205,6 @@ const Whiteboard = ({
   const {
     whiteboardId,
     userPermissions,
-    ownPermission,
     currentTool,
     setCurrentTool,
   } = whiteboardContext;
@@ -214,6 +212,10 @@ const Whiteboard = ({
   const {
     clientMessenger,
   } = clientMessengerContext;
+
+  const ownPermission = useSelector(
+    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id)
+  );
 
   // -- prop-derived state
   const whiteboardKey = ['whiteboard', whiteboardId];
@@ -953,10 +955,6 @@ const WrappedWhiteboard = () => {
     throw new Error('AuthContext not provided to Whiteboard');
   }
 
-  const {
-    user,
-  } = authContext;
-
   if (! clientMessengerContext) {
     throw new Error('ClientMessengerContext not provided to Whiteboard');
   }
@@ -1006,33 +1004,8 @@ const WrappedWhiteboard = () => {
     },
   });
 
-  const {
-    data: whiteboardData,
-  } = query;
-
   // update the state of userPermissions whenever whiteboardData changes
   const [userPermissions, setSharedUsers] = useState<APIWhiteboard['user_permissions']>([]);
-
-  // -- view/edit/own - determines which actions to enable or disable
-  const [ownPermission, setOwnPermission] = useState<UserPermissionEnum | null>(null);
-
-  useEffect(() => {
-    if (whiteboardData && user) {
-      const newOwnPermission = whiteboardData.user_permissions
-        .find(
-          (perm: UserPermission) => perm.type === 'user' && perm.user.id === user.id
-        ) || null;
-
-      setSharedUsers(whiteboardData.user_permissions);
-      
-      if (newOwnPermission) {
-        setOwnPermission(newOwnPermission.permission);
-      }
-      else {
-        setOwnPermission(null);
-      }
-    }
-  }, [whiteboardData, user])
 
   const canvasObjectsByCanvas: Record<CanvasIdType, Record<CanvasObjectIdType, CanvasObjectModel>> = useSelector((state: RootState) => (
     selectCanvasObjectsByWhiteboard(state, whiteboardId)
@@ -1116,8 +1089,6 @@ const WrappedWhiteboard = () => {
       setSharedUsers={setSharedUsers}
       newCanvasAllowedUsers={newCanvasAllowedUsers}
       setNewCanvasAllowedUsers={setNewCanvasAllowedUsers}
-      ownPermission={ownPermission}
-      setOwnPermission={setOwnPermission}
       currentDispatcher={currentDispatcher}
       setCurrentDispatcher={setCurrentDispatcher}
       canvasGroupRefsByIdRef={canvasGroupRefsByIdRef}

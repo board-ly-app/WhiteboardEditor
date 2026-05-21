@@ -5,7 +5,7 @@ import type {
 
 import {
   type User,
-} from '@/types/APIProtocol';
+} from '@/types/User';
 
 export interface AuthContextType {
   user: User | null;

@@ -36,6 +36,10 @@ import {
 } from '@/store/client/clientSelectors';
 
 import {
+  selectWhiteboardById,
+} from '@/store/whiteboards/whiteboardsSelectors';
+
+import {
   getShapeType,
   selectCanvasObjectById,
   selectSelectedCanvasObjectsByWhiteboard,
@@ -54,6 +58,10 @@ import type {
   CanvasObjectIdType, 
   CanvasObjectModel,
 } from '@/types/CanvasObjectModel';
+
+import {
+  type ToolChoice,
+} from '@/components/Tool';
 
 export interface ShapeAttributesMenuProps {
   attributes: ShapeAttributesState;
@@ -80,9 +88,16 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   const {
     whiteboardId,
     handleUpdateShapes,
-    currentTool,
     currentDispatcher,
   } = whiteboardContext;
+
+  const currentTool : ToolChoice | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null
+  );
+
+  if (! currentTool) {
+    throw new Error('no current tool provided');
+  }
 
   const clientId : ClientIdType | null = useSelector(
     (state: RootState) => selectClientId(state)

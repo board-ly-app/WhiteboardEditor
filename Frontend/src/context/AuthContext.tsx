@@ -6,7 +6,7 @@ import {
 
 import {
   type User,
-} from '@/types/APIProtocol';
+} from '@/types/User';
 
 import type {
   AuthContextType,
