@@ -52,7 +52,9 @@ import {
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import {
+  selectCanvasById,
   selectSelectedCanvasByWhiteboard,
+  selectChildCanvasIdsByCanvas,
 } from '@/store/canvases/canvasesSelectors';
 
 import {
@@ -82,7 +84,7 @@ import type {
 
 import {
   type CanvasIdType,
-  type CanvasData,
+  type CanvasAttribs,
 } from '@/types/WebSocketProtocol';
 
 import {
@@ -111,29 +113,19 @@ import useHandDispatcher from '@/dispatchers/useHandDispatcher';
 import useTextDispatcher from '@/dispatchers/useTextDispatcher';
 import useCreateCanvasDispatcher from '@/dispatchers/useCreateCanvasDispatcher';
 
-export interface CanvasProps extends CanvasData {
+export interface CanvasProps {
+  id: CanvasIdType;
   shapeAttributes: ShapeAttributesState;
   currentTool: ToolChoice;
-  // -- should be fetched from selector in root calling component
-  childCanvasesByCanvas: Record<CanvasIdType, Record<CanvasIdType, CanvasIdType>>;
-  // -- should be fetched from selector in root calling component
-  canvasesById: Record<CanvasIdType, CanvasData>;
   onSelectCanvasDimensions: (canvasId: CanvasIdType, dimensions: NewCanvasDimensions) => void;
 }
 
-const Canvas = (props: CanvasProps) => {
-  const {
-    id : canvasId,
-    parentCanvas,
-    width,
-    height,
-    shapeAttributes,
-    currentTool,
-    childCanvasesByCanvas,
-    canvasesById,
-    onSelectCanvasDimensions,
-  } = props;
-
+const Canvas = ({
+  id : canvasId,
+  shapeAttributes,
+  currentTool,
+  onSelectCanvasDimensions,
+}: CanvasProps) => {
   const whiteboardContext = useContext(WhiteboardContext);
 
   if (! whiteboardContext) {
@@ -158,6 +150,20 @@ const Canvas = (props: CanvasProps) => {
     setTooltipText : setWhiteboardTooltipText,
     setEditingText,
   } = whiteboardContext;
+
+  const canvasAttribs : CanvasAttribs | null = useSelector(
+    (state: RootState) => selectCanvasById(state, canvasId)
+  );
+
+  if (! canvasAttribs) {
+    throw new Error(`No canvas with id ${canvasId} found in store`);
+  }
+
+  const {
+    height,
+    parentCanvas,
+    width,
+  } = canvasAttribs;
 
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
     (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)
@@ -419,10 +425,9 @@ const Canvas = (props: CanvasProps) => {
     [editingText, currentEditor, setEditingText, parentCanvas]
   );
 
-  const childCanvasesData : CanvasData[] = childCanvasesByCanvas[canvasId] ?
-    Object.keys(childCanvasesByCanvas[canvasId]).map((childCanvasId: CanvasIdType) => canvasesById[childCanvasId] || null)
-    .filter((canvas: CanvasData | null): canvas is CanvasData => !!canvas)
-    : [];
+  const childCanvasIds : CanvasIdType[] | null = useSelector(
+    (state: RootState) => selectChildCanvasIdsByCanvas(state, canvasId)
+  );
 
   const {
     originX,
@@ -552,16 +557,14 @@ const Canvas = (props: CanvasProps) => {
       }
 
       {/** Layer child canvases on top **/}
-      {childCanvasesData && (
-        childCanvasesData.map(canvasData => (
+      {childCanvasIds && (
+        childCanvasIds.map(childCanvasId => (
           <Canvas
-            key={canvasData.id}
-            {
-              ...{
-                ...props,
-                ...canvasData
-              }
-            }
+            key={childCanvasId}
+            id={childCanvasId}
+            shapeAttributes={shapeAttributes}
+            currentTool={currentTool}
+            onSelectCanvasDimensions={onSelectCanvasDimensions}
           />
         ))
       )}

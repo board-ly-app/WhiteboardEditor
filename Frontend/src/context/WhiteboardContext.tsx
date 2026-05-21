@@ -77,6 +77,9 @@ const WhiteboardProvider = (props: PropsWithChildren<WhiteboardProvidersProps>):
     setEditingText,
   } = props;
 
+  console.log('!! WHITEBOARD_CONTEXT RERENDER');
+  console.log('!! NL');
+
   return (
     <WhiteboardContext.Provider value={{
       handleUpdateShapes,

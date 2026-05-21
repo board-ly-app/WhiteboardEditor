@@ -62,7 +62,7 @@ export interface CanvasData extends CanvasAttribs {
 export interface WhiteboardAttribs {
   id: WhiteboardIdType;
   name: string;
-  rootCanvas: WhiteboardIdType;
+  rootCanvas: CanvasIdType;
   userPermissions: UserPermission[];
 }
 

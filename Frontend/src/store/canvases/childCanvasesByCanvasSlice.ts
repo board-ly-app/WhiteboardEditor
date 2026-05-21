@@ -136,11 +136,6 @@ const childCanvasesByCanvasSlice = createSlice({
       };
     },
   },
-  selectors: {
-    // Entire state is mapping of object ids to objects
-    // Canvases redundantly store their ids
-    selectChildCanvasesByCanvas: (state, canvasId: CanvasIdType) => state.childCanvasesByCanvas[canvasId]
-  }
 });
 
 export const {
@@ -154,9 +149,5 @@ export type ChildCanvasesByCanvasActions =
   | ReturnType<typeof addChildCanvasesByCanvas>
   | ReturnType<typeof removeCanvases>
 ;
-
-export const {
-  selectChildCanvasesByCanvas,
-} = childCanvasesByCanvasSlice.selectors;
 
 export default childCanvasesByCanvasSlice.reducer;

@@ -273,10 +273,6 @@ const Whiteboard = ({
     return selectCanvasesWithObjectsByWhiteboardId(state, whiteboardId)
   });
 
-  const childCanvasesByCanvas : Record<CanvasIdType, Record<CanvasIdType, CanvasIdType>> = useSelector(
-    (state: RootState) => state.childCanvasesByCanvas.childCanvasesByCanvas
-  );
-
   const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
       state, whiteboardId, user.id
@@ -510,9 +506,6 @@ const Whiteboard = ({
       const {
         currWhiteboard,
       } = status;
-      const canvasesById : Record<CanvasIdType, CanvasData> = Object.fromEntries(canvases.map(
-        canvasData => [ canvasData.id, canvasData ]
-      ));
       
       const rootCanvasId = currWhiteboard.rootCanvas;
       
@@ -695,8 +688,6 @@ const Whiteboard = ({
                     rootCanvasId={rootCanvasId}
                     shapeAttributes={shapeAttributesState}
                     currentTool={currentTool}
-                    canvasesById={canvasesById}
-                    childCanvasesByCanvas={childCanvasesByCanvas}
                     onSelectCanvasDimensions={handleCreateCanvasDimensions}
                   />
                 </div>
@@ -845,10 +836,6 @@ const Whiteboard = ({
       const {
         currWhiteboard,
       } = status;
-
-      const canvasesById : Record<CanvasIdType, CanvasData> = Object.fromEntries(canvases.map(
-        canvasData => [ canvasData.id, canvasData ]
-      ));
       
       const rootCanvasId = currWhiteboard.rootCanvas;
       
@@ -911,8 +898,6 @@ const Whiteboard = ({
                     rootCanvasId={rootCanvasId}
                     shapeAttributes={shapeAttributesState}
                     currentTool={currentTool}
-                    canvasesById={canvasesById}
-                    childCanvasesByCanvas={childCanvasesByCanvas}
                     onSelectCanvasDimensions={handleCreateCanvasDimensions}
                   />
                 </div>

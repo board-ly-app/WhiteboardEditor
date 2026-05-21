@@ -35,7 +35,7 @@ import {
   type ClientIdType,
   type WhiteboardIdType,
   type CanvasIdType,
-  type CanvasData,
+  type CanvasAttribs,
 } from "@/types/WebSocketProtocol";
 
 import {
@@ -66,6 +66,7 @@ import {
 
 import {
   selectSelectedCanvasByWhiteboard,
+  selectCanvasById,
 } from '@/store/canvases/canvasesSelectors';
 
 import {
@@ -83,22 +84,18 @@ export interface CanvasCardProps {
   whiteboardId: WhiteboardIdType;
   rootCanvasId: CanvasIdType,
   shapeAttributes: ShapeAttributesState;
-  childCanvasesByCanvas: Record<CanvasIdType, Record<CanvasIdType, CanvasIdType>>;
-  canvasesById: Record<CanvasIdType, CanvasData>;
   // -- editor identified by user id
   currentTool: ToolChoice;
   onSelectCanvasDimensions: (canvasId: CanvasIdType, dimensions: NewCanvasDimensions) => void;
 }
 
-function CanvasCard({
+const CanvasCard = ({
   whiteboardId,
   rootCanvasId,
   shapeAttributes,
-  childCanvasesByCanvas,
-  canvasesById,
   currentTool,
   onSelectCanvasDimensions,
-}: CanvasCardProps) {
+}: CanvasCardProps) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -141,7 +138,9 @@ function CanvasCard({
 
   const [selectedCanvasAllowedUsers, setSelectedCanvasAllowedUsers] = useState<User[] | null>(null);
 
-  const rootCanvas : CanvasData | undefined = canvasesById[rootCanvasId];
+  const rootCanvas : CanvasAttribs | null = useSelector(
+    (state: RootState) => selectCanvasById(state, rootCanvasId)
+  );
 
   if (! rootCanvas) {
     throw new Error(`Could not find canvas ${rootCanvasId}`);
@@ -152,7 +151,9 @@ function CanvasCard({
     height,
   } = rootCanvas;
 
-  const selectedCanvas : CanvasData | null = canvasesById[selectedCanvasId ?? ''] || null;
+  const selectedCanvas : CanvasAttribs | null = useSelector(
+    (state: RootState) => selectCanvasById(state, selectedCanvasId || null)
+  );
 
   const clientId : ClientIdType | null = useSelector(
     (state: RootState) => selectClientId(state)
@@ -326,8 +327,6 @@ function CanvasCard({
                 ...rootCanvas,
                 shapeAttributes,
                 currentTool,
-                childCanvasesByCanvas,
-                canvasesById,
                 onSelectCanvasDimensions,
               }}
             />
@@ -336,12 +335,12 @@ function CanvasCard({
       </div>
 
       {/* Canvas Menu & Tooltip Text */}
-      {selectedCanvasId && (
+      {selectedCanvas && (
         <div className='pointer-events-none fixed bottom-6 left-2 flex justify-between items-end gap-4 w-[95vw] z-50'>
           <div className="pointer-events-auto">
             <CanvasMenu 
               name={selectedCanvas.name}
-              canvasId={selectedCanvasId}
+              canvasId={selectedCanvas.id}
               whiteboardId={whiteboardId}
               allowedUsernames={selectedCanvasAllowedUsers
                 ?.map(u => u.username)
