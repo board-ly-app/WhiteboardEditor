@@ -53,9 +53,6 @@ const WhiteboardProvider = ({
   currentDispatcherRef,
   canvasGroupRefsByIdRef,
 }: PropsWithChildren<WhiteboardProvidersProps>): React.JSX.Element => {
-  console.log('!! WHITEBOARD_CONTEXT RERENDER');
-  console.log('!! NL');
-
   return (
     <WhiteboardContext.Provider value={{
       handleUpdateShapes,
