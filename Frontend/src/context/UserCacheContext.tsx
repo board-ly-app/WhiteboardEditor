@@ -91,7 +91,7 @@ export const UserCacheProvider = ({
         return user;
       }
     },
-    [api, location, navigate, usersByIdRef]
+    [location, navigate, usersByIdRef]
   );// -- end fetchUserById
 
   const setUserById = useCallback(

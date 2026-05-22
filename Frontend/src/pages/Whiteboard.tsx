@@ -230,7 +230,6 @@ const Whiteboard = ({
     isFetching: isWhiteboardFetching,
     error: whiteboardError,
   } = query;
-  const whiteboardIdRef = useRef<WhiteboardIdType>(whiteboardId);
 
   // alert user of any errors fetching whiteboard
   useEffect(
@@ -250,11 +249,6 @@ const Whiteboard = ({
       }
     }, [whiteboardError, whiteboardId]
   );
-
-  // dirty trick to keep whiteboardIdRef in-sync with whiteboardId
-  useEffect(() => {
-    whiteboardIdRef.current = whiteboardId;
-  }, [whiteboardId]);
 
   const [shapeAttributesState, dispatchShapeAttributes] = useReducer(shapeAttributesReducer, {
     x: 0,
@@ -440,7 +434,7 @@ const Whiteboard = ({
         setNewCanvasParentId(parentCanvasId);
         openCreateCanvasModal();
     },
-    [setNewCanvasDimensions, setNewCanvasDimensions, openCreateCanvasModal]
+    [setNewCanvasDimensions, openCreateCanvasModal]
   );
 
   const handleNewCanvas = useCallback(
@@ -471,7 +465,7 @@ const Whiteboard = ({
     [
       clientMessenger,
       newCanvasDimensions,
-      newCanvasDimensions,
+      newCanvasParentId,
       setNewCanvasParentId,
       setNewCanvasDimensions,
     ]

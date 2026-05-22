@@ -240,7 +240,7 @@ const Canvas = ({
         canvasId,
       });
     },
-    [clientMessenger]
+    [clientMessenger, canvasId]
   );// -- end notifyStartEditing
   
   const defaultDispatcher = useMockDispatcher({
@@ -322,6 +322,7 @@ const Canvas = ({
       textDispatcher,
       createCanvasDispatcher,
       defaultDispatcher,
+      inaccessibleDispatcher,
     ]
   );
 
@@ -331,7 +332,7 @@ const Canvas = ({
     if (currentDispatcherRef.current !== dispatcher) {
       currentDispatcherRef.current = dispatcher;
     }
-  }, [dispatcher]);
+  }, [dispatcher, currentDispatcherRef, whiteboardId]);
 
   // -- track ref to group enclosing the contents of this Canvas
   useEffect(
@@ -432,7 +433,7 @@ const Canvas = ({
         editingText: newEditingText,
       });
     },
-    [dispatch, editingText, currentEditor, parentCanvas]
+    [dispatch, editingText, currentEditor, parentCanvas, whiteboardId]
   );
 
   const childCanvasIds : CanvasIdType[] | null = useSelector(
