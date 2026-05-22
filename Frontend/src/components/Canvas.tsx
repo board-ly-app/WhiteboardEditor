@@ -149,7 +149,6 @@ const Canvas = ({
     whiteboardId,
     currentDispatcherRef,
     canvasGroupRefsByIdRef,
-    setEditingText,
   } = whiteboardContext;
 
   const canvasAttribs : CanvasAttribs | null = useSelector(
@@ -425,14 +424,15 @@ const Canvas = ({
   // Set editingText in context for main canvas
   useEffect(
     () => {
-      if (currentEditor && (! parentCanvas)) {
-        setEditingText(editingText);
-      }
-      else {
-        setEditingText("");
-      }
+      const newEditingText = (currentEditor && (! parentCanvas)) ?
+        editingText
+        : "";
+
+      updateWhiteboard(dispatch, whiteboardId, {
+        editingText: newEditingText,
+      });
     },
-    [editingText, currentEditor, setEditingText, parentCanvas]
+    [dispatch, editingText, currentEditor, parentCanvas]
   );
 
   const childCanvasIds : CanvasIdType[] | null = useSelector(

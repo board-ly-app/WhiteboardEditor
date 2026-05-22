@@ -992,7 +992,6 @@ const WrappedWhiteboard = () => {
   const authContext = useContext(AuthContext);
   const clientMessengerContext = useContext(ClientMessengerContext);
   const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);
-  const [editingText, setEditingText] = useState<string>("");
 
   if (! authContext) {
     throw new Error('AuthContext not provided to Whiteboard');
@@ -1102,8 +1101,6 @@ const WrappedWhiteboard = () => {
       setNewCanvasAllowedUsers={setNewCanvasAllowedUsers}
       currentDispatcherRef={currentDispatcherRef}
       canvasGroupRefsByIdRef={canvasGroupRefsByIdRef}
-      editingText={editingText}
-      setEditingText={setEditingText}
     >
       <Whiteboard
         query={query}

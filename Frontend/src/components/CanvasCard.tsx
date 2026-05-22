@@ -120,13 +120,16 @@ const CanvasCard = ({
   }
 
   const {
-    editingText,
     canvasGroupRefsByIdRef,
     currentDispatcherRef,
   } = whiteboardContext;
 
   const tooltipText : string | null = useSelector(
     (state: RootState) => selectWhiteboardById(state, whiteboardId)?.tooltipText ?? null
+  );
+
+  const editingText : string | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.editingText ?? null
   );
 
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
