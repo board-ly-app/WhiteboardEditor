@@ -87,8 +87,8 @@ export const deleteCanvas = (
   canvasId: CanvasIdType
 ) => {
   dispatch(unselectCanvas(canvasId));
-  dispatch(removeCanvases([canvasId]));
   dispatch(removeCanvasesByWhiteboard([canvasId]));
+  dispatch(removeCanvases([canvasId]));
 };
 
 export const setCurrentEditorByCanvas = (

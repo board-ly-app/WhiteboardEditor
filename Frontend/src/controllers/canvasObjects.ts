@@ -36,8 +36,8 @@ const controllerRemoveCanvasObjects = (
   dispatch: AppDispatch,
   canvasObjectIds: CanvasObjectIdType[]
 ) => {
-  dispatch(removeCanvasObjects(canvasObjectIds));
   dispatch(removeCanvasObjectsByCanvas(canvasObjectIds));
+  dispatch(removeCanvasObjects(canvasObjectIds));
 };
 
 export {
