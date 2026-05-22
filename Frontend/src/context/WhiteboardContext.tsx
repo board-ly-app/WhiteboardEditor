@@ -40,8 +40,6 @@ export interface WhiteboardContextType {
   currentDispatcherRef: RefObject<OperationDispatcher | null>;
   // -- tracks refs to Canvas groups (Konva Groups serve as frames for each Canvas)
   canvasGroupRefsByIdRef: RefObject<Record<CanvasIdType, RefObject<Konva.Group | null>>>;
-  tooltipText: string;
-  setTooltipText: (text: string) => void;
   editingText: string;
   setEditingText: (text: string) => void;
 }// -- end interface WhiteboardContextType
@@ -60,8 +58,6 @@ const WhiteboardProvider = ({
   setNewCanvasAllowedUsers,
   currentDispatcherRef,
   canvasGroupRefsByIdRef,
-  tooltipText,
-  setTooltipText,
   editingText,
   setEditingText,
 }: PropsWithChildren<WhiteboardProvidersProps>): React.JSX.Element => {
@@ -78,8 +74,6 @@ const WhiteboardProvider = ({
       setNewCanvasAllowedUsers,
       currentDispatcherRef,
       canvasGroupRefsByIdRef,
-      tooltipText,
-      setTooltipText,
       editingText,
       setEditingText,
     }}>

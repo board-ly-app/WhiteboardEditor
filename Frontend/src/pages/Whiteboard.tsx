@@ -992,7 +992,6 @@ const WrappedWhiteboard = () => {
   const authContext = useContext(AuthContext);
   const clientMessengerContext = useContext(ClientMessengerContext);
   const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);
-  const [tooltipText, setTooltipText] = useState<string>("");
   const [editingText, setEditingText] = useState<string>("");
 
   if (! authContext) {
@@ -1103,8 +1102,6 @@ const WrappedWhiteboard = () => {
       setNewCanvasAllowedUsers={setNewCanvasAllowedUsers}
       currentDispatcherRef={currentDispatcherRef}
       canvasGroupRefsByIdRef={canvasGroupRefsByIdRef}
-      tooltipText={tooltipText}
-      setTooltipText={setTooltipText}
       editingText={editingText}
       setEditingText={setEditingText}
     >

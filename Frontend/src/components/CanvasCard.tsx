@@ -61,6 +61,10 @@ import {
 } from '@/store/client/clientSelectors';
 
 import {
+  selectWhiteboardById,
+} from '@/store/whiteboards/whiteboardsSelectors';
+
+import {
   selectAllowedUsersByCanvas,
 } from '@/store/allowedUsers/allowedUsersByCanvasSlice';
 
@@ -116,11 +120,14 @@ const CanvasCard = ({
   }
 
   const {
-    tooltipText,
     editingText,
     canvasGroupRefsByIdRef,
     currentDispatcherRef,
   } = whiteboardContext;
+
+  const tooltipText : string | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.tooltipText ?? null
+  );
 
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
     (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)

@@ -149,7 +149,6 @@ const Canvas = ({
     whiteboardId,
     currentDispatcherRef,
     canvasGroupRefsByIdRef,
-    setTooltipText : setWhiteboardTooltipText,
     setEditingText,
   } = whiteboardContext;
 
@@ -405,8 +404,10 @@ const Canvas = ({
   );
 
   useEffect(() => {
-    setWhiteboardTooltipText(tooltipText);
-  }, [tooltipText, setWhiteboardTooltipText]);
+    updateWhiteboard(dispatch, whiteboardId, {
+      tooltipText,
+    });
+  }, [dispatch, whiteboardId, tooltipText]);
 
   const editingText = useMemo(
     () => {
