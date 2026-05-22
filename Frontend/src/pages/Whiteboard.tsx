@@ -432,6 +432,51 @@ const Whiteboard = ({
   );// -- end handleSubmitDeleteWhiteboard
 
   // -- derived state
+      
+  // --- misc functions
+  const handleCreateCanvasDimensions = useCallback(
+    (parentCanvasId: CanvasIdType, dimensions: NewCanvasDimensions) => {
+        setNewCanvasDimensions(dimensions);
+        setNewCanvasParentId(parentCanvasId);
+        openCreateCanvasModal();
+    },
+    [setNewCanvasDimensions, setNewCanvasDimensions, openCreateCanvasModal]
+  );
+
+  const handleNewCanvas = useCallback(
+    (canvas: NewCanvas) => {
+      // Send message to server.
+      // Server will echo response back, and actually inserting the new canvas
+      // will be handled by handleServerMessage.
+      // TODO: allow setting custom canvas sizes
+      if (clientMessenger && newCanvasParentId && newCanvasDimensions) {
+        const createCanvasMsg : ClientMessageCreateCanvas = ({
+          type: 'create_canvas',
+          width: newCanvasDimensions.width,
+          height: newCanvasDimensions.height,
+          name: canvas.canvasName,
+          parentCanvas: {
+            canvasId: newCanvasParentId,
+            originX: newCanvasDimensions.originX,
+            originY: newCanvasDimensions.originY,
+          },
+          allowedUsers: canvas.allowedUsers,
+        });
+    
+        clientMessenger.sendCreateCanvas(createCanvasMsg);
+        setNewCanvasParentId(null);
+        setNewCanvasDimensions(null);
+      }
+    },
+    [
+      clientMessenger,
+      newCanvasDimensions,
+      newCanvasDimensions,
+      setNewCanvasParentId,
+      setNewCanvasDimensions,
+    ]
+  );
+
   let status : ComponentStatus;
 
   if (whiteboardError) {
@@ -557,38 +602,6 @@ const Whiteboard = ({
         name: title,
         currentTool,
       } = currWhiteboard;
-      
-      // --- misc functions
-      const handleCreateCanvasDimensions = (parentCanvasId: CanvasIdType, dimensions: NewCanvasDimensions) => {
-          setNewCanvasDimensions(dimensions);
-          setNewCanvasParentId(parentCanvasId);
-          openCreateCanvasModal();
-      };
-
-      const handleNewCanvas = (canvas: NewCanvas) => {
-        // Send message to server.
-        // Server will echo response back, and actually inserting the new canvas
-        // will be handled by handleServerMessage.
-        // TODO: allow setting custom canvas sizes
-        if (clientMessenger && newCanvasParentId && newCanvasDimensions) {
-          const createCanvasMsg : ClientMessageCreateCanvas = ({
-            type: 'create_canvas',
-            width: newCanvasDimensions.width,
-            height: newCanvasDimensions.height,
-            name: canvas.canvasName,
-            parentCanvas: {
-              canvasId: newCanvasParentId,
-              originX: newCanvasDimensions.originX,
-              originY: newCanvasDimensions.originY,
-            },
-            allowedUsers: canvas.allowedUsers,
-          });
-      
-          clientMessenger.sendCreateCanvas(createCanvasMsg);
-          setNewCanvasParentId(null);
-          setNewCanvasDimensions(null);
-        }
-      };
       
       // -- Header elements
       const ShareWhiteboardButton = () => (
@@ -991,7 +1004,6 @@ const Whiteboard = ({
 const WrappedWhiteboard = () => {
   const authContext = useContext(AuthContext);
   const clientMessengerContext = useContext(ClientMessengerContext);
-  const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);
 
   if (! authContext) {
     throw new Error('AuthContext not provided to Whiteboard');
@@ -1097,8 +1109,6 @@ const WrappedWhiteboard = () => {
       whiteboardId={whiteboardId}
       userPermissions={userPermissions}
       setSharedUsers={setSharedUsers}
-      newCanvasAllowedUsers={newCanvasAllowedUsers}
-      setNewCanvasAllowedUsers={setNewCanvasAllowedUsers}
       currentDispatcherRef={currentDispatcherRef}
       canvasGroupRefsByIdRef={canvasGroupRefsByIdRef}
     >

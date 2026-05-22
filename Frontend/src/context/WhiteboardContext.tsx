@@ -34,8 +34,6 @@ export interface WhiteboardContextType {
   whiteboardId: WhiteboardIdType;
   userPermissions: UserPermission[];
   setSharedUsers: React.Dispatch<React.SetStateAction<UserPermission[]>>;
-  newCanvasAllowedUsers: string[];
-  setNewCanvasAllowedUsers: React.Dispatch<React.SetStateAction<string[]>>;
   // -- view/edit/own permission - determines which actions to enable/disable
   currentDispatcherRef: RefObject<OperationDispatcher | null>;
   // -- tracks refs to Canvas groups (Konva Groups serve as frames for each Canvas)
@@ -52,8 +50,6 @@ const WhiteboardProvider = ({
   children,
   userPermissions,
   setSharedUsers,
-  newCanvasAllowedUsers,
-  setNewCanvasAllowedUsers,
   currentDispatcherRef,
   canvasGroupRefsByIdRef,
 }: PropsWithChildren<WhiteboardProvidersProps>): React.JSX.Element => {
@@ -66,8 +62,6 @@ const WhiteboardProvider = ({
       whiteboardId,
       userPermissions,
       setSharedUsers,
-      newCanvasAllowedUsers,
-      setNewCanvasAllowedUsers,
       currentDispatcherRef,
       canvasGroupRefsByIdRef,
     }}>
