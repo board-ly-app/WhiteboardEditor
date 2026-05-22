@@ -66,7 +66,11 @@ export type Attribute =
 export interface AttributeProps {
   selectedShapeIds: CanvasObjectIdType[];
   dispatch: Dispatch<ShapeAttributesAction>;
-  handleUpdateShapes: (canvasId: CanvasIdType, shapes: Record<CanvasObjectIdType, Partial<CanvasObjectModel>>) => unknown;
+  handleUpdateShapes: (
+    canvasId: CanvasIdType,
+    canvasObjectsById: Record<CanvasIdType, CanvasObjectModel>,
+    updates: Record<CanvasObjectIdType, Partial<CanvasObjectModel>>,
+  ) => unknown;
   canvasId: string;
   value: Attribute['value'];
   className: string;

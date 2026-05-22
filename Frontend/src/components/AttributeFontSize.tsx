@@ -1,3 +1,16 @@
+import {
+  useCallback,
+} from 'react';
+import {
+  useSelector,
+} from 'react-redux';
+import {
+  type RootState,
+} from '@/store';
+
+import {
+  selectCanvasObjectsByCanvas,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
 import type { AttributeDefinition, AttributeProps } from "@/types/Attribute";
 import type { CanvasObjectIdType, CanvasObjectModel } from "@/types/CanvasObjectModel";
 import AttributeMenuItem from "./AttributeMenuItem";
@@ -10,28 +23,39 @@ const FontSizeComponent = ({
   canvasId, 
   value,
 }: AttributeProps) => {
+  const canvasObjectsById = useSelector(
+    (state: RootState) => selectCanvasObjectsByCanvas(state, canvasId)
+  );
+
   const [inputValue, setInputValue] = useState(value.toString());
 
   useEffect(() => {
     setInputValue(value.toString());
   }, [value]);
   
-  const onChangeFontSize = (ev: React.ChangeEvent<HTMLInputElement>) => {
-    ev.preventDefault();
+  const onChangeFontSize = useCallback(
+    (ev: React.ChangeEvent<HTMLInputElement>) => {
+      ev.preventDefault();
 
-    const val = ev.target.value;
-    setInputValue(val);
+      const val = ev.target.value;
+      setInputValue(val);
 
-    const size = parseFloat(val);
-    
-    if (!isNaN(size)) {
-      dispatch({ type: 'SET_FONT_SIZE', payload: size });
-      handleUpdateShapes(
-        canvasId,
-        Object.fromEntries(selectedShapeIds.map(id => [id, { fontSize: size }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
-      );  
-    }
-  };
+      const size = parseFloat(val);
+      
+      if (!isNaN(size)) {
+        dispatch({ type: 'SET_FONT_SIZE', payload: size });
+
+        if (canvasObjectsById) {
+          handleUpdateShapes(
+            canvasId,
+            canvasObjectsById,
+            Object.fromEntries(selectedShapeIds.map(id => [id, { fontSize: size }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
+          );
+        }
+      }
+    },
+    [dispatch, handleUpdateShapes, canvasObjectsById, canvasId, selectedShapeIds]
+  );
  
   return (
     <div>

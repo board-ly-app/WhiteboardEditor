@@ -84,7 +84,6 @@ import {
 } from '@/store/canvases/canvasesSelectors';
 
 import {
-  selectCanvasObjectsByWhiteboard,
   selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
@@ -1052,10 +1051,6 @@ const WrappedWhiteboard = () => {
   // update the state of userPermissions whenever whiteboardData changes
   const [userPermissions, setSharedUsers] = useState<APIWhiteboard['user_permissions']>([]);
 
-  const canvasObjectsByCanvas: Record<CanvasIdType, Record<CanvasObjectIdType, CanvasObjectModel>> = useSelector((state: RootState) => (
-    selectCanvasObjectsByWhiteboard(state, whiteboardId)
-  ));
-
   // -- track refs to canvas groups (frames)
   const canvasGroupRefsByIdRef: RefObject<Record<CanvasIdType, RefObject<Konva.Group | null>>> = useRef({});
 
@@ -1063,27 +1058,26 @@ const WrappedWhiteboard = () => {
 
   // -- transform canvas object diffs into full updated shapes
   const handleUpdateShapes = useCallback(
-    (canvasId: CanvasIdType, shapes: Record<CanvasObjectIdType, Partial<CanvasObjectModel>>) => {
+    (
+      canvasId: CanvasIdType,
+      canvasObjectsById: Record<CanvasObjectIdType, CanvasObjectModel>,
+      updates: Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
+    ) => {
       if (clientMessenger) {
         // find relevant objects and merge the new attributes into the existing
         // attributes
-        const canvasObjects: Record<CanvasObjectIdType, CanvasObjectModel> | null = canvasObjectsByCanvas[canvasId] || null;
-
-        if (! canvasObjects) {
-          console.error('No canvas objects on canvas id', canvasId);
-          return;
-        }
-
         const changedObjects: Record<CanvasObjectIdType, CanvasObjectModel> = {};
 
-        for (const [objId, objUpdate] of Object.entries(shapes)) {
-          const existingShape = canvasObjects[objId];
+        for (const [objId, objUpdate] of Object.entries(updates)) {
+          const existingShape = canvasObjectsById[objId];
 
-          if (!existingShape) continue;
+          if (! existingShape) {
+            continue;
+          }
 
-          if (objId in canvasObjects) {
+          if (objId in canvasObjectsById) {
             changedObjects[objId] = {
-              ...canvasObjects[objId],
+              ...canvasObjectsById[objId],
               ...(objUpdate as Partial<typeof existingShape>),
             } as CanvasObjectModel;
           }
@@ -1096,7 +1090,7 @@ const WrappedWhiteboard = () => {
         });
       }
     },
-    [canvasObjectsByCanvas, clientMessenger]
+    [clientMessenger]
   );
 
   return (

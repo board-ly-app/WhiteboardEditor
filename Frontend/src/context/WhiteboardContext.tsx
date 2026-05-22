@@ -26,7 +26,11 @@ import {
 import type { OperationDispatcher } from '@/types/OperationDispatcher';
 
 export interface WhiteboardContextType {
-  handleUpdateShapes: (canvasId: CanvasIdType, shapes: Record<CanvasObjectIdType, Partial<CanvasObjectModel>>) => unknown;
+  handleUpdateShapes: (
+      canvasId: CanvasIdType,
+      canvasObjectsById: Record<CanvasObjectIdType, CanvasObjectModel>,
+      updates: Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
+  ) => unknown;
   whiteboardId: WhiteboardIdType;
   userPermissions: UserPermission[];
   setSharedUsers: React.Dispatch<React.SetStateAction<UserPermission[]>>;
