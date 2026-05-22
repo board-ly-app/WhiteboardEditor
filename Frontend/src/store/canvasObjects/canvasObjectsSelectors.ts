@@ -125,9 +125,7 @@ export const selectSelectedCanvasObjectsByWhiteboard = (
       }
 
       for (const objId of Object.keys(canvasObjectIdSet)) {
-        const canvasObject = state.canvasObjects[objId];
-
-        if (canvasObject && state.selectorsByCanvasObject.selectorsByCanvasObject[objId] === clientId) {
+        if (state.selectorsByCanvasObject.selectorsByCanvasObject[objId] === clientId) {
           out.push(objId);
         }
       }// -- end for objId

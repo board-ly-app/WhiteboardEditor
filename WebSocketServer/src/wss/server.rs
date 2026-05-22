@@ -379,9 +379,11 @@ pub async fn handle_authenticated_client_message(
                                     });
                                 },
                                 _ => {
-                                    selectors_to_canvas_objects.remove_value(&object_id);
-                                    canvas.shapes_mut().remove(&object_id);
-                                    deleted_object_ids.push(object_id.clone());
+                                    if canvas.shapes().contains_key(&object_id) {
+                                        selectors_to_canvas_objects.remove_value(&object_id);
+                                        canvas.shapes_mut().remove(&object_id);
+                                        deleted_object_ids.push(object_id.clone());
+                                    }
                                 },
                             };// -- end match
                         } // -- end for object_id

@@ -67,21 +67,17 @@ const canvasObjectsByCanvasSlice = createSlice({
       return out;
     },
     removeCanvasObjectsByCanvas(state, action: PayloadAction<CanvasObjectIdType[]>) {
-      const out = {
-        canvasObjectsByCanvas: {
-          ...state.canvasObjectsByCanvas,
-        },
-        canvasesByCanvasObjects: {
-          ...state.canvasesByCanvasObjects,
-        },
-      };
+      const {
+        canvasObjectsByCanvas,
+        canvasesByCanvasObjects,
+      } = state;
 
       for (const id of action.payload) {
-        delete out.canvasObjectsByCanvas[out.canvasesByCanvasObjects[id]][id];
-        delete out.canvasesByCanvasObjects[id];
-      }
+        delete canvasObjectsByCanvas[canvasesByCanvasObjects[id]][id];
+        delete canvasesByCanvasObjects[id];
+      }// -- end for id
 
-      return out;
+      return state;
     },
   },
   selectors: {
