@@ -113,10 +113,7 @@ const childCanvasesByCanvasSlice = createSlice({
         }
       }// -- end for canvasId
 
-      return {
-        childCanvasesByCanvas,
-        parentCanvasesByCanvas,
-      };
+      return state;
     },
     // remove given canvases as children
     removeChildCanvases(state, action: PayloadAction<CanvasIdType[]>) {
@@ -130,10 +127,7 @@ const childCanvasesByCanvasSlice = createSlice({
         delete parentCanvasesByCanvas[childCanvasId];
       }// -- end for childCanvasId
 
-      return {
-        childCanvasesByCanvas,
-        parentCanvasesByCanvas,
-      };
+      return state;
     },
   },
 });
@@ -142,12 +136,14 @@ export const {
   setChildCanvasesByCanvas,
   addChildCanvasesByCanvas,
   removeCanvases,
+  removeChildCanvases,
 } = childCanvasesByCanvasSlice.actions;
 
 export type ChildCanvasesByCanvasActions =
   | ReturnType<typeof setChildCanvasesByCanvas>
   | ReturnType<typeof addChildCanvasesByCanvas>
   | ReturnType<typeof removeCanvases>
+  | ReturnType<typeof removeChildCanvases>
 ;
 
 export default childCanvasesByCanvasSlice.reducer;

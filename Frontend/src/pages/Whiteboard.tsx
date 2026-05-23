@@ -586,14 +586,13 @@ const Whiteboard = ({
         currWhiteboard,
       } = status;
       
-      const rootCanvasId = currWhiteboard.rootCanvas;
-      
       const canvasesSorted = [...canvases];
       
       canvasesSorted.sort((a, b) => new Date(a.timeCreated) < new Date(b.timeCreated) ? -1 : 1);
       
       const {
         name: title,
+        rootCanvas: rootCanvasId,
         currentTool,
       } = currWhiteboard;
       
