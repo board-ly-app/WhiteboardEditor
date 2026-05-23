@@ -2,17 +2,28 @@ import React, {
   useContext,
 } from 'react';
 
+import {
+  useSelector,
+} from 'react-redux';
+
 import WhiteboardContext from '@/context/WhiteboardContext';
 
 import { getToolChoiceLabel, getTooltip } from '@/components/Tool';
 
 import type { ToolChoice } from '@/components/Tool';
 
+import {
+  type RootState,
+} from '@/store';
+
+import {
+  selectWhiteboardById,
+} from '@/store/whiteboards/whiteboardsSelectors';
+
 import type { LucideIcon } from 'lucide-react';
 import TooltipHover from './TooltipHover';
 
 interface ToolbarProps {
-  toolChoice: ToolChoice;
   onToolChange: (choice: ToolChoice) => void;
 }
 
@@ -49,11 +60,22 @@ const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonProps>(
   }
 );
 
-function Toolbar({ toolChoice, onToolChange }: ToolbarProps) {
-  const context = useContext(WhiteboardContext);
-  if (!context) {
+const Toolbar = ({
+  onToolChange,
+}: ToolbarProps) => {
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
     throw new Error('No WhiteboardContext provided');
   }
+
+  const {
+    whiteboardId,
+  } = whiteboardContext;
+
+  const toolChoice : ToolChoice | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null
+  );
 
   const renderToolChoice = (choice: ToolChoice): React.JSX.Element => (
     <ToolbarButton

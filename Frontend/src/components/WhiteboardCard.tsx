@@ -241,9 +241,9 @@ function WhiteboardCard({
         className="p-8 rounded-sm"
       >
         <DeleteWhiteboardForm
+          whiteboardId={id}
           onCancel={closeDeletionModal}
           onSubmit={handleSubmitDeleteWhiteboard}
-          whiteboardAttribs={{ id, name }}
         />
       </DeletionModal>
     </>

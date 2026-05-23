@@ -58,6 +58,7 @@ import {
 } from '@/store/canvases/canvasesSelectors';
 
 import {
+  selectWhiteboardById,
   selectWhiteboardPermissionByUser,
 } from '@/store/whiteboards/whiteboardsSelectors';
 
@@ -121,14 +122,12 @@ import useCreateCanvasDispatcher from '@/dispatchers/useCreateCanvasDispatcher';
 export interface CanvasProps {
   id: CanvasIdType;
   shapeAttributes: ShapeAttributesState;
-  currentTool: ToolChoice;
   onSelectCanvasDimensions: (canvasId: CanvasIdType, dimensions: NewCanvasDimensions) => void;
 }
 
 const Canvas = ({
   id : canvasId,
   shapeAttributes,
-  currentTool,
   onSelectCanvasDimensions,
 }: CanvasProps) => {
   const whiteboardContext = useContext(WhiteboardContext);
@@ -150,6 +149,14 @@ const Canvas = ({
     currentDispatcherRef,
     canvasGroupRefsByIdRef,
   } = whiteboardContext;
+
+  const currentTool : ToolChoice | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null
+  );
+
+  if (! currentTool) {
+    throw new Error('No current tool provided');
+  }
 
   const canvasAttribs : CanvasAttribs | null = useSelector(
     (state: RootState) => selectCanvasById(state, canvasId)
@@ -574,7 +581,6 @@ const Canvas = ({
             key={childCanvasId}
             id={childCanvasId}
             shapeAttributes={shapeAttributes}
-            currentTool={currentTool}
             onSelectCanvasDimensions={onSelectCanvasDimensions}
           />
         ))

@@ -163,10 +163,16 @@ import {
 } from '@/controllers';
 
 type ComponentStatus = 
-  | { status: 'ready'; currWhiteboard: WhiteboardState; }
+  | {
+    status: 'ready';
+    currWhiteboard: Pick<WhiteboardState, 'name' | 'rootCanvas'>;
+  }
   | { status: 'pending'; }
   | { status: 'error'; error: AxiosError; }
-  | { status: 'deleting'; currWhiteboard: WhiteboardState; }
+  | {
+    status: 'deleting';
+    currWhiteboard: Pick<WhiteboardState, 'name' | 'rootCanvas'>;
+  }
   | { status: 'deleted'; }
 ;
 
@@ -265,8 +271,16 @@ const Whiteboard = ({
     (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId)
   ) || {};
 
-  const currWhiteboard: WhiteboardState | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)
+  const name : string | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.name || null
+  );
+
+  const rootCanvas : string | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.rootCanvas || null
+  );
+
+  const currentTool : ToolChoice | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool || null
   );
 
   // Current tool choice will be saved to localStorage to ensure seamless UX
@@ -288,8 +302,6 @@ const Whiteboard = ({
     },
     [dispatch, whiteboardId]
   );
-
-  const currentTool : ToolChoice | null = currWhiteboard?.currentTool ?? null;
 
   // -- make sure to save to localStorage whenever current tool changes
   useEffect(
@@ -331,6 +343,9 @@ const Whiteboard = ({
 
   const [newCanvasDimensions, setNewCanvasDimensions] = useState<NewCanvasDimensions | null>(null);
   const [newCanvasParentId, setNewCanvasParentId] = useState<CanvasIdType | null>(null);
+
+  // -- Track whether active users dropdown menu should be open
+  const [isActiveUsersOpen, setIsActiveUsersOpen] = useState<boolean>(false);
 
   // Used within Toolbar
   const handleToolChange = useCallback(
@@ -485,14 +500,31 @@ const Whiteboard = ({
     }
 
     status = { status: 'error', error: whiteboardError };
-  } else if (isWhiteboardLoading || isWhiteboardFetching || (! currWhiteboard) || (! whiteboardStatus)) {
+  } else if (
+    isWhiteboardLoading
+      || isWhiteboardFetching
+      || (! name)
+      || (! rootCanvas)
+  ) {
     status = { status: 'pending' };
   } else if (whiteboardStatus === 'deleting') {
-    status = { status: 'deleting', currWhiteboard };
+    status = {
+      status: 'deleting',
+      currWhiteboard: {
+        name,
+        rootCanvas,
+      },
+    };
   } else if (whiteboardStatus === 'deleted') {
     status = { status: 'deleted' };
   } else {
-    status = { status: 'ready', currWhiteboard };
+    status = {
+      status: 'ready',
+      currWhiteboard: {
+        name,
+        rootCanvas,
+      },
+    };
   }
 
   switch (status.status) {
@@ -593,7 +625,6 @@ const Whiteboard = ({
       const {
         name: title,
         rootCanvas: rootCanvasId,
-        currentTool,
       } = currWhiteboard;
       
       // -- Header elements
@@ -622,7 +653,11 @@ const Whiteboard = ({
       const ActiveUsersHeaderDropdown = () => (
         // TODO: Abstract out a generic dropdown menu
         // Active Users
-        <DropdownMenu key="active-users">
+        <DropdownMenu
+          key="active-users"
+          open={isActiveUsersOpen}
+          onOpenChange={setIsActiveUsersOpen}
+        >
           <DropdownMenuTrigger className="text-header-button-text group flex items-center gap-1 px-4 py-2 rounded-lg hover:cursor-pointer hover:text-header-button-text-hover whitespace-nowrap">
             Active Users
             <ChevronDown className="w-4 h-4 transition-transform duration-300 group-data-[state=open]:rotate-180"/>
@@ -698,7 +733,6 @@ const Whiteboard = ({
                 >
                   {/* Toolbar */}
                   <Toolbar
-                    toolChoice={currentTool}
                     onToolChange={handleToolChange}
                   />
       
@@ -736,7 +770,6 @@ const Whiteboard = ({
                     whiteboardId={whiteboardId}
                     rootCanvasId={rootCanvasId}
                     shapeAttributes={shapeAttributesState}
-                    currentTool={currentTool}
                     onSelectCanvasDimensions={handleCreateCanvasDimensions}
                   />
                 </div>
@@ -868,7 +901,7 @@ const Whiteboard = ({
               className="p-4 rounded-sm"
             >
                 <DeleteWhiteboardForm
-                  whiteboardAttribs={currWhiteboard}
+                  whiteboardId={whiteboardId}
                   onSubmit={handleSubmitDeleteWhiteboard}
                   onCancel={closeDeleteWhiteboardModal}
                 />
@@ -887,10 +920,8 @@ const Whiteboard = ({
       } = status;
 
       const {
-        currentTool,
+        rootCanvas: rootCanvasId,
       } = currWhiteboard;
-      
-      const rootCanvasId = currWhiteboard.rootCanvas;
       
       const canvasesSorted = [...canvases];
       
@@ -950,7 +981,6 @@ const Whiteboard = ({
                     whiteboardId={whiteboardId}
                     rootCanvasId={rootCanvasId}
                     shapeAttributes={shapeAttributesState}
-                    currentTool={currentTool}
                     onSelectCanvasDimensions={handleCreateCanvasDimensions}
                   />
                 </div>

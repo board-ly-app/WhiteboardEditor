@@ -27,10 +27,6 @@ import {
 import Canvas from "./Canvas";
 import CanvasMenu from "./CanvasMenu";
 
-import type {
-  ToolChoice,
-} from '@/components/Tool';
-
 import {
   type ClientIdType,
   type WhiteboardIdType,
@@ -89,7 +85,6 @@ export interface CanvasCardProps {
   rootCanvasId: CanvasIdType,
   shapeAttributes: ShapeAttributesState;
   // -- editor identified by user id
-  currentTool: ToolChoice;
   onSelectCanvasDimensions: (canvasId: CanvasIdType, dimensions: NewCanvasDimensions) => void;
 }
 
@@ -97,7 +92,6 @@ const CanvasCard = ({
   whiteboardId,
   rootCanvasId,
   shapeAttributes,
-  currentTool,
   onSelectCanvasDimensions,
 }: CanvasCardProps) => {
   const location = useLocation();
@@ -335,7 +329,6 @@ const CanvasCard = ({
               {...{
                 id: rootCanvasId,
                 shapeAttributes,
-                currentTool,
                 onSelectCanvasDimensions,
               }}
             />
