@@ -8,10 +8,6 @@ import type {
   OperationDispatcher,
   OperationDispatcherProps
 } from '@/types/OperationDispatcher';
-import type {
-  CanvasObjectIdType,
-  CanvasObjectModel
-} from '@/types/CanvasObjectModel';
 
 // === useHandDispatcher =======================================================
 // 
@@ -43,12 +39,6 @@ const useHandDispatcher = ({
     },
     getPreview: () => null,
     getAttributes: () => [],
-    renderShape: (
-      _key: string | number,
-      _model: CanvasObjectModel,
-      _isDraggable: boolean,
-      _handleUpdateShapes: (shapes: Record<CanvasObjectIdType, CanvasObjectModel>) => void
-    ) => null,
     getTooltipText: () => isMouseDown ? "Drag shape(s) to desired location" : "Grab a shape to move its location"
   });
 };

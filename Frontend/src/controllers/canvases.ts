@@ -37,6 +37,7 @@ import {
 
 import {
   addChildCanvasesByCanvas,
+  removeChildCanvases,
 } from '@/store/canvases/childCanvasesByCanvasSlice';
 
 import {
@@ -65,14 +66,6 @@ export const addCanvas = (
     allowedUsersByCanvas
   } = normalizeCanvas(canvas);
 
-  if (canvas.parentCanvas) {
-    const parentCanvasId = canvas.parentCanvas.canvasId;
-
-    dispatch(addChildCanvasesByCanvas({
-      [parentCanvasId]: [canvas.id],
-    }));
-  }
-
   dispatch(setCanvases(canvases));
   dispatch(setCanvasObjects(canvasObjects));
   dispatch(setObjectsByCanvas(canvasObjectsByCanvas));
@@ -80,6 +73,14 @@ export const addCanvas = (
   dispatch(addCanvasesByWhiteboard({
     [whiteboardId]: [canvas.id]
   }));
+
+  if (canvas.parentCanvas) {
+    const parentCanvasId = canvas.parentCanvas.canvasId;
+
+    dispatch(addChildCanvasesByCanvas({
+      [parentCanvasId]: [canvas.id],
+    }));
+  }
 };
 
 export const deleteCanvas = (
@@ -87,8 +88,9 @@ export const deleteCanvas = (
   canvasId: CanvasIdType
 ) => {
   dispatch(unselectCanvas(canvasId));
-  dispatch(removeCanvases([canvasId]));
+  dispatch(removeChildCanvases([canvasId]));
   dispatch(removeCanvasesByWhiteboard([canvasId]));
+  dispatch(removeCanvases([canvasId]));
 };
 
 export const setCurrentEditorByCanvas = (

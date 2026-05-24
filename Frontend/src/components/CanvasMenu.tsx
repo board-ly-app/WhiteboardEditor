@@ -5,6 +5,8 @@ import {
   useCallback,
 } from "react";
 
+import lodash from 'lodash';
+
 // -- third-party imports
 import {
   useSelector,
@@ -40,6 +42,14 @@ import {
   selectCanvasById,
 } from '@/store/canvases/canvasesSelectors';
 
+import {
+  selectWhiteboardPermissionByUser,
+} from '@/store/whiteboards/whiteboardsSelectors';
+
+import {
+  useUser,
+} from '@/hooks/useUser';
+
 import WhiteboardContext from "@/context/WhiteboardContext";
 
 import {
@@ -60,7 +70,7 @@ import {
 } from "@/store/allowedUsers/allowedUsersByCanvasSlice";
 
 import {
-  selectWhiteboardById
+  selectWhiteboardById,
 } from '@/store/whiteboards/whiteboardsSelectors';
 
 import {
@@ -85,8 +95,9 @@ const CanvasMenu = ({
 }: CanvasMenuProps) => {
   const [allowedUsersMenuOpen, setAllowedUsersMenuOpen] = useState(false);
   const allowedUsers = useSelector((state: RootState) =>
-    selectAllowedUsersByCanvas(state, canvasId)
-  ) ?? [];
+    selectAllowedUsersByCanvas(state, canvasId) ?? [],
+    lodash.isEqual
+  );
   const [selectedUsers, setSelectedUsers] = useState<string[]>(allowedUsers);
 
   // -- unpack Whiteboard context
@@ -96,10 +107,22 @@ const CanvasMenu = ({
     throw new Error("CanvasMenu must be used inside a WhiteboardProvider");
   }
 
+  const {
+    user,
+  } = useUser();
+
+  if (! user) {
+    throw new Error('No authenticated user provided');
+  }
+
   const { 
-    ownPermission,
     canvasGroupRefsByIdRef,
   } = whiteboardContext;
+
+  const ownPermission = useSelector(
+    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id),
+    lodash.isEqual
+  );
 
   // -- unpack ClientMessenger context
   const clientMessengerContext = useContext(ClientMessengerContext);
@@ -113,16 +136,18 @@ const CanvasMenu = ({
   } = clientMessengerContext;
 
   const whiteboard: WhiteboardAttribs | null = useSelector((state: RootState) => (
-    selectWhiteboardById(state, whiteboardId))
+    selectWhiteboardById(state, whiteboardId)),
+    lodash.isEqual
   );
 
   if (! whiteboard) {
     throw new Error(`No whiteboard found with ID whiteboardId`);
   }
 
-  const canvas : CanvasAttribs | null = useSelector((state: RootState) => (
-    selectCanvasById(state, canvasId)
-  ));
+  const canvas : CanvasAttribs | null = useSelector(
+    (state: RootState) => selectCanvasById(state, canvasId),
+    lodash.isEqual
+  );
 
   if (! canvas) {
     throw new Error(`Could not find canvas ${canvasId} in application state`);

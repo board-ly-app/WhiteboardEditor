@@ -4,6 +4,12 @@ import {
   useCallback,
 } from 'react';
 
+import {
+  useSelector,
+} from 'react-redux';
+
+import lodash from 'lodash';
+
 // -- local imports
 import {
   type AttributeDefinition,
@@ -16,6 +22,14 @@ import {
 } from "@/types/CanvasObjectModel";
 
 import WhiteboardContext from '@/context/WhiteboardContext';
+
+import {
+  type RootState,
+} from '@/store';
+
+import {
+  selectCanvasObjectsByCanvas,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import AttributeMenuItem from "./AttributeMenuItem";
 
@@ -35,6 +49,11 @@ const FillColorComponent = ({
     handleUpdateShapes,
   } = whiteboardContext;
 
+  const canvasObjectsById = useSelector(
+    (state: RootState) => selectCanvasObjectsByCanvas(state, canvasId),
+    lodash.isEqual
+  );
+
   const onChangeFillColor = useCallback(
     (ev: React.ChangeEvent<HTMLInputElement>) => {
       ev.preventDefault();
@@ -43,12 +62,15 @@ const FillColorComponent = ({
     
       dispatch({ type: 'SET_FILL_COLOR', payload: color });
     
-      handleUpdateShapes(
-        canvasId,
-        Object.fromEntries(selectedShapeIds.map(id => [id, { fillColor: color }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
-      );  
+      if (canvasObjectsById) {
+        handleUpdateShapes(
+          canvasId,
+          canvasObjectsById,
+          Object.fromEntries(selectedShapeIds.map(id => [id, { fillColor: color }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
+        );
+      }
     },
-    [dispatch, handleUpdateShapes]
+    [dispatch, handleUpdateShapes, canvasId, canvasObjectsById, selectedShapeIds]
   );
  
   return (

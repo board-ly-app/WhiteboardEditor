@@ -23,6 +23,8 @@ const canvasesSlice = createSlice({
       for (const canvasId of action.payload) {
         delete state[canvasId];
       }
+
+      return state;
     },
   },
   selectors: {

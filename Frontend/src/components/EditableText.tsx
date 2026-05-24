@@ -15,6 +15,8 @@ import {
 
 import Konva from "konva";
 
+import lodash from 'lodash';
+
 import {
   useSelector,
 } from 'react-redux';
@@ -31,7 +33,6 @@ import {
   selectSelectorByCanvasObject,
 } from '@/store/activeUsers/activeUsersSelectors';
 
-import WhiteboardContext from '@/context/WhiteboardContext';
 import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
@@ -39,13 +40,13 @@ import {
 import TextEditor from "./TextEditor";
 
 import { type EditableObjectProps } from "@/dispatchers/editableObjectProps";
-import type { CanvasObjectIdType, ShapeModel, TextRecord } from "@/types/CanvasObjectModel";
+import type { ShapeModel, TextRecord } from "@/types/CanvasObjectModel";
 import {
   SnappingMonitor,
   useSnapping,
 } from "@/hooks/useSnapping";
 
-interface EditableTextProps extends EditableObjectProps {
+export interface EditableTextProps extends EditableObjectProps {
   id: string;
   fontSize: number;
   text: string;
@@ -56,8 +57,8 @@ interface EditableTextProps extends EditableObjectProps {
   height: number;
   rotation: number;
   draggable: boolean;
-  shapeRecord: TextRecord;
-  handleUpdateShapes: (shapes: Record<CanvasObjectIdType, ShapeModel>) => void
+  record: TextRecord;
+  onUpdateObject: (updatedObject: ShapeModel) => unknown;
 }
 
 const EditableText = ({
@@ -71,27 +72,20 @@ const EditableText = ({
   height,
   rotation,
   draggable,
-  shapeRecord,
-  handleUpdateShapes,
+  record,
+  onUpdateObject,
   onMouseOver,
   onMouseOut,
   onMouseDown,
   onMouseUp,
   onDragEnd,
   onTransform,
-  onTransformEnd,
 }: EditableTextProps) => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
   const textRef = useRef<Konva.Text>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
-
-  const whiteboardContext = useContext(WhiteboardContext);
-
-  if (! whiteboardContext) {
-    throw new Error('No whiteboard context provided');
-  }
   
   const clientMessengerContext = useContext(ClientMessengerContext);
 
@@ -105,10 +99,14 @@ const EditableText = ({
 
   useSnapping(textRef, snappingMonitor);
 
-  const clientId = useSelector((state: RootState) => selectClientId(state));
+  const clientId = useSelector(
+    (state: RootState) => selectClientId(state),
+    lodash.isEqual
+  );
 
   const editor = useSelector(
-    (state: RootState) => selectSelectorByCanvasObject(state, id)
+    (state: RootState) => selectSelectorByCanvasObject(state, id),
+    lodash.isEqual
   );
 
   const isSelected : boolean = useMemo(
@@ -142,24 +140,46 @@ const EditableText = ({
     // setIsSelected(false); 
   }, [draggable]);
 
-  const handleTextChange = useCallback((newText: string): void => {
-    const node = textRef.current;
-    if (!node) return;
+  const handleTextChange = useCallback(
+    (newText: string): void => {
+      const node = textRef.current;
+      if (!node) return;
 
-    const update = {
-      [id]: {
-        ...shapeRecord,
+      const update = {
+        ...record,
         text: newText,
         x: node.x(),
         y: node.y(),
         width: node.width(),
         height: node.height(),
         rotation: node.rotation(),
-      }
-    };
+      };
 
-    handleUpdateShapes(update);
-  }, [handleUpdateShapes, id, shapeRecord]);
+      onUpdateObject(update);
+    },
+    [onUpdateObject, record]
+  );
+
+  const handleTransformEnd = useCallback(
+    (ev: Konva.KonvaEventObject<Event>) => {
+      ev.cancelBubble = true;
+      
+      const node = ev.target;
+      const rotation = node.rotation();
+      
+      const update = {
+        ...record,
+        x: node.x(),
+        y: node.y(),
+        width: node.width(),
+        height: node.height(),
+        rotation,
+      };
+
+      onUpdateObject(update);
+    },
+    [onUpdateObject, record]
+  );
 
   return (
     <Group>
@@ -188,7 +208,7 @@ const EditableText = ({
         onMouseOut={onMouseOut}
         onMouseOver={onMouseOver}
         onTransform={onTransform}
-        onTransformEnd={onTransformEnd}
+        onTransformEnd={handleTransformEnd}
       />
       {isEditing && textRef.current && draggable && (
         <TextEditor

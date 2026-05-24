@@ -15,9 +15,10 @@ import type {
   CanvasObjectRecord,
 } from '@/types/CanvasObjectModel';
 
-import type {
-  UserPermission,
-} from '@/types/APIProtocol';
+import {
+  type UserPermission,
+  type UserPermissionEnum,
+} from '@/types/UserPermission';
 
 // The unique identifier for clients within a web socket session.
 export type ClientIdType = string;
@@ -62,8 +63,11 @@ export interface CanvasData extends CanvasAttribs {
 export interface WhiteboardAttribs {
   id: WhiteboardIdType;
   name: string;
-  rootCanvas: WhiteboardIdType;
+  rootCanvas: CanvasIdType;
   userPermissions: UserPermission[];
+  permissionsByUserId: Record<UserIdType, {
+    permission: UserPermissionEnum;
+  }>;
 }
 
 // Contains nested data

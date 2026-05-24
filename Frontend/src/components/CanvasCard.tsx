@@ -15,6 +15,8 @@ import {
   useSelector,
 } from 'react-redux';
 
+import lodash from 'lodash';
+
 import {
   type AxiosError,
 } from 'axios';
@@ -27,20 +29,16 @@ import {
 import Canvas from "./Canvas";
 import CanvasMenu from "./CanvasMenu";
 
-import type {
-  ToolChoice,
-} from '@/components/Tool';
-
 import {
   type ClientIdType,
   type WhiteboardIdType,
   type CanvasIdType,
-  type CanvasData,
+  type CanvasAttribs,
 } from "@/types/WebSocketProtocol";
 
 import {
   type User,
-} from '@/types/APIProtocol';
+} from '@/types/User';
 
 import UserCacheContext from '@/context/UserCacheContext';
 
@@ -61,11 +59,16 @@ import {
 } from '@/store/client/clientSelectors';
 
 import {
+  selectWhiteboardById,
+} from '@/store/whiteboards/whiteboardsSelectors';
+
+import {
   selectAllowedUsersByCanvas,
 } from '@/store/allowedUsers/allowedUsersByCanvasSlice';
 
 import {
   selectSelectedCanvasByWhiteboard,
+  selectCanvasById,
 } from '@/store/canvases/canvasesSelectors';
 
 import {
@@ -83,22 +86,16 @@ export interface CanvasCardProps {
   whiteboardId: WhiteboardIdType;
   rootCanvasId: CanvasIdType,
   shapeAttributes: ShapeAttributesState;
-  childCanvasesByCanvas: Record<CanvasIdType, Record<CanvasIdType, CanvasIdType>>;
-  canvasesById: Record<CanvasIdType, CanvasData>;
   // -- editor identified by user id
-  currentTool: ToolChoice;
   onSelectCanvasDimensions: (canvasId: CanvasIdType, dimensions: NewCanvasDimensions) => void;
 }
 
-function CanvasCard({
+const CanvasCard = ({
   whiteboardId,
   rootCanvasId,
   shapeAttributes,
-  childCanvasesByCanvas,
-  canvasesById,
-  currentTool,
   onSelectCanvasDimensions,
-}: CanvasCardProps) {
+}: CanvasCardProps) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -119,14 +116,23 @@ function CanvasCard({
   }
 
   const {
-    tooltipText,
-    editingText,
     canvasGroupRefsByIdRef,
-    currentDispatcher,
+    currentDispatcherRef,
   } = whiteboardContext;
 
+  const tooltipText : string | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.tooltipText ?? null,
+    lodash.isEqual
+  );
+
+  const editingText : string | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.editingText ?? null,
+    lodash.isEqual
+  );
+
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
-    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)
+    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId),
+    lodash.isEqual
   );
 
   const clientMessengerContext = useContext(ClientMessengerContext);
@@ -141,7 +147,10 @@ function CanvasCard({
 
   const [selectedCanvasAllowedUsers, setSelectedCanvasAllowedUsers] = useState<User[] | null>(null);
 
-  const rootCanvas : CanvasData | undefined = canvasesById[rootCanvasId];
+  const rootCanvas : CanvasAttribs | null = useSelector(
+    (state: RootState) => selectCanvasById(state, rootCanvasId),
+    lodash.isEqual
+  );
 
   if (! rootCanvas) {
     throw new Error(`Could not find canvas ${rootCanvasId}`);
@@ -152,21 +161,26 @@ function CanvasCard({
     height,
   } = rootCanvas;
 
-  const selectedCanvas : CanvasData | null = canvasesById[selectedCanvasId ?? ''] || null;
+  const selectedCanvas : CanvasAttribs | null = useSelector(
+    (state: RootState) => selectCanvasById(state, selectedCanvasId || null),
+    lodash.isEqual
+  );
 
   const clientId : ClientIdType | null = useSelector(
-    (state: RootState) => selectClientId(state)
+    (state: RootState) => selectClientId(state),
+    lodash.isEqual
   );
 
   const allowedUserIds = useSelector(
-    // ['', ''] is effectively a null canvas key
-    (state: RootState) => selectAllowedUsersByCanvas(state, selectedCanvasId ?? '')
+    (state: RootState) => selectAllowedUsersByCanvas(state, selectedCanvasId ?? ''),
+    lodash.isEqual
   );
 
   const selectedCanvasObjects = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
       state, whiteboardId, clientId
-    )
+    ),
+    lodash.isEqual
   );
 
   useEffect(
@@ -280,7 +294,7 @@ function CanvasCard({
               break;
             case 'Escape':
             case 'Esc':
-              currentDispatcher?.handleCancel();
+              currentDispatcherRef.current?.handleCancel();
               break;
           }
         };// -- end handleKeyDown
@@ -295,7 +309,7 @@ function CanvasCard({
         };
       }
     },
-    [containerRef, clientMessenger, selectedCanvasObjects, currentDispatcher]
+    [containerRef, clientMessenger, selectedCanvasObjects, currentDispatcherRef]
   );
 
   return (
@@ -323,11 +337,8 @@ function CanvasCard({
             {/** Sub-canvases will be rendered recursively by Canvas component **/}
             <Canvas
               {...{
-                ...rootCanvas,
+                id: rootCanvasId,
                 shapeAttributes,
-                currentTool,
-                childCanvasesByCanvas,
-                canvasesById,
                 onSelectCanvasDimensions,
               }}
             />
@@ -336,12 +347,12 @@ function CanvasCard({
       </div>
 
       {/* Canvas Menu & Tooltip Text */}
-      {selectedCanvasId && (
+      {selectedCanvas && (
         <div className='pointer-events-none fixed bottom-6 left-2 flex justify-between items-end gap-4 w-[95vw] z-50'>
           <div className="pointer-events-auto">
             <CanvasMenu 
               name={selectedCanvas.name}
-              canvasId={selectedCanvasId}
+              canvasId={selectedCanvas.id}
               whiteboardId={whiteboardId}
               allowedUsernames={selectedCanvasAllowedUsers
                 ?.map(u => u.username)

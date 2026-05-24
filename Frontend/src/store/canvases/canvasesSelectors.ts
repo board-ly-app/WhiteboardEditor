@@ -13,8 +13,11 @@ import {
   type WhiteboardIdType
 } from '@/types/WebSocketProtocol';
 
-export const selectCanvasById = (state: RootState, canvasId: CanvasIdType): CanvasAttribs | null => (
-  state.canvases[canvasId] || null
+export const selectCanvasById = (
+  state: RootState,
+  canvasId: CanvasIdType | null,
+): CanvasAttribs | null => (
+  canvasId && state.canvases[canvasId] || null
 );
 
 export const selectCanvasesByWhiteboardId = (state: RootState, whiteboardId: WhiteboardIdType): CanvasAttribs[] => {
@@ -80,3 +83,14 @@ export const selectCanvasesWithObjectsByWhiteboardId = (
 export const selectSelectedCanvasByWhiteboard = (state: RootState, whiteboardId: WhiteboardIdType): CanvasIdType | undefined => {
   return state.selectedCanvasByWhiteboard.selectedCanvasByWhiteboard[whiteboardId];
 };
+
+export const selectChildCanvasIdsByCanvas = (
+  state: RootState,
+  canvasId: CanvasIdType,
+): CanvasIdType[] | null  => {
+  if (! (canvasId in state.childCanvasesByCanvas.childCanvasesByCanvas)) {
+    return null;
+  } else {
+    return Object.keys(state.childCanvasesByCanvas.childCanvasesByCanvas[canvasId]);
+  }
+};// -- end selectChildCanvasIdsByCanvas

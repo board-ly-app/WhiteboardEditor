@@ -4,8 +4,15 @@ import {
   useCallback,
 } from 'react';
 
+import {
+  useSelector,
+} from 'react-redux';
+
+import lodash from 'lodash';
+
 // -- local imports
 import {
+  type WhiteboardIdType,
   type WhiteboardAttribs,
 } from '@/types/WebSocketProtocol';
 
@@ -18,10 +25,18 @@ import {
   Button,
 } from '@/components/ui/button';
 
+import {
+  type RootState,
+} from '@/store';
+
+import {
+  selectWhiteboardById,
+} from '@/store/whiteboards/whiteboardsSelectors';
+
 export interface DeleteWhiteboardFormProps {
+  whiteboardId: WhiteboardIdType;
   onSubmit: () => Promise<unknown>;
   onCancel: () => unknown;
-  whiteboardAttribs: Pick<WhiteboardAttribs, 'id' | 'name'>;
 }
 
 type ComponentStatus = 
@@ -32,15 +47,20 @@ type ComponentStatus =
 ;
 
 export const DeleteWhiteboardForm = ({
+  whiteboardId,
   onSubmit,
   onCancel,
-  whiteboardAttribs,
 }: DeleteWhiteboardFormProps) => {
   // The confirmation key is a user input that confirms that the user really
   // intends to carry out the intended action
   const CONFIRMATION_KEY = 'Delete';
   const [confirmationKeyEntry, setConfirmationKeyEntry] = useState<string>('');
   const [deleteButtonStatus, setDeleteButtonStatus] = useState<ButtonStatus>('enabled');
+
+  const whiteboardAttribs : WhiteboardAttribs | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId),
+    lodash.isEqual
+  );
 
   const handleConfirmationKeyEntryChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,6 +101,10 @@ export const DeleteWhiteboardForm = ({
 
   const confirmationKeyEntryClassnameBase = "placeholder:italic outline-2 rounded-sm p-1";
   let confirmationKeyEntryClassname : string;
+
+  if (! whiteboardAttribs) {
+    return null;
+  }
 
   switch (status.name) {
     case 'default':

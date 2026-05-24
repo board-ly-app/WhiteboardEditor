@@ -8,6 +8,10 @@ import type {
 } from '@/types/WebSocketProtocol';
 
 import {
+  type WhiteboardState,
+} from '@/types/Store';
+
+import {
   setCanvasObjects,
 } from '@/store/canvasObjects/canvasObjectsSlice';
 
@@ -37,6 +41,7 @@ import {
 
 import {
   setWhiteboards,
+  updateWhiteboardsById,
 } from '@/store/whiteboards/whiteboardsSlice';
 
 import {
@@ -62,7 +67,17 @@ export const addWhiteboard = (
     allowedUsersByCanvas,
   } = normalizeWhiteboard(whiteboard);
 
-  dispatch(setWhiteboards(whiteboards));
+  // -- add default whiteboard settings
+  dispatch(setWhiteboards(Object.fromEntries(Object.entries(whiteboards).map(
+    ([wid, attribs]) => [
+      wid, {
+        ...attribs,
+        currentTool: "hand",
+        tooltipText: "",
+        editingText: "",
+      }
+    ]
+  ))));
   dispatch(setCanvases(canvases));
   dispatch(setCanvasObjects(canvasObjects));
   dispatch(setChildCanvasesByCanvas(childCanvasesByCanvas));
@@ -103,3 +118,11 @@ export const setWhiteboardStatus = (
 ) => {
   dispatch(setWhiteboardStatuses({ [whiteboardId]: status }));
 };
+
+export const updateWhiteboard = (
+  dispatch: AppDispatch,
+  whiteboardId: WhiteboardIdType,
+  update: Partial<WhiteboardState>,
+) => {
+  dispatch(updateWhiteboardsById({ [whiteboardId]: update }));
+};// -- end updateWhiteboard

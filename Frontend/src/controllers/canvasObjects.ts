@@ -21,6 +21,10 @@ import {
   removeCanvasObjectsByCanvas,
 } from '@/store/canvasObjects/canvasObjectsByCanvasSlice';
 
+import {
+  removeSelectorsByCanvasObject as reducerRemoveSelectorsByCanvasObject,
+} from '@/store/activeUsers/selectorsByCanvasObjectSlice';
+
 const controllerSetCanvasObjects = (
   dispatch: AppDispatch,
   canvasId: CanvasIdType,
@@ -36,8 +40,9 @@ const controllerRemoveCanvasObjects = (
   dispatch: AppDispatch,
   canvasObjectIds: CanvasObjectIdType[]
 ) => {
-  dispatch(removeCanvasObjects(canvasObjectIds));
+  dispatch(reducerRemoveSelectorsByCanvasObject(canvasObjectIds));
   dispatch(removeCanvasObjectsByCanvas(canvasObjectIds));
+  dispatch(removeCanvasObjects(canvasObjectIds));
 };
 
 export {

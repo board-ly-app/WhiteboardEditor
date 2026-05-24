@@ -22,6 +22,8 @@ import {
 
 // -- third-party imports
 
+import lodash from 'lodash';
+
 import {
   type AxiosError,
 } from 'axios';
@@ -32,9 +34,7 @@ import {
 } from '@tanstack/react-query';
 
 import {
-  ChevronDown,
   X,
-  Circle,
 } from 'lucide-react';
 
 import Konva from 'konva';
@@ -56,8 +56,6 @@ import {
 import {
   axiosResponseIsError,
   type Whiteboard as APIWhiteboard,
-  type UserPermissionEnum,
-  type UserPermission,
   type ErrorResponse as APIErrorResponse,
 } from '@/types/APIProtocol';
 
@@ -72,12 +70,9 @@ import {
 } from '@/context/ClientMessengerContext';
 
 import {
-  selectActiveUsersByWhiteboard,
-} from '@/store/activeUsers/activeUsersSelectors';
-
-import {
   selectWhiteboardById,
   selectWhiteboardStatus,
+  selectWhiteboardPermissionByUser,
 } from '@/store/whiteboards/whiteboardsSelectors';
 
 import {
@@ -85,7 +80,6 @@ import {
 } from '@/store/canvases/canvasesSelectors';
 
 import {
-  selectCanvasObjectsByWhiteboard,
   selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
@@ -110,6 +104,10 @@ import HeaderAuthed from '@/components/HeaderAuthed';
 import shapeAttributesReducer from '@/reducers/shapeAttributesReducer';
 import type { ToolChoice } from '@/components/Tool';
 
+import {
+  ActiveUsersHeaderDropdown,
+} from '@/components/ActiveUsersHeaderDropdown';
+
 import type {
   CanvasObjectIdType,
   CanvasObjectModel,
@@ -132,36 +130,39 @@ import {
 } from '@/types/CreateCanvas';
 
 import type {
-  ClientIdType,
   ClientMessageCreateCanvas,
   CanvasData,
   CanvasIdType,
   WhiteboardIdType,
-  WhiteboardAttribs,
 } from '@/types/WebSocketProtocol';
 
 import {
-  type ClientSummary,
-} from '@/types/ClientSummary';
+  type WhiteboardState,
+} from '@/types/Store';
 
 import {
   type OperationDispatcher,
 } from '@/types/OperationDispatcher';
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import HeaderUnauthed from '@/components/HeaderUnauthed';
 import { useUser } from '@/hooks/useUser';
 
+import {
+  removeSelectorsByCanvasObject,
+  updateWhiteboard,
+} from '@/controllers';
+
 type ComponentStatus = 
-  | { status: 'ready'; currWhiteboard: WhiteboardAttribs; }
+  | {
+    status: 'ready';
+    currWhiteboard: Pick<WhiteboardState, 'name' | 'rootCanvas'>;
+  }
   | { status: 'pending'; }
   | { status: 'error'; error: AxiosError; }
-  | { status: 'deleting'; currWhiteboard: WhiteboardAttribs; }
+  | {
+    status: 'deleting';
+    currWhiteboard: Pick<WhiteboardState, 'name' | 'rootCanvas'>;
+  }
   | { status: 'deleted'; }
 ;
 
@@ -180,7 +181,7 @@ const Whiteboard = ({
   const { user } = useUser();
 
   if (!user) {
-    throw new Error('No user found');
+    throw new Error('No authenticated user found');
   }
 
   const dispatch = store.dispatch;
@@ -206,14 +207,16 @@ const Whiteboard = ({
   const {
     whiteboardId,
     userPermissions,
-    ownPermission,
-    currentTool,
-    setCurrentTool,
   } = whiteboardContext;
 
   const {
     clientMessenger,
   } = clientMessengerContext;
+
+  const ownPermission = useSelector(
+    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id),
+    lodash.isEqual
+  );
 
   // -- prop-derived state
   const whiteboardKey = ['whiteboard', whiteboardId];
@@ -224,7 +227,6 @@ const Whiteboard = ({
     isFetching: isWhiteboardFetching,
     error: whiteboardError,
   } = query;
-  const whiteboardIdRef = useRef<WhiteboardIdType>(whiteboardId);
 
   // alert user of any errors fetching whiteboard
   useEffect(
@@ -245,11 +247,6 @@ const Whiteboard = ({
     }, [whiteboardError, whiteboardId]
   );
 
-  // dirty trick to keep whiteboardIdRef in-sync with whiteboardId
-  useEffect(() => {
-    whiteboardIdRef.current = whiteboardId;
-  }, [whiteboardId]);
-
   const [shapeAttributesState, dispatchShapeAttributes] = useReducer(shapeAttributesReducer, {
     x: 0,
     y: 0,
@@ -261,26 +258,61 @@ const Whiteboard = ({
     color: '#000000',
   });
 
-  const activeUsers : Record<ClientIdType, ClientSummary> = useSelector(
-    (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId)
-  ) || {};
-
-  const currWhiteboard: WhiteboardAttribs | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)
+  const name : string | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.name ?? null,
+    lodash.isEqual
   );
 
-  const canvases: CanvasData[] = useSelector((state: RootState) => {
-    return selectCanvasesWithObjectsByWhiteboardId(state, whiteboardId)
-  });
+  const rootCanvas : string | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.rootCanvas ?? null,
+    lodash.isEqual
+  );
 
-  const childCanvasesByCanvas : Record<CanvasIdType, Record<CanvasIdType, CanvasIdType>> = useSelector(
-    (state: RootState) => state.childCanvasesByCanvas.childCanvasesByCanvas
+  const currentTool : ToolChoice | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null,
+    lodash.isEqual
+  );
+
+  // Current tool choice will be saved to localStorage to ensure seamless UX
+  // after page reloads.
+  // TODO: save default tool choice ('hand') in a separate config file.
+  // const [currentTool, setCurrentTool] = useState<ToolChoice>('hand');
+  const LS_CURRENT_TOOL_KEY = 'current_tool';
+
+  // -- Reload previous current tool on page refresh
+  useEffect(
+    () => {
+      const savedTool : ToolChoice | null = localStorage.getItem(LS_CURRENT_TOOL_KEY) as ToolChoice | null;
+
+      if (savedTool) {
+        updateWhiteboard(dispatch, whiteboardId, {
+          currentTool: savedTool,
+        });
+      }
+    },
+    [dispatch, whiteboardId]
+  );
+
+  // -- make sure to save to localStorage whenever current tool changes
+  useEffect(
+    () => {
+      if (currentTool) {
+        localStorage.setItem(LS_CURRENT_TOOL_KEY, currentTool);
+      }
+    },
+    [currentTool]
+  );
+
+  const canvases: CanvasData[] = useSelector(
+    (state: RootState) => selectCanvasesWithObjectsByWhiteboardId(state, whiteboardId),
+    lodash.isEqual
   );
 
   const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
       state, whiteboardId, user.id
-    )
+    ),
+    lodash.isEqual
   );
 
   const {
@@ -307,7 +339,9 @@ const Whiteboard = ({
   // Used within Toolbar
   const handleToolChange = useCallback(
     (choice : ToolChoice) => {
-      setCurrentTool(choice);
+      updateWhiteboard(dispatch, whiteboardId, {
+        currentTool: choice,
+      });
 
       for (const objId of selectedCanvasObjects) {
         clientMessenger?.sendUnselectedCanvasObject({
@@ -315,12 +349,15 @@ const Whiteboard = ({
           canvasObjectId: objId,
         });
       }// -- end for objId
+
+      removeSelectorsByCanvasObject(dispatch, selectedCanvasObjects);
     },
-    [dispatch, setCurrentTool, selectedCanvasObjects]
+    [dispatch, selectedCanvasObjects, clientMessenger, whiteboardId]
   );
 
   const whiteboardStatus = useSelector(
-    (state: RootState) => selectWhiteboardStatus(state, whiteboardId)
+    (state: RootState) => selectWhiteboardStatus(state, whiteboardId),
+    lodash.isEqual
   );
 
   // -- display alert if whiteboard enters deleting status
@@ -396,6 +433,51 @@ const Whiteboard = ({
   );// -- end handleSubmitDeleteWhiteboard
 
   // -- derived state
+      
+  // --- misc functions
+  const handleCreateCanvasDimensions = useCallback(
+    (parentCanvasId: CanvasIdType, dimensions: NewCanvasDimensions) => {
+        setNewCanvasDimensions(dimensions);
+        setNewCanvasParentId(parentCanvasId);
+        openCreateCanvasModal();
+    },
+    [setNewCanvasDimensions, openCreateCanvasModal]
+  );
+
+  const handleNewCanvas = useCallback(
+    (canvas: NewCanvas) => {
+      // Send message to server.
+      // Server will echo response back, and actually inserting the new canvas
+      // will be handled by handleServerMessage.
+      // TODO: allow setting custom canvas sizes
+      if (clientMessenger && newCanvasParentId && newCanvasDimensions) {
+        const createCanvasMsg : ClientMessageCreateCanvas = ({
+          type: 'create_canvas',
+          width: newCanvasDimensions.width,
+          height: newCanvasDimensions.height,
+          name: canvas.canvasName,
+          parentCanvas: {
+            canvasId: newCanvasParentId,
+            originX: newCanvasDimensions.originX,
+            originY: newCanvasDimensions.originY,
+          },
+          allowedUsers: canvas.allowedUsers,
+        });
+    
+        clientMessenger.sendCreateCanvas(createCanvasMsg);
+        setNewCanvasParentId(null);
+        setNewCanvasDimensions(null);
+      }
+    },
+    [
+      clientMessenger,
+      newCanvasDimensions,
+      newCanvasParentId,
+      setNewCanvasParentId,
+      setNewCanvasDimensions,
+    ]
+  );
+
   let status : ComponentStatus;
 
   if (whiteboardError) {
@@ -410,14 +492,31 @@ const Whiteboard = ({
     }
 
     status = { status: 'error', error: whiteboardError };
-  } else if (isWhiteboardLoading || isWhiteboardFetching || (! currWhiteboard) || (! whiteboardStatus)) {
+  } else if (
+    isWhiteboardLoading
+      || isWhiteboardFetching
+      || (! name)
+      || (! rootCanvas)
+  ) {
     status = { status: 'pending' };
   } else if (whiteboardStatus === 'deleting') {
-    status = { status: 'deleting', currWhiteboard };
+    status = {
+      status: 'deleting',
+      currWhiteboard: {
+        name,
+        rootCanvas,
+      },
+    };
   } else if (whiteboardStatus === 'deleted') {
     status = { status: 'deleted' };
   } else {
-    status = { status: 'ready', currWhiteboard };
+    status = {
+      status: 'ready',
+      currWhiteboard: {
+        name,
+        rootCanvas,
+      },
+    };
   }
 
   switch (status.status) {
@@ -510,49 +609,15 @@ const Whiteboard = ({
       const {
         currWhiteboard,
       } = status;
-      const canvasesById : Record<CanvasIdType, CanvasData> = Object.fromEntries(canvases.map(
-        canvasData => [ canvasData.id, canvasData ]
-      ));
-      
-      const rootCanvasId = currWhiteboard.rootCanvas;
       
       const canvasesSorted = [...canvases];
       
       canvasesSorted.sort((a, b) => new Date(a.timeCreated) < new Date(b.timeCreated) ? -1 : 1);
       
-      const title = currWhiteboard.name;
-      
-      // --- misc functions
-      const handleCreateCanvasDimensions = (parentCanvasId: CanvasIdType, dimensions: NewCanvasDimensions) => {
-          setNewCanvasDimensions(dimensions);
-          setNewCanvasParentId(parentCanvasId);
-          openCreateCanvasModal();
-      };
-
-      const handleNewCanvas = (canvas: NewCanvas) => {
-        // Send message to server.
-        // Server will echo response back, and actually inserting the new canvas
-        // will be handled by handleServerMessage.
-        // TODO: allow setting custom canvas sizes
-        if (clientMessenger && newCanvasParentId && newCanvasDimensions) {
-          const createCanvasMsg : ClientMessageCreateCanvas = ({
-            type: 'create_canvas',
-            width: newCanvasDimensions.width,
-            height: newCanvasDimensions.height,
-            name: canvas.canvasName,
-            parentCanvas: {
-              canvasId: newCanvasParentId,
-              originX: newCanvasDimensions.originX,
-              originY: newCanvasDimensions.originY,
-            },
-            allowedUsers: canvas.allowedUsers,
-          });
-      
-          clientMessenger.sendCreateCanvas(createCanvasMsg);
-          setNewCanvasParentId(null);
-          setNewCanvasDimensions(null);
-        }
-      };
+      const {
+        name: title,
+        rootCanvas: rootCanvasId,
+      } = currWhiteboard;
       
       // -- Header elements
       const ShareWhiteboardButton = () => (
@@ -576,36 +641,6 @@ const Whiteboard = ({
         : () => null;
       
       const pageTitle = `${title} | ${APP_NAME}`;
-
-      const ActiveUsersHeaderDropdown = () => (
-        // TODO: Abstract out a generic dropdown menu
-        // Active Users
-        <DropdownMenu key="active-users">
-          <DropdownMenuTrigger className="text-header-button-text group flex items-center gap-1 px-4 py-2 rounded-lg hover:cursor-pointer hover:text-header-button-text-hover whitespace-nowrap">
-            Active Users
-            <ChevronDown className="w-4 h-4 transition-transform duration-300 group-data-[state=open]:rotate-180"/>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <div className="flex flex-col">
-              {Object.values(activeUsers).map((u) => (
-                <DropdownMenuLabel
-                  key={u.clientId}
-                  className="flex flex-row content-center"
-                >
-                  <Circle
-                    size={20}
-                    stroke={u.color}
-                    strokeWidth={4}
-                  />
-                  <span className="pl-2">
-                    {u.username}
-                  </span>
-                </DropdownMenuLabel>
-              ))}
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
 
       return (
         <Page
@@ -656,7 +691,6 @@ const Whiteboard = ({
                 >
                   {/* Toolbar */}
                   <Toolbar
-                    toolChoice={currentTool}
                     onToolChange={handleToolChange}
                   />
       
@@ -694,9 +728,6 @@ const Whiteboard = ({
                     whiteboardId={whiteboardId}
                     rootCanvasId={rootCanvasId}
                     shapeAttributes={shapeAttributesState}
-                    currentTool={currentTool}
-                    canvasesById={canvasesById}
-                    childCanvasesByCanvas={childCanvasesByCanvas}
                     onSelectCanvasDimensions={handleCreateCanvasDimensions}
                   />
                 </div>
@@ -828,7 +859,7 @@ const Whiteboard = ({
               className="p-4 rounded-sm"
             >
                 <DeleteWhiteboardForm
-                  whiteboardAttribs={currWhiteboard}
+                  whiteboardId={whiteboardId}
                   onSubmit={handleSubmitDeleteWhiteboard}
                   onCancel={closeDeleteWhiteboardModal}
                 />
@@ -846,11 +877,9 @@ const Whiteboard = ({
         currWhiteboard,
       } = status;
 
-      const canvasesById : Record<CanvasIdType, CanvasData> = Object.fromEntries(canvases.map(
-        canvasData => [ canvasData.id, canvasData ]
-      ));
-      
-      const rootCanvasId = currWhiteboard.rootCanvas;
+      const {
+        rootCanvas: rootCanvasId,
+      } = currWhiteboard;
       
       const canvasesSorted = [...canvases];
       
@@ -910,9 +939,6 @@ const Whiteboard = ({
                     whiteboardId={whiteboardId}
                     rootCanvasId={rootCanvasId}
                     shapeAttributes={shapeAttributesState}
-                    currentTool={currentTool}
-                    canvasesById={canvasesById}
-                    childCanvasesByCanvas={childCanvasesByCanvas}
                     onSelectCanvasDimensions={handleCreateCanvasDimensions}
                   />
                 </div>
@@ -959,18 +985,10 @@ const Whiteboard = ({
 const WrappedWhiteboard = () => {
   const authContext = useContext(AuthContext);
   const clientMessengerContext = useContext(ClientMessengerContext);
-  const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);
-  const [currentDispatcher, setCurrentDispatcher] = useState<OperationDispatcher | null>(null);
-  const [tooltipText, setTooltipText] = useState<string>("");
-  const [editingText, setEditingText] = useState<string>("");
 
   if (! authContext) {
     throw new Error('AuthContext not provided to Whiteboard');
   }
-
-  const {
-    user,
-  } = authContext;
 
   if (! clientMessengerContext) {
     throw new Error('ClientMessengerContext not provided to Whiteboard');
@@ -1021,91 +1039,38 @@ const WrappedWhiteboard = () => {
     },
   });
 
-  const {
-    data: whiteboardData,
-  } = query;
-
   // update the state of userPermissions whenever whiteboardData changes
   const [userPermissions, setSharedUsers] = useState<APIWhiteboard['user_permissions']>([]);
-
-  // -- view/edit/own - determines which actions to enable or disable
-  const [ownPermission, setOwnPermission] = useState<UserPermissionEnum | null>(null);
-
-  useEffect(() => {
-    if (whiteboardData && user) {
-      const newOwnPermission = whiteboardData.user_permissions
-        .find(
-          (perm: UserPermission) => perm.type === 'user' && perm.user.id === user.id
-        ) || null;
-
-      setSharedUsers(whiteboardData.user_permissions);
-      
-      if (newOwnPermission) {
-        setOwnPermission(newOwnPermission.permission);
-      }
-      else {
-        setOwnPermission(null);
-      }
-    }
-  }, [whiteboardData, user])
-
-  const canvasObjectsByCanvas: Record<CanvasIdType, Record<CanvasObjectIdType, CanvasObjectModel>> = useSelector((state: RootState) => (
-    selectCanvasObjectsByWhiteboard(state, whiteboardId)
-  ));
-
-  // Current tool choice will be saved to localStorage to ensure seamless UX
-  // after page reloads.
-  // TODO: save default tool choice ('hand') in a separate config file.
-  // const [currentTool, setCurrentTool] = useState<ToolChoice>('hand');
-  const LS_CURRENT_TOOL_KEY = 'current_tool';
-  const CURRENT_TOOL_DEFAULT : ToolChoice = 'hand'
-
-  const [currentTool, setCurrentTool] = useState<ToolChoice>((): ToolChoice => {
-    const savedTool : string | null = localStorage.getItem(LS_CURRENT_TOOL_KEY);
-
-    if (! savedTool) {
-      // return default choice
-      return CURRENT_TOOL_DEFAULT;
-    } else {
-      // just trust that the retrieved tool is a valid tool
-      return savedTool as ToolChoice;
-    }
-  });
-
-  // -- make sure to save to localStorage whenever current tool changes
-  useEffect(
-    () => {
-      localStorage.setItem(LS_CURRENT_TOOL_KEY, currentTool);
-    },
-    [currentTool]
-  );
 
   // -- track refs to canvas groups (frames)
   const canvasGroupRefsByIdRef: RefObject<Record<CanvasIdType, RefObject<Konva.Group | null>>> = useRef({});
 
+  const currentDispatcherRef = useRef<OperationDispatcher | null>(null);
+
+  console.log('!! WHITEBOARD CONTEXT RENDER');
+
   // -- transform canvas object diffs into full updated shapes
   const handleUpdateShapes = useCallback(
-    (canvasId: CanvasIdType, shapes: Record<CanvasObjectIdType, Partial<CanvasObjectModel>>) => {
+    (
+      canvasId: CanvasIdType,
+      canvasObjectsById: Record<CanvasObjectIdType, CanvasObjectModel>,
+      updates: Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
+    ) => {
       if (clientMessenger) {
         // find relevant objects and merge the new attributes into the existing
         // attributes
-        const canvasObjects: Record<CanvasObjectIdType, CanvasObjectModel> | null = canvasObjectsByCanvas[canvasId] || null;
-
-        if (! canvasObjects) {
-          console.error('No canvas objects on canvas id', canvasId);
-          return;
-        }
-
         const changedObjects: Record<CanvasObjectIdType, CanvasObjectModel> = {};
 
-        for (const [objId, objUpdate] of Object.entries(shapes)) {
-          const existingShape = canvasObjects[objId];
+        for (const [objId, objUpdate] of Object.entries(updates)) {
+          const existingShape = canvasObjectsById[objId];
 
-          if (!existingShape) continue;
+          if (! existingShape) {
+            continue;
+          }
 
-          if (objId in canvasObjects) {
+          if (objId in canvasObjectsById) {
             changedObjects[objId] = {
-              ...canvasObjects[objId],
+              ...canvasObjectsById[objId],
               ...(objUpdate as Partial<typeof existingShape>),
             } as CanvasObjectModel;
           }
@@ -1118,28 +1083,17 @@ const WrappedWhiteboard = () => {
         });
       }
     },
-    [canvasObjectsByCanvas, clientMessenger]
+    [clientMessenger]
   );
 
   return (
     <WhiteboardProvider
       handleUpdateShapes={handleUpdateShapes}
-      currentTool={currentTool}
-      setCurrentTool={setCurrentTool}
       whiteboardId={whiteboardId}
       userPermissions={userPermissions}
       setSharedUsers={setSharedUsers}
-      newCanvasAllowedUsers={newCanvasAllowedUsers}
-      setNewCanvasAllowedUsers={setNewCanvasAllowedUsers}
-      ownPermission={ownPermission}
-      setOwnPermission={setOwnPermission}
-      currentDispatcher={currentDispatcher}
-      setCurrentDispatcher={setCurrentDispatcher}
+      currentDispatcherRef={currentDispatcherRef}
       canvasGroupRefsByIdRef={canvasGroupRefsByIdRef}
-      tooltipText={tooltipText}
-      setTooltipText={setTooltipText}
-      editingText={editingText}
-      setEditingText={setEditingText}
     >
       <Whiteboard
         query={query}

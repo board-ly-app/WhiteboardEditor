@@ -44,7 +44,7 @@ import {
 import {
   type User,
   type PermanentUser,
-} from '@/types/APIProtocol';
+} from '@/types/User';
 
 import Footer from "@/components/Footer";
 

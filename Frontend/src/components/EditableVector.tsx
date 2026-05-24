@@ -9,6 +9,8 @@ import React, {
 
 import Konva from "konva";
 
+import lodash from 'lodash';
+
 import { Circle, Group, Line, type KonvaNodeEvents } from "react-konva";
 
 import {
@@ -27,13 +29,11 @@ import {
   selectSelectorByCanvasObject,
 } from '@/store/activeUsers/activeUsersSelectors';
 
-import WhiteboardContext from '@/context/WhiteboardContext';
-
 import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
 
-import type { CanvasObjectIdType, VectorModel } from "@/types/CanvasObjectModel";
+import type { CanvasObjectIdType, CanvasObjectModel, VectorModel } from "@/types/CanvasObjectModel";
 import type { EditableObjectProps } from "@/dispatchers/editableObjectProps";
 import editableObjectProps from "@/dispatchers/editableObjectProps";
 import {
@@ -44,30 +44,24 @@ import {
   useSnapping,
 } from "@/hooks/useSnapping";
 
-interface EditableVectorProps<VectorType extends VectorModel> extends EditableObjectProps {
-  id: string;
-  shapeModel: VectorType;
+export interface EditableVectorProps<VectorType extends VectorModel> extends EditableObjectProps {
+  id: CanvasObjectIdType;
+  model: VectorType;
   draggable: boolean;
-  handleUpdateShapes: (shapes: Record<CanvasObjectIdType, VectorType>) => void;
+  onUpdateObject: (updatedObject: CanvasObjectModel) => unknown;
   children: React.ReactElement<Konva.NodeConfig & KonvaNodeEvents>;
 }
 
 const EditableVector = <VectorType extends VectorModel>({
   id,
-  shapeModel,
+  model,
   draggable,
-  handleUpdateShapes,
+  onUpdateObject,
   children,
 }: EditableVectorProps<VectorType>) => {
-  const [localPoints, setLocalPoints] = useState(shapeModel.points);
+  const [localPoints, setLocalPoints] = useState(model.points);
   const vectorRef = useRef<Konva.Shape>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
-
-  const whiteboardContext = useContext(WhiteboardContext);
-
-  if (! whiteboardContext) {
-    throw new Error('No whiteboard context provided');
-  }
 
   const clientMessengerContext = useContext(ClientMessengerContext);
 
@@ -82,11 +76,13 @@ const EditableVector = <VectorType extends VectorModel>({
   useSnapping(vectorRef, snappingMonitor);
 
   const clientId : ClientIdType | null = useSelector(
-    (state: RootState) => selectClientId(state)
+    (state: RootState) => selectClientId(state),
+    lodash.isEqual
   );
 
   const editor = useSelector(
-    (state: RootState) => selectSelectorByCanvasObject(state, id)
+    (state: RootState) => selectSelectorByCanvasObject(state, id),
+    lodash.isEqual
   );
 
   const isSelected = useMemo(
@@ -137,24 +133,23 @@ const EditableVector = <VectorType extends VectorModel>({
       newPoints[index * 2 + 1] = node.y();
 
       // Fire the global update ONCE at the end
-      handleUpdateShapes({
-        [id]: {
-          ...shapeModel,
-          points: newPoints,
-        } as VectorType,
-      });
+      const update : VectorType = {
+        ...model,
+        points: newPoints,
+      };
+
+      onUpdateObject(update);
     },
-    [localPoints, handleUpdateShapes, shapeModel, id]
+    [localPoints, onUpdateObject, model]
   );
 
   const handleVectorDragEnd = useCallback(
     (ev: Konva.KonvaEventObject<DragEvent>) => {
-      const id = ev.target.id();
       const node = ev.target;
       const dx = node.x();
       const dy = node.y();
 
-      const updatedPoints = shapeModel.points.map((p, i) =>
+      const updatedPoints = model.points.map((p, i) =>
         i % 2 === 0 ? p + dx : p + dy
       );
 
@@ -163,23 +158,26 @@ const EditableVector = <VectorType extends VectorModel>({
       vectorRef.current?.setAttrs({ points: updatedPoints });
       node.position({ x: 0, y: 0 });
 
-      handleUpdateShapes({
-        [id]: { ...shapeModel, points: updatedPoints } as VectorType,
-      });
+      const update : VectorType = {
+        ...model,
+        points: updatedPoints,
+      };
+
+      onUpdateObject(update);
     },
-    [handleUpdateShapes, shapeModel, setLocalPoints]
+    [onUpdateObject, model, setLocalPoints]
   );
 
   useEffect(() => {
-    setLocalPoints(shapeModel.points);
-  }, [shapeModel.points]);
+    setLocalPoints(model.points);
+  }, [model.points]);
 
   // Override the onDragEnd handler for vectors to change points rather than x, y
   const vectorEditableProps = {
-    ...editableObjectProps(shapeModel, isDraggable, handleUpdateShapes),
+    ...editableObjectProps(model, isDraggable, onUpdateObject),
     onDragStart: handleSelect,
     onDragEnd: handleVectorDragEnd,
-  }
+  };
 
   const childStrokeWidth = (children.props.strokeWidth as number | undefined) ?? 2;
 

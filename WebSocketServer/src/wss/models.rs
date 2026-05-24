@@ -290,6 +290,7 @@ pub struct WhiteboardClientView {
     pub canvases: Vec<CanvasClientView>,
     #[serde_as(as = "DisplayFromStr")]
     pub root_canvas: CanvasIdType,
+    pub permissions_by_user_id: HashMap<String, WhiteboardPermissionEnum>,
 } // -- end struct WhiteboardClientView
 
 // === CanvasParentRef ============================================================================
@@ -529,6 +530,7 @@ pub struct WhiteboardPermission {
 }
 
 pub type WhiteboardPermissionMongoDBView = WhiteboardPermission;
+pub type WhiteboardPermissionClientView = WhiteboardPermission;
 
 // === WhiteboardMetadata =========================================================================
 //
@@ -598,6 +600,7 @@ impl Whiteboard {
         }
     } // -- end pub fn new
 
+    // -- TODO: refactor to make use of references to original object, scoped by lifetime
     pub fn to_client_view(&self) -> WhiteboardClientView {
         // At the moment, the client view is identical to the Canvas type itself, but this may not
         // always be the case.
@@ -608,6 +611,7 @@ impl Whiteboard {
                 .canvases.values().map(|canvas| canvas.to_client_view())
                 .collect(),
             root_canvas: self.root_canvas,
+            permissions_by_user_id: self.metadata.permissions_by_user_id.clone(),
         }
     } // end pub fn to_client_view(&self) -> CanvasClientView
 

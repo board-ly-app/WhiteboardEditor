@@ -10,6 +10,8 @@ import {
   type Dispatch,
 } from 'react';
 
+import lodash from 'lodash';
+
 // -- local imports
 import WhiteboardContext from '@/context/WhiteboardContext';
 
@@ -36,6 +38,10 @@ import {
 } from '@/store/client/clientSelectors';
 
 import {
+  selectWhiteboardById,
+} from '@/store/whiteboards/whiteboardsSelectors';
+
+import {
   getShapeType,
   selectCanvasObjectById,
   selectSelectedCanvasObjectsByWhiteboard,
@@ -54,6 +60,10 @@ import type {
   CanvasObjectIdType, 
   CanvasObjectModel,
 } from '@/types/CanvasObjectModel';
+
+import {
+  type ToolChoice,
+} from '@/components/Tool';
 
 export interface ShapeAttributesMenuProps {
   attributes: ShapeAttributesState;
@@ -80,34 +90,47 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   const {
     whiteboardId,
     handleUpdateShapes,
-    currentTool,
-    currentDispatcher,
+    currentDispatcherRef,
   } = whiteboardContext;
 
+  const currentTool : ToolChoice | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null,
+    lodash.isEqual
+  );
+
+  if (! currentTool) {
+    throw new Error('no current tool provided');
+  }
+
   const clientId : ClientIdType | null = useSelector(
-    (state: RootState) => selectClientId(state)
+    (state: RootState) => selectClientId(state),
+    lodash.isEqual
   );
 
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
-    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)
+    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId),
+    lodash.isEqual
   );
 
   const selectedCanvasObjectIds : CanvasObjectIdType[] = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
       state, whiteboardId, clientId
-    )
+    ),
+    lodash.isEqual
   );
 
   // TODO: Change this for multiple select, right now only handles one shape
   const firstShapeId = selectedCanvasObjectIds[0];
 
   const shapeType = useSelector((state: RootState) => 
-    selectedCanvasId && firstShapeId ? getShapeType(state, firstShapeId) : undefined
+    selectedCanvasId && firstShapeId ? getShapeType(state, firstShapeId) : undefined,
+    lodash.isEqual
   );
-  const firstShape = useSelector((state: RootState) =>
-    firstShapeId && selectedCanvasId
+  const firstShape = useSelector(
+    (state: RootState) => firstShapeId && selectedCanvasId
       ? selectCanvasObjectById(state, firstShapeId)
-      : undefined
+      : undefined,
+    lodash.isEqual
   );
 
   if (! clientId) {
@@ -120,19 +143,21 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
     return null;
   }
   
-  let AttributeComponents: AttributeDefinition[];
+  let attributeComponents: AttributeDefinition[];
+  let useSelectedShapeValues = false;
 
   if (currentTool === "hand" && shapeType) {
     // Shape edit mode
-    AttributeComponents = getAttributesByShape(shapeType);
+    attributeComponents = getAttributesByShape(shapeType);
+    useSelectedShapeValues = true;
   }
   else {
     // Tool mode
-    if (!currentDispatcher || currentTool === "hand") {
+    if (currentTool === "hand") {
       return null;
     }
 
-    AttributeComponents = currentDispatcher.getAttributes();
+    attributeComponents = currentDispatcherRef.current?.getAttributes() ?? [];
   }
 
   return (
@@ -144,14 +169,17 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
           ev.preventDefault();
         }}
       >
-        {AttributeComponents.map(({ Component, key }) => (
+        {attributeComponents.map(({ Component, key }) => (
           <Component
             key={key}
             selectedShapeIds={selectedCanvasObjectIds}
             dispatch={dispatch}
             handleUpdateShapes={handleUpdateShapes}
             canvasId={selectedCanvasId}
-            value={firstShape ? firstShape[key as keyof CanvasObjectModel] : attributes[key]}
+            value={useSelectedShapeValues && firstShape 
+              ? firstShape[key as keyof CanvasObjectModel] 
+              : attributes[key]
+            }
             className="rounded-lg border-border"
           />
         ))}

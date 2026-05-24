@@ -16,6 +16,8 @@ import {
   useSelector,
 } from 'react-redux';
 
+import lodash from 'lodash';
+
 // --- local imports
 import {
   type RootState,
@@ -70,13 +72,15 @@ const DeleteShapesButton = () => {
   } = clientMessengerContext;
 
   const clientId : ClientIdType | null = useSelector(
-    (state: RootState) => selectClientId(state)
+    (state: RootState) => selectClientId(state),
+    lodash.isEqual
   );
 
   const selectedCanvasObjectIds : CanvasObjectIdType[] = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
       state, whiteboardId, clientId
-    )
+    ),
+    lodash.isEqual
   );
 
   const handleSubmit = useCallback(

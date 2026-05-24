@@ -6,18 +6,36 @@ import {
 // -- local imports
 import type {
   WhiteboardIdType,
-  WhiteboardAttribs
 } from '@/types/WebSocketProtocol';
+
+import {
+  type WhiteboardState,
+} from '@/types/Store';
 
 const whiteboardsSlice = createSlice({
   name: 'whiteboards',
-  initialState: {} as Record<WhiteboardIdType, WhiteboardAttribs>,
+  initialState: {} as Record<WhiteboardIdType, WhiteboardState>,
   reducers: {
-    setWhiteboards(state, action: PayloadAction<Record<WhiteboardIdType, WhiteboardAttribs>>) {
+    setWhiteboards(state, action: PayloadAction<Record<WhiteboardIdType, WhiteboardState>>) {
       return {
         ...state,
         ...action.payload
       };
+    },
+    updateWhiteboardsById(
+      state,
+      action: PayloadAction<Record<WhiteboardIdType, Partial<WhiteboardState>>>
+    ) {
+      for (const [wid, attribs] of Object.entries(action.payload)) {
+        if (wid in state) {
+          state[wid] = {
+            ...state[wid],
+            ...attribs,
+          };
+        }
+      }// -- end 
+
+      return state;
     },
     removeWhiteboards(state, action: PayloadAction<WhiteboardIdType[]>) {
       const out = { ...state };
@@ -39,11 +57,13 @@ const whiteboardsSlice = createSlice({
 export const {
   setWhiteboards,
   removeWhiteboards,
+  updateWhiteboardsById,
 } = whiteboardsSlice.actions;
 
 export type WhiteboardsActions =
   | ReturnType<typeof setWhiteboards>
   | ReturnType<typeof removeWhiteboards>
+  | ReturnType<typeof updateWhiteboardsById>
 ;
 
 export const {

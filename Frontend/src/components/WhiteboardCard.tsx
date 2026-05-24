@@ -25,10 +25,13 @@ import {
 // -- local imports
 import api from '@/api/axios';
 
-import type {
-  Whiteboard,
-  UserPermissionEnum,
+import {
+  type Whiteboard,
 } from '@/types/APIProtocol';
+
+import {
+  type UserPermissionEnum,
+} from '@/types/UserPermission';
 
 import AuthContext from '@/context/AuthContext';
 
@@ -238,9 +241,9 @@ function WhiteboardCard({
         className="p-8 rounded-sm"
       >
         <DeleteWhiteboardForm
+          whiteboardId={id}
           onCancel={closeDeletionModal}
           onSubmit={handleSubmitDeleteWhiteboard}
-          whiteboardAttribs={{ id, name }}
         />
       </DeletionModal>
     </>

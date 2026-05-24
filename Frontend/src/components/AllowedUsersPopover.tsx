@@ -39,10 +39,13 @@ import {
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 
-import type { 
-  UserPermission,
-  Whiteboard as APIWhiteboard,
+import { 
+  type Whiteboard as APIWhiteboard,
 } from "@/types/APIProtocol";
+
+import { 
+  type UserPermission,
+} from "@/types/UserPermission";
 
 import WhiteboardContext from "@/context/WhiteboardContext";
 

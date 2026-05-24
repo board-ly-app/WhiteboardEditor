@@ -357,7 +357,6 @@ const WebSocketClientMessengerProvider = ({
               } = msg;
 
               removeCanvasObjects(dispatch, canvasObjectIds);
-              removeSelectorsByCanvasObject(dispatch, canvasObjectIds);
           }
           break;
           case 'merge_canvas':

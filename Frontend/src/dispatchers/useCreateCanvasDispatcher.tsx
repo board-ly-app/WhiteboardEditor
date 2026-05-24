@@ -1,5 +1,8 @@
 // --- std imports
-import { useState } from 'react';
+import {
+  useState,
+  useCallback,
+} from 'react';
 
 // --- third-party imports
 import Konva from 'konva';
@@ -10,11 +13,6 @@ import type {
   OperationDispatcher,
   OperationDispatcherProps
 } from '@/types/OperationDispatcher';
-
-import type {
-  CanvasObjectIdType,
-  CanvasObjectModel,
-} from '@/types/CanvasObjectModel';
 
 import {
   type NewCanvasDimensions,
@@ -39,98 +37,112 @@ const useCreateCanvasDispatcher = ({
   const [mouseDownCoords, setMouseDownCoords] = useState<EventCoords | null>(null);
   const [mouseCoords, setMouseCoords] = useState<EventCoords | null>(null);
 
-  const handlePointerDown = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    const pos = ev.currentTarget.getRelativePointerPosition();
+  const handlePointerDown = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      const pos = ev.currentTarget.getRelativePointerPosition();
 
-    if (pos) {
-      const { x, y } = pos;
+      if (pos) {
+        const { x, y } = pos;
 
-      setMouseDownCoords({ x, y });
-      setMouseCoords({ x, y });
-    }
-  };
+        setMouseDownCoords({ x, y });
+        setMouseCoords({ x, y });
+      }
+    },
+    []
+  );// -- end handlePointerDown
 
-  const handlePointerMove = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    const pos = ev.currentTarget.getRelativePointerPosition();
+  const handlePointerMove = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      if (mouseDownCoords) {
+        const pos = ev.currentTarget.getRelativePointerPosition();
 
-    if (pos) {
-      const { x, y } = pos;
+        if (pos) {
+          const { x, y } = pos;
 
-      setMouseCoords({ x, y });
-    }
-  };
+          setMouseCoords({ x, y });
+        }
+      }
+    },
+    [mouseDownCoords]
+  );// -- end handlePointerMove
 
-  const handlePointerUp = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    if (! onCreateCanvas) {
-      throw new Error('CreateCanvasDispatcher requires an onCreate callback function');
-    }
+  const handlePointerUp = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      if (! onCreateCanvas) {
+        throw new Error('CreateCanvasDispatcher requires an onCreate callback function');
+      }
 
-    const pos = ev.currentTarget.getRelativePointerPosition();
+      const pos = ev.currentTarget.getRelativePointerPosition();
 
-    if (pos && mouseDownCoords) {
-      const { x: xA, y: yA } = pos;
-      const { x: xB, y: yB } = mouseDownCoords;
-      const xMin = Math.min(xA, xB);
-      const yMin = Math.min(yA, yB);
-      const width = Math.abs(xA - xB);
-      const height = Math.abs(yA - yB);
+      if (pos && mouseDownCoords) {
+        const { x: xA, y: yA } = pos;
+        const { x: xB, y: yB } = mouseDownCoords;
+        const xMin = Math.min(xA, xB);
+        const yMin = Math.min(yA, yB);
+        const width = Math.abs(xA - xB);
+        const height = Math.abs(yA - yB);
 
-      const newCanvasData : NewCanvasDimensions = {
-        originX: xMin,
-        originY: yMin,
-        width,
-        height,
-      };
+        const newCanvasData : NewCanvasDimensions = {
+          originX: xMin,
+          originY: yMin,
+          width,
+          height,
+        };
 
-      onCreateCanvas(newCanvasData);
+        onCreateCanvas(newCanvasData);
+        setMouseDownCoords(null);
+      }
+    },
+    [mouseDownCoords, onCreateCanvas]
+  );// -- end handlePointerUp
+
+  const handleCancel = useCallback(
+    () => {
       setMouseDownCoords(null);
-    }
-  };
+    },// -- end handleCance,
+    []
+  );// -- end handleCancel
 
-  const handleCancel = () => {
-    setMouseDownCoords(null);
-  };// -- end handleCancel
+  const getPreview = useCallback(
+    (): React.JSX.Element | null => {
+      if (mouseDownCoords && mouseCoords) {
+        const { x: xA, y: yA } = mouseDownCoords;
+        const { x: xB, y: yB } = mouseCoords;
 
-  const getPreview = (): React.JSX.Element | null => {
-    if (mouseDownCoords && mouseCoords) {
-      const { x: xA, y: yA } = mouseDownCoords;
-      const { x: xB, y: yB } = mouseCoords;
+        return (
+          <Rect
+            x={Math.min(xA, xB)}
+            y={Math.min(yA, yB)}
+            width={Math.abs(xA - xB)}
+            height={Math.abs(yA - yB)}
+            stroke="black"
+            dash={[10, 10]}
+          />
+        );
+      } else {
+        return null;
+      }
+    },
+    [mouseCoords, mouseDownCoords]
+  );// -- end getPreview
 
-      return (
-        <Rect
-          x={Math.min(xA, xB)}
-          y={Math.min(yA, yB)}
-          width={Math.abs(xA - xB)}
-          height={Math.abs(yA - yB)}
-          stroke="black"
-          dash={[10, 10]}
-        />
-      );
-    } else {
-      return null;
-    }
-  };
+  const getAttributes = useCallback(
+    (): AttributeDefinition[] => {
+      return [];
+    },
+    []
+  );// -- end getAttributes
 
-  const renderShape = (
-    _key: string | number,
-    _model: CanvasObjectModel,
-    _isDraggable: boolean,
-    _handleUpdateShapes: (shapes: Record<CanvasObjectIdType, CanvasObjectModel>) => void
-  ): React.JSX.Element | null => {
-    throw new Error('Canvas is not a valid shape type');
-  };
-
-  const getAttributes = (): AttributeDefinition[] => {
-    return [];
-  }
-
-  const getTooltipText = () => {
-    if (mouseDownCoords) {
-      return 'Drag to desired size, then release';
-    } else {
-      return 'Click to carve a new canvas from this canvas.';
-    }
-  };
+  const getTooltipText = useCallback(
+    () => {
+      if (mouseDownCoords) {
+        return 'Drag to desired size, then release';
+      } else {
+        return 'Click to carve a new canvas from this canvas.';
+      }
+    },
+    [mouseDownCoords]
+  );// -- end getTooltipText
 
   return ({
     handlePointerDown,
@@ -139,7 +151,6 @@ const useCreateCanvasDispatcher = ({
     handleCancel,
     getPreview,
     getAttributes,
-    renderShape,
     getTooltipText,
   });
 };// end useCreateCanvasDispatcher

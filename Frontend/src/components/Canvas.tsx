@@ -21,6 +21,8 @@ import {
   Rect,
 } from 'react-konva';
 
+import lodash from 'lodash';
+
 import Konva from 'konva';
 
 import {
@@ -52,12 +54,24 @@ import {
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import {
+  selectCanvasById,
   selectSelectedCanvasByWhiteboard,
+  selectChildCanvasIdsByCanvas,
 } from '@/store/canvases/canvasesSelectors';
 
 import {
+  selectWhiteboardById,
+  selectWhiteboardPermissionByUser,
+} from '@/store/whiteboards/whiteboardsSelectors';
+
+import {
   setSelectedCanvasByWhiteboard,
+  updateWhiteboard,
 } from '@/controllers';
+
+import {
+  selectCanvasObjectIdsByCanvas,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
   useUser,
@@ -67,6 +81,10 @@ import {
   type ToolChoice,
 } from '@/components/Tool';
 
+import {
+  CanvasObject,
+} from '@/components/CanvasObject';
+
 import type {
   CanvasObjectIdType,
   CanvasObjectModel,
@@ -74,7 +92,7 @@ import type {
 
 import {
   type CanvasIdType,
-  type CanvasData,
+  type CanvasAttribs,
 } from '@/types/WebSocketProtocol';
 
 import {
@@ -103,30 +121,17 @@ import useHandDispatcher from '@/dispatchers/useHandDispatcher';
 import useTextDispatcher from '@/dispatchers/useTextDispatcher';
 import useCreateCanvasDispatcher from '@/dispatchers/useCreateCanvasDispatcher';
 
-export interface CanvasProps extends CanvasData {
+export interface CanvasProps {
+  id: CanvasIdType;
   shapeAttributes: ShapeAttributesState;
-  currentTool: ToolChoice;
-  // -- should be fetched from selector in root calling component
-  childCanvasesByCanvas: Record<CanvasIdType, Record<CanvasIdType, CanvasIdType>>;
-  // -- should be fetched from selector in root calling component
-  canvasesById: Record<CanvasIdType, CanvasData>;
   onSelectCanvasDimensions: (canvasId: CanvasIdType, dimensions: NewCanvasDimensions) => void;
 }
 
-const Canvas = (props: CanvasProps) => {
-  const {
-    id : canvasId,
-    parentCanvas,
-    width,
-    height,
-    shapes,
-    shapeAttributes,
-    currentTool,
-    childCanvasesByCanvas,
-    canvasesById,
-    onSelectCanvasDimensions,
-  } = props;
-
+const Canvas = ({
+  id : canvasId,
+  shapeAttributes,
+  onSelectCanvasDimensions,
+}: CanvasProps) => {
   const whiteboardContext = useContext(WhiteboardContext);
 
   if (! whiteboardContext) {
@@ -143,18 +148,37 @@ const Canvas = (props: CanvasProps) => {
 
   const {
     whiteboardId,
-    handleUpdateShapes,
-    setCurrentTool,
-    ownPermission,
-    currentDispatcher,
-    setCurrentDispatcher,
+    currentDispatcherRef,
     canvasGroupRefsByIdRef,
-    setTooltipText : setWhiteboardTooltipText,
-    setEditingText,
   } = whiteboardContext;
 
+  const currentTool : ToolChoice | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null,
+    lodash.isEqual
+  );
+
+  if (! currentTool) {
+    throw new Error('No current tool provided');
+  }
+
+  const canvasAttribs : CanvasAttribs | null = useSelector(
+    (state: RootState) => selectCanvasById(state, canvasId),
+    lodash.isEqual
+  );
+
+  if (! canvasAttribs) {
+    throw new Error(`No canvas with id ${canvasId} found in store`);
+  }
+
+  const {
+    height,
+    parentCanvas,
+    width,
+  } = canvasAttribs;
+
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
-    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)
+    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId),
+    lodash.isEqual
   );
 
   const {
@@ -165,18 +189,31 @@ const Canvas = (props: CanvasProps) => {
     user,
   } = useUser();
 
-  const allowedUserIds = useSelector(
-    // '' is effectively a null canvas id
-    (state: RootState) => selectAllowedUsersByCanvas(state, canvasId || '')
+  if (! user) {
+    throw new Error('No authenticated user provided');
+  }
+
+  const ownPermission = useSelector(
+    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id),
+    lodash.isEqual
   );
 
-  const currentEditor : ClientSummary | null = useSelector((state: RootState) => (
-    selectCurrentEditorByCanvas(state, canvasId)
-  ));
+  const allowedUserIds = useSelector(
+    // '' is effectively a null canvas id
+    (state: RootState) => selectAllowedUsersByCanvas(state, canvasId || ''),
+    lodash.isEqual
+  );
 
-  // const userHasAccess = user?.id
-  //   ? allowedUserIds === undefined || allowedUserIds.length === 0 || allowedUserIds.includes(user.id)
-  //   : false;
+  const currentEditor : ClientSummary | null = useSelector(
+    (state: RootState) => selectCurrentEditorByCanvas(state, canvasId),
+    lodash.isEqual
+  );
+
+  const canvasObjectsIds : CanvasObjectIdType[] | null = useSelector(
+    (state: RootState) => selectCanvasObjectIdsByCanvas(state, canvasId),
+    lodash.isEqual
+  );
+
   const userHasAccess : boolean = useMemo(
     () => {
       if (user?.id) {
@@ -192,13 +229,6 @@ const Canvas = (props: CanvasProps) => {
 
   const groupRef = useRef<Konva.Group | null>(null);
 
-  const handleObjectUpdateShapes = useCallback(
-    (shapes: Record<CanvasObjectIdType, CanvasObjectModel>) => {
-      handleUpdateShapes(canvasId, shapes);
-    },
-    [handleUpdateShapes, canvasId]
-  );
-
   // In the future, we may wrap onAddShapes with some other logic.
   // For now, it's just an alias.
   const addShapes = useCallback(
@@ -211,10 +241,12 @@ const Canvas = (props: CanvasProps) => {
         });
 
         // Switch to hand tool after shape creation
-        setCurrentTool("hand");
+        updateWhiteboard(dispatch, whiteboardId, {
+          currentTool: "hand",
+        });
       }
     },
-    [clientMessenger, setCurrentTool]
+    [clientMessenger, canvasId, dispatch, whiteboardId]
   );// -- end addShapes
 
   const notifyStartEditing = useCallback(
@@ -224,7 +256,7 @@ const Canvas = (props: CanvasProps) => {
         canvasId,
       });
     },
-    [clientMessenger]
+    [clientMessenger, canvasId]
   );// -- end notifyStartEditing
   
   const defaultDispatcher = useMockDispatcher({
@@ -276,6 +308,7 @@ const Canvas = (props: CanvasProps) => {
 
   const getDispatcher: (tool: ToolChoice) => OperationDispatcher = useCallback(
     (tool: ToolChoice) => {
+      console.log("in getDispatcher, tool choice: ", tool);
       if (! userHasAccess) {
         return inaccessibleDispatcher;
       } else {
@@ -306,16 +339,18 @@ const Canvas = (props: CanvasProps) => {
       textDispatcher,
       createCanvasDispatcher,
       defaultDispatcher,
+      inaccessibleDispatcher,
     ]
   );
 
   const dispatcher : OperationDispatcher = getDispatcher(currentTool);
 
   useEffect(() => {
-    if (currentDispatcher !== dispatcher) {
-      setCurrentDispatcher(dispatcher);
+    if (currentDispatcherRef.current !== dispatcher) {
+      currentDispatcherRef.current = dispatcher;
     }
-  }, [currentTool]);
+    console.log("dispatcher: ", dispatcher);
+  }, [dispatcher, currentDispatcherRef, whiteboardId]);
 
   // -- track ref to group enclosing the contents of this Canvas
   useEffect(
@@ -387,8 +422,10 @@ const Canvas = (props: CanvasProps) => {
   );
 
   useEffect(() => {
-    setWhiteboardTooltipText(tooltipText);
-  }, [tooltipText, setWhiteboardTooltipText]);
+    updateWhiteboard(dispatch, whiteboardId, {
+      tooltipText,
+    });
+  }, [dispatch, whiteboardId, tooltipText]);
 
   const editingText = useMemo(
     () => {
@@ -406,20 +443,21 @@ const Canvas = (props: CanvasProps) => {
   // Set editingText in context for main canvas
   useEffect(
     () => {
-      if (currentEditor && (! parentCanvas)) {
-        setEditingText(editingText);
-      }
-      else {
-        setEditingText("");
-      }
+      const newEditingText = (currentEditor && (! parentCanvas)) ?
+        editingText
+        : "";
+
+      updateWhiteboard(dispatch, whiteboardId, {
+        editingText: newEditingText,
+      });
     },
-    [editingText, currentEditor, setEditingText, parentCanvas]
+    [dispatch, editingText, currentEditor, parentCanvas, whiteboardId]
   );
 
-  const childCanvasesData : CanvasData[] = childCanvasesByCanvas[canvasId] ?
-    Object.keys(childCanvasesByCanvas[canvasId]).map((childCanvasId: CanvasIdType) => canvasesById[childCanvasId] || null)
-    .filter((canvas: CanvasData | null): canvas is CanvasData => !!canvas)
-    : [];
+  const childCanvasIds : CanvasIdType[] | null = useSelector(
+    (state: RootState) => selectChildCanvasIdsByCanvas(state, canvasId),
+    lodash.isEqual
+  );
 
   const {
     originX,
@@ -535,32 +573,27 @@ const Canvas = (props: CanvasProps) => {
         {getPreview()}
       </Group>
 
-      {/** Shapes **/}
+      {/** Canvas Objects **/}
       {
-        Object.entries(shapes).filter(([_id, sh]) => !!sh).map(([id, shape]) => {
-          const renderDispatcher = getDispatcher(shape.type);
-          const {
-            renderShape,
-          } = renderDispatcher;
-
-          return renderShape(
-            id, shape, areShapesDraggable,
-            handleObjectUpdateShapes
-          );
-        })
+        canvasObjectsIds && (
+          canvasObjectsIds.map(objId => (
+            <CanvasObject
+              id={objId}
+              canvasId={canvasId}
+              isDraggable={areShapesDraggable}
+            />
+          ))
+        ) || null
       }
 
       {/** Layer child canvases on top **/}
-      {childCanvasesData && (
-        childCanvasesData.map(canvasData => (
+      {childCanvasIds && (
+        childCanvasIds.map(childCanvasId => (
           <Canvas
-            key={canvasData.id}
-            {
-              ...{
-                ...props,
-                ...canvasData
-              }
-            }
+            key={childCanvasId}
+            id={childCanvasId}
+            shapeAttributes={shapeAttributes}
+            onSelectCanvasDimensions={onSelectCanvasDimensions}
           />
         ))
       )}

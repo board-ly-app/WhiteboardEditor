@@ -15,6 +15,8 @@ import {
 
 import type Konva from "konva";
 
+import lodash from 'lodash';
+
 import {
   useSelector,
 } from 'react-redux';
@@ -36,14 +38,16 @@ import type {
   EditableObjectProps 
 } from "@/dispatchers/editableObjectProps";
 
-import type { 
-  CanvasObjectIdType, 
-  ShapeModel,
+import {
+  type CanvasIdType,
+} from '@/types/WebSocketProtocol';
+
+import { 
+  type CanvasObjectModel,
+  type ShapeModel,
 } from "@/types/CanvasObjectModel";
 
 import editableObjectProps from "@/dispatchers/editableObjectProps";
-
-import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
   ClientMessengerContext,
@@ -56,9 +60,11 @@ import {
 
 interface EditableShapeProps<ShapeType extends ShapeModel> extends EditableObjectProps {
   id: string;
+  canvasId: CanvasIdType;
   shapeModel: ShapeType;
   draggable: boolean;
-  handleUpdateShapes: (shapes: Record<CanvasObjectIdType, ShapeType>) => void;
+  onUpdateObject: (updatedObject: CanvasObjectModel) => unknown;
+  onTransformEnd: (ev: Konva.KonvaEventObject<Event>) => unknown;
   children: React.ReactElement<Konva.NodeConfig & KonvaNodeEvents>;
 }
 
@@ -66,18 +72,13 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   id,
   shapeModel,
   draggable,
-  handleUpdateShapes,
+  onUpdateObject,
+  onTransformEnd,
   children,
 }: EditableShapeProps<ShapeType>) => {
   const shapeRef = useRef<Konva.Shape>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [snappingMonitor] = useState(new SnappingMonitor());
-
-  const whiteboardContext = useContext(WhiteboardContext);
-
-  if (! whiteboardContext) {
-    throw new Error('No whiteboard context provided');
-  }
 
   const clientMessengerContext = useContext(ClientMessengerContext);
 
@@ -89,10 +90,14 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     clientMessenger,
   } = clientMessengerContext;
 
-  const clientId = useSelector((state: RootState) => selectClientId(state));
+  const clientId = useSelector(
+    (state: RootState) => selectClientId(state),
+    lodash.isEqual
+  );
 
   const editor = useSelector(
-    (state: RootState) => selectSelectorByCanvasObject(state, id)
+    (state: RootState) => selectSelectorByCanvasObject(state, id),
+    lodash.isEqual
   );
 
   const isDraggable = draggable && ((! editor) || editor.clientId === clientId);
@@ -126,9 +131,10 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   );
 
   // Override onDragEnd to reselect at end
+  const editableProps = editableObjectProps(shapeModel, isDraggable, onUpdateObject);
   const {
     onDragEnd,
-  } = editableObjectProps(shapeModel, isDraggable, handleUpdateShapes);
+  } = editableProps;
 
   const shapeOnDragEnd = useCallback(
     (ev: Konva.KonvaEventObject<DragEvent>) => {
@@ -140,7 +146,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   );
 
   const shapeEditableProps = {
-    ...editableObjectProps(shapeModel, isDraggable, handleUpdateShapes),
+    ...editableProps,
     onDragStart: handleSelect,
     onDragEnd: shapeOnDragEnd,
   };
@@ -153,6 +159,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
         draggable: isDraggable,
         onClick: handleSelect,
         onTap: handleSelect,
+        onTransformEnd,
         ...shapeEditableProps,
       })}
       {editor && (

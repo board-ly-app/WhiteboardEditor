@@ -20,7 +20,7 @@ import {
 // -- local imports
 import {
   type User,
-} from '@/types/APIProtocol';
+} from '@/types/User';
 
 import api from '@/api/axios';
 
@@ -91,7 +91,7 @@ export const UserCacheProvider = ({
         return user;
       }
     },
-    [api, location, navigate, usersByIdRef]
+    [location, navigate, usersByIdRef]
   );// -- end fetchUserById
 
   const setUserById = useCallback(

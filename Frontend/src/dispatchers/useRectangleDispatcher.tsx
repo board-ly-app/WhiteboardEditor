@@ -1,5 +1,8 @@
 // --- std imports
-import { useState } from 'react';
+import {
+  useState,
+  useCallback,
+} from 'react';
 
 // --- third-party imports
 import Konva from 'konva';
@@ -11,15 +14,9 @@ import type {
   OperationDispatcherProps
 } from '@/types/OperationDispatcher';
 import type {
-  CanvasObjectIdType,
-  CanvasObjectModel,
-  RectModel
-} from '@/types/CanvasObjectModel';
-import type {
   EventCoords
 } from '@/types/EventCoords';
 
-import EditableShape from '@/components/EditableShape';
 import { getAttributesByShape, type AttributeDefinition } from '@/types/Attribute';
 
 // === useRectangleDispatcher ==================================================
@@ -36,53 +33,64 @@ const useRectangleDispatcher = ({
   const [mouseDownCoords, setMouseDownCoords] = useState<EventCoords | null>(null);
   const [mouseCoords, setMouseCoords] = useState<EventCoords | null>(null);
 
-  const handlePointerDown = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    const pos = ev.currentTarget.getRelativePointerPosition();
+  const handlePointerDown = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      const pos = ev.currentTarget.getRelativePointerPosition();
 
-    if (pos) {
-      const { x, y } = pos;
+      if (pos) {
+        const { x, y } = pos;
 
-      setMouseDownCoords({ x, y });
-      setMouseCoords({ x, y });
+        setMouseDownCoords({ x, y });
+        setMouseCoords({ x, y });
 
-      if (onStartEditing) {
-        onStartEditing();
+        if (onStartEditing) {
+          onStartEditing();
+        }
       }
-    }
-  };
+    },
+    [setMouseDownCoords, onStartEditing]
+  );// -- end handlePointerDown
 
-  const handlePointerMove = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    const pos = ev.currentTarget.getRelativePointerPosition();
+  const handlePointerMove = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      if (mouseDownCoords) {
+        const pos = ev.currentTarget.getRelativePointerPosition();
 
-    if (pos) {
-      const { x, y } = pos;
+        if (pos) {
+          const { x, y } = pos;
 
-      setMouseCoords({ x, y });
-    }
-  };
+          setMouseCoords({ x, y });
+        }
+      }
+    },
+    [setMouseCoords, mouseDownCoords]
+  );// -- end handlePointerMove
 
-  const handlePointerUp = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    const pos = ev.currentTarget.getRelativePointerPosition();
+  const handlePointerUp = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      const pos = ev.currentTarget.getRelativePointerPosition();
 
-    if (pos && mouseDownCoords) {
-      const { x: xA, y: yA } = pos;
-      const { x: xB, y: yB } = mouseDownCoords;
-      const xMin = Math.min(xA, xB);
-      const yMin = Math.min(yA, yB);
-      const width = Math.abs(xA - xB);
-      const height = Math.abs(yA - yB);
+      if (pos && mouseDownCoords) {
+        const { x: xA, y: yA } = pos;
+        const { x: xB, y: yB } = mouseDownCoords;
+        const xMin = Math.min(xA, xB);
+        const yMin = Math.min(yA, yB);
+        const width = Math.abs(xA - xB);
+        const height = Math.abs(yA - yB);
 
-      addShapes([{
-        type: 'rect',
-        ...shapeAttributes,
-        x: xMin,
-        y: yMin,
-        width,
-        height
-      }]);
-      setMouseDownCoords(null);
-    }
-  };
+        addShapes([{
+          type: 'rect',
+          ...shapeAttributes,
+          x: xMin,
+          y: yMin,
+          width,
+          height
+        }]);
+        setMouseDownCoords(null);
+      }
+    },
+    [mouseDownCoords, addShapes, shapeAttributes]
+  );// -- end handlePointerUp
 
   const handleCancel = () => {
     setMouseDownCoords(null);
@@ -107,50 +115,10 @@ const useRectangleDispatcher = ({
     }
   };
 
-  const renderShape = (
-    key: string | number,
-    model: CanvasObjectModel,
-    isDraggable: boolean,
-    handleUpdateShapes: (shapes: Record<CanvasObjectIdType, CanvasObjectModel>) => void
-  ): React.JSX.Element | null => {
-    if (model.type !== 'rect') {
-      return null;
-    } else {
-      const {
-        x,
-        y,
-        fillColor,
-        strokeColor,
-        strokeWidth,
-        width,
-        height,
-        rotation,
-      } = model;
-
-      return (
-        <EditableShape<RectModel>
-          key={key}
-          id={`${key}`}
-          draggable={isDraggable}
-          shapeModel={model}
-          handleUpdateShapes={handleUpdateShapes}
-        >
-          <Rect
-            x={x}
-            y={y}
-            width={width}
-            height={height}
-            fill={fillColor}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            rotation={rotation}
-          />
-        </EditableShape>
-      );
-    }
-  };
-
-  const getAttributes = (): AttributeDefinition[] => getAttributesByShape('rect');
+  const getAttributes = (): AttributeDefinition[] => {
+    console.log("in rect getAttributes");
+    return getAttributesByShape('rect');
+  }
 
   const getTooltipText = () => {
     if (mouseDownCoords) {
@@ -167,7 +135,6 @@ const useRectangleDispatcher = ({
     handleCancel,
     getPreview,
     getAttributes,
-    renderShape,
     getTooltipText,
   });
 };// end useRectangleDispatcher
