@@ -22,6 +22,8 @@ import {
 
 // -- third-party imports
 
+import lodash from 'lodash';
+
 import {
   type AxiosError,
 } from 'axios';
@@ -211,7 +213,8 @@ const Whiteboard = ({
   } = clientMessengerContext;
 
   const ownPermission = useSelector(
-    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id)
+    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id),
+    lodash.isEqual
   );
 
   // -- prop-derived state
@@ -255,15 +258,18 @@ const Whiteboard = ({
   });
 
   const name : string | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.name ?? null
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.name ?? null,
+    lodash.isEqual
   );
 
   const rootCanvas : string | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.rootCanvas ?? null
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.rootCanvas ?? null,
+    lodash.isEqual
   );
 
   const currentTool : ToolChoice | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null,
+    lodash.isEqual
   );
 
   // Current tool choice will be saved to localStorage to ensure seamless UX
@@ -296,14 +302,16 @@ const Whiteboard = ({
     [currentTool]
   );
 
-  const canvases: CanvasData[] = useSelector((state: RootState) => {
-    return selectCanvasesWithObjectsByWhiteboardId(state, whiteboardId)
-  });
+  const canvases: CanvasData[] = useSelector(
+    (state: RootState) => selectCanvasesWithObjectsByWhiteboardId(state, whiteboardId),
+    lodash.isEqual
+  );
 
   const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
       state, whiteboardId, user.id
-    )
+    ),
+    lodash.isEqual
   );
 
   const {
@@ -345,7 +353,8 @@ const Whiteboard = ({
   );
 
   const whiteboardStatus = useSelector(
-    (state: RootState) => selectWhiteboardStatus(state, whiteboardId)
+    (state: RootState) => selectWhiteboardStatus(state, whiteboardId),
+    lodash.isEqual
   );
 
   // -- display alert if whiteboard enters deleting status

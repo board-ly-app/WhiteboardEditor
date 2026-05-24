@@ -21,6 +21,8 @@ import {
   Rect,
 } from 'react-konva';
 
+import lodash from 'lodash';
+
 import Konva from 'konva';
 
 import {
@@ -151,7 +153,8 @@ const Canvas = ({
   } = whiteboardContext;
 
   const currentTool : ToolChoice | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null,
+    lodash.isEqual
   );
 
   if (! currentTool) {
@@ -159,7 +162,8 @@ const Canvas = ({
   }
 
   const canvasAttribs : CanvasAttribs | null = useSelector(
-    (state: RootState) => selectCanvasById(state, canvasId)
+    (state: RootState) => selectCanvasById(state, canvasId),
+    lodash.isEqual
   );
 
   if (! canvasAttribs) {
@@ -173,7 +177,8 @@ const Canvas = ({
   } = canvasAttribs;
 
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
-    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)
+    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId),
+    lodash.isEqual
   );
 
   const {
@@ -189,20 +194,24 @@ const Canvas = ({
   }
 
   const ownPermission = useSelector(
-    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id)
+    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id),
+    lodash.isEqual
   );
 
   const allowedUserIds = useSelector(
     // '' is effectively a null canvas id
-    (state: RootState) => selectAllowedUsersByCanvas(state, canvasId || '')
+    (state: RootState) => selectAllowedUsersByCanvas(state, canvasId || ''),
+    lodash.isEqual
   );
 
-  const currentEditor : ClientSummary | null = useSelector((state: RootState) => (
-    selectCurrentEditorByCanvas(state, canvasId)
-  ));
+  const currentEditor : ClientSummary | null = useSelector(
+    (state: RootState) => selectCurrentEditorByCanvas(state, canvasId),
+    lodash.isEqual
+  );
 
   const canvasObjectsIds : CanvasObjectIdType[] | null = useSelector(
-    (state: RootState) => selectCanvasObjectIdsByCanvas(state, canvasId)
+    (state: RootState) => selectCanvasObjectIdsByCanvas(state, canvasId),
+    lodash.isEqual
   );
 
   const userHasAccess : boolean = useMemo(
@@ -444,7 +453,8 @@ const Canvas = ({
   );
 
   const childCanvasIds : CanvasIdType[] | null = useSelector(
-    (state: RootState) => selectChildCanvasIdsByCanvas(state, canvasId)
+    (state: RootState) => selectChildCanvasIdsByCanvas(state, canvasId),
+    lodash.isEqual
   );
 
   const {

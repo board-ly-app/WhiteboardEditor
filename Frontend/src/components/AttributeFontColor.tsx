@@ -1,9 +1,14 @@
 import {
   useCallback,
 } from 'react';
+
 import {
   useSelector,
 } from 'react-redux';
+
+import lodash from 'lodash';
+
+
 import {
   type RootState,
 } from '@/store';
@@ -23,7 +28,8 @@ const FontColorComponent = ({
   value,
 }: AttributeProps) => {
   const canvasObjectsById = useSelector(
-    (state: RootState) => selectCanvasObjectsByCanvas(state, canvasId)
+    (state: RootState) => selectCanvasObjectsByCanvas(state, canvasId),
+    lodash.isEqual
   );
 
   const onChangeFontColor = useCallback(

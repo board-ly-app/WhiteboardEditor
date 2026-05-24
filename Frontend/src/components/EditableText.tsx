@@ -15,6 +15,8 @@ import {
 
 import Konva from "konva";
 
+import lodash from 'lodash';
+
 import {
   useSelector,
 } from 'react-redux';
@@ -97,10 +99,14 @@ const EditableText = ({
 
   useSnapping(textRef, snappingMonitor);
 
-  const clientId = useSelector((state: RootState) => selectClientId(state));
+  const clientId = useSelector(
+    (state: RootState) => selectClientId(state),
+    lodash.isEqual
+  );
 
   const editor = useSelector(
-    (state: RootState) => selectSelectorByCanvasObject(state, id)
+    (state: RootState) => selectSelectorByCanvasObject(state, id),
+    lodash.isEqual
   );
 
   const isSelected : boolean = useMemo(

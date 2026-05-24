@@ -10,6 +10,8 @@ import {
   type Dispatch,
 } from 'react';
 
+import lodash from 'lodash';
+
 // -- local imports
 import WhiteboardContext from '@/context/WhiteboardContext';
 
@@ -92,7 +94,8 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   } = whiteboardContext;
 
   const currentTool : ToolChoice | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null,
+    lodash.isEqual
   );
 
   if (! currentTool) {
@@ -100,29 +103,34 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   }
 
   const clientId : ClientIdType | null = useSelector(
-    (state: RootState) => selectClientId(state)
+    (state: RootState) => selectClientId(state),
+    lodash.isEqual
   );
 
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
-    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)
+    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId),
+    lodash.isEqual
   );
 
   const selectedCanvasObjectIds : CanvasObjectIdType[] = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
       state, whiteboardId, clientId
-    )
+    ),
+    lodash.isEqual
   );
 
   // TODO: Change this for multiple select, right now only handles one shape
   const firstShapeId = selectedCanvasObjectIds[0];
 
   const shapeType = useSelector((state: RootState) => 
-    selectedCanvasId && firstShapeId ? getShapeType(state, firstShapeId) : undefined
+    selectedCanvasId && firstShapeId ? getShapeType(state, firstShapeId) : undefined,
+    lodash.isEqual
   );
-  const firstShape = useSelector((state: RootState) =>
-    firstShapeId && selectedCanvasId
+  const firstShape = useSelector(
+    (state: RootState) => firstShapeId && selectedCanvasId
       ? selectCanvasObjectById(state, firstShapeId)
-      : undefined
+      : undefined,
+    lodash.isEqual
   );
 
   if (! clientId) {

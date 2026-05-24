@@ -15,6 +15,8 @@ import {
   useSelector,
 } from 'react-redux';
 
+import lodash from 'lodash';
+
 import {
   type AxiosError,
 } from 'axios';
@@ -119,15 +121,18 @@ const CanvasCard = ({
   } = whiteboardContext;
 
   const tooltipText : string | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.tooltipText ?? null
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.tooltipText ?? null,
+    lodash.isEqual
   );
 
   const editingText : string | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.editingText ?? null
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.editingText ?? null,
+    lodash.isEqual
   );
 
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
-    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId)
+    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId),
+    lodash.isEqual
   );
 
   const clientMessengerContext = useContext(ClientMessengerContext);
@@ -143,7 +148,8 @@ const CanvasCard = ({
   const [selectedCanvasAllowedUsers, setSelectedCanvasAllowedUsers] = useState<User[] | null>(null);
 
   const rootCanvas : CanvasAttribs | null = useSelector(
-    (state: RootState) => selectCanvasById(state, rootCanvasId)
+    (state: RootState) => selectCanvasById(state, rootCanvasId),
+    lodash.isEqual
   );
 
   if (! rootCanvas) {
@@ -156,21 +162,25 @@ const CanvasCard = ({
   } = rootCanvas;
 
   const selectedCanvas : CanvasAttribs | null = useSelector(
-    (state: RootState) => selectCanvasById(state, selectedCanvasId || null)
+    (state: RootState) => selectCanvasById(state, selectedCanvasId || null),
+    lodash.isEqual
   );
 
   const clientId : ClientIdType | null = useSelector(
-    (state: RootState) => selectClientId(state)
+    (state: RootState) => selectClientId(state),
+    lodash.isEqual
   );
 
   const allowedUserIds = useSelector(
-    (state: RootState) => selectAllowedUsersByCanvas(state, selectedCanvasId ?? '')
+    (state: RootState) => selectAllowedUsersByCanvas(state, selectedCanvasId ?? ''),
+    lodash.isEqual
   );
 
   const selectedCanvasObjects = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
       state, whiteboardId, clientId
-    )
+    ),
+    lodash.isEqual
   );
 
   useEffect(

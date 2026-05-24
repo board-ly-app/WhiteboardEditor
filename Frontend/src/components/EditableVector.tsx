@@ -9,6 +9,8 @@ import React, {
 
 import Konva from "konva";
 
+import lodash from 'lodash';
+
 import { Circle, Group, Line, type KonvaNodeEvents } from "react-konva";
 
 import {
@@ -74,11 +76,13 @@ const EditableVector = <VectorType extends VectorModel>({
   useSnapping(vectorRef, snappingMonitor);
 
   const clientId : ClientIdType | null = useSelector(
-    (state: RootState) => selectClientId(state)
+    (state: RootState) => selectClientId(state),
+    lodash.isEqual
   );
 
   const editor = useSelector(
-    (state: RootState) => selectSelectorByCanvasObject(state, id)
+    (state: RootState) => selectSelectorByCanvasObject(state, id),
+    lodash.isEqual
   );
 
   const isSelected = useMemo(

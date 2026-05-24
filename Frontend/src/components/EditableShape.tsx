@@ -15,6 +15,8 @@ import {
 
 import type Konva from "konva";
 
+import lodash from 'lodash';
+
 import {
   useSelector,
 } from 'react-redux';
@@ -88,10 +90,14 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     clientMessenger,
   } = clientMessengerContext;
 
-  const clientId = useSelector((state: RootState) => selectClientId(state));
+  const clientId = useSelector(
+    (state: RootState) => selectClientId(state),
+    lodash.isEqual
+  );
 
   const editor = useSelector(
-    (state: RootState) => selectSelectorByCanvasObject(state, id)
+    (state: RootState) => selectSelectorByCanvasObject(state, id),
+    lodash.isEqual
   );
 
   const isDraggable = draggable && ((! editor) || editor.clientId === clientId);

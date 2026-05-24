@@ -5,6 +5,8 @@ import {
   useCallback,
 } from "react";
 
+import lodash from 'lodash';
+
 // -- third-party imports
 import {
   useSelector,
@@ -93,8 +95,9 @@ const CanvasMenu = ({
 }: CanvasMenuProps) => {
   const [allowedUsersMenuOpen, setAllowedUsersMenuOpen] = useState(false);
   const allowedUsers = useSelector((state: RootState) =>
-    selectAllowedUsersByCanvas(state, canvasId)
-  ) ?? [];
+    selectAllowedUsersByCanvas(state, canvasId) ?? [],
+    lodash.isEqual
+  );
   const [selectedUsers, setSelectedUsers] = useState<string[]>(allowedUsers);
 
   // -- unpack Whiteboard context
@@ -117,7 +120,8 @@ const CanvasMenu = ({
   } = whiteboardContext;
 
   const ownPermission = useSelector(
-    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id)
+    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id),
+    lodash.isEqual
   );
 
   // -- unpack ClientMessenger context
@@ -132,16 +136,18 @@ const CanvasMenu = ({
   } = clientMessengerContext;
 
   const whiteboard: WhiteboardAttribs | null = useSelector((state: RootState) => (
-    selectWhiteboardById(state, whiteboardId))
+    selectWhiteboardById(state, whiteboardId)),
+    lodash.isEqual
   );
 
   if (! whiteboard) {
     throw new Error(`No whiteboard found with ID whiteboardId`);
   }
 
-  const canvas : CanvasAttribs | null = useSelector((state: RootState) => (
-    selectCanvasById(state, canvasId)
-  ));
+  const canvas : CanvasAttribs | null = useSelector(
+    (state: RootState) => selectCanvasById(state, canvasId),
+    lodash.isEqual
+  );
 
   if (! canvas) {
     throw new Error(`Could not find canvas ${canvasId} in application state`);
