@@ -272,14 +272,14 @@ const CanvasCard = ({
         // ensure container receives focus while objects within are being
         // manipulated
         const handlePointerEvent = () => {
-          container.focus({
-            preventScroll: true,
-          });
+          const active = document.activeElement;
+          if (active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement) {
+            return;
+          }
+          container.focus({ preventScroll: true });
         };// -- end handlePointerEvent
 
         container.addEventListener('pointerdown', handlePointerEvent);
-        // We need to ensure focus remains after pointerup
-        container.addEventListener('pointermove', handlePointerEvent);
         container.addEventListener('pointerup', handlePointerEvent);
 
         // handle keypresses within container
@@ -303,7 +303,6 @@ const CanvasCard = ({
 
         return () => {
           container.removeEventListener('pointerdown', handlePointerEvent);
-          container.removeEventListener('pointermove', handlePointerEvent);
           container.removeEventListener('pointerup', handlePointerEvent);
           container.removeEventListener('keydown', handleKeyDown);
         };
