@@ -1,3 +1,4 @@
+import { useRef, useCallback } from "react";
 import { Html } from "react-konva-utils";
 import Konva from "konva";
 
@@ -12,7 +13,7 @@ interface TextEditorProps {
 }
 
 const TextEditor = ({ textNode, onClose }: TextEditorProps) => {
-  const textareaRef = { current: null as (HTMLTextAreaElement | null) };
+  const textareaRef = useRef<TAWithClose | null>(null);
 
   const initTextArea = (textarea: TAWithClose) => {
     const textPosition = textNode.position();
@@ -108,27 +109,29 @@ const TextEditor = ({ textNode, onClose }: TextEditorProps) => {
     return close;
   };
 
+  // Stable ref callback — useCallback with [] prevents React from treating it
+  // as a new function on every parent re-render, which would otherwise call the
+  // old cleanup (null) and new init (element) on every re-render, resetting
+  // textarea.value to the stale textNode.text() and jumping the cursor.
+  const handleRef = useCallback((elem: HTMLTextAreaElement | null) => {
+    if (elem) {
+      const e = elem as TAWithClose;
+      textareaRef.current = e;
+      if (!e.__konvaInit) {
+        initTextArea(e);
+      }
+    } else {
+      const prev = textareaRef.current;
+      if (prev?.__konvaClose) prev.__konvaClose();
+      textareaRef.current = null;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <Html>
       <textarea
         placeholder="Enter text here"
-        ref={(elem) => {
-          if (elem) {
-            const e = elem as TAWithClose;
-            textareaRef.current = elem;
-            // Prevent double-init (React can call ref callback multiple times)
-            if (!e.__konvaInit) {
-              initTextArea(e);
-              // IMPORTANT: do NOT call the returned close() here.
-              // Instead it's stored on the element as __konvaClose.
-            }
-          } else {
-            // ref cleared -> component unmount. cleanup if we have a stored close.
-            const prev = textareaRef.current as TAWithClose | null;
-            if (prev && prev.__konvaClose) prev.__konvaClose();
-            textareaRef.current = null;
-          }
-        }}
+        ref={handleRef}
         style={{
           minHeight: "1rem",
           position: "absolute",
