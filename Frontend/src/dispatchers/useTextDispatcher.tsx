@@ -31,35 +31,35 @@ const useTextDispatcher = ({
 
   const handlePointerDown = useCallback(
     (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      const pos = ev.currentTarget.getRelativePointerPosition();
+
+      if (pos) {
+        const { x, y } = pos;
+
+        setMouseDownCoords({ x, y });
+        setMouseCoords({ x, y });
+
+        if (onStartEditing) {
+          onStartEditing();
+        }
+      }
+    },
+    [onStartEditing]
+  );// -- end handlePointerDown
+
+  const handlePointerMove = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
       if (mouseDownCoords) {
         const pos = ev.currentTarget.getRelativePointerPosition();
 
         if (pos) {
           const { x, y } = pos;
 
-          setMouseDownCoords({ x, y });
           setMouseCoords({ x, y });
-
-          if (onStartEditing) {
-            onStartEditing();
-          }
         }
       }
     },
-    [onStartEditing, mouseDownCoords]
-  );// -- end handlePointerDown
-
-  const handlePointerMove = useCallback(
-    (ev: Konva.KonvaEventObject<MouseEvent>) => {
-      const pos = ev.currentTarget.getRelativePointerPosition();
-
-      if (pos) {
-        const { x, y } = pos;
-
-        setMouseCoords({ x, y });
-      }
-    },
-    []
+    [mouseDownCoords]
   );// -- end handlePointerMove
 
   const handlePointerUp = useCallback(
