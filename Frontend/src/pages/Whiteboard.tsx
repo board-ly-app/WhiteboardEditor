@@ -22,6 +22,8 @@ import {
 
 // -- third-party imports
 
+import lodash from 'lodash';
+
 import {
   type AxiosError,
 } from 'axios';
@@ -32,9 +34,7 @@ import {
 } from '@tanstack/react-query';
 
 import {
-  ChevronDown,
   X,
-  Circle,
 } from 'lucide-react';
 
 import Konva from 'konva';
@@ -68,10 +68,6 @@ import {
 import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
-
-import {
-  selectActiveUsersByWhiteboard,
-} from '@/store/activeUsers/activeUsersSelectors';
 
 import {
   selectWhiteboardById,
@@ -108,6 +104,10 @@ import HeaderAuthed from '@/components/HeaderAuthed';
 import shapeAttributesReducer from '@/reducers/shapeAttributesReducer';
 import type { ToolChoice } from '@/components/Tool';
 
+import {
+  ActiveUsersHeaderDropdown,
+} from '@/components/ActiveUsersHeaderDropdown';
+
 import type {
   CanvasObjectIdType,
   CanvasObjectModel,
@@ -130,7 +130,6 @@ import {
 } from '@/types/CreateCanvas';
 
 import type {
-  ClientIdType,
   ClientMessageCreateCanvas,
   CanvasData,
   CanvasIdType,
@@ -142,23 +141,14 @@ import {
 } from '@/types/Store';
 
 import {
-  type ClientSummary,
-} from '@/types/ClientSummary';
-
-import {
   type OperationDispatcher,
 } from '@/types/OperationDispatcher';
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import HeaderUnauthed from '@/components/HeaderUnauthed';
 import { useUser } from '@/hooks/useUser';
 
 import {
+  removeSelectorsByCanvasObject,
   updateWhiteboard,
 } from '@/controllers';
 
@@ -224,7 +214,8 @@ const Whiteboard = ({
   } = clientMessengerContext;
 
   const ownPermission = useSelector(
-    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id)
+    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id),
+    lodash.isEqual
   );
 
   // -- prop-derived state
@@ -267,20 +258,19 @@ const Whiteboard = ({
     color: '#000000',
   });
 
-  const activeUsers : Record<ClientIdType, ClientSummary> = useSelector(
-    (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId)
-  ) || {};
-
   const name : string | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.name || null
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.name ?? null,
+    lodash.isEqual
   );
 
   const rootCanvas : string | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.rootCanvas || null
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.rootCanvas ?? null,
+    lodash.isEqual
   );
 
   const currentTool : ToolChoice | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool || null
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null,
+    lodash.isEqual
   );
 
   // Current tool choice will be saved to localStorage to ensure seamless UX
@@ -313,14 +303,16 @@ const Whiteboard = ({
     [currentTool]
   );
 
-  const canvases: CanvasData[] = useSelector((state: RootState) => {
-    return selectCanvasesWithObjectsByWhiteboardId(state, whiteboardId)
-  });
+  const canvases: CanvasData[] = useSelector(
+    (state: RootState) => selectCanvasesWithObjectsByWhiteboardId(state, whiteboardId),
+    lodash.isEqual
+  );
 
   const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
       state, whiteboardId, user.id
-    )
+    ),
+    lodash.isEqual
   );
 
   const {
@@ -344,9 +336,6 @@ const Whiteboard = ({
   const [newCanvasDimensions, setNewCanvasDimensions] = useState<NewCanvasDimensions | null>(null);
   const [newCanvasParentId, setNewCanvasParentId] = useState<CanvasIdType | null>(null);
 
-  // -- Track whether active users dropdown menu should be open
-  const [isActiveUsersOpen, setIsActiveUsersOpen] = useState<boolean>(false);
-
   // Used within Toolbar
   const handleToolChange = useCallback(
     (choice : ToolChoice) => {
@@ -360,12 +349,15 @@ const Whiteboard = ({
           canvasObjectId: objId,
         });
       }// -- end for objId
+
+      removeSelectorsByCanvasObject(dispatch, selectedCanvasObjects);
     },
     [dispatch, selectedCanvasObjects, clientMessenger, whiteboardId]
   );
 
   const whiteboardStatus = useSelector(
-    (state: RootState) => selectWhiteboardStatus(state, whiteboardId)
+    (state: RootState) => selectWhiteboardStatus(state, whiteboardId),
+    lodash.isEqual
   );
 
   // -- display alert if whiteboard enters deleting status
@@ -649,40 +641,6 @@ const Whiteboard = ({
         : () => null;
       
       const pageTitle = `${title} | ${APP_NAME}`;
-
-      const ActiveUsersHeaderDropdown = () => (
-        // TODO: Abstract out a generic dropdown menu
-        // Active Users
-        <DropdownMenu
-          key="active-users"
-          open={isActiveUsersOpen}
-          onOpenChange={setIsActiveUsersOpen}
-        >
-          <DropdownMenuTrigger className="text-header-button-text group flex items-center gap-1 px-4 py-2 rounded-lg hover:cursor-pointer hover:text-header-button-text-hover whitespace-nowrap">
-            Active Users
-            <ChevronDown className="w-4 h-4 transition-transform duration-300 group-data-[state=open]:rotate-180"/>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <div className="flex flex-col">
-              {Object.values(activeUsers).map((u) => (
-                <DropdownMenuLabel
-                  key={u.clientId}
-                  className="flex flex-row content-center"
-                >
-                  <Circle
-                    size={20}
-                    stroke={u.color}
-                    strokeWidth={4}
-                  />
-                  <span className="pl-2">
-                    {u.username}
-                  </span>
-                </DropdownMenuLabel>
-              ))}
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
 
       return (
         <Page
@@ -1088,6 +1046,8 @@ const WrappedWhiteboard = () => {
   const canvasGroupRefsByIdRef: RefObject<Record<CanvasIdType, RefObject<Konva.Group | null>>> = useRef({});
 
   const currentDispatcherRef = useRef<OperationDispatcher | null>(null);
+
+  console.log('!! WHITEBOARD CONTEXT RENDER');
 
   // -- transform canvas object diffs into full updated shapes
   const handleUpdateShapes = useCallback(

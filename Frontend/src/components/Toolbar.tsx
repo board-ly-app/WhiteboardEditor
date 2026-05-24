@@ -6,6 +6,8 @@ import {
   useSelector,
 } from 'react-redux';
 
+import lodash from 'lodash';
+
 import WhiteboardContext from '@/context/WhiteboardContext';
 
 import { getToolChoiceLabel, getTooltip } from '@/components/Tool';
@@ -74,7 +76,8 @@ const Toolbar = ({
   } = whiteboardContext;
 
   const toolChoice : ToolChoice | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null,
+    lodash.isEqual
   );
 
   const renderToolChoice = (choice: ToolChoice): React.JSX.Element => (

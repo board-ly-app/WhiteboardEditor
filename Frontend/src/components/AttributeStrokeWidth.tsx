@@ -5,6 +5,9 @@ import {
 import {
   useSelector,
 } from 'react-redux';
+
+import lodash from 'lodash';
+
 import {
   type RootState,
 } from '@/store';
@@ -26,7 +29,8 @@ const StrokeWidthComponent = ({
   value,
 }: AttributeProps) => {
   const canvasObjectsById = useSelector(
-    (state: RootState) => selectCanvasObjectsByCanvas(state, canvasId)
+    (state: RootState) => selectCanvasObjectsByCanvas(state, canvasId),
+    lodash.isEqual
   );
   const [inputValue, setInputValue] = useState(value.toString());
 

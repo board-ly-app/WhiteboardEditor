@@ -8,6 +8,8 @@ import {
   useSelector,
 } from 'react-redux';
 
+import lodash from 'lodash';
+
 // -- local imports
 import {
   type AttributeDefinition,
@@ -48,7 +50,8 @@ const FillColorComponent = ({
   } = whiteboardContext;
 
   const canvasObjectsById = useSelector(
-    (state: RootState) => selectCanvasObjectsByCanvas(state, canvasId)
+    (state: RootState) => selectCanvasObjectsByCanvas(state, canvasId),
+    lodash.isEqual
   );
 
   const onChangeFillColor = useCallback(

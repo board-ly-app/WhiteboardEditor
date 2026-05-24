@@ -15,6 +15,8 @@ import {
   useSelector,
 } from 'react-redux';
 
+import lodash from 'lodash';
+
 import {
   type CanvasIdType,
 } from '@/types/WebSocketProtocol';
@@ -64,7 +66,8 @@ export const CanvasObject = ({
   isDraggable,
 }: CanvasObjectProps): ReactNode => {
   const canvasObject = useSelector(
-    (state: RootState) => selectCanvasObjectById(state, id)
+    (state: RootState) => selectCanvasObjectById(state, id),
+    lodash.isEqual
   );
 
   const clientMessengerContext = useContext(ClientMessengerContext);

@@ -8,6 +8,8 @@ import {
   useSelector,
 } from 'react-redux';
 
+import lodash from 'lodash';
+
 // -- local imports
 import {
   type WhiteboardIdType,
@@ -56,7 +58,8 @@ export const DeleteWhiteboardForm = ({
   const [deleteButtonStatus, setDeleteButtonStatus] = useState<ButtonStatus>('enabled');
 
   const whiteboardAttribs : WhiteboardAttribs | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId)
+    (state: RootState) => selectWhiteboardById(state, whiteboardId),
+    lodash.isEqual
   );
 
   const handleConfirmationKeyEntryChange = useCallback(
