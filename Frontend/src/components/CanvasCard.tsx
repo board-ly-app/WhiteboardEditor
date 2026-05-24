@@ -223,7 +223,7 @@ const CanvasCard = ({
             }
           }
         },
-        1000
+        50
       );
 
       return () => {
