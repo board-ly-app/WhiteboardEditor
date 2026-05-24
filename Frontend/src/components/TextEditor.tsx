@@ -80,6 +80,11 @@ const TextEditor = ({ textNode, onClose }: TextEditorProps) => {
       textarea.style.height = `${textarea.scrollHeight + textNode.fontSize()}px`;
     };
 
+    const handleBlur = () => {
+      performClose(textarea.value);
+    }
+    
+    textarea.addEventListener("blur", handleBlur);
     textarea.addEventListener("keydown", handleKeyDown);
     textarea.addEventListener("input", handleInput);
     window.addEventListener("click", handleOutsideClick);
@@ -88,6 +93,7 @@ const TextEditor = ({ textNode, onClose }: TextEditorProps) => {
       try {
         textarea.removeEventListener("keydown", handleKeyDown);
         textarea.removeEventListener("input", handleInput);
+        textarea.removeEventListener("blur", handleBlur);
         window.removeEventListener("click", handleOutsideClick);
       } finally {
         textarea.__konvaInit = false;
