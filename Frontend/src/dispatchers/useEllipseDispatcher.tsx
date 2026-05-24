@@ -1,5 +1,8 @@
 // --- std imports
-import { useState } from 'react';
+import {
+  useState,
+  useCallback,
+} from 'react';
 
 // --- third-party imports
 import Konva from 'konva';
@@ -30,96 +33,119 @@ const useEllipseDispatcher = ({
   const [mouseDownCoords, setMouseDownCoords] = useState<EventCoords | null>(null);
   const [mouseCoords, setMouseCoords] = useState<EventCoords | null>(null);
 
-  const handlePointerDown = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    const pos = ev.currentTarget.getRelativePointerPosition();
+  const handlePointerDown = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      const pos = ev.currentTarget.getRelativePointerPosition();
 
-    if (pos) {
-      const { x, y } = pos;
+      if (pos) {
+        const { x, y } = pos;
 
-      setMouseDownCoords({ x, y });
-      setMouseCoords({ x, y });
+        setMouseDownCoords({ x, y });
+        setMouseCoords({ x, y });
 
-      if (onStartEditing) {
-        onStartEditing();
+        if (onStartEditing) {
+          onStartEditing();
+        }
       }
-    }
-  };
+    },
+    [onStartEditing]
+  );// -- end handlePointerDown
 
-  const handlePointerMove = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    ev.cancelBubble = true;
+  const handlePointerMove = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      if (mouseDownCoords) {
+        ev.cancelBubble = true;
 
-    const pos = ev.currentTarget.getRelativePointerPosition();
+        const pos = ev.currentTarget.getRelativePointerPosition();
 
-    if (pos) {
-      const { x, y } = pos;
+        if (pos) {
+          const { x, y } = pos;
 
-      setMouseCoords({ x, y });
-    }
-  };
+          setMouseCoords({ x, y });
+        }
+      }
+    },
+    [mouseDownCoords]
+  );// -- end handlePointerMove
 
-  const handlePointerUp = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    ev.cancelBubble = true;
+  const handlePointerUp = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent>) => {
+      ev.cancelBubble = true;
 
-    const pos = ev.currentTarget.getRelativePointerPosition();
+      const pos = ev.currentTarget.getRelativePointerPosition();
 
-    if (pos && mouseDownCoords) {
-      const { x: xRelease, y: yRelease } = pos;
-      const { x: xOrigin, y: yOrigin } = mouseDownCoords;
+      if (pos && mouseDownCoords) {
+        const { x: xRelease, y: yRelease } = pos;
+        const { x: xOrigin, y: yOrigin } = mouseDownCoords;
 
-      const xCenter = (xOrigin + xRelease) / 2;
-      const yCenter = (yOrigin + yRelease) / 2;
-      const xRadius = Math.abs((xRelease - xOrigin) / 2);
-      const yRadius = Math.abs((yRelease - yOrigin) / 2); 
+        const xCenter = (xOrigin + xRelease) / 2;
+        const yCenter = (yOrigin + yRelease) / 2;
+        const xRadius = Math.abs((xRelease - xOrigin) / 2);
+        const yRadius = Math.abs((yRelease - yOrigin) / 2); 
 
-      addShapes([{
-        type: 'ellipse',
-        ...shapeAttributes,
-        x: xCenter,
-        y: yCenter,
-        radiusX: xRadius,
-        radiusY: yRadius,
-      }]);
+        addShapes([{
+          type: 'ellipse',
+          ...shapeAttributes,
+          x: xCenter,
+          y: yCenter,
+          radiusX: xRadius,
+          radiusY: yRadius,
+        }]);
+        setMouseDownCoords(null);
+      }
+    },
+    [addShapes, mouseDownCoords, shapeAttributes]
+  );// -- end handlePointerUp
+
+  const handleCancel = useCallback(
+    () => {
       setMouseDownCoords(null);
-    }
-  };
+    },
+    []
+  );// -- end handleCancel
 
-  const handleCancel = () => {
-    setMouseDownCoords(null);
-  };// -- end handleCancel
+  const getPreview = useCallback(
+    (): React.JSX.Element | null => {
+      if (mouseDownCoords && mouseCoords) {
+        const { x: xOrigin, y: yOrigin } = mouseDownCoords;
+        const { x: xCurr, y: yCurr } = mouseCoords;
 
-  const getPreview = (): React.JSX.Element | null => {
-    if (mouseDownCoords && mouseCoords) {
-      const { x: xOrigin, y: yOrigin } = mouseDownCoords;
-      const { x: xCurr, y: yCurr } = mouseCoords;
+        const xCenter = (xOrigin + xCurr) / 2;
+        const yCenter = (yOrigin + yCurr) / 2;
+        const xRadius = Math.abs((xCurr - xOrigin) / 2);
+        const yRadius = Math.abs((yCurr - yOrigin) / 2);
 
-      const xCenter = (xOrigin + xCurr) / 2;
-      const yCenter = (yOrigin + yCurr) / 2;
-      const xRadius = Math.abs((xCurr - xOrigin) / 2);
-      const yRadius = Math.abs((yCurr - yOrigin) / 2);
+        return (
+          <Ellipse
+            x={xCenter}
+            y={yCenter}
+            radiusX={xRadius}
+            radiusY={yRadius}
+            fill="#ffaaaa"
+          />
+        );
+      } else {
+        return null;
+      }
+    },
+    [mouseCoords, mouseDownCoords]
+  );
 
-      return (
-        <Ellipse
-          x={xCenter}
-          y={yCenter}
-          radiusX={xRadius}
-          radiusY={yRadius}
-          fill="#ffaaaa"
-        />
-      );
-    } else {
-      return null;
-    }
-  };
+  const getAttributes = useCallback(
+    (): AttributeDefinition[] => getAttributesByShape('ellipse'),
+    []
+  );// -- end getAttributes
 
-  const getAttributes = (): AttributeDefinition[] => getAttributesByShape('ellipse'); 
-
-  const getTooltipText = () => {
-    if (mouseDownCoords) {
-      return 'Drag to desired shape, then release';
-    } else {
-      return 'Click to draw an ellipse';
-    }
-  };
+  const getTooltipText = useCallback(
+    () => {
+      if (mouseDownCoords) {
+        return 'Drag to desired shape, then release';
+      } else {
+        return 'Click to draw an ellipse';
+      }
+    },
+    [mouseDownCoords]
+  );// -- end getTooltipText
 
   return ({
     handlePointerDown,
