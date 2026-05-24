@@ -266,8 +266,6 @@ const Whiteboard = ({
     (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentTool ?? null
   );
 
-  console.log('!! WHITEBOARD RENDER');
-
   // Current tool choice will be saved to localStorage to ensure seamless UX
   // after page reloads.
   // TODO: save default tool choice ('hand') in a separate config file.
