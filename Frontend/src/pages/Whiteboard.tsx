@@ -148,6 +148,7 @@ import HeaderUnauthed from '@/components/HeaderUnauthed';
 import { useUser } from '@/hooks/useUser';
 
 import {
+  removeSelectorsByCanvasObject,
   updateWhiteboard,
 } from '@/controllers';
 
@@ -348,6 +349,8 @@ const Whiteboard = ({
           canvasObjectId: objId,
         });
       }// -- end for objId
+
+      removeSelectorsByCanvasObject(dispatch, selectedCanvasObjects);
     },
     [dispatch, selectedCanvasObjects, clientMessenger, whiteboardId]
   );

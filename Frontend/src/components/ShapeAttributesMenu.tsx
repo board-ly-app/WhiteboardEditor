@@ -144,10 +144,12 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   }
   
   let attributeComponents: AttributeDefinition[];
+  let useSelectedShapeValues = false;
 
   if (currentTool === "hand" && shapeType) {
     // Shape edit mode
     attributeComponents = getAttributesByShape(shapeType);
+    useSelectedShapeValues = true;
   }
   else {
     // Tool mode
@@ -174,7 +176,10 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
             dispatch={dispatch}
             handleUpdateShapes={handleUpdateShapes}
             canvasId={selectedCanvasId}
-            value={firstShape ? firstShape[key as keyof CanvasObjectModel] : attributes[key]}
+            value={useSelectedShapeValues && firstShape 
+              ? firstShape[key as keyof CanvasObjectModel] 
+              : attributes[key]
+            }
             className="rounded-lg border-border"
           />
         ))}

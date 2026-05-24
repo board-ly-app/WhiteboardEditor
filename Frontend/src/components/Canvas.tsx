@@ -308,6 +308,7 @@ const Canvas = ({
 
   const getDispatcher: (tool: ToolChoice) => OperationDispatcher = useCallback(
     (tool: ToolChoice) => {
+      console.log("in getDispatcher, tool choice: ", tool);
       if (! userHasAccess) {
         return inaccessibleDispatcher;
       } else {
@@ -348,6 +349,7 @@ const Canvas = ({
     if (currentDispatcherRef.current !== dispatcher) {
       currentDispatcherRef.current = dispatcher;
     }
+    console.log("dispatcher: ", dispatcher);
   }, [dispatcher, currentDispatcherRef, whiteboardId]);
 
   // -- track ref to group enclosing the contents of this Canvas

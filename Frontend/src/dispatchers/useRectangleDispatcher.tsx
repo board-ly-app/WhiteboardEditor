@@ -101,7 +101,10 @@ const useRectangleDispatcher = ({
     }
   };
 
-  const getAttributes = (): AttributeDefinition[] => getAttributesByShape('rect');
+  const getAttributes = (): AttributeDefinition[] => {
+    console.log("in rect getAttributes");
+    return getAttributesByShape('rect');
+  }
 
   const getTooltipText = () => {
     if (mouseDownCoords) {

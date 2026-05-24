@@ -101,7 +101,10 @@ const useTextDispatcher = ({
     }
   };
 
-  const getAttributes = (): AttributeDefinition[] => getAttributesByShape('text');
+  const getAttributes = (): AttributeDefinition[] => {
+    console.log("in text");
+    return getAttributesByShape('text');
+  }
 
   const getTooltipText = () => {
     if (mouseDownCoords) {
