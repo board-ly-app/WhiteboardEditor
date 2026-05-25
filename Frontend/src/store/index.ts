@@ -18,6 +18,9 @@ import selectorsByCanvasObjectReducer, {
 import currentEditorsByCanvasReducer, {
   type CurrentEditorsByCanvasActions,
 } from './activeUsers/currentEditorsByCanvasSlice';
+import cursorPositionsByClientReducer, {
+  type CursorPositionsByClientActions,
+} from './activeUsers/cursorPositionsByActiveUserSlice';
 import canvasObjectsReducer, {
   type CanvasObjectsActions,
 } from './canvasObjects/canvasObjectsSlice';
@@ -65,6 +68,7 @@ const rootReducer = combineReducers({
   activeUsersByWhiteboard: activeUsersByWhiteboardReducer,
   selectorsByCanvasObject: selectorsByCanvasObjectReducer,
   currentEditorsByCanvas: currentEditorsByCanvasReducer,
+  cursorPositionsByClient: cursorPositionsByClientReducer,
   canvasObjects: canvasObjectsReducer,
   canvasObjectsByCanvas: canvasObjectsByCanvasReducer,
   allowedUsersByCanvas: allowedUsersByCanvasReducer,
@@ -82,6 +86,7 @@ type ActionType =
   | ActiveUsersByWhiteboardActions
   | SelectorsByCanvasObjectActions
   | CurrentEditorsByCanvasActions
+  | CursorPositionsByClientActions
   | CanvasObjectsActions
   | AllowedUsersByCanvasActions
   | CanvasObjectsByCanvasActions

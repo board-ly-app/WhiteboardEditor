@@ -160,7 +160,26 @@ pub enum ServerSocketBroadcastMessage {
     Error {
         error: ClientError,
     },
-}// -- end pub enum ServerSocketMessage
+}// -- end pub enum ServerSocketBroadcastMessage
+
+// === enum ServerSocketBroadcastRestMessage =======================================================
+//
+// Broadcasts a message to all clients except the source client.
+//
+// =================================================================================================
+#[derive(Debug, Clone, Serialize)]
+#[serde(
+    tag = "type",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+pub enum ServerSocketBroadcastRestMessage {
+    SetCursorPos {
+        client_id: ClientIdType,
+        x: f64,
+        y: f64,
+    },
+}// -- end pub enum ServerSocketBroadcastRestMessage
 
 #[derive(Debug, Clone)]
 pub enum ServerSocketMessage {
@@ -171,6 +190,10 @@ pub enum ServerSocketMessage {
     },
     Broadcast {
         msg: ServerSocketBroadcastMessage,
+    },
+    BroadcastRest {
+        src_client_id: ClientIdType,
+        msg: ServerSocketBroadcastRestMessage,
     },
 }// -- end pub enum ServerSocketMessage
 
@@ -225,5 +248,9 @@ pub enum ClientSocketMessage {
     },
     MergeCanvas {
         canvas_id: CanvasIdType,
+    },
+    SetCursorPos {
+        x: f64,
+        y: f64,
     },
 } // -- end pub enum ClientSocketMessage

@@ -6,3 +6,8 @@ export interface ClientSummary extends UserSummary {
   // -- color used to indicate when a user is interacting with the interface
   color: string;
 }
+
+export interface CursorPosition {
+  x: number;
+  y: number;
+}
