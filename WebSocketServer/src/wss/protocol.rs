@@ -176,8 +176,8 @@ pub enum ServerSocketBroadcastMessage {
 pub enum ServerSocketBroadcastRestMessage {
     SetCursorPos {
         client_id: ClientIdType,
-        x: usize,
-        y: usize,
+        x: f64,
+        y: f64,
     },
 }// -- end pub enum ServerSocketBroadcastRestMessage
 
@@ -250,7 +250,7 @@ pub enum ClientSocketMessage {
         canvas_id: CanvasIdType,
     },
     SetCursorPos {
-        x: usize,
-        y: usize,
+        x: f64,
+        y: f64,
     },
 } // -- end pub enum ClientSocketMessage
