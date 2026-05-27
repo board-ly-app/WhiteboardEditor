@@ -13,6 +13,7 @@ import {
   type IWhiteboardUserPermissionModel,
   type IWhiteboardUserPermissionById,
   type IWhiteboardUserPermissionByEmail,
+  type IWhiteboardVisibilityEnum,
 } from '../models/Whiteboard';
 
 import {
@@ -39,6 +40,7 @@ export interface CreateWhiteboardRequest extends AuthorizedRequestBody {
   collaboratorPermissions?: IWhiteboardUserPermissionByEmail[];
   width: number;
   height: number;
+  visibility: IWhiteboardVisibilityEnum;
 }
 
 export const handleGetWhiteboardById = async (
@@ -57,6 +59,7 @@ export const handleGetWhiteboardById = async (
   
   // fetch whiteboard by id
   const resp = await getWhiteboardById(whiteboardId);
+  console.log("resp: ", resp);
   
   switch (resp.status) {
     case 'server_error':
@@ -81,8 +84,9 @@ export const handleGetWhiteboardById = async (
             perm.user.id, true 
           ])
         );
-  
-        if (! (userId.toString() in validUserIdSet)) {
+        console.log("visibility: ", whiteboard.visibility);
+        if (whiteboard.visibility === 'private' && !(userId.toString() in validUserIdSet)) {
+          console.log("not allowed");
           return res.status(403).json({
             message: 'You are not authorized to view this resource'
           });
@@ -102,7 +106,7 @@ export const handleCreateWhiteboard = async (
   res: Response
 ) => {
   try {
-    const { authUser, name } = req.body;
+    const { authUser, name, visibility } = req.body;
     const { id: ownerId } = authUser;
     console.log("handleCreateWhiteboard req.body: ", req.body);
     
@@ -174,7 +178,8 @@ export const handleCreateWhiteboard = async (
       kind: 'permanent_whiteboard',
       root_canvas: rootCanvas._id,
       thumbnail_url: null,
-      user_permissions: [ownerPermission, ...collaboratorPermissionsFinal]
+      user_permissions: [ownerPermission, ...collaboratorPermissionsFinal],
+      visibility: visibility,
     });
 
     console.log('Attempting to create new whiteboard:', whiteboard);
@@ -221,6 +226,7 @@ export const handleCreateTempWhiteboard = async (
       root_canvas: rootCanvas._id,
       thumbnail_url: null,
       user_permissions: [ownerPermission],
+      visibility: 'public',
       createdAt: new Date(Date.now())
     });
 
@@ -292,7 +298,7 @@ export const handleConvertTempToPerm = async (
           name: 'Trial Whiteboard',
           kind: 'permanent_whiteboard',
           time_created: new Date(),
-          user_permissions: updatedPermissions
+          user_permissions: updatedPermissions,
         },
         $unset: {
           createdAt: ""
