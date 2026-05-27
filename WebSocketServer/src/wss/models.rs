@@ -794,10 +794,10 @@ impl WhiteboardMongoDBView {
 //
 // =================================================================================================
 
-type EditObjectIdType = ObjectId;
+pub type EditObjectIdType = ObjectId;
 
 #[derive(Clone,Debug)]
-struct ShapeUpdate {
+pub struct ShapeUpdate {
     shape_id: CanvasObjectIdType,
     old_fields: ShapeModel,
     new_fields: ShapeModel,
