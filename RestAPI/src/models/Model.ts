@@ -1,12 +1,12 @@
-import {
-  Types
-} from "mongoose";
-
 // === Model.ts ================================================================
 //
 // Defines interfaces and types that are in common for multiple models.
 //
 // =============================================================================
+
+import {
+  Types
+} from "mongoose";
 
 export interface DocumentVirtualBase {
   id: Types.ObjectId;
