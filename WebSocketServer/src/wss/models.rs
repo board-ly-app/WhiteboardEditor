@@ -782,3 +782,51 @@ impl WhiteboardMongoDBView {
         }
     }
 }
+
+// === Edits =======================================================================================
+//
+// Define atomic, reversible edits to a whiteboard.
+//
+// Each edit contains:
+//  - An author (user) id
+//  - A whiteboard id
+//  - A timestamp
+//
+// =================================================================================================
+
+type EditObjectIdType = ObjectId;
+
+#[derive(Clone,Debug)]
+struct ShapeUpdate {
+    shape_id: CanvasObjectIdType,
+    old_fields: ShapeModel,
+    new_fields: ShapeModel,
+}
+
+#[derive(Debug,Clone)]
+pub enum EditKind {
+    CreateShapes {
+        shapes: Vec<CanvasObject>,
+    },
+    UpdateShapes {
+        updates: Vec<ShapeUpdate>,
+    },
+    DeleteShapes {
+        shapes: Vec<CanvasObject>,
+    },
+    CreateCanvas {
+        canvas: Canvas,
+    },
+    DeleteCanvas {
+        canvas: Canvas,
+    },
+    MergeCanvas {
+        child_canvas: Canvas,
+    },
+}// -- end pub enum EditKind
+
+#[derive(Debug,Clone)]
+pub struct Edit {
+    id: EditObjectIdType,
+    edit: EditKind,
+}// -- end pub struct Edit
