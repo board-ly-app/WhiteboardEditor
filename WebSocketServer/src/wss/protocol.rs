@@ -5,6 +5,7 @@
 // =================================================================================================
 
 use serde::{self, Deserialize, Serialize};
+use serde_with::{serde_as,DisplayFromStr};
 
 use super::models::*;
 
@@ -16,6 +17,7 @@ use std::collections::{HashMap, HashSet};
 // IndividualError and BroadcastError messages.
 //
 // ================================================================================================
+#[serde_as]
 #[derive(Debug, Clone, Serialize)]
 #[serde(
     tag = "type",
@@ -40,22 +42,27 @@ pub enum ClientError {
     AuthTokenExpired,
     // -- Client attempted to sign in as or access user that doesn't exist
     UserNotFound {
-        user_id: String,
+        #[serde_as(as = "DisplayFromStr")]
+        user_id: UserIdType,
     },
     // -- Client attempted to access whiteboard that doesn't exist
     WhiteboardNotFound {
-        whiteboard_id: String,
+        #[serde_as(as = "DisplayFromStr")]
+        whiteboard_id: WhiteboardIdType,
     },
     // -- Client attempted to access canvas that doesn't exist
     CanvasNotFound {
-        canvas_id: String,
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
     },
     NoParentCanvas {
-        canvas_id: String,
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
     },
     // -- Another user has selected the resource the client has attempted to edit
     CanvasObjectAlreadySelected {
         // -- id of the selecting client
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
     },
     // -- client doesn't have permission to perform a given action
@@ -76,6 +83,7 @@ pub enum ClientError {
 // Enumerates all messages sent from the server to an individual client.
 //
 // ================================================================================================
+#[serde_as]
 #[derive(Debug, Clone, Serialize)]
 #[serde(
     tag = "type",
@@ -84,10 +92,13 @@ pub enum ClientError {
 )]
 pub enum ServerSocketIndividualMessage {
     InitClient {
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
         whiteboard: WhiteboardClientView,
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
         active_clients: HashMap<ClientIdType, UserSummary>,
-        selectors_by_canvas_objects: HashMap<String, String>,
+        #[serde_as(as = "HashMap<DisplayFromStr, DisplayFromStr>")]
+        selectors_by_canvas_objects: HashMap<CanvasObjectIdType, ClientIdType>,
     },
     Error {
         error: ClientError,
@@ -99,6 +110,7 @@ pub enum ServerSocketIndividualMessage {
 // Enumerates all messages sent from the server to all clients.
 //
 // ================================================================================================
+#[serde_as]
 #[derive(Debug, Clone, Serialize)]
 #[serde(
     tag = "type",
@@ -110,51 +122,74 @@ pub enum ServerSocketBroadcastMessage {
         users: Vec<UserSummary>,
     },
     LogoutUsers {
+        #[serde_as(as = "Vec<DisplayFromStr>")]
         clients: Vec<ClientIdType>,
     },
     SelectedCanvasObject {
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
-        canvas_object_id: String,
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_object_id: CanvasObjectIdType,
     },
     UnselectedCanvasObject {
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
-        canvas_object_id: String,
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_object_id: CanvasObjectIdType,
     },
     EditingCanvas {
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
-        canvas_id: String,
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
     },
     // TODO: replace HashMaps with Vectors, so object ids don't need to be cast to strings
     CreateShapes {
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
-        canvas_id: String,
-        shapes: HashMap<String, ShapeModel>,
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+        shapes: HashMap<CanvasObjectIdType, ShapeModel>,
     },
     UpdateShapes {
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
-        canvas_id: String,
-        shapes: HashMap<String, ShapeModel>,
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+        shapes: HashMap<CanvasObjectIdType, ShapeModel>,
     },
     DeleteCanvasObjects {
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
-        canvas_object_ids: Vec<String>,
+        #[serde_as(as = "Vec<DisplayFromStr>")]
+        canvas_object_ids: Vec<CanvasObjectIdType>,
     },
     CreateCanvas {
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
         canvas: CanvasClientView,
     },
     DeleteCanvases {
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
-        canvas_ids: Vec<String>,
+        #[serde_as(as = "Vec<DisplayFromStr>")]
+        canvas_ids: Vec<CanvasIdType>,
     },
     UpdateCanvasAllowedUsers {
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
-        canvas_id: String,
-        allowed_users: Vec<String>,
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
+        #[serde_as(as = "Vec<DisplayFromStr>")]
+        allowed_users: Vec<UserIdType>,
     },
     MergeCanvas {
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
-        canvas_id: String,
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
     },
     DeleteWhiteboard,
     Error {
@@ -167,6 +202,7 @@ pub enum ServerSocketBroadcastMessage {
 // Broadcasts a message to all clients except the source client.
 //
 // =================================================================================================
+#[serde_as]
 #[derive(Debug, Clone, Serialize)]
 #[serde(
     tag = "type",
@@ -175,6 +211,7 @@ pub enum ServerSocketBroadcastMessage {
 )]
 pub enum ServerSocketBroadcastRestMessage {
     SetCursorPos {
+        #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
         x: f64,
         y: f64,
@@ -202,6 +239,7 @@ pub enum ServerSocketMessage {
 // Enumerates all messages sent from the client to the server.
 //
 // ================================================================================================
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(
     tag = "type",
@@ -210,23 +248,30 @@ pub enum ServerSocketMessage {
 )]
 pub enum ClientSocketMessage {
     EditingCanvas {
-        canvas_id: String,
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
     },
     SelectedCanvasObject {
+        #[serde_as(as = "DisplayFromStr")]
         canvas_object_id: CanvasObjectIdType,
     },
     UnselectedCanvasObject {
+        #[serde_as(as = "DisplayFromStr")]
         canvas_object_id: CanvasObjectIdType,
     },
     CreateShapes {
+        #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
         shapes: Vec<ShapeModel>,
     },
     UpdateShapes {
+        #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
-        shapes: HashMap<String, ShapeModel>,
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+        shapes: HashMap<CanvasObjectIdType, ShapeModel>,
     },
     DeleteCanvasObjects {
+        #[serde_as(as = "Vec<DisplayFromStr>")]
         canvas_object_ids: Vec<CanvasObjectIdType>,
     },
     CreateCanvas {
@@ -234,19 +279,24 @@ pub enum ClientSocketMessage {
         width: f64,
         height: f64,
         parent_canvas: CanvasParentRefClientView,
+        #[serde_as(as = "HashSet<DisplayFromStr>")]
         allowed_users: HashSet<UserIdType>,
     },
     DeleteCanvases {
+        #[serde_as(as = "Vec<DisplayFromStr>")]
         canvas_ids: Vec<CanvasIdType>,
     },
     Login {
         jwt: String,
     },
     UpdateCanvasAllowedUsers {
+        #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
+        #[serde_as(as = "HashSet<DisplayFromStr>")]
         allowed_users: HashSet<UserIdType>,
     },
     MergeCanvas {
+        #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
     },
     SetCursorPos {

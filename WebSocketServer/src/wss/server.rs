@@ -178,7 +178,7 @@ pub async fn handle_authenticated_client_message(
                             vec![ServerSocketMessage::Broadcast {
                                 msg: ServerSocketBroadcastMessage::SelectedCanvasObject {
                                     client_id: client_state.client_id.clone(),
-                                    canvas_object_id: canvas_object_id.to_string(),
+                                    canvas_object_id: canvas_object_id.clone(),
                                 },
                             }]
                         }
@@ -208,7 +208,7 @@ pub async fn handle_authenticated_client_message(
                             vec![ServerSocketMessage::Broadcast {
                                 msg: ServerSocketBroadcastMessage::UnselectedCanvasObject {
                                     client_id: client_state.client_id.clone(),
-                                    canvas_object_id: canvas_object_id.to_string(),
+                                    canvas_object_id: canvas_object_id.clone(),
                                 },
                             }]
                         },
@@ -238,7 +238,7 @@ pub async fn handle_authenticated_client_message(
                             target_client_id: client_state.client_id.clone(),
                             msg: ServerSocketIndividualMessage::Error {
                                 error: ClientError::CanvasNotFound {
-                                    canvas_id: canvas_id.to_string(),
+                                    canvas_id: canvas_id.clone(),
                                 },
                             }
                         }],
@@ -265,10 +265,10 @@ pub async fn handle_authenticated_client_message(
                             vec![ServerSocketMessage::Broadcast {
                                 msg: ServerSocketBroadcastMessage::CreateShapes {
                                     client_id: client_state.client_id.clone(),
-                                    canvas_id: canvas_id.to_string(),
+                                    canvas_id: canvas_id.clone(),
                                     shapes: new_shapes
                                         .iter()
-                                        .map(|(obj_id, shape)| (obj_id.to_string(), shape.clone()))
+                                        .map(|(obj_id, shape)| (obj_id.clone(), shape.clone()))
                                         .collect(),
                                 },
                             }]
@@ -288,7 +288,7 @@ pub async fn handle_authenticated_client_message(
                             target_client_id: client_state.client_id.clone(),
                             msg: ServerSocketIndividualMessage::Error {
                                 error: ClientError::CanvasNotFound {
-                                    canvas_id: canvas_id.to_string(),
+                                    canvas_id: canvas_id.clone(),
                                 },
                             }
                         }],
@@ -298,50 +298,28 @@ pub async fn handle_authenticated_client_message(
                             let mut new_shapes = HashMap::<CanvasObjectIdType, ShapeModel>::new();
                             let mut responses = Vec::<ServerSocketMessage>::new();
 
-                            for (obj_id_s, shape) in shapes.iter() {
-                                match obj_id_s.parse::<CanvasObjectIdType>() {
-                                    Ok(obj_id) => {
-                                        match selectors_to_canvas_objects.get_key_by_value(&obj_id) {
-                                            Some(selector_id) if *selector_id != client_state.client_id => {
-                                                // -- another user has selected this object - can't
-                                                // modify it ourselves
-                                                responses.push(ServerSocketMessage::Individual {
-                                                    target_client_id: client_state.client_id.clone(),
-                                                    msg: ServerSocketIndividualMessage::Error {
-                                                        error: ClientError::CanvasObjectAlreadySelected {
-                                                            client_id: selector_id.clone(),
-                                                        },
-                                                    },
-                                                });
-                                            },
-                                            _ => {
-                                                // -- create/modify shapes
-                                                if canvas.shapes().contains_key(&obj_id) {
-                                                    canvas.shapes_mut().insert(obj_id, shape.clone());
-                                                    new_shapes.insert(obj_id, shape.clone());
-                                                }
-                                            },
-                                        };// -- end match
-                                    }
-                                    Err(e) => {
-                                        println!(
-                                            "Could not parse \"{}\" into object id: {}",
-                                            obj_id_s, e
-                                        );
-
+                            for (obj_id, shape) in shapes.iter() {
+                                match selectors_to_canvas_objects.get_key_by_value(&obj_id) {
+                                    Some(selector_id) if *selector_id != client_state.client_id => {
+                                        // -- another user has selected this object - can't
+                                        // modify it ourselves
                                         responses.push(ServerSocketMessage::Individual {
                                             target_client_id: client_state.client_id.clone(),
                                             msg: ServerSocketIndividualMessage::Error {
-                                                error: ClientError::InvalidMessage {
-                                                    client_message_raw: format!(
-                                                        "Could not parse \"{}\" into object id: {}",
-                                                        obj_id_s, e
-                                                    ),
+                                                error: ClientError::CanvasObjectAlreadySelected {
+                                                    client_id: selector_id.clone(),
                                                 },
                                             },
                                         });
-                                    }
-                                };
+                                    },
+                                    _ => {
+                                        // -- create/modify shapes
+                                        if canvas.shapes().contains_key(&obj_id) {
+                                            canvas.shapes_mut().insert(obj_id.clone(), shape.clone());
+                                            new_shapes.insert(obj_id.clone(), shape.clone());
+                                        }
+                                    },
+                                };// -- end match
                             } // end for (&obj_id, &shape) in shapes.iter_mut()
                             println!("New Shapes: {:?}", new_shapes);
                             // valid input: add to diffs
@@ -357,10 +335,10 @@ pub async fn handle_authenticated_client_message(
                             responses.push(ServerSocketMessage::Broadcast {
                                 msg: ServerSocketBroadcastMessage::UpdateShapes {
                                     client_id: client_state.client_id.clone(),
-                                    canvas_id: canvas_id.to_string(),
+                                    canvas_id: canvas_id.clone(),
                                     shapes: new_shapes
                                         .iter()
-                                        .map(|(obj_id, shape)| (obj_id.to_string(), shape.clone()))
+                                        .map(|(obj_id, shape)| (obj_id.clone(), shape.clone()))
                                         .collect(),
                                 },
                             });
@@ -416,7 +394,7 @@ pub async fn handle_authenticated_client_message(
                             client_id: client_state.client_id.clone(),
                             canvas_object_ids: deleted_object_ids
                                 .iter()
-                                .map(|oid| oid.to_string())
+                                .map(|oid| oid.clone())
                                 .collect(),
                         },
                     });
@@ -493,7 +471,7 @@ pub async fn handle_authenticated_client_message(
                     vec![ServerSocketMessage::Broadcast {
                         msg: ServerSocketBroadcastMessage::DeleteCanvases {
                             client_id: client_state.client_id.clone(),
-                            canvas_ids: canvas_ids.iter().map(|id| id.to_string()).collect(),
+                            canvas_ids: canvas_ids.iter().map(|id| id.clone()).collect(),
                         },
                     }]
                 }
@@ -507,7 +485,7 @@ pub async fn handle_authenticated_client_message(
                     for user_id in allowed_users.iter() {
                         match whiteboard
                             .metadata()
-                            .permission_for_user(&user_id.to_string())
+                            .permission_for_user(&user_id)
                         {
                             None => {
                                 return vec![ServerSocketMessage::Individual {
@@ -544,7 +522,7 @@ pub async fn handle_authenticated_client_message(
                                 target_client_id: client_state.client_id.clone(),
                                 msg: ServerSocketIndividualMessage::Error {
                                     error: ClientError::CanvasNotFound {
-                                        canvas_id: canvas_id.to_string(),
+                                        canvas_id: canvas_id.clone(),
                                     },
                                 },
                             }]
@@ -567,10 +545,10 @@ pub async fn handle_authenticated_client_message(
                             vec![ServerSocketMessage::Broadcast {
                                 msg: ServerSocketBroadcastMessage::UpdateCanvasAllowedUsers {
                                     client_id: client_state.client_id.clone(),
-                                    canvas_id: canvas_id.to_string(),
+                                    canvas_id: canvas_id.clone(),
                                     allowed_users: allowed_users
                                         .iter()
-                                        .map(|oid| oid.to_string())
+                                        .map(|oid| oid.clone())
                                         .collect(),
                                 },
                             }]
@@ -624,7 +602,7 @@ pub async fn handle_authenticated_client_message(
                                 target_client_id: client_state.client_id.clone(),
                                 msg: ServerSocketIndividualMessage::Error {
                                     error: ClientError::NoParentCanvas {
-                                        canvas_id: canvas_id.to_string(),
+                                        canvas_id: canvas_id.clone(),
                                     },
                                 },
                             }];
@@ -634,7 +612,7 @@ pub async fn handle_authenticated_client_message(
                             target_client_id: client_state.client_id.clone(),
                             msg: ServerSocketIndividualMessage::Error {
                                 error: ClientError::CanvasNotFound {
-                                    canvas_id: canvas_id.to_string(),
+                                    canvas_id: canvas_id.clone(),
                                 },
                             },
                         }];
@@ -694,7 +672,7 @@ pub async fn handle_authenticated_client_message(
                             target_client_id: client_state.client_id.clone(),
                             msg: ServerSocketIndividualMessage::Error {
                                 error: ClientError::CanvasNotFound {
-                                    canvas_id: parent_ref.canvas_id().to_string(),
+                                    canvas_id: parent_ref.canvas_id().clone(),
                                 },
                             },
                         }];
@@ -730,7 +708,7 @@ pub async fn handle_authenticated_client_message(
                     vec![ServerSocketMessage::Broadcast {
                         msg: ServerSocketBroadcastMessage::MergeCanvas {
                             client_id: client_state.client_id.clone(),
-                            canvas_id: canvas_id.to_string(),
+                            canvas_id: canvas_id.clone(),
                         },
                     }]
                 }
@@ -787,9 +765,7 @@ pub async fn handle_unauthenticated_client_message<
                             return vec![ServerSocketMessage::Individual {
                                 target_client_id: client_state.client_id.clone(),
                                 msg: ServerSocketIndividualMessage::Error {
-                                    error: ClientError::UserNotFound {
-                                        user_id: client_state.client_id.to_string(),
-                                    },
+                                    error: ClientError::InvalidAuth,
                                 },
                             }];
                         }
@@ -814,7 +790,7 @@ pub async fn handle_unauthenticated_client_message<
                                 target_client_id: client_state.client_id.clone(),
                                 msg: ServerSocketIndividualMessage::Error {
                                     error: ClientError::UserNotFound {
-                                        user_id: user_id.to_string(),
+                                        user_id: user_id.clone(),
                                     },
                                 }
                             }];
@@ -841,14 +817,14 @@ pub async fn handle_unauthenticated_client_message<
 
                         whiteboard
                             .metadata()
-                            .permission_for_user(&user_id.to_string())
+                            .permission_for_user(&user_id.clone())
                     };
 
                     if let Some(permission) = permission {
                         // User has a valid permission
                         let user_summary = UserSummary {
                             client_id: client_state.client_id.clone(),
-                            user_id: user_id.to_string(),
+                            user_id: user_id.clone(),
                             username: match user {
                                 User::Permanent { username, .. } | User::Temp { username, .. } => {
                                     username.clone()
@@ -890,7 +866,7 @@ pub async fn handle_unauthenticated_client_message<
                                     active_clients,
                                     selectors_by_canvas_objects: selectors_to_canvas_objects
                                         .iter_key_value()
-                                        .map(|(selector_id, obj_id)| (obj_id.to_hex(), selector_id.clone()))
+                                        .map(|(selector_id, obj_id)| (obj_id.clone(), selector_id.clone()))
                                         .collect()
                                 },
                             }]
@@ -933,6 +909,7 @@ pub async fn handle_unauthenticated_client_message<
 #[cfg(test)]
 mod unit_tests {
     use crate::wss::{self, db, models, protocol, server, store, collections, utils};
+    use models::*;
     use std::collections::HashMap;
 
     use mongodb::bson::oid::ObjectId;
@@ -967,7 +944,7 @@ mod unit_tests {
             client_id: test_client_id.clone(),
             user_summary: Mutex::new(Some(UserSummary {
                 client_id: test_client_id.clone(),
-                user_id: String::from("68d5e8cf829da666aece0101"),
+                user_id: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
                 username: String::from("Alice"),
             })),
             jwt_secret: String::from("abcd"),
@@ -1117,7 +1094,7 @@ mod unit_tests {
             client_id: test_client_id.clone(),
             user_summary: Mutex::new(Some(UserSummary {
                 client_id: test_client_id.clone(),
-                user_id: String::from("68d5e8cf829da666aece0101"),
+                user_id: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
                 username: String::from("Alice"),
             })),
             jwt_secret: String::from("abcd"),
@@ -1142,7 +1119,7 @@ mod unit_tests {
             } => {
                     if client_id != test_client_id {
                         panic!("Expected client_id = {}; got {}", test_client_id, client_id);
-                    } else if canvas_id != canvas_a_id.to_string() {
+                    } else if canvas_id != canvas_a_id {
                         panic!("Expected canvas_id = {}; got {}", canvas_a_id, canvas_id);
                     } else if shapes.len() != shapes_expected.len() {
                         panic!(
@@ -1157,7 +1134,7 @@ mod unit_tests {
                         );
                     } else {
                         // success
-                        let mut shapes_entries: Vec<(&String, &ShapeModel)> =
+                        let mut shapes_entries: Vec<(&CanvasObjectIdType, &ShapeModel)> =
                             shapes.iter().collect();
 
                         shapes_entries.sort_by_key(|(obj_id, _)| (*obj_id).clone());
@@ -1308,7 +1285,7 @@ mod unit_tests {
             HashMap::<ObjectId, ShapeModel>::from_iter(canvas_objects_initial_kv.into_iter());
         let canvas_objects_final_expected =
             HashMap::<ObjectId, ShapeModel>::from_iter(canvas_objects_final_kv.into_iter());
-        let canvas_obj_ids_expected = vec![object_a_id.to_string()];
+        let canvas_obj_ids_expected = vec![object_a_id];
         let client_msg_s = format!(
             r##"
         {{
@@ -1346,7 +1323,7 @@ mod unit_tests {
             client_id: test_client_id.clone(),
             user_summary: Mutex::new(Some(UserSummary {
                 client_id: test_client_id.clone(),
-                user_id: String::from("68d5e8cf829da666aece0101"),
+                user_id: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
                 username: String::from("Alice"),
             })),
             jwt_secret: String::from("abcd"),
@@ -1589,7 +1566,7 @@ mod unit_tests {
                     },
                     permission: WhiteboardPermissionEnum::Edit,
                 }],
-                HashMap::from([(String::from(target_uid_s), WhiteboardPermissionEnum::Edit)]),
+                HashMap::from([(target_uid.clone(), WhiteboardPermissionEnum::Edit)]),
             ),
             ObjectId::new(),
             HashMap::new(),
@@ -1598,7 +1575,7 @@ mod unit_tests {
             client_id: test_client_id.clone(),
             user_summary: Mutex::new(Some(UserSummary {
                 client_id: test_client_id.clone(),
-                user_id: String::from("68d5e8cf829da666aece0101"),
+                user_id: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
                 username: String::from("Alice"),
             })),
             jwt_secret: String::from(jwt_secret),
@@ -1645,7 +1622,7 @@ mod unit_tests {
                         test_client_id.clone(),
                         UserSummary {
                             client_id: test_client_id.clone(),
-                            user_id: String::from(target_uid_s),
+                            user_id: target_uid.clone(),
                             username: String::from("bob"),
                         }
                     )])
@@ -1821,7 +1798,7 @@ mod unit_tests {
                     },
                     permission: WhiteboardPermissionEnum::Edit,
                 }],
-                HashMap::from([(test_user_id.to_string(), WhiteboardPermissionEnum::Edit)]),
+                HashMap::from([(test_user_id.clone(), WhiteboardPermissionEnum::Edit)]),
             ),
             // no canvases
             ObjectId::new(),
@@ -1832,7 +1809,7 @@ mod unit_tests {
             client_id: test_client_id.clone(),
             user_summary: Mutex::new(Some(UserSummary {
                 client_id: test_client_id.clone(),
-                user_id: String::from("68d5e8cf829da666aece0101"),
+                user_id: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
                 username: String::from("Alice"),
             })),
             jwt_secret: String::from("abcd"),
@@ -1857,7 +1834,7 @@ mod unit_tests {
 
                 match error {
                     ClientError::CanvasNotFound { canvas_id } => {
-                        assert_eq!(canvas_id, invalid_canvas_id.to_string());
+                        assert_eq!(canvas_id, invalid_canvas_id);
                     }
                     bad_err => {
                         panic!("expected CanvasNotFound, got {:?}", bad_err);

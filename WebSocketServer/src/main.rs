@@ -236,7 +236,7 @@ async fn handle_connection(
 
                         let err_msg = ServerSocketIndividualMessage::Error {
                             error: ClientError::WhiteboardNotFound {
-                                whiteboard_id: whiteboard_id.to_string(),
+                                whiteboard_id: whiteboard_id,
                             },
                         };
 

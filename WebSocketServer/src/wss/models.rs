@@ -12,10 +12,10 @@ use serde_with::{DisplayFromStr, serde_as};
 use std::collections::{HashMap, HashSet};
 
 pub type ClientIdType = String;
+pub type UserIdType = ObjectId;
 pub type CanvasIdType = ObjectId;
 pub type CanvasObjectIdType = ObjectId;
 pub type WhiteboardIdType = ObjectId;
-pub type UserIdType = ObjectId;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(
@@ -250,11 +250,14 @@ impl UserMongoDBView {
     } // end to_user
 }
 
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserSummary {
+    #[serde_as(as = "DisplayFromStr")]
     pub client_id: ClientIdType,
-    pub user_id: String,
+    #[serde_as(as = "DisplayFromStr")]
+    pub user_id: UserIdType,
     pub username: String,
 }
 
@@ -290,7 +293,8 @@ pub struct WhiteboardClientView {
     pub canvases: Vec<CanvasClientView>,
     #[serde_as(as = "DisplayFromStr")]
     pub root_canvas: CanvasIdType,
-    pub permissions_by_user_id: HashMap<String, WhiteboardPermissionEnum>,
+    #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+    pub permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
 } // -- end struct WhiteboardClientView
 
 // === CanvasParentRef ============================================================================
@@ -545,14 +549,14 @@ pub struct WhiteboardMetadata {
     user_permissions: Vec<WhiteboardPermission>,
     // For permissions attached to an existing account, index by user id, to enable faster
     // retrieval when users log in.
-    permissions_by_user_id: HashMap<String, WhiteboardPermissionEnum>,
+    permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
 } // -- end WhiteboardMetadata
 
 impl WhiteboardMetadata {
     pub fn new(
         name: String,
         user_permissions: Vec<WhiteboardPermission>,
-        permissions_by_user_id: HashMap<String, WhiteboardPermissionEnum>,
+        permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
     ) -> Self {
         Self {
             name,
@@ -569,7 +573,7 @@ impl WhiteboardMetadata {
         &self.user_permissions
     }
 
-    pub fn permission_for_user(&self, user_id: &str) -> Option<WhiteboardPermissionEnum> {
+    pub fn permission_for_user(&self, user_id: &UserIdType) -> Option<WhiteboardPermissionEnum> {
         self.permissions_by_user_id.get(user_id).copied()
     }
 }
@@ -746,7 +750,7 @@ impl WhiteboardMetadataMongoDBView {
             .iter()
             .filter_map(|wb_perm| match wb_perm.permission_type {
                 WhiteboardPermissionType::User { ref user, .. } => {
-                    Some((user.to_string(), wb_perm.permission))
+                    Some((user.clone(), wb_perm.permission))
                 }
                 _ => None,
             })
