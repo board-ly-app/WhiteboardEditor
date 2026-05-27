@@ -13,6 +13,7 @@
 // =============================================================================
 
 import {
+  model,
   Schema,
   Types,
   type Document,
@@ -259,8 +260,17 @@ export type MergeCanvasEditModelType = Model<
   IMergeCanvasEditDocument <Types.ObjectId>, {}, {}, IEditVirtual
 >;
 
+export type IEditType <UserType> =
+  | ICreateShapesEdit <UserType>
+  | IUpdateShapesEdit <UserType>
+  | IDeleteShapesEdit <UserType>
+  | ICreateCanvasEdit <UserType>
+  | IDeleteCanvasEdit <UserType>
+  | IMergeCanvasEdit <UserType>
+;
+
 const editSchema = new Schema<
-  IEdit <Types.ObjectId>, EditModelType <Types.ObjectId>, {}, {}, IEditVirtual
+  IEditType <Types.ObjectId>, EditModelType <Types.ObjectId>, {}, {}, IEditVirtual
 >(
   // -- Fields
   {
@@ -295,7 +305,7 @@ const editSchema = new Schema<
   {
     discriminatorKey: 'kind',
     // -- not all shape data defined in schema
-    strict: false,
+    strict: true,
     minimize: false,
     toObject: {
       virtuals: true,
@@ -429,3 +439,6 @@ editSchema.discriminator(
     },
   )
 );// -- end merge_canvas
+
+// -- Edit model
+export const Edit = model<IEditType <Types.ObjectId>>("Edit", editSchema, "edits");
