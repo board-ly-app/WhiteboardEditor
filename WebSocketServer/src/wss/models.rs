@@ -828,5 +828,7 @@ pub enum EditKind {
 #[derive(Debug,Clone)]
 pub struct Edit {
     id: EditObjectIdType,
+    author: UserIdType,
+    whiteboard: WhiteboardIdType,
     edit: EditKind,
 }// -- end pub struct Edit
