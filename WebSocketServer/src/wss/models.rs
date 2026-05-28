@@ -900,6 +900,27 @@ pub struct Edit {
     edit: EditKind,
 }// -- end pub struct Edit
 
+impl Edit {
+    // === pub fn new ==============================================================================
+    //
+    // Generates a new Edit at the current time (in UTC) with a unique object ID.
+    //
+    // =============================================================================================
+    pub fn new(
+        author: &UserIdType,
+        whiteboard: &WhiteboardIdType,
+        edit: EditKind,
+    ) -> Self {
+        Self {
+            id: ObjectId::new(),
+            author: author.clone(),
+            whiteboard: whiteboard.clone(),
+            committed_at: Utc::now(),
+            edit,
+        }
+    }// -- end pub fn new
+}// -- end impl Edit
+
 // === EditClientView ==============================================================================
 //
 // An edit as provided to a client.

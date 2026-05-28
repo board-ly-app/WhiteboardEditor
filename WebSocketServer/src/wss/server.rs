@@ -36,6 +36,54 @@ pub struct SharedWhiteboardEntry {
     pub selectors_to_canvas_objects: Arc<Mutex<OneToOne<ClientIdType, CanvasObjectIdType>>>,
 } // -- end pub struct SharedWhiteboardEntry
 
+#[derive(Debug)]
+pub enum ErrGenerateEdit {
+    ClientNotFound {
+        client_id: ClientIdType,
+    },
+}// -- end pub enum ErrGenerateEdit
+
+impl std::fmt::Display for ErrGenerateEdit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use ErrGenerateEdit::*;
+
+        match self {
+            ClientNotFound {
+                client_id,
+            } => {
+                write!(f, "Client {} not found", client_id)
+            },
+        }
+    }// -- end fn fmt
+}// -- end impl std::fmt::Display
+
+impl std::error::Error for ErrGenerateEdit {}
+
+impl SharedWhiteboardEntry {
+    // === pub fn generate_edit ====================================================================
+    //
+    // Generates an edit timestamped to the currentt ime (in UTC), 
+    //
+    // =============================================================================================
+    pub async fn generate_edit(
+        &self, client_id: &ClientIdType, edit_kind: EditKind
+    ) -> Result<Edit, Box<dyn std::error::Error>>  {
+        let author_id : UserIdType = {
+            let active_clients = self.active_clients.lock().await;
+
+            if let Some(user_summ) = active_clients.get(client_id) {
+                user_summ.user_id.clone()
+            } else {
+                return Err(Box::new(ErrGenerateEdit::ClientNotFound {
+                    client_id: client_id.clone(),
+                }))
+            }
+        };
+
+        Ok(Edit::new(&author_id, &self.whiteboard_id, edit_kind))
+    }// -- end pub fn generate_edit
+}// -- end impl SharedWhiteboardEntry
+
 // === Program State ==============================================================================
 //
 // Holds all program state that a web socket connection may need to manipulate.
@@ -106,7 +154,7 @@ pub struct ClientMessageResponse {
 // Input parameter is a string to enable testing on all possible inputs.
 // @param client_state          -- Current client state
 // @param client_msg_s          -- Content of client message
-// @return                      -- Messages to send to clients
+// @return                    -- Messages to send to clients
 pub async fn handle_authenticated_client_message(
     client_state: &ClientState,
     client_msg_s: &str,
@@ -283,6 +331,7 @@ pub async fn handle_authenticated_client_message(
                             edits: vec![],
                         },
                         Some(canvas) => {
+                            // -- Generate new shapes
                             let mut new_shapes = HashMap::<CanvasObjectIdType, ShapeModel>::new();
 
                             for shape in shapes.iter() {
