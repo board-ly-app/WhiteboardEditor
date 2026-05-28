@@ -163,6 +163,7 @@ pub async fn get_whiteboard_by_id(
 ) -> Result<Option<Whiteboard>, mongodb::error::Error> {
     let whiteboard_coll = db.collection::<WhiteboardMongoDBView>("whiteboards");
     let canvas_coll = db.collection::<CanvasMongoDBView>("canvases");
+    let edit_coll = db.collection::<EditMongoDBView>("edits");
 
     let whiteboard_view = match whiteboard_coll
         .find_one(doc! { "_id": *wid })
@@ -173,6 +174,12 @@ pub async fn get_whiteboard_by_id(
         }
         Some(wb) => wb,
     };
+
+    let edit_views : Vec<EditMongoDBView> = edit_coll
+        .find(doc! { "whiteboard": { "$eq": *wid }})
+        .await?
+        .try_collect()
+        .await?;
 
     eprintln!("!! whiteboard view: {:?}", whiteboard_view);
     let canvas_cursor = canvas_coll
@@ -275,5 +282,10 @@ pub async fn get_whiteboard_by_id(
         } // -- end for canvas_view in canvas_views
     }
 
-    Ok(Some(whiteboard_view.to_whiteboard(canvases.as_slice())))
+    let edits : Vec<Edit> = edit_views.iter().map(|view| view.to_edit()).collect();
+
+    Ok(Some(whiteboard_view.to_whiteboard(
+        canvases.as_slice(),
+        edits.as_slice(),
+    )))
 } // -- end fn get_whiteboard_by_id

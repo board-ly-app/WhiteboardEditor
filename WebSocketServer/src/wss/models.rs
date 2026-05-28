@@ -64,7 +64,38 @@ pub enum ShapeModel {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CanvasObject {
     id: CanvasObjectIdType,
+    canvas_id: CanvasIdType,
     shape: ShapeModel,
+}
+
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CanvasObjectClientView {
+    #[serde_as(as = "DisplayFromStr")]
+    pub id: CanvasObjectIdType,
+    #[serde_as(as = "DisplayFromStr")]
+    pub canvas_id: CanvasIdType,
+    #[serde(flatten)]
+    pub shape: ShapeModel,
+}
+
+impl CanvasObjectClientView {
+    pub fn from_canvas_object(src: &CanvasObject) -> Self {
+        Self {
+            id: src.id.clone(),
+            canvas_id: src.canvas_id.clone(),
+            shape: src.shape.clone(),
+        }
+    }// -- end pub fn from_canvas_object
+
+    pub fn to_canvas_object(&self) -> CanvasObject {
+        CanvasObject {
+            id: self.id.clone(),
+            canvas_id: self.canvas_id.clone(),
+            shape: self.shape.clone(),
+        }
+    }// -- end pub fn to_canvas_object
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -81,14 +112,15 @@ impl CanvasObjectMongoDBView {
     pub fn to_canvas_object(&self) -> CanvasObject {
         CanvasObject {
             id: self.id,
+            canvas_id: self.canvas_id,
             shape: self.shape.clone(),
         }
     }
 
-    pub fn from_canvas_object(obj: &CanvasObject, canvas_id: &CanvasIdType) -> Self {
+    pub fn from_canvas_object(obj: &CanvasObject) -> Self {
         Self {
             id: obj.id,
-            canvas_id: *canvas_id,
+            canvas_id: obj.canvas_id.clone(),
             shape: obj.shape.clone(),
         }
     }
@@ -578,6 +610,11 @@ impl WhiteboardMetadata {
     }
 }
 
+// === Whiteboard ==================================================================================
+//
+// Encompasses all business logic regarding a single whiteboard.
+//
+// =================================================================================================
 #[derive(Clone, Debug)]
 pub struct Whiteboard {
     id: WhiteboardIdType,
@@ -585,6 +622,8 @@ pub struct Whiteboard {
     metadata: WhiteboardMetadata,
     canvases: HashMap<CanvasIdType, Canvas>,
     root_canvas: CanvasIdType,
+    // -- A series of contiguous, ordered 
+    edit_history: Vec<Edit>,
 } // -- end struct Whiteboard
 
 impl Whiteboard {
@@ -594,6 +633,7 @@ impl Whiteboard {
         metadata: WhiteboardMetadata,
         root_canvas: CanvasIdType,
         canvases: HashMap<CanvasIdType, Canvas>,
+        edit_history: Vec<Edit>,
     ) -> Self {
         Self {
             id,
@@ -601,6 +641,7 @@ impl Whiteboard {
             metadata,
             canvases,
             root_canvas,
+            edit_history,
         }
     } // -- end pub fn new
 
@@ -773,7 +814,7 @@ pub struct WhiteboardMongoDBView {
 } // -- end struct WhiteboardMongoDBView
 
 impl WhiteboardMongoDBView {
-    pub fn to_whiteboard(&self, canvases: &[Canvas]) -> Whiteboard {
+    pub fn to_whiteboard(&self, canvases: &[Canvas], edits: &[Edit]) -> Whiteboard {
         Whiteboard {
             id: self.id,
             is_active: true,
@@ -783,6 +824,7 @@ impl WhiteboardMongoDBView {
                 .map(|canvas| (canvas.id, canvas.clone()))
                 .collect(),
             root_canvas: self.root_canvas,
+            edit_history: edits.iter().cloned().collect(),
         }
     }
 }
@@ -834,5 +876,220 @@ pub struct Edit {
     id: EditObjectIdType,
     author: UserIdType,
     whiteboard: WhiteboardIdType,
+    committed_at: chrono::DateTime<Utc>,
     edit: EditKind,
 }// -- end pub struct Edit
+
+#[serde_as]
+#[derive(Clone,Debug,Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShapeUpdateClientView {
+    #[serde_as(as = "DisplayFromStr")]
+    shape_id: CanvasObjectIdType,
+    old_fields: ShapeModel,
+    new_fields: ShapeModel,
+}
+
+#[serde_as]
+#[derive(Debug,Clone,Serialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+pub enum EditKindClientView {
+    CreateShapes {
+        shapes: Vec<CanvasObjectClientView>,
+    },
+    UpdateShapes {
+        updates: Vec<ShapeUpdateClientView>,
+    },
+    DeleteShapes {
+        shapes: Vec<CanvasObjectClientView>,
+    },
+    CreateCanvas {
+        canvas: CanvasClientView,
+    },
+    DeleteCanvas {
+        canvas: CanvasClientView,
+    },
+    MergeCanvas {
+        child_canvas: CanvasClientView,
+    },
+}// -- end pub enum EditKind
+
+#[serde_as]
+#[derive(Debug,Clone,Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditClientView {
+    #[serde_as(as = "DisplayFromStr")]
+    id: EditObjectIdType,
+    #[serde_as(as = "DisplayFromStr")]
+    author: UserIdType,
+    #[serde_as(as = "DisplayFromStr")]
+    whiteboard: WhiteboardIdType,
+    committed_at: bson::DateTime,
+    edit: EditKindClientView,
+}// -- end pub struct Edit
+
+#[serde_as]
+#[derive(Clone,Debug,Serialize,Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShapeUpdateMongoDBView {
+    #[serde_as(as = "DisplayFromStr")]
+    shape_id: CanvasObjectIdType,
+    old_fields: ShapeModel,
+    new_fields: ShapeModel,
+}
+
+#[serde_as]
+#[derive(Debug,Clone,Serialize,Deserialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+pub enum EditKindMongoDBView {
+    CreateShapes {
+        shapes: Vec<CanvasObjectMongoDBView>,
+    },
+    UpdateShapes {
+        updates: Vec<ShapeUpdateMongoDBView>,
+    },
+    DeleteShapes {
+        shapes: Vec<CanvasObjectMongoDBView>,
+    },
+    CreateCanvas {
+        canvas: CanvasMongoDBView,
+    },
+    DeleteCanvas {
+        canvas: CanvasMongoDBView,
+    },
+    MergeCanvas {
+        child_canvas: CanvasMongoDBView,
+    },
+}// -- end pub enum EditKindMongoDBView
+
+impl EditKindMongoDBView {
+    pub fn to_edit_kind(&self) -> EditKind {
+        match self {
+            EditKindMongoDBView::CreateShapes {
+                shapes,
+            } => EditKind::CreateShapes {
+                shapes: shapes.iter().map(|obj| obj.to_canvas_object()).collect()
+            },
+            EditKindMongoDBView::UpdateShapes {
+                updates,
+            } => EditKind::UpdateShapes {
+                updates: updates.iter().map(|update| ShapeUpdate {
+                    shape_id: update.shape_id.clone(),
+                    old_fields: update.old_fields.clone(),
+                    new_fields: update.new_fields.clone(),
+                }).collect()
+            },
+            EditKindMongoDBView::DeleteShapes {
+                shapes,
+            } => EditKind::DeleteShapes {
+                shapes: shapes.iter().map(|obj| obj.to_canvas_object()).collect()
+            },
+            EditKindMongoDBView::CreateCanvas {
+                canvas,
+            } => EditKind::CreateCanvas {
+                canvas: canvas.to_canvas()
+            },
+            EditKindMongoDBView::DeleteCanvas {
+                canvas,
+            } => EditKind::DeleteCanvas {
+                canvas: canvas.to_canvas(),
+            },
+            EditKindMongoDBView::MergeCanvas {
+                child_canvas,
+            } => EditKind::MergeCanvas {
+                child_canvas: child_canvas.to_canvas(),
+            },
+        }// -- end match self
+    }// -- end pub fn to_edit_kind
+
+    pub fn from_edit_kind(edit_kind: &EditKind) -> Self {
+        match edit_kind {
+            EditKind::CreateShapes {
+                shapes,
+            } => EditKindMongoDBView::CreateShapes {
+                shapes: shapes.iter()
+                    .map(|obj| CanvasObjectMongoDBView::from_canvas_object(obj))
+                    .collect()
+            },
+            EditKind::UpdateShapes {
+                updates,
+            } => EditKindMongoDBView::UpdateShapes {
+                updates: updates.iter().map(|update| ShapeUpdateMongoDBView {
+                    shape_id: update.shape_id.clone(),
+                    old_fields: update.old_fields.clone(),
+                    new_fields: update.new_fields.clone(),
+                }).collect()
+            },
+            EditKind::DeleteShapes {
+                shapes,
+            } => EditKindMongoDBView::DeleteShapes {
+                shapes: shapes.iter()
+                    .map(|obj| CanvasObjectMongoDBView::from_canvas_object(obj))
+                    .collect()
+            },
+            EditKind::CreateCanvas {
+                canvas,
+            } => EditKindMongoDBView::CreateCanvas {
+                canvas: CanvasMongoDBView::from_canvas(canvas),
+            },
+            EditKind::DeleteCanvas {
+                canvas,
+            } => EditKindMongoDBView::DeleteCanvas {
+                canvas: CanvasMongoDBView::from_canvas(canvas),
+            },
+            EditKind::MergeCanvas {
+                child_canvas,
+            } => EditKindMongoDBView::MergeCanvas {
+                child_canvas: CanvasMongoDBView::from_canvas(child_canvas),
+            },
+        }// -- end match self
+    }// -- end pub fn from_edit_kind
+}// -- end impl EditKindMongoDBView
+
+#[serde_as]
+#[derive(Debug,Clone,Serialize,Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditMongoDBView {
+    #[serde_as(as = "DisplayFromStr")]
+    id: EditObjectIdType,
+    #[serde_as(as = "DisplayFromStr")]
+    author: UserIdType,
+    #[serde_as(as = "DisplayFromStr")]
+    whiteboard: WhiteboardIdType,
+    committed_at: bson::DateTime,
+    edit: EditKindMongoDBView,
+}// -- end pub struct Edit
+
+impl EditMongoDBView {
+    pub fn to_edit(&self) -> Edit {
+        use super::utils::dt_bson_to_chrono_utc;
+
+        Edit {
+            id: self.id.clone(),
+            author: self.author.clone(),
+            whiteboard: self.whiteboard.clone(),
+            committed_at: dt_bson_to_chrono_utc(&self.committed_at),
+            edit: self.edit.to_edit_kind(),
+        }
+    }// -- end pub fn to_edit
+
+    pub fn from_edit(edit: &Edit) -> Self {
+        use super::utils::dt_chrono_utc_to_bson;
+
+        Self {
+            id: edit.id.clone(),
+            author: edit.author.clone(),
+            whiteboard: edit.whiteboard.clone(),
+            committed_at: dt_chrono_utc_to_bson(&edit.committed_at),
+            edit: EditKindMongoDBView::from_edit_kind(&edit.edit),
+        }
+    }// -- end pub fn from_edit
+}// -- end impl EditMongoDBView

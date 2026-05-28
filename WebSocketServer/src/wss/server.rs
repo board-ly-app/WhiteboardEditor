@@ -938,6 +938,8 @@ mod unit_tests {
             WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
             test_canvas_id,
             HashMap::new(),
+            // -- Edit history irrelevant
+            Vec::new(),
         );
 
         let client_state = ClientState {
@@ -1088,6 +1090,8 @@ mod unit_tests {
                     None, // None = open to all
                 ),
             )]),
+            // -- Edit history irrelevant
+            Vec::new(),
         );
 
         let client_state = ClientState {
@@ -1317,6 +1321,8 @@ mod unit_tests {
                     None, // None = open to all
                 ),
             )]),
+            // -- Edit history irrelevant
+            Vec::new(),
         );
 
         let client_state = ClientState {
@@ -1570,6 +1576,8 @@ mod unit_tests {
             ),
             ObjectId::new(),
             HashMap::new(),
+            // -- Edit history irrelevant
+            Vec::new(),
         );
         let client_state = ClientState {
             client_id: test_client_id.clone(),
@@ -1803,6 +1811,8 @@ mod unit_tests {
             // no canvases
             ObjectId::new(),
             HashMap::new(),
+            // -- Edit history irrelevant
+            Vec::new(),
         );
 
         let client_state = ClientState {
