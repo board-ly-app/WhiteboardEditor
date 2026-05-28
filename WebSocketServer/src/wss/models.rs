@@ -864,7 +864,6 @@ pub type EditIdType = ObjectId;
 
 #[derive(Clone,Debug)]
 pub struct CanvasObjectUpdate {
-    canvas_object_id: CanvasObjectIdType,
     old_fields: CanvasObjectModel,
     new_fields: CanvasObjectModel,
 }
@@ -872,13 +871,13 @@ pub struct CanvasObjectUpdate {
 #[derive(Debug,Clone)]
 pub enum EditKind {
     CreateCanvasObjects {
-        canvas_objects: Vec<CanvasObject>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObject>,
     },
     UpdateCanvasObjects {
-        updates: Vec<CanvasObjectUpdate>,
+        updates: HashMap<CanvasObjectIdType, CanvasObjectUpdate>,
     },
     DeleteCanvasObjects {
-        canvas_objects: Vec<CanvasObject>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObject>,
     },
     CreateCanvas {
         canvas: Canvas,
@@ -958,8 +957,6 @@ impl EditClientView {
 #[derive(Clone,Debug,Serialize,Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CanvasObjectUpdateMongoDBView {
-    #[serde_as(as = "DisplayFromStr")]
-    canvas_object_id: CanvasObjectIdType,
     old_fields: CanvasObjectModel,
     new_fields: CanvasObjectModel,
 }
@@ -973,13 +970,13 @@ pub struct CanvasObjectUpdateMongoDBView {
 )]
 pub enum EditKindMongoDBView {
     CreateCanvasObjects {
-        canvas_objects: Vec<CanvasObjectMongoDBView>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectMongoDBView>,
     },
     UpdateCanvasObjects {
-        updates: Vec<CanvasObjectUpdateMongoDBView>,
+        updates: HashMap<CanvasObjectIdType, CanvasObjectUpdateMongoDBView>,
     },
     DeleteCanvasObjects {
-        canvas_objects: Vec<CanvasObjectMongoDBView>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectMongoDBView>,
     },
     CreateCanvas {
         canvas: CanvasMongoDBView,
@@ -998,21 +995,25 @@ impl EditKindMongoDBView {
             EditKindMongoDBView::CreateCanvasObjects {
                 canvas_objects,
             } => EditKind::CreateCanvasObjects {
-                canvas_objects: canvas_objects.iter().map(|obj| obj.to_canvas_object()).collect()
+                canvas_objects: canvas_objects.iter().map(
+                    |(id, obj)| (id.clone(), obj.to_canvas_object())
+                ).collect()
             },
             EditKindMongoDBView::UpdateCanvasObjects {
                 updates,
             } => EditKind::UpdateCanvasObjects {
-                updates: updates.iter().map(|update| CanvasObjectUpdate {
-                    canvas_object_id: update.canvas_object_id.clone(),
-                    old_fields: update.old_fields.clone(),
-                    new_fields: update.new_fields.clone(),
-                }).collect()
+                updates: updates.iter().map(
+                    |(id, update)| (id.clone(), CanvasObjectUpdate {
+                        old_fields: update.old_fields.clone(),
+                        new_fields: update.new_fields.clone(),
+                })).collect()
             },
             EditKindMongoDBView::DeleteCanvasObjects {
                 canvas_objects,
             } => EditKind::DeleteCanvasObjects {
-                canvas_objects: canvas_objects.iter().map(|obj| obj.to_canvas_object()).collect()
+                canvas_objects: canvas_objects.iter().map(
+                    |(id, obj)| (id.clone(), obj.to_canvas_object())
+                ).collect()
             },
             EditKindMongoDBView::CreateCanvas {
                 canvas,
@@ -1038,23 +1039,23 @@ impl EditKindMongoDBView {
                 canvas_objects,
             } => EditKindMongoDBView::CreateCanvasObjects {
                 canvas_objects: canvas_objects.iter()
-                    .map(|obj| CanvasObjectMongoDBView::from_canvas_object(obj))
+                    .map(|(id, obj)| (id.clone(), CanvasObjectMongoDBView::from_canvas_object(obj)))
                     .collect()
             },
             EditKind::UpdateCanvasObjects {
                 updates,
             } => EditKindMongoDBView::UpdateCanvasObjects {
-                updates: updates.iter().map(|update| CanvasObjectUpdateMongoDBView {
-                    canvas_object_id: update.canvas_object_id.clone(),
-                    old_fields: update.old_fields.clone(),
-                    new_fields: update.new_fields.clone(),
-                }).collect()
+                updates: updates.iter().map(
+                    |(id, update)| (id.clone(), CanvasObjectUpdateMongoDBView {
+                        old_fields: update.old_fields.clone(),
+                        new_fields: update.new_fields.clone(),
+                })).collect()
             },
             EditKind::DeleteCanvasObjects {
                 canvas_objects,
             } => EditKindMongoDBView::DeleteCanvasObjects {
                 canvas_objects: canvas_objects.iter()
-                    .map(|obj| CanvasObjectMongoDBView::from_canvas_object(obj))
+                    .map(|(id, obj)| (id.clone(), CanvasObjectMongoDBView::from_canvas_object(obj)))
                     .collect()
             },
             EditKind::CreateCanvas {
