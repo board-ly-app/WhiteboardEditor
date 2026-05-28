@@ -28,13 +28,13 @@ export const normalizeCanvas = (
 ): CanvasNormal => {
   const { id: canvasId } = canvas;
   const canvasAttribs: Partial<CanvasData> = { ...canvas };
-  const canvasObjects = { ...canvas.shapes };
+  const canvasObjects = { ...canvas.canvasObjects };
   const allowedUsersByCanvas = {
     [canvasId]: canvasAttribs.allowedUsers || [],
   };
 
   // remove vector fields from canvasAttribs
-  delete canvasAttribs.shapes;
+  delete canvasAttribs.canvasObjects;
   delete canvasAttribs.allowedUsers;
 
   return ({
@@ -43,7 +43,7 @@ export const normalizeCanvas = (
     }),
     canvasObjects,
     canvasObjectsByCanvas: {
-      [canvasId]: Object.keys(canvas.shapes)
+      [canvasId]: Object.keys(canvas.canvasObjects)
     },
     allowedUsersByCanvas,
   });

@@ -82,10 +82,10 @@ export const CanvasObject = ({
 
   const handleUpdateObject = useCallback(
     (updatedObject: CanvasObjectModel) => {
-      clientMessenger?.sendUpdateShapes({
-        type: 'update_shapes',
+      clientMessenger?.sendUpdateCanvasObjects({
+        type: 'update_canvas_objects',
         canvasId,
-        shapes: {
+        canvasObjects: {
           [id]: updatedObject,
         },
       });

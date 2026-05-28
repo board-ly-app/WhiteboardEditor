@@ -9,8 +9,8 @@ import {
   type ClientMessageEditingCanvas,
   type ClientMessageSelectedCanvasObject,
   type ClientMessageUnselectedCanvasObject,
-  type ClientMessageCreateShapes,
-  type ClientMessageUpdateShapes,
+  type ClientMessageCreateCanvasObjects,
+  type ClientMessageUpdateCanvasObjects,
   type ClientMessageDeleteCanvasObjects,
   type ClientMessageCreateCanvas,
   type ClientMessageMergeCanvas,
@@ -49,9 +49,9 @@ class WhiteboardSocketMessenger {
     this.#sendMessage(msg);
   }// -- end sendDeleteCanvases
 
-  sendCreateShapes(msg: ClientMessageCreateShapes) {
+  sendCreateCanvasObjects(msg: ClientMessageCreateCanvasObjects) {
     this.#sendMessage(msg);
-  }// -- end sendCreateShapes
+  }// -- end sendCreateCanvasObjects
 
   sendDeleteCanvasObjects(msg: ClientMessageDeleteCanvasObjects) {
     this.#sendMessage(msg);
@@ -73,9 +73,9 @@ class WhiteboardSocketMessenger {
     this.#sendMessage(msg);
   }// -- end sendCreateCanvas
 
-  sendUpdateShapes(msg: ClientMessageUpdateShapes) {
+  sendUpdateCanvasObjects(msg: ClientMessageUpdateCanvasObjects) {
     this.#sendMessage(msg);
-  }// -- end sendUpdateShapes
+  }// -- end sendUpdateCanvasObjects
 };
 
 export {

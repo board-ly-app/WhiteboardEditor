@@ -282,12 +282,12 @@ pub async fn handle_authenticated_client_message<'a>(
                         edits: vec![],
                     }
                 }
-                CreateShapes {
+                CreateCanvasObjects {
                     canvas_id,
-                    ref shapes,
+                    ref canvas_objects,
                 } => {
                     let mut whiteboard = client_state.base.whiteboard_ref.lock().await;
-                    println!("Creating shape on canvas {} ...", canvas_id);
+                    println!("Creating canvas_object on canvas {} ...", canvas_id);
 
                     match whiteboard.canvases_mut().get_mut(&canvas_id) {
                         None => ClientMessageResponse {
@@ -302,34 +302,34 @@ pub async fn handle_authenticated_client_message<'a>(
                             edits: vec![],
                         },
                         Some(canvas) => {
-                            // -- Generate new shapes
-                            let mut new_shapes = HashMap::<CanvasObjectIdType, ShapeModel>::new();
+                            // -- Generate new canvas_objects
+                            let mut new_canvas_objects = HashMap::<CanvasObjectIdType, CanvasObjectModel>::new();
 
-                            for shape in shapes.iter() {
+                            for canvas_object in canvas_objects.iter() {
                                 let obj_id = ObjectId::new();
 
-                                new_shapes.insert(obj_id, shape.clone());
-                                canvas.shapes_mut().insert(obj_id, shape.clone());
-                            } // end for (idx, &mut shape) in new_shapes.iter_mut().enumerate()
+                                new_canvas_objects.insert(obj_id, canvas_object.clone());
+                                canvas.canvas_objects_mut().insert(obj_id, canvas_object.clone());
+                            } // end for (idx, &mut canvas_object) in new_canvas_objects.iter_mut().enumerate()
 
                             // valid input: add to diffs
                             {
                                 let mut diffs = client_state.base.diffs.lock().await;
 
-                                diffs.push(WhiteboardDiff::CreateShapes {
+                                diffs.push(WhiteboardDiff::CreateCanvasObjects {
                                     canvas_id,
-                                    shapes: new_shapes.clone(),
+                                    canvas_objects: new_canvas_objects.clone(),
                                 });
                             }
 
                             ClientMessageResponse {
                                 messages: vec![ServerSocketMessage::Broadcast {
-                                    msg: ServerSocketBroadcastMessage::CreateShapes {
+                                    msg: ServerSocketBroadcastMessage::CreateCanvasObjects {
                                         client_id: client_state.base.client_id.clone(),
                                         canvas_id: canvas_id.clone(),
-                                        shapes: new_shapes
+                                        canvas_objects: new_canvas_objects
                                             .iter()
-                                            .map(|(obj_id, shape)| (obj_id.clone(), shape.clone()))
+                                            .map(|(obj_id, canvas_object)| (obj_id.clone(), canvas_object.clone()))
                                             .collect(),
                                     },
                                 }],
@@ -338,13 +338,13 @@ pub async fn handle_authenticated_client_message<'a>(
                         }
                     }
                 }
-                UpdateShapes {
+                UpdateCanvasObjects {
                     canvas_id,
-                    ref shapes,
+                    ref canvas_objects,
                 } => {
                     let mut whiteboard = client_state.base.whiteboard_ref.lock().await;
-                    println!("Updating shapes on canvas {} ...", canvas_id);
-                    println!("Shapes: {:?}", shapes);
+                    println!("Updating canvas_objects on canvas {} ...", canvas_id);
+                    println!("CanvasObjects: {:?}", canvas_objects);
 
                     match whiteboard.canvases_mut().get_mut(&canvas_id) {
                         None => ClientMessageResponse {
@@ -361,10 +361,10 @@ pub async fn handle_authenticated_client_message<'a>(
                         Some(canvas) => {
                             let selectors_to_canvas_objects = client_state.base
                                 .selectors_to_canvas_objects.lock().await;
-                            let mut new_shapes = HashMap::<CanvasObjectIdType, ShapeModel>::new();
+                            let mut new_canvas_objects = HashMap::<CanvasObjectIdType, CanvasObjectModel>::new();
                             let mut responses = Vec::<ServerSocketMessage>::new();
 
-                            for (obj_id, shape) in shapes.iter() {
+                            for (obj_id, canvas_object) in canvas_objects.iter() {
                                 match selectors_to_canvas_objects.get_key_by_value(&obj_id) {
                                     Some(selector_id) if *selector_id != client_state.base.client_id => {
                                         // -- another user has selected this object - can't
@@ -379,32 +379,32 @@ pub async fn handle_authenticated_client_message<'a>(
                                         });
                                     },
                                     _ => {
-                                        // -- create/modify shapes
-                                        if canvas.shapes().contains_key(&obj_id) {
-                                            canvas.shapes_mut().insert(obj_id.clone(), shape.clone());
-                                            new_shapes.insert(obj_id.clone(), shape.clone());
+                                        // -- create/modify canvas_objects
+                                        if canvas.canvas_objects().contains_key(&obj_id) {
+                                            canvas.canvas_objects_mut().insert(obj_id.clone(), canvas_object.clone());
+                                            new_canvas_objects.insert(obj_id.clone(), canvas_object.clone());
                                         }
                                     },
                                 };// -- end match
-                            } // end for (&obj_id, &shape) in shapes.iter_mut()
-                            println!("New Shapes: {:?}", new_shapes);
+                            } // end for (&obj_id, &canvas_object) in canvas_objects.iter_mut()
+                            println!("New CanvasObjects: {:?}", new_canvas_objects);
                             // valid input: add to diffs
                             {
                                 let mut diffs = client_state.base.diffs.lock().await;
 
-                                diffs.push(WhiteboardDiff::UpdateShapes {
+                                diffs.push(WhiteboardDiff::UpdateCanvasObjects {
                                     canvas_id,
-                                    shapes: new_shapes.clone(),
+                                    canvas_objects: new_canvas_objects.clone(),
                                 });
                             }
 
                             responses.push(ServerSocketMessage::Broadcast {
-                                msg: ServerSocketBroadcastMessage::UpdateShapes {
+                                msg: ServerSocketBroadcastMessage::UpdateCanvasObjects {
                                     client_id: client_state.base.client_id.clone(),
                                     canvas_id: canvas_id.clone(),
-                                    shapes: new_shapes
+                                    canvas_objects: new_canvas_objects
                                         .iter()
-                                        .map(|(obj_id, shape)| (obj_id.clone(), shape.clone()))
+                                        .map(|(obj_id, canvas_object)| (obj_id.clone(), canvas_object.clone()))
                                         .collect(),
                                 },
                             });
@@ -438,9 +438,9 @@ pub async fn handle_authenticated_client_message<'a>(
                                     });
                                 },
                                 _ => {
-                                    if canvas.shapes().contains_key(&object_id) {
+                                    if canvas.canvas_objects().contains_key(&object_id) {
                                         selectors_to_canvas_objects.remove_value(&object_id);
-                                        canvas.shapes_mut().remove(&object_id);
+                                        canvas.canvas_objects_mut().remove(&object_id);
                                         deleted_object_ids.push(object_id.clone());
                                     }
                                 },
@@ -499,7 +499,7 @@ pub async fn handle_authenticated_client_message<'a>(
                         &Utc::now(),
                         &Utc::now(),
                         Some(&parent_canvas.to_canvas_parent_ref()),
-                        HashMap::<CanvasObjectIdType, ShapeModel>::new(),
+                        HashMap::<CanvasObjectIdType, CanvasObjectModel>::new(),
                         Some(allowed_users),
                     );
 
@@ -649,25 +649,25 @@ pub async fn handle_authenticated_client_message<'a>(
                     // Merge the given canvas with its parent
                     let mut whiteboard = client_state.base.whiteboard_ref.lock().await;
                     let parent_ref: CanvasParentRef;
-                    let mut new_parent_canvas_objects: Vec<(CanvasObjectIdType, ShapeModel)>;
+                    let mut new_parent_canvas_objects: Vec<(CanvasObjectIdType, CanvasObjectModel)>;
                     // diffs store changes to the database to be made after this function has
                     // returned
                     let mut new_diffs = Vec::<WhiteboardDiff>::new();
 
                     // What to do:
                     //  - Access child canvas and parent canvas sequentially, not at the same time
-                    //  - Create a new hashmap that contains all the shapes of the parent canvas,
-                    //  then extend it with the shapes from the child canvas, then make it the new
-                    //  parent canvas shapes
+                    //  - Create a new hashmap that contains all the canvas_objects of the parent canvas,
+                    //  then extend it with the canvas_objects from the child canvas, then make it the new
+                    //  parent canvas canvas_objects
                     if let Some(child_canvas) = whiteboard.canvases().get(&canvas_id) {
                         if let Some(parent_canvas) = child_canvas.parent_canvas() {
                             // Store copy of parent canvas ref, to allow resetting parent canvas refs
                             // later
                             parent_ref = parent_canvas.clone();
 
-                            // Copy canvas objects/shapes to new map
+                            // Copy canvas objects/canvas_objects to new map
                             new_parent_canvas_objects = child_canvas
-                                .shapes()
+                                .canvas_objects()
                                 .iter()
                                 .map(|(k, v)| (*k, v.clone()))
                                 .collect();
@@ -721,7 +721,7 @@ pub async fn handle_authenticated_client_message<'a>(
                         // canvas
                         for &mut (_, ref mut canvas_obj) in new_parent_canvas_objects.iter_mut() {
                             match *canvas_obj {
-                                ShapeModel::Rect {
+                                CanvasObjectModel::Rect {
                                     ref mut x,
                                     ref mut y,
                                     ..
@@ -729,7 +729,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                     *x += parent_ref.origin_x();
                                     *y += parent_ref.origin_y();
                                 }
-                                ShapeModel::Ellipse {
+                                CanvasObjectModel::Ellipse {
                                     ref mut x,
                                     ref mut y,
                                     ..
@@ -737,7 +737,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                     *x += parent_ref.origin_x();
                                     *y += parent_ref.origin_y();
                                 }
-                                ShapeModel::Vector { ref mut points, .. } => {
+                                CanvasObjectModel::Vector { ref mut points, .. } => {
                                     for (idx, ref mut coord) in points.iter_mut().enumerate() {
                                         if idx % 2 == 0 {
                                             // even-indexed coordinates are x coordinates
@@ -748,7 +748,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                         }
                                     } // -- end for idx, point
                                 }
-                                ShapeModel::Text {
+                                CanvasObjectModel::Text {
                                     ref mut x,
                                     ref mut y,
                                     ..
@@ -761,7 +761,7 @@ pub async fn handle_authenticated_client_message<'a>(
 
                         // extend new canvas objects map with parent canvas' original objects
                         parent_canvas
-                            .shapes_mut()
+                            .canvas_objects_mut()
                             .extend(new_parent_canvas_objects.into_iter());
                     } else {
                         return ClientMessageResponse {
@@ -1125,11 +1125,11 @@ mod unit_tests {
     }
 
     #[tokio::test]
-    async fn handle_authenticated_client_message_create_shapes() {
+    async fn handle_authenticated_client_message_create_canvas_objects() {
         use chrono::Utc;
         use futures::lock::Mutex;
         use models::{
-            Canvas, ShapeModel, UserSummary, Whiteboard, WhiteboardMetadata,
+            Canvas, CanvasObjectModel, UserSummary, Whiteboard, WhiteboardMetadata,
             WhiteboardPermissionEnum,
         };
         use protocol::{ServerSocketMessage,ServerSocketBroadcastMessage};
@@ -1140,8 +1140,8 @@ mod unit_tests {
         let f64_prec: f64 = 1.0e-16;
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
         let canvas_a_id = ObjectId::new();
-        let shapes_expected = vec![
-            ShapeModel::Rect {
+        let canvas_objects_expected = vec![
+            CanvasObjectModel::Rect {
                 x: 100.0,
                 y: 100.0,
                 width: 64.0,
@@ -1151,7 +1151,7 @@ mod unit_tests {
                 fill_color: String::from("#ff0000"),
                 rotation: 0.0,
             },
-            ShapeModel::Rect {
+            CanvasObjectModel::Rect {
                 x: 200.0,
                 y: 200.0,
                 width: 64.0,
@@ -1161,7 +1161,7 @@ mod unit_tests {
                 fill_color: String::from("#ff0000"),
                 rotation: 0.0,
             },
-            ShapeModel::Rect {
+            CanvasObjectModel::Rect {
                 x: 300.0,
                 y: 300.0,
                 width: 64.0,
@@ -1175,9 +1175,9 @@ mod unit_tests {
         let client_msg_s = format!(
             r##"
         {{
-            "type": "create_shapes",
+            "type": "create_canvas_objects",
             "canvasId": "{}",
-            "shapes": [
+            "canvasObjects": [
                 {{
                     "type": "rect",
                     "x": 100,
@@ -1263,47 +1263,47 @@ mod unit_tests {
         };
 
         let resp = handle_authenticated_client_message(&client_state, &client_msg_s).await;
-        // CreateShapes { client_id: ClientIdType, canvas_id: CanvasIdType, shapes: HashMap<CanvasObjectIdType, ShapeModel> }
+        // CreateCanvasObjects { client_id: ClientIdType, canvas_id: CanvasIdType, canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel> }
         let server_msg = resp.messages.into_iter().next().expect("Expected some client message, got empty vec");
 
         match server_msg {
             ServerSocketMessage::Broadcast {
-                msg: ServerSocketBroadcastMessage::CreateShapes {
+                msg: ServerSocketBroadcastMessage::CreateCanvasObjects {
                     client_id,
                     canvas_id,
-                    shapes,
+                    canvas_objects,
                 },
             } => {
                     if client_id != test_client_id {
                         panic!("Expected client_id = {}; got {}", test_client_id, client_id);
                     } else if canvas_id != canvas_a_id {
                         panic!("Expected canvas_id = {}; got {}", canvas_a_id, canvas_id);
-                    } else if shapes.len() != shapes_expected.len() {
+                    } else if canvas_objects.len() != canvas_objects_expected.len() {
                         panic!(
                             r#"
-                            Expected shapes map to contain {} items; got {}
+                            Expected canvas_objects map to contain {} items; got {}
 
-                            Shapes: {:?}
+                            CanvasObjects: {:?}
                             "#,
-                            shapes_expected.len(),
-                            shapes.len(),
-                            shapes
+                            canvas_objects_expected.len(),
+                            canvas_objects.len(),
+                            canvas_objects
                         );
                     } else {
                         // success
-                        let mut shapes_entries: Vec<(&CanvasObjectIdType, &ShapeModel)> =
-                            shapes.iter().collect();
+                        let mut canvas_objects_entries: Vec<(&CanvasObjectIdType, &CanvasObjectModel)> =
+                            canvas_objects.iter().collect();
 
-                        shapes_entries.sort_by_key(|(obj_id, _)| (*obj_id).clone());
+                        canvas_objects_entries.sort_by_key(|(obj_id, _)| (*obj_id).clone());
 
-                        for (ref shape_entry, ref shape_expected) in
-                            shapes_entries.iter().zip(shapes_expected.iter())
+                        for (ref canvas_object_entry, ref canvas_object_expected) in
+                            canvas_objects_entries.iter().zip(canvas_objects_expected.iter())
                         {
-                            let (_, shape) = shape_entry;
+                            let (_, canvas_object) = canvas_object_entry;
 
-                            match (shape, shape_expected) {
+                            match (canvas_object, canvas_object_expected) {
                                 (
-                                    ShapeModel::Rect {
+                                    CanvasObjectModel::Rect {
                                         x,
                                         y,
                                         width,
@@ -1313,7 +1313,7 @@ mod unit_tests {
                                         fill_color,
                                         rotation,
                                     },
-                                    ShapeModel::Rect {
+                                    CanvasObjectModel::Rect {
                                         x: x_exp,
                                         y: y_exp,
                                         width: width_exp,
@@ -1325,49 +1325,49 @@ mod unit_tests {
                                     },
                                 ) => {
                                     if (x - x_exp).abs() > f64_prec {
-                                        panic!("Expected shape x = {}; got {}", x, x_exp);
+                                        panic!("Expected canvas_object x = {}; got {}", x, x_exp);
                                     }
                                     if (y - y_exp).abs() > f64_prec {
-                                        panic!("Expected shape y = {}; got {}", y, y_exp);
+                                        panic!("Expected canvas_object y = {}; got {}", y, y_exp);
                                     }
                                     if (width - width_exp).abs() > f64_prec {
                                         panic!(
-                                            "Expected shape width = {}; got {}",
+                                            "Expected canvas_object width = {}; got {}",
                                             width, width_exp
                                         );
                                     }
                                     if (height - height_exp).abs() > f64_prec {
                                         panic!(
-                                            "Expected shape height = {}; got {}",
+                                            "Expected canvas_object height = {}; got {}",
                                             height, height_exp
                                         );
                                     }
                                     if (stroke_width - stroke_width_exp).abs() > f64_prec {
                                         panic!(
-                                            "Expected shape stroke_width = {}; got {}",
+                                            "Expected canvas_object stroke_width = {}; got {}",
                                             stroke_width, stroke_width_exp
                                         );
                                     }
                                     if stroke_color != stroke_color_exp {
                                         panic!(
-                                            "Expected shape stroke_color = {}; got {}",
+                                            "Expected canvas_object stroke_color = {}; got {}",
                                             stroke_color, stroke_color_exp
                                         );
                                     }
                                     if fill_color != fill_color_exp {
                                         panic!(
-                                            "Expected shape fill_color = {}; got {}",
+                                            "Expected canvas_object fill_color = {}; got {}",
                                             fill_color, fill_color_exp
                                         );
                                     }
                                     if (rotation - rotation_exp).abs() > f64_prec {
                                         panic!(
-                                            "Expected shape rotation = {}; got {}",
+                                            "Expected canvas_object rotation = {}; got {}",
                                             rotation, rotation_exp
                                         );
                                     }
                                 }
-                                (_, _) => panic!("Expected Rect; got {:?}", shape),
+                                (_, _) => panic!("Expected Rect; got {:?}", canvas_object),
                             };
 
                             // success
@@ -1385,7 +1385,7 @@ mod unit_tests {
     async fn handle_authenticated_client_message_delete_canvas_objects() {
         use futures::lock::Mutex;
         use models::{
-            Canvas, ShapeModel, UserSummary, Whiteboard, WhiteboardMetadata,
+            Canvas, CanvasObjectModel, UserSummary, Whiteboard, WhiteboardMetadata,
             WhiteboardPermissionEnum,
         };
         use protocol::{ServerSocketMessage,ServerSocketBroadcastMessage};
@@ -1399,7 +1399,7 @@ mod unit_tests {
         let canvas_objects_initial_kv = vec![
             (
                 object_a_id,
-                ShapeModel::Rect {
+                CanvasObjectModel::Rect {
                     x: 100.0,
                     y: 100.0,
                     width: 64.0,
@@ -1412,7 +1412,7 @@ mod unit_tests {
             ),
             (
                 ObjectId::new(),
-                ShapeModel::Rect {
+                CanvasObjectModel::Rect {
                     x: 200.0,
                     y: 200.0,
                     width: 64.0,
@@ -1425,7 +1425,7 @@ mod unit_tests {
             ),
             (
                 ObjectId::new(),
-                ShapeModel::Rect {
+                CanvasObjectModel::Rect {
                     x: 300.0,
                     y: 300.0,
                     width: 64.0,
@@ -1439,9 +1439,9 @@ mod unit_tests {
         ];
         let canvas_objects_final_kv = Vec::from(&canvas_objects_initial_kv[1..]);
         let canvas_objects_initial =
-            HashMap::<ObjectId, ShapeModel>::from_iter(canvas_objects_initial_kv.into_iter());
+            HashMap::<ObjectId, CanvasObjectModel>::from_iter(canvas_objects_initial_kv.into_iter());
         let canvas_objects_final_expected =
-            HashMap::<ObjectId, ShapeModel>::from_iter(canvas_objects_final_kv.into_iter());
+            HashMap::<ObjectId, CanvasObjectModel>::from_iter(canvas_objects_final_kv.into_iter());
         let canvas_obj_ids_expected = vec![object_a_id];
         let client_msg_s = format!(
             r##"
@@ -1522,11 +1522,11 @@ mod unit_tests {
 
                     // Ensure the correct canvas objects remain in the store of canvas objects
                     if let Some(canvas_a) = whiteboard.canvases().get(&canvas_a_id) {
-                        if *canvas_a.shapes() != canvas_objects_final_expected {
+                        if *canvas_a.canvas_objects() != canvas_objects_final_expected {
                             panic!(
                                 "Expected final canvas objects to be {:?}; got {:?}",
                                 canvas_objects_final_expected,
-                                canvas_a.shapes()
+                                canvas_a.canvas_objects()
                             );
                         }
                     } else {
@@ -1626,7 +1626,7 @@ mod unit_tests {
 
         assert!(*canvas.time_created() == exp_time_created);
         assert!(*canvas.time_last_modified() == exp_time_last_modified);
-        assert!(canvas.shapes().len() == 0);
+        assert!(canvas.canvas_objects().len() == 0);
         assert!(canvas.allowed_users().is_none());
     } // -- end fn fetch_whiteboard_from_mongodb()
 
@@ -1914,13 +1914,13 @@ mod unit_tests {
         };
     } // -- end fn fetch_temp_user_from_mongodb_user_store()
 
-    // === test_create_shapes_nonexistent_canvas_id ===============================================
+    // === test_create_canvas_objects_nonexistent_canvas_id ===============================================
     //
     // Ensure that an IndividualError is returned when provided
     //
     // ============================================================================================
     #[tokio::test]
-    async fn test_create_shapes_nonexistent_canvas_id() {
+    async fn test_create_canvas_objects_nonexistent_canvas_id() {
         use futures::lock::Mutex;
         use models::{
             UserSummary, Whiteboard, WhiteboardMetadata, WhiteboardPermission,
@@ -1937,9 +1937,9 @@ mod unit_tests {
         let invalid_canvas_id = ObjectId::new();
         let client_msg_s = format!(
             r#"{{
-            "type": "create_shapes",
+            "type": "create_canvas_objects",
             "canvasId": "{}",
-            "shapes": [
+            "canvasObjects": [
                 {{
                     "type": "rect",
                     "x": 10.0,
@@ -2025,5 +2025,5 @@ mod unit_tests {
                 panic!("expected IndividualError in response, got {:?}", bad_resp);
             }
         };
-    } // -- end test_create_shapes_nonexistent_canvas_id
+    } // -- end test_create_canvas_objects_nonexistent_canvas_id
 }

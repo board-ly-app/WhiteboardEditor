@@ -149,21 +149,21 @@ pub enum ServerSocketBroadcastMessage {
         canvas_id: CanvasIdType,
     },
     // TODO: replace HashMaps with Vectors, so object ids don't need to be cast to strings
-    CreateShapes {
+    CreateCanvasObjects {
         #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
         #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
         #[serde_as(as = "HashMap<DisplayFromStr, _>")]
-        shapes: HashMap<CanvasObjectIdType, ShapeModel>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     },
-    UpdateShapes {
+    UpdateCanvasObjects {
         #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
         #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
         #[serde_as(as = "HashMap<DisplayFromStr, _>")]
-        shapes: HashMap<CanvasObjectIdType, ShapeModel>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     },
     DeleteCanvasObjects {
         #[serde_as(as = "DisplayFromStr")]
@@ -264,16 +264,16 @@ pub enum ClientSocketMessage {
         #[serde_as(as = "DisplayFromStr")]
         canvas_object_id: CanvasObjectIdType,
     },
-    CreateShapes {
+    CreateCanvasObjects {
         #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
-        shapes: Vec<ShapeModel>,
+        canvas_objects: Vec<CanvasObjectModel>,
     },
-    UpdateShapes {
+    UpdateCanvasObjects {
         #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
         #[serde_as(as = "HashMap<DisplayFromStr, _>")]
-        shapes: HashMap<CanvasObjectIdType, ShapeModel>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     },
     DeleteCanvasObjects {
         #[serde_as(as = "Vec<DisplayFromStr>")]

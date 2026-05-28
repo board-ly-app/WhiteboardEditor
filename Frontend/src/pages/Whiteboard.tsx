@@ -1076,10 +1076,10 @@ const WrappedWhiteboard = () => {
           }
         }// end for (const [objId, objUpdate] of Object.entries(shapes))
 
-        clientMessenger.sendUpdateShapes({
-          type: 'update_shapes',
+        clientMessenger.sendUpdateCanvasObjects({
+          type: 'update_canvas_objects',
           canvasId,
-          shapes: changedObjects
+          canvasObjects: changedObjects
         });
       }
     },

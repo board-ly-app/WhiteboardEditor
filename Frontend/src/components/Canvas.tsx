@@ -232,12 +232,12 @@ const Canvas = ({
   // In the future, we may wrap onAddShapes with some other logic.
   // For now, it's just an alias.
   const addShapes = useCallback(
-    (shapes: CanvasObjectModel[]) => {
+    (canvasObjects: CanvasObjectModel[]) => {
       if (clientMessenger) {
-        clientMessenger.sendCreateShapes({
-          type: 'create_shapes',
+        clientMessenger.sendCreateCanvasObjects({
+          type: 'create_canvas_objects',
           canvasId,
-          shapes
+          canvasObjects
         });
 
         // Switch to hand tool after shape creation

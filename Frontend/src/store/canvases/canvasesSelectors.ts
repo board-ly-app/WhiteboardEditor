@@ -41,7 +41,7 @@ export const selectObjectsForCanvas = (state: RootState, canvasId: CanvasIdType)
 
 export const selectCanvasWithObjects = createSelector(
   [selectCanvasById, selectObjectsForCanvas],
-  (canvas, objects) => canvas ? ({ ...canvas, shapes: objects }) : null
+  (canvas, objects) => canvas ? ({ ...canvas, canvasObjects: objects }) : null
 );
 
 export const selectCanvasesWithObjectsByWhiteboardId = (
@@ -60,7 +60,7 @@ export const selectCanvasesWithObjectsByWhiteboardId = (
         } else {
           return ({
             ...canvas,
-            shapes: Object.fromEntries(Object.keys(state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId])
+            canvasObjects: Object.fromEntries(Object.keys(state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId])
               .map(canvasObjectId => {
                 if (! (canvasObjectId in state.canvasObjects)) {
                   return null;

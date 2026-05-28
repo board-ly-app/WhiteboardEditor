@@ -56,7 +56,7 @@ export interface CanvasAttribs {
 
 // Contains nested data
 export interface CanvasData extends CanvasAttribs {
-  shapes: Record<CanvasObjectIdType, CanvasObjectModel>,
+  canvasObjects: Record<CanvasObjectIdType, CanvasObjectModel>,
   allowedUsers: string[];
 }
 
@@ -212,19 +212,19 @@ export interface ServerMessageUnselectedCanvasObject {
 }
 
 // Creates a new shape in a canvas
-export interface ServerMessageCreateShapes {
-  type: "create_shapes";
+export interface ServerMessageCreateCanvasObjects {
+  type: "create_canvas_objects";
   clientId: ClientIdType;
   canvasId: CanvasIdType;
-  shapes: Record<CanvasObjectIdType, CanvasObjectRecord>;
+  canvasObjects: Record<CanvasObjectIdType, CanvasObjectRecord>;
 }
 
 // Update existing shapes in a canvas
-export interface ServerMessageUpdateShapes {
-  type: "update_shapes";
+export interface ServerMessageUpdateCanvasObjects {
+  type: "update_canvas_objects";
   clientId: ClientIdType;
   canvasId: CanvasIdType;
-  shapes: Record<CanvasObjectIdType, CanvasObjectRecord>;
+  canvasObjects: Record<CanvasObjectIdType, CanvasObjectRecord>;
 }
 
 export interface ServerMessageCreateCanvas {
@@ -281,8 +281,8 @@ export type SocketServerMessage =
   | ServerMessageEditingCanvas
   | ServerMessageSelectedCanvasObject
   | ServerMessageUnselectedCanvasObject
-  | ServerMessageCreateShapes
-  | ServerMessageUpdateShapes
+  | ServerMessageCreateCanvasObjects
+  | ServerMessageUpdateCanvasObjects
   | ServerMessageCreateCanvas
   | ServerMessageDeleteCanvases
   | ServerMessageUpdateAllowedUsers
@@ -324,17 +324,17 @@ export interface ClientMessageUnselectedCanvasObject {
 }
 
 // Notify the server that the client has created a new shape.
-export interface ClientMessageCreateShapes {
-  type: "create_shapes";
+export interface ClientMessageCreateCanvasObjects {
+  type: "create_canvas_objects";
   canvasId: CanvasIdType;
-  shapes: CanvasObjectModel[];
+  canvasObjects: CanvasObjectModel[];
 }
 
 // Notify the server that the client has updated shape(s)
-export interface ClientMessageUpdateShapes {
-  type: "update_shapes";
+export interface ClientMessageUpdateCanvasObjects {
+  type: "update_canvas_objects";
   canvasId: CanvasIdType;
-  shapes: Record<CanvasObjectIdType, CanvasObjectModel>;
+  canvasObjects: Record<CanvasObjectIdType, CanvasObjectModel>;
 }
 
 // Notify server that client has created a new canvas
@@ -386,8 +386,8 @@ export type SocketClientMessage =
   | ClientMessageEditingCanvas
   | ClientMessageSelectedCanvasObject
   | ClientMessageUnselectedCanvasObject
-  | ClientMessageCreateShapes
-  | ClientMessageUpdateShapes
+  | ClientMessageCreateCanvasObjects
+  | ClientMessageUpdateCanvasObjects
   | ClientMessageCreateCanvas
   | ClientMessageDeleteCanvases
   | ClientMessageUpdateAllowedUsers

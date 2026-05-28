@@ -23,7 +23,7 @@ pub type WhiteboardIdType = ObjectId;
     rename_all = "snake_case",
     rename_all_fields = "camelCase"
 )]
-pub enum ShapeModel {
+pub enum CanvasObjectModel {
     Rect {
         x: f64,
         y: f64,
@@ -65,7 +65,7 @@ pub enum ShapeModel {
 pub struct CanvasObject {
     id: CanvasObjectIdType,
     canvas_id: CanvasIdType,
-    shape: ShapeModel,
+    canvas_object: CanvasObjectModel,
 }
 
 #[serde_as]
@@ -77,7 +77,7 @@ pub struct CanvasObjectClientView {
     #[serde_as(as = "DisplayFromStr")]
     pub canvas_id: CanvasIdType,
     #[serde(flatten)]
-    pub shape: ShapeModel,
+    pub canvas_object: CanvasObjectModel,
 }
 
 impl CanvasObjectClientView {
@@ -85,7 +85,7 @@ impl CanvasObjectClientView {
         Self {
             id: src.id.clone(),
             canvas_id: src.canvas_id.clone(),
-            shape: src.shape.clone(),
+            canvas_object: src.canvas_object.clone(),
         }
     }// -- end pub fn from_canvas_object
 
@@ -93,7 +93,7 @@ impl CanvasObjectClientView {
         CanvasObject {
             id: self.id.clone(),
             canvas_id: self.canvas_id.clone(),
-            shape: self.shape.clone(),
+            canvas_object: self.canvas_object.clone(),
         }
     }// -- end pub fn to_canvas_object
 }
@@ -105,7 +105,7 @@ pub struct CanvasObjectMongoDBView {
     pub id: ObjectId,
     pub canvas_id: ObjectId,
     #[serde(flatten)]
-    pub shape: ShapeModel,
+    pub canvas_object: CanvasObjectModel,
 }
 
 impl CanvasObjectMongoDBView {
@@ -113,7 +113,7 @@ impl CanvasObjectMongoDBView {
         CanvasObject {
             id: self.id,
             canvas_id: self.canvas_id,
-            shape: self.shape.clone(),
+            canvas_object: self.canvas_object.clone(),
         }
     }
 
@@ -121,7 +121,7 @@ impl CanvasObjectMongoDBView {
         Self {
             id: obj.id,
             canvas_id: obj.canvas_id.clone(),
-            shape: obj.shape.clone(),
+            canvas_object: obj.canvas_object.clone(),
         }
     }
 }
@@ -308,7 +308,7 @@ pub struct CanvasClientView {
     pub time_created: String,       // rfc3339-encoded datetime
     pub time_last_modified: String, // rfc3339-encoded datetime
     #[serde_as(as = "HashMap<DisplayFromStr, _>")]
-    pub shapes: std::collections::HashMap<CanvasObjectIdType, ShapeModel>,
+    pub canvas_objects: std::collections::HashMap<CanvasObjectIdType, CanvasObjectModel>,
     #[serde_as(as = "Vec<DisplayFromStr>")]
     pub allowed_users: Vec<ObjectId>, // cast ObjectId to string for proper client-side parsing
 } // -- end struct CanvasClientView
@@ -431,7 +431,7 @@ pub struct Canvas {
     time_created: chrono::DateTime<Utc>,
     time_last_modified: chrono::DateTime<Utc>,
     parent_canvas: Option<CanvasParentRef>,
-    shapes: HashMap<CanvasObjectIdType, ShapeModel>,
+    canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     allowed_users: Option<HashSet<ObjectId>>, // None = open to all
 }
 
@@ -444,7 +444,7 @@ impl Canvas {
         time_created: &chrono::DateTime<Utc>,
         time_last_modified: &chrono::DateTime<Utc>,
         parent_canvas: Option<&CanvasParentRef>,
-        shapes: HashMap<CanvasObjectIdType, ShapeModel>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
         allowed_users: Option<HashSet<ObjectId>>, // None = open to all
     ) -> Self {
         Self {
@@ -455,7 +455,7 @@ impl Canvas {
             time_created: *time_created,
             time_last_modified: *time_last_modified,
             parent_canvas: parent_canvas.cloned(),
-            shapes,
+            canvas_objects,
             allowed_users,
         }
     } // -- end pub fn new
@@ -469,7 +469,7 @@ impl Canvas {
             height: self.height,
             name: self.name.clone(),
             parent_canvas: self.parent_canvas.as_ref().map(CanvasParentRefClientView::from_canvas_parent_ref),
-            shapes: self.shapes.clone(),
+            canvas_objects: self.canvas_objects.clone(),
             time_created: self.time_created.to_rfc3339(),
             time_last_modified: self.time_last_modified.to_rfc3339(),
             allowed_users: match &self.allowed_users {
@@ -507,13 +507,13 @@ impl Canvas {
         self.allowed_users.as_ref()
     } // -- end pub fn allowed_users
 
-    pub fn shapes(&self) -> &HashMap<CanvasObjectIdType, ShapeModel> {
-        &self.shapes
-    } // -- end pub fn shapes
+    pub fn canvas_objects(&self) -> &HashMap<CanvasObjectIdType, CanvasObjectModel> {
+        &self.canvas_objects
+    } // -- end pub fn canvas_objects
 
-    pub fn shapes_mut(&mut self) -> &mut HashMap<CanvasObjectIdType, ShapeModel> {
-        &mut self.shapes
-    } // -- end pub fn shapes
+    pub fn canvas_objects_mut(&mut self) -> &mut HashMap<CanvasObjectIdType, CanvasObjectModel> {
+        &mut self.canvas_objects
+    } // -- end pub fn canvas_objects
 
     pub fn parent_canvas(&self) -> Option<&CanvasParentRef> {
         self.parent_canvas.as_ref()
@@ -717,7 +717,7 @@ pub struct CanvasMongoDBView {
     pub canvas_hierarchy: Option<Vec<CanvasMongoDBView>>,
     // virtual field - don't serialize
     #[serde(skip_serializing)]
-    pub shapes: Vec<CanvasObjectMongoDBView>,
+    pub canvas_objects: Vec<CanvasObjectMongoDBView>,
     pub allowed_users: Option<Vec<ObjectId>>,
 }
 
@@ -732,10 +732,10 @@ impl CanvasMongoDBView {
             name: self.name.clone(),
             time_created: dt_bson_to_chrono_utc(&self.time_created),
             time_last_modified: dt_bson_to_chrono_utc(&self.time_last_modified),
-            shapes: self
-                .shapes
+            canvas_objects: self
+                .canvas_objects
                 .iter()
-                .map(|shape| (shape.id, shape.to_canvas_object().shape))
+                .map(|canvas_object| (canvas_object.id, canvas_object.to_canvas_object().canvas_object))
                 .collect(),
             parent_canvas: self.parent_canvas.as_ref().map(|parent_ref| parent_ref.to_canvas_parent_ref()),
             allowed_users: self.allowed_users.as_ref().map(|users| users.iter().copied().collect()),
@@ -758,7 +758,7 @@ impl CanvasMongoDBView {
                 .map(CanvasParentRefMongoDBView::from_canvas_parent_ref),
             // canvas_hierarchy: Option<Vec<CanvasMongoDBView>>,
             canvas_hierarchy: None,
-            shapes: vec![],
+            canvas_objects: vec![],
             allowed_users: None,
         }
     } // -- end pub fn from_canvas
@@ -863,22 +863,22 @@ impl WhiteboardMongoDBView {
 pub type EditIdType = ObjectId;
 
 #[derive(Clone,Debug)]
-pub struct ShapeUpdate {
-    shape_id: CanvasObjectIdType,
-    old_fields: ShapeModel,
-    new_fields: ShapeModel,
+pub struct CanvasObjectUpdate {
+    canvas_object_id: CanvasObjectIdType,
+    old_fields: CanvasObjectModel,
+    new_fields: CanvasObjectModel,
 }
 
 #[derive(Debug,Clone)]
 pub enum EditKind {
-    CreateShapes {
-        shapes: Vec<CanvasObject>,
+    CreateCanvasObjects {
+        canvas_objects: Vec<CanvasObject>,
     },
-    UpdateShapes {
-        updates: Vec<ShapeUpdate>,
+    UpdateCanvasObjects {
+        updates: Vec<CanvasObjectUpdate>,
     },
-    DeleteShapes {
-        shapes: Vec<CanvasObject>,
+    DeleteCanvasObjects {
+        canvas_objects: Vec<CanvasObject>,
     },
     CreateCanvas {
         canvas: Canvas,
@@ -957,11 +957,11 @@ impl EditClientView {
 #[serde_as]
 #[derive(Clone,Debug,Serialize,Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ShapeUpdateMongoDBView {
+pub struct CanvasObjectUpdateMongoDBView {
     #[serde_as(as = "DisplayFromStr")]
-    shape_id: CanvasObjectIdType,
-    old_fields: ShapeModel,
-    new_fields: ShapeModel,
+    canvas_object_id: CanvasObjectIdType,
+    old_fields: CanvasObjectModel,
+    new_fields: CanvasObjectModel,
 }
 
 #[serde_as]
@@ -972,14 +972,14 @@ pub struct ShapeUpdateMongoDBView {
     rename_all_fields = "camelCase"
 )]
 pub enum EditKindMongoDBView {
-    CreateShapes {
-        shapes: Vec<CanvasObjectMongoDBView>,
+    CreateCanvasObjects {
+        canvas_objects: Vec<CanvasObjectMongoDBView>,
     },
-    UpdateShapes {
-        updates: Vec<ShapeUpdateMongoDBView>,
+    UpdateCanvasObjects {
+        updates: Vec<CanvasObjectUpdateMongoDBView>,
     },
-    DeleteShapes {
-        shapes: Vec<CanvasObjectMongoDBView>,
+    DeleteCanvasObjects {
+        canvas_objects: Vec<CanvasObjectMongoDBView>,
     },
     CreateCanvas {
         canvas: CanvasMongoDBView,
@@ -995,24 +995,24 @@ pub enum EditKindMongoDBView {
 impl EditKindMongoDBView {
     pub fn to_edit_kind(&self) -> EditKind {
         match self {
-            EditKindMongoDBView::CreateShapes {
-                shapes,
-            } => EditKind::CreateShapes {
-                shapes: shapes.iter().map(|obj| obj.to_canvas_object()).collect()
+            EditKindMongoDBView::CreateCanvasObjects {
+                canvas_objects,
+            } => EditKind::CreateCanvasObjects {
+                canvas_objects: canvas_objects.iter().map(|obj| obj.to_canvas_object()).collect()
             },
-            EditKindMongoDBView::UpdateShapes {
+            EditKindMongoDBView::UpdateCanvasObjects {
                 updates,
-            } => EditKind::UpdateShapes {
-                updates: updates.iter().map(|update| ShapeUpdate {
-                    shape_id: update.shape_id.clone(),
+            } => EditKind::UpdateCanvasObjects {
+                updates: updates.iter().map(|update| CanvasObjectUpdate {
+                    canvas_object_id: update.canvas_object_id.clone(),
                     old_fields: update.old_fields.clone(),
                     new_fields: update.new_fields.clone(),
                 }).collect()
             },
-            EditKindMongoDBView::DeleteShapes {
-                shapes,
-            } => EditKind::DeleteShapes {
-                shapes: shapes.iter().map(|obj| obj.to_canvas_object()).collect()
+            EditKindMongoDBView::DeleteCanvasObjects {
+                canvas_objects,
+            } => EditKind::DeleteCanvasObjects {
+                canvas_objects: canvas_objects.iter().map(|obj| obj.to_canvas_object()).collect()
             },
             EditKindMongoDBView::CreateCanvas {
                 canvas,
@@ -1034,26 +1034,26 @@ impl EditKindMongoDBView {
 
     pub fn from_edit_kind(edit_kind: &EditKind) -> Self {
         match edit_kind {
-            EditKind::CreateShapes {
-                shapes,
-            } => EditKindMongoDBView::CreateShapes {
-                shapes: shapes.iter()
+            EditKind::CreateCanvasObjects {
+                canvas_objects,
+            } => EditKindMongoDBView::CreateCanvasObjects {
+                canvas_objects: canvas_objects.iter()
                     .map(|obj| CanvasObjectMongoDBView::from_canvas_object(obj))
                     .collect()
             },
-            EditKind::UpdateShapes {
+            EditKind::UpdateCanvasObjects {
                 updates,
-            } => EditKindMongoDBView::UpdateShapes {
-                updates: updates.iter().map(|update| ShapeUpdateMongoDBView {
-                    shape_id: update.shape_id.clone(),
+            } => EditKindMongoDBView::UpdateCanvasObjects {
+                updates: updates.iter().map(|update| CanvasObjectUpdateMongoDBView {
+                    canvas_object_id: update.canvas_object_id.clone(),
                     old_fields: update.old_fields.clone(),
                     new_fields: update.new_fields.clone(),
                 }).collect()
             },
-            EditKind::DeleteShapes {
-                shapes,
-            } => EditKindMongoDBView::DeleteShapes {
-                shapes: shapes.iter()
+            EditKind::DeleteCanvasObjects {
+                canvas_objects,
+            } => EditKindMongoDBView::DeleteCanvasObjects {
+                canvas_objects: canvas_objects.iter()
                     .map(|obj| CanvasObjectMongoDBView::from_canvas_object(obj))
                     .collect()
             },

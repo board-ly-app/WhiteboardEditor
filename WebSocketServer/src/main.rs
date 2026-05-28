@@ -362,7 +362,8 @@ async fn handle_connection(
                 db.collection::<WhiteboardMetadataMongoDBView>("whiteboards");
             let canvas_coll: Collection<CanvasMongoDBView> =
                 db.collection::<CanvasMongoDBView>("canvases");
-            let shape_coll: Collection<CanvasObjectMongoDBView> =
+            // -- TODO: rename collection to "canvas_objects" for consistency
+            let canvas_object_coll: Collection<CanvasObjectMongoDBView> =
                 db.collection::<CanvasObjectMongoDBView>("shapes");
             let user_coll: Collection<UserMongoDBView> = db.collection::<UserMongoDBView>("users");
             let store = MongoDBStore::new(&user_coll, &whiteboard_metadata_coll);
@@ -436,7 +437,7 @@ async fn handle_connection(
                                             );
 
                                             // first delete contained canvas objects
-                                            let delete_objects_res = shape_coll
+                                            let delete_objects_res = canvas_object_coll
                                                 .delete_many(doc! {
                                                     "canvas_id": {
                                                         "$in": canvas_ids.clone()
@@ -483,80 +484,80 @@ async fn handle_connection(
                                                 }
                                             };
                                         }
-                                        WhiteboardDiff::CreateShapes { canvas_id, shapes } => {
+                                        WhiteboardDiff::CreateCanvasObjects { canvas_id, canvas_objects } => {
                                             println!(
-                                                "Creating shapes in database for canvas {} ...",
+                                                "Creating canvas_objects in database for canvas {} ...",
                                                 canvas_id
                                             );
 
                                             let canvas_obj_docs: Vec<CanvasObjectMongoDBView> =
-                                                shapes
+                                                canvas_objects
                                                     .iter()
-                                                    .map(|(obj_id, shape)| {
+                                                    .map(|(obj_id, canvas_object)| {
                                                         CanvasObjectMongoDBView {
                                                             id: *obj_id,
                                                             canvas_id: *canvas_id,
-                                                            shape: shape.clone(),
+                                                            canvas_object: canvas_object.clone(),
                                                         }
                                                     })
                                                     .collect();
 
-                                            let create_shapes_res =
-                                                shape_coll.insert_many(&canvas_obj_docs).await;
+                                            let create_canvas_objects_res =
+                                                canvas_object_coll.insert_many(&canvas_obj_docs).await;
 
-                                            match create_shapes_res {
+                                            match create_canvas_objects_res {
                                                 Err(e) => {
-                                                    eprintln!("CreateShapes insert failed: {}", e);
+                                                    eprintln!("CreateCanvasObjects insert failed: {}", e);
                                                 }
                                                 Ok(insert) => {
                                                     eprintln!(
-                                                        "CreateShapes new document ids: {:?}",
+                                                        "CreateCanvasObjects new document ids: {:?}",
                                                         insert.inserted_ids
                                                     );
                                                 }
                                             };
                                         }
-                                        WhiteboardDiff::UpdateShapes { canvas_id, shapes } => {
+                                        WhiteboardDiff::UpdateCanvasObjects { canvas_id, canvas_objects } => {
                                             println!(
-                                                "Updating shapes in database for canvas {} ...",
+                                                "Updating canvas_objects in database for canvas {} ...",
                                                 canvas_id
                                             );
 
-                                            for (obj_id, shape) in shapes.iter() {
+                                            for (obj_id, canvas_object) in canvas_objects.iter() {
                                                 let query_doc = doc! { "_id": *obj_id };
                                                 let canvas_obj_doc = CanvasObjectMongoDBView {
                                                     id: *obj_id,
                                                     canvas_id: *canvas_id,
-                                                    shape: shape.clone(),
+                                                    canvas_object: canvas_object.clone(),
                                                 };
 
-                                                let replace_shape_res = shape_coll
+                                                let replace_canvas_object_res = canvas_object_coll
                                                     .replace_one(query_doc, &canvas_obj_doc)
                                                     .await;
 
-                                                match replace_shape_res {
+                                                match replace_canvas_object_res {
                                                     Err(e) => {
                                                         eprintln!(
-                                                            "UpdateShapes replace failed: {}",
+                                                            "UpdateCanvasObjects replace failed: {}",
                                                             e
                                                         );
                                                     }
                                                     Ok(update) => {
                                                         eprintln!(
-                                                            "UpdateShapes matched_count: {}",
+                                                            "UpdateCanvasObjects matched_count: {}",
                                                             update.matched_count
                                                         );
                                                         eprintln!(
-                                                            "UpdateShapes modified_count: {}",
+                                                            "UpdateCanvasObjects modified_count: {}",
                                                             update.modified_count
                                                         );
                                                         eprintln!(
-                                                            "UpdateShapes upserted_id: {:?}",
+                                                            "UpdateCanvasObjects upserted_id: {:?}",
                                                             update.upserted_id
                                                         );
                                                     }
                                                 };
-                                            } // end for (obj_id, shape) in shapes.iter()
+                                            } // end for (obj_id, canvas_object) in canvas_objects.iter()
                                         }
                                         WhiteboardDiff::DeleteCanvasObjects {
                                             canvas_object_ids,
@@ -572,7 +573,7 @@ async fn handle_connection(
                                                 }
                                             };
                                             let delete_canvas_objects_res =
-                                                shape_coll.delete_many(filter).await;
+                                                canvas_object_coll.delete_many(filter).await;
 
                                             match delete_canvas_objects_res {
                                                 Err(e) => {
@@ -715,7 +716,7 @@ async fn handle_connection(
                                                 },
                                             };
 
-                                            let update_vectors_res = shape_coll
+                                            let update_vectors_res = canvas_object_coll
                                                 .update_many(query_vec, operator_vec)
                                                 .await;
 
@@ -762,7 +763,7 @@ async fn handle_connection(
                                             };
 
                                             let update_objects_res =
-                                                shape_coll.update_many(query, operator).await;
+                                                canvas_object_coll.update_many(query, operator).await;
 
                                             match update_objects_res {
                                                 Err(e) => {
@@ -866,7 +867,7 @@ async fn handle_connection(
                                             );
 
                                             // first delete contained canvas objects
-                                            let delete_objects_res = shape_coll
+                                            let delete_objects_res = canvas_object_coll
                                                 .delete_many(doc! {
                                                     "canvas_id": {
                                                         "$in": canvas_ids.clone()
@@ -913,80 +914,80 @@ async fn handle_connection(
                                                 }
                                             };
                                         }
-                                        WhiteboardDiff::CreateShapes { canvas_id, shapes } => {
+                                        WhiteboardDiff::CreateCanvasObjects { canvas_id, canvas_objects } => {
                                             println!(
-                                                "Creating shapes in database for canvas {} ...",
+                                                "Creating canvas_objects in database for canvas {} ...",
                                                 canvas_id
                                             );
 
                                             let canvas_obj_docs: Vec<CanvasObjectMongoDBView> =
-                                                shapes
+                                                canvas_objects
                                                     .iter()
-                                                    .map(|(obj_id, shape)| {
+                                                    .map(|(obj_id, canvas_object)| {
                                                         CanvasObjectMongoDBView {
                                                             id: *obj_id,
                                                             canvas_id: *canvas_id,
-                                                            shape: shape.clone(),
+                                                            canvas_object: canvas_object.clone(),
                                                         }
                                                     })
                                                     .collect();
 
-                                            let create_shapes_res =
-                                                shape_coll.insert_many(&canvas_obj_docs).await;
+                                            let create_canvas_objects_res =
+                                                canvas_object_coll.insert_many(&canvas_obj_docs).await;
 
-                                            match create_shapes_res {
+                                            match create_canvas_objects_res {
                                                 Err(e) => {
-                                                    eprintln!("CreateShapes insert failed: {}", e);
+                                                    eprintln!("CreateCanvasObjects insert failed: {}", e);
                                                 }
                                                 Ok(insert) => {
                                                     eprintln!(
-                                                        "CreateShapes new document ids: {:?}",
+                                                        "CreateCanvasObjects new document ids: {:?}",
                                                         insert.inserted_ids
                                                     );
                                                 }
                                             };
                                         }
-                                        WhiteboardDiff::UpdateShapes { canvas_id, shapes } => {
+                                        WhiteboardDiff::UpdateCanvasObjects { canvas_id, canvas_objects } => {
                                             println!(
-                                                "Updating shapes in database for canvas {} ...",
+                                                "Updating canvas_objects in database for canvas {} ...",
                                                 canvas_id
                                             );
 
-                                            for (obj_id, shape) in shapes.iter() {
+                                            for (obj_id, canvas_object) in canvas_objects.iter() {
                                                 let query_doc = doc! { "_id": *obj_id };
                                                 let canvas_obj_doc = CanvasObjectMongoDBView {
                                                     id: *obj_id,
                                                     canvas_id: *canvas_id,
-                                                    shape: shape.clone(),
+                                                    canvas_object: canvas_object.clone(),
                                                 };
 
-                                                let replace_shape_res = shape_coll
+                                                let replace_canvas_object_res = canvas_object_coll
                                                     .replace_one(query_doc, &canvas_obj_doc)
                                                     .await;
 
-                                                match replace_shape_res {
+                                                match replace_canvas_object_res {
                                                     Err(e) => {
                                                         eprintln!(
-                                                            "UpdateShapes replace failed: {}",
+                                                            "UpdateCanvasObjects replace failed: {}",
                                                             e
                                                         );
                                                     }
                                                     Ok(update) => {
                                                         eprintln!(
-                                                            "UpdateShapes matched_count: {}",
+                                                            "UpdateCanvasObjects matched_count: {}",
                                                             update.matched_count
                                                         );
                                                         eprintln!(
-                                                            "UpdateShapes modified_count: {}",
+                                                            "UpdateCanvasObjects modified_count: {}",
                                                             update.modified_count
                                                         );
                                                         eprintln!(
-                                                            "UpdateShapes upserted_id: {:?}",
+                                                            "UpdateCanvasObjects upserted_id: {:?}",
                                                             update.upserted_id
                                                         );
                                                     }
                                                 };
-                                            } // end for (obj_id, shape) in shapes.iter()
+                                            } // end for (obj_id, canvas_object) in canvas_objects.iter()
                                         }
                                         WhiteboardDiff::DeleteCanvasObjects {
                                             canvas_object_ids,
@@ -1002,7 +1003,7 @@ async fn handle_connection(
                                                 }
                                             };
                                             let delete_canvas_objects_res =
-                                                shape_coll.delete_many(filter).await;
+                                                canvas_object_coll.delete_many(filter).await;
 
                                             match delete_canvas_objects_res {
                                                 Err(e) => {
@@ -1145,7 +1146,7 @@ async fn handle_connection(
                                                 },
                                             };
 
-                                            let update_vectors_res = shape_coll
+                                            let update_vectors_res = canvas_object_coll
                                                 .update_many(query_vec, operator_vec)
                                                 .await;
 
@@ -1192,7 +1193,7 @@ async fn handle_connection(
                                             };
 
                                             let update_objects_res =
-                                                shape_coll.update_many(query, operator).await;
+                                                canvas_object_coll.update_many(query, operator).await;
 
                                             match update_objects_res {
                                                 Err(e) => {

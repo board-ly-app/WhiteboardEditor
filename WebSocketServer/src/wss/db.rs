@@ -114,13 +114,13 @@ pub enum WhiteboardDiff {
     DeleteCanvases {
         canvas_ids: Vec<CanvasIdType>,
     },
-    CreateShapes {
+    CreateCanvasObjects {
         canvas_id: CanvasIdType,
-        shapes: HashMap<CanvasObjectIdType, ShapeModel>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     },
-    UpdateShapes {
+    UpdateCanvasObjects {
         canvas_id: CanvasIdType,
-        shapes: HashMap<CanvasObjectIdType, ShapeModel>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     },
     DeleteCanvasObjects {
         canvas_object_ids: Vec<CanvasObjectIdType>,
@@ -181,6 +181,7 @@ pub async fn get_whiteboard_by_id(
         .try_collect()
         .await?;
 
+    // -- TODO: renamed "shapes" collection to "canvas_objects" for consistency
     eprintln!("!! whiteboard view: {:?}", whiteboard_view);
     let canvas_cursor = canvas_coll
         .aggregate([
@@ -190,13 +191,13 @@ pub async fn get_whiteboard_by_id(
                     "_id": whiteboard_view.root_canvas
                 }
             },
-            // -- add shapes to root canvas
+            // -- add canvas_objects to root canvas
             doc! {
                 "$lookup" : {
                     "from" : "shapes",
                     "localField" : "_id",
                     "foreignField" : "canvas_id",
-                    "as" : "shapes",
+                    "as" : "canvas_objects",
                 }
             },
             // -- aggregate descendant canvases
@@ -209,23 +210,23 @@ pub async fn get_whiteboard_by_id(
                     "as" : "canvas_hierarchy",
                 }
             },
-            // -- unwind to allow adding shapes to each descendant canvas
+            // -- unwind to allow adding canvas_objects to each descendant canvas
             doc! {
                 "$unwind": {
                     "path": "$canvas_hierarchy",
                     "preserveNullAndEmptyArrays": true
                 }
             },
-            // -- look up shapes for each descendant canvas
+            // -- look up canvas_objects for each descendant canvas
             doc! {
                 "$lookup" : {
                     "from" : "shapes",
                     "localField" : "canvas_hierarchy._id",
                     "foreignField" : "canvas_id",
-                    "as" : "canvas_hierarchy.shapes",
+                    "as" : "canvas_hierarchy.canvas_objects",
                 }
             },
-            // -- exclude empty canvas hierarchy containing only shapes from previous stage
+            // -- exclude empty canvas hierarchy containing only canvas_objects from previous stage
             doc! {
               "$set": {
                 "canvas_hierarchy": {

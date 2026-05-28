@@ -267,15 +267,15 @@ const WebSocketClientMessengerProvider = ({
               removeSelectorsByCanvasObject(dispatch, [canvasObjectId]);
             }
             break;
-          case 'create_shapes':
+          case 'create_canvas_objects':
             {
               const {
                 clientId,
                 canvasId,
-                shapes,
+                canvasObjects,
               } = msg;
 
-              setCanvasObjects(dispatch, canvasId, shapes);
+              setCanvasObjects(dispatch, canvasId, canvasObjects);
               setCurrentEditorsByCanvas(dispatch, { [canvasId]: clientId });
 
               const oldCurrentEditorTimeoutId = currentCanvasEditorTimeoutsByCanvasRef.current[canvasId];
@@ -295,15 +295,15 @@ const WebSocketClientMessengerProvider = ({
               );
             }
             break;
-          case 'update_shapes':
+          case 'update_canvas_objects':
             {
               const {
                 clientId,
                 canvasId,
-                shapes,
+                canvasObjects,
               } = msg;
 
-              setCanvasObjects(dispatch, canvasId, shapes);
+              setCanvasObjects(dispatch, canvasId, canvasObjects);
               setCurrentEditorsByCanvas(dispatch, { [canvasId]: clientId });
 
               const oldCurrentEditorTimeoutId = currentCanvasEditorTimeoutsByCanvasRef.current[canvasId];
