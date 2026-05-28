@@ -623,7 +623,7 @@ pub struct Whiteboard {
     canvases: HashMap<CanvasIdType, Canvas>,
     root_canvas: CanvasIdType,
     // -- A series of contiguous, ordered 
-    edit_history: Vec<Edit>,
+    edit_history_by_author: HashMap<UserIdType, Vec<Edit>>,
 } // -- end struct Whiteboard
 
 impl Whiteboard {
@@ -635,13 +635,23 @@ impl Whiteboard {
         canvases: HashMap<CanvasIdType, Canvas>,
         edit_history: Vec<Edit>,
     ) -> Self {
+        let mut edit_history_by_author = HashMap::<UserIdType, Vec<Edit>>::new();
+
+        for edit in edit_history.iter() {
+            if let Some(edits) = edit_history_by_author.get_mut(&edit.author) {
+                edits.push(edit.clone());
+            } else {
+                edit_history_by_author.insert(edit.author.clone(), vec![ edit.clone() ]);
+            }
+        }// -- end for edit
+
         Self {
             id,
             is_active,
             metadata,
             canvases,
             root_canvas,
-            edit_history,
+            edit_history_by_author,
         }
     } // -- end pub fn new
 
@@ -815,6 +825,16 @@ pub struct WhiteboardMongoDBView {
 
 impl WhiteboardMongoDBView {
     pub fn to_whiteboard(&self, canvases: &[Canvas], edits: &[Edit]) -> Whiteboard {
+        let mut edit_history_by_author = HashMap::<UserIdType, Vec<Edit>>::new();
+
+        for edit in edits.iter() {
+            if let Some(edits) = edit_history_by_author.get_mut(&edit.author) {
+                edits.push(edit.clone());
+            } else {
+                edit_history_by_author.insert(edit.author.clone(), vec![ edit.clone() ]);
+            }
+        }// -- end for edit
+         //
         Whiteboard {
             id: self.id,
             is_active: true,
@@ -824,7 +844,7 @@ impl WhiteboardMongoDBView {
                 .map(|canvas| (canvas.id, canvas.clone()))
                 .collect(),
             root_canvas: self.root_canvas,
-            edit_history: edits.iter().cloned().collect(),
+            edit_history_by_author,
         }
     }
 }
