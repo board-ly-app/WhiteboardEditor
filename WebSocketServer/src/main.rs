@@ -255,7 +255,6 @@ async fn handle_connection(
                         let (tx, _rx) = broadcast::channel::<ServerSocketMessage>(100);
                         let shared_whiteboard_entry = SharedWhiteboardEntry {
                             whiteboard_ref: Arc::clone(&whiteboard_ref),
-                            whiteboard_id,
                             broadcaster: tx.clone(),
                             active_clients: Arc::new(Mutex::new(HashMap::new())),
                             diffs: Arc::new(Mutex::new(Vec::new())),
@@ -287,6 +286,7 @@ async fn handle_connection(
     let client_state_base = ClientStateBase {
         client_id: current_client_id.clone(),
         jwt_secret: connection_state_ref.jwt_secret.clone(),
+        whiteboard_id: whiteboard_id.clone(),
         whiteboard_ref: Arc::clone(&shared_whiteboard_entry.whiteboard_ref),
         active_clients: Arc::clone(&shared_whiteboard_entry.active_clients),
         diffs: Arc::clone(&shared_whiteboard_entry.diffs),

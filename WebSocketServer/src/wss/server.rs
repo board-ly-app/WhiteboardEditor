@@ -28,61 +28,12 @@ use std::{collections::HashMap, sync::Arc};
 #[derive(Clone, Debug)]
 pub struct SharedWhiteboardEntry {
     pub whiteboard_ref: Arc<Mutex<Whiteboard>>,
-    pub whiteboard_id: WhiteboardIdType,
     pub broadcaster: broadcast::Sender<ServerSocketMessage>,
     pub active_clients: Arc<Mutex<HashMap<ClientIdType, UserSummary>>>,
     pub diffs: Arc<Mutex<Vec<WhiteboardDiff>>>,
     // -- tracking which client is selecting, thereby currently owns, a given canvas object
     pub selectors_to_canvas_objects: Arc<Mutex<OneToOne<ClientIdType, CanvasObjectIdType>>>,
 } // -- end pub struct SharedWhiteboardEntry
-
-#[derive(Debug)]
-pub enum ErrGenerateEdit {
-    ClientNotFound {
-        client_id: ClientIdType,
-    },
-}// -- end pub enum ErrGenerateEdit
-
-impl std::fmt::Display for ErrGenerateEdit {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use ErrGenerateEdit::*;
-
-        match self {
-            ClientNotFound {
-                client_id,
-            } => {
-                write!(f, "Client {} not found", client_id)
-            },
-        }
-    }// -- end fn fmt
-}// -- end impl std::fmt::Display
-
-impl std::error::Error for ErrGenerateEdit {}
-
-impl SharedWhiteboardEntry {
-    // === pub fn generate_edit ====================================================================
-    //
-    // Generates an edit timestamped to the currentt ime (in UTC), 
-    //
-    // =============================================================================================
-    pub async fn generate_edit(
-        &self, client_id: &ClientIdType, edit_kind: EditKind
-    ) -> Result<Edit, Box<dyn std::error::Error>>  {
-        let author_id : UserIdType = {
-            let active_clients = self.active_clients.lock().await;
-
-            if let Some(user_summ) = active_clients.get(client_id) {
-                user_summ.user_id.clone()
-            } else {
-                return Err(Box::new(ErrGenerateEdit::ClientNotFound {
-                    client_id: client_id.clone(),
-                }))
-            }
-        };
-
-        Ok(Edit::new(&author_id, &self.whiteboard_id, edit_kind))
-    }// -- end pub fn generate_edit
-}// -- end impl SharedWhiteboardEntry
 
 // === Program State ==============================================================================
 //
@@ -105,6 +56,7 @@ pub struct ProgramState {
 #[derive(Debug)]
 pub struct ClientStateBase {
     pub client_id: ClientIdType,
+    pub whiteboard_id: WhiteboardIdType,
     pub whiteboard_ref: Arc<Mutex<Whiteboard>>,
     pub jwt_secret: String,
     // The permission (view/edit/own) the user has on the current whiteboard
@@ -125,6 +77,16 @@ pub struct ClientStateAuthenticated <'a> {
     pub user_summary: UserSummary,
     pub user_whiteboard_permission: WhiteboardPermissionEnum,
 }// -- end pub struct ClientStateAuthenticated
+
+impl <'a> ClientStateAuthenticated <'a> {
+    pub fn generate_edit(&self, edit_kind: EditKind) -> Edit {
+        Edit::new(
+            &self.user_summary.user_id,
+            &self.base.whiteboard_id,
+            edit_kind,
+        )
+    }// -- end pub fn generate_edit
+}// -- end impl <'a> ClientStateAuthenticated <'a>
 
 // === Connection State ===========================================================================
 //
@@ -1110,8 +1072,9 @@ mod unit_tests {
         let test_canvas_id = ObjectId::new();
 
         // -- initialize client state
+        let whiteboard_id = ObjectId::new();
         let whiteboard = Whiteboard::new(
-            ObjectId::new(),
+            whiteboard_id.clone(),
             true,
             WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
             test_canvas_id,
@@ -1123,6 +1086,7 @@ mod unit_tests {
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
             jwt_secret: String::from("abcd"),
+            whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             diffs: Arc::new(Mutex::new(Vec::new())),
@@ -1253,8 +1217,10 @@ mod unit_tests {
             canvas_a_id
         );
 
+        let whiteboard_id = ObjectId::new();
+
         let whiteboard = Whiteboard::new(
-            ObjectId::new(),
+            whiteboard_id.clone(),
             true,
             WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
             canvas_a_id,
@@ -1279,6 +1245,7 @@ mod unit_tests {
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
             jwt_secret: String::from("abcd"),
+            whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             diffs: Arc::new(Mutex::new(Vec::new())),
@@ -1488,8 +1455,10 @@ mod unit_tests {
             object_a_id.to_string()
         );
 
+        let whiteboard_id = ObjectId::new();
+
         let whiteboard = Whiteboard::new(
-            ObjectId::new(),
+            whiteboard_id.clone(),
             true,
             WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
             canvas_a_id,
@@ -1514,6 +1483,7 @@ mod unit_tests {
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
             jwt_secret: String::from("abcd"),
+            whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             diffs: Arc::new(Mutex::new(Vec::new())),
@@ -1750,8 +1720,10 @@ mod unit_tests {
         // -- initialize mock client state
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
 
+        let whiteboard_id = ObjectId::new();
+
         let whiteboard = Whiteboard::new(
-            ObjectId::new(),
+            whiteboard_id.clone(),
             true,
             WhiteboardMetadata::new(
                 String::from("Test"),
@@ -1769,9 +1741,11 @@ mod unit_tests {
             // -- Edit history irrelevant
             Vec::new(),
         );
+
         let client_state = ClientStateBase {
             client_id: test_client_id.clone(),
             jwt_secret: String::from(jwt_secret),
+            whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             diffs: Arc::new(Mutex::new(Vec::new())),
@@ -1983,8 +1957,10 @@ mod unit_tests {
         );
 
         // -- initialize client state
+        let whiteboard_id = ObjectId::new();
+
         let whiteboard = Whiteboard::new(
-            ObjectId::new(),
+            whiteboard_id.clone(),
             true,
             WhiteboardMetadata::new(
                 String::from("Test"),
@@ -2007,6 +1983,7 @@ mod unit_tests {
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
             jwt_secret: String::from("abcd"),
+            whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             diffs: Arc::new(Mutex::new(Vec::new())),
