@@ -168,7 +168,7 @@ async fn handle_connection(
             ServerSocketIndividualMessage,
         },
         server::{
-            ClientState, SharedWhiteboardEntry, handle_authenticated_client_message,
+            ClientStateBase, SharedWhiteboardEntry, handle_authenticated_client_message,
             handle_unauthenticated_client_message,
         },
         collections,
@@ -284,19 +284,16 @@ async fn handle_connection(
     let mut rx = tx.subscribe();
 
     // -- create client state
-    let client_state_ref = Arc::new(ClientState {
+    let client_state_base = ClientStateBase {
         client_id: current_client_id.clone(),
-        user_summary: Mutex::new(None),
         jwt_secret: connection_state_ref.jwt_secret.clone(),
-        // None = user unauthenticated
-        user_whiteboard_permission: Mutex::new(None),
         whiteboard_ref: Arc::clone(&shared_whiteboard_entry.whiteboard_ref),
         active_clients: Arc::clone(&shared_whiteboard_entry.active_clients),
         diffs: Arc::clone(&shared_whiteboard_entry.diffs),
         selectors_to_canvas_objects: Arc::clone(
             &shared_whiteboard_entry.selectors_to_canvas_objects
         ),
-    });
+    };
 
     let send_task = {
         let current_client_id = current_client_id.clone();
@@ -339,7 +336,6 @@ async fn handle_connection(
 
         tokio::spawn({
             let tx = tx.clone();
-            let client_state_ref = Arc::clone(&client_state_ref);
             let db = match connection_state_ref.mongo_client.default_database() {
                 None => {
                     // No database specified in mongo uri
@@ -373,12 +369,18 @@ async fn handle_connection(
 
             async move {
                 // Handle client messages in this loop until user authenticates
-                while let Some(Ok(msg)) = user_ws_rx.next().await {
+                let client_state_authenticated = 'auth: loop {
                     println!("Client {} sent message ...", current_client_id);
+
+                    let msg = if let Some(Ok(msg)) = user_ws_rx.next().await {
+                        msg
+                    } else {
+                        return;
+                    };
 
                     // -- check for whiteboard deletion; if whiteboard deleted, break connection
                     {
-                        let whiteboard = client_state_ref.whiteboard_ref.lock().await;
+                        let whiteboard = client_state_base.whiteboard_ref.lock().await;
 
                         if !whiteboard.is_active() {
                             return;
@@ -389,16 +391,16 @@ async fn handle_connection(
                         println!("Raw message: {}", msg_s);
 
                         let resp =
-                            handle_unauthenticated_client_message(&client_state_ref, &store, msg_s)
+                            handle_unauthenticated_client_message(&client_state_base, &store, msg_s)
                                 .await;
 
-                        for resp in resp.messages.iter() {
+                        for resp in resp.base.messages.iter() {
                             println!("Client response: {:?}", resp);
                         }
 
                         // -- update database, if there are diffs
                         {
-                            let mut diffs = client_state_ref.diffs.lock().await;
+                            let mut diffs = client_state_base.diffs.lock().await;
 
                             if !diffs.is_empty() {
                                 for diff in diffs.iter() {
@@ -794,29 +796,15 @@ async fn handle_connection(
                         }
 
                         // -- send response to clients, if requested
-                        for r in resp.messages.iter() {
+                        for r in resp.base.messages.iter() {
                             tx.send(r.clone()).ok();
                         }
-                    }
 
-                    if let Some(_) = *client_state_ref.user_whiteboard_permission.lock().await {
-                        // break if user has been authenticated (indicated by user_permission field
-                        // being set in client state)
-
-                        // First, notify all clients of new login
-                        if let Some(ref user_summary) = *client_state_ref.user_summary.lock().await
-                        {
-                            tx.send(ServerSocketMessage::Broadcast {
-                                msg: ServerSocketBroadcastMessage::LoginUsers {
-                                    users: vec![user_summary.clone()],
-                                },
-                            })
-                            .ok();
+                        if let Some(authenticated_state) = resp.authenticated_state {
+                            break 'auth authenticated_state;
                         }
-
-                        break;
                     }
-                } // end while let Some(Ok(msg)) = user_ws_rx.next().await
+                };// -- end let client_state_authenticated = 'auth: loop
 
                 // Once client authenticates, handle client messages in this loop
                 while let Some(Ok(msg)) = user_ws_rx.next().await {
@@ -824,7 +812,7 @@ async fn handle_connection(
 
                     // -- check for whiteboard deletion; if whiteboard deleted, break connection
                     {
-                        let whiteboard = client_state_ref.whiteboard_ref.lock().await;
+                        let whiteboard = client_state_base.whiteboard_ref.lock().await;
 
                         if !whiteboard.is_active() {
                             return;
@@ -835,7 +823,7 @@ async fn handle_connection(
                         println!("Raw message: {}", msg_s);
 
                         let resp =
-                            handle_authenticated_client_message(&client_state_ref, msg_s).await;
+                            handle_authenticated_client_message(&client_state_authenticated, msg_s).await;
 
                         for r in resp.messages.iter() {
                             println!("Client response: {:?}", &r);
@@ -843,7 +831,7 @@ async fn handle_connection(
 
                         // -- update database, if there are diffs
                         {
-                            let mut diffs = client_state_ref.diffs.lock().await;
+                            let mut diffs = client_state_base.diffs.lock().await;
 
                             if !diffs.is_empty() {
                                 for diff in diffs.iter() {
