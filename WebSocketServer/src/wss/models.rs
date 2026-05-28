@@ -880,44 +880,16 @@ pub struct Edit {
     edit: EditKind,
 }// -- end pub struct Edit
 
-#[serde_as]
-#[derive(Clone,Debug,Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ShapeUpdateClientView {
-    #[serde_as(as = "DisplayFromStr")]
-    shape_id: CanvasObjectIdType,
-    old_fields: ShapeModel,
-    new_fields: ShapeModel,
-}
-
-#[serde_as]
-#[derive(Debug,Clone,Serialize)]
-#[serde(
-    tag = "kind",
-    rename_all = "snake_case",
-    rename_all_fields = "camelCase"
-)]
-pub enum EditKindClientView {
-    CreateShapes {
-        shapes: Vec<CanvasObjectClientView>,
-    },
-    UpdateShapes {
-        updates: Vec<ShapeUpdateClientView>,
-    },
-    DeleteShapes {
-        shapes: Vec<CanvasObjectClientView>,
-    },
-    CreateCanvas {
-        canvas: CanvasClientView,
-    },
-    DeleteCanvas {
-        canvas: CanvasClientView,
-    },
-    MergeCanvas {
-        child_canvas: CanvasClientView,
-    },
-}// -- end pub enum EditKind
-
+// === EditClientView ==============================================================================
+//
+// An edit as provided to a client.
+//
+// The actual contents of each edit aren't provided vai the web socket server, only the metadata.
+//
+// Users will be able to see the results of applying/reversing each edit by instructing the web
+// socket server to apply/reverse each edit.
+//
+// =================================================================================================
 #[serde_as]
 #[derive(Debug,Clone,Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -926,11 +898,20 @@ pub struct EditClientView {
     id: EditObjectIdType,
     #[serde_as(as = "DisplayFromStr")]
     author: UserIdType,
-    #[serde_as(as = "DisplayFromStr")]
-    whiteboard: WhiteboardIdType,
     committed_at: bson::DateTime,
-    edit: EditKindClientView,
 }// -- end pub struct Edit
+
+impl EditClientView {
+    pub fn from_edit(edit: &Edit) -> Self {
+        use super::utils::dt_chrono_utc_to_bson;
+
+        Self {
+            id: edit.id.clone(),
+            author: edit.author.clone(),
+            committed_at: dt_chrono_utc_to_bson(&edit.committed_at),
+        }
+    }// -- end pub fn from_edit
+}// -- end impl EditClientView
 
 #[serde_as]
 #[derive(Clone,Debug,Serialize,Deserialize)]
