@@ -388,11 +388,11 @@ async fn handle_connection(
                     if let Ok(msg_s) = msg.to_str() {
                         println!("Raw message: {}", msg_s);
 
-                        let resps =
+                        let resp =
                             handle_unauthenticated_client_message(&client_state_ref, &store, msg_s)
                                 .await;
 
-                        for resp in &resps {
+                        for resp in resp.messages.iter() {
                             println!("Client response: {:?}", resp);
                         }
 
@@ -794,8 +794,8 @@ async fn handle_connection(
                         }
 
                         // -- send response to clients, if requested
-                        for resp in resps {
-                            tx.send(resp).ok();
+                        for r in resp.messages.iter() {
+                            tx.send(r.clone()).ok();
                         }
                     }
 
@@ -834,12 +834,12 @@ async fn handle_connection(
                     if let Ok(msg_s) = msg.to_str() {
                         println!("Raw message: {}", msg_s);
 
-                        let resps =
+                        let resp =
                             handle_authenticated_client_message(&client_state_ref, msg_s).await;
 
-                        for resp in &resps {
-                            println!("Client response: {:?}", resp);
-                        }
+                        for r in resp.messages.iter() {
+                            println!("Client response: {:?}", &r);
+                        }// -- end for r
 
                         // -- update database, if there are diffs
                         {
@@ -1238,9 +1238,9 @@ async fn handle_connection(
                         }
 
                         // -- send response to clients, if requested
-                        for resp in resps {
-                            tx.send(resp).ok();
-                        }
+                        for r in resp.messages.iter() {
+                            tx.send(r.clone()).ok();
+                        }// -- end for r
                     }
                 } // end while let Some(Ok(msg)) = user_ws_rx.next().await
             }

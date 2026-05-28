@@ -860,7 +860,7 @@ impl WhiteboardMongoDBView {
 //
 // =================================================================================================
 
-pub type EditObjectIdType = ObjectId;
+pub type EditIdType = ObjectId;
 
 #[derive(Clone,Debug)]
 pub struct ShapeUpdate {
@@ -893,7 +893,7 @@ pub enum EditKind {
 
 #[derive(Debug,Clone)]
 pub struct Edit {
-    id: EditObjectIdType,
+    id: EditIdType,
     author: UserIdType,
     whiteboard: WhiteboardIdType,
     committed_at: chrono::DateTime<Utc>,
@@ -915,7 +915,7 @@ pub struct Edit {
 #[serde(rename_all = "camelCase")]
 pub struct EditClientView {
     #[serde_as(as = "DisplayFromStr")]
-    id: EditObjectIdType,
+    id: EditIdType,
     #[serde_as(as = "DisplayFromStr")]
     author: UserIdType,
     committed_at: bson::DateTime,
@@ -1060,7 +1060,7 @@ impl EditKindMongoDBView {
 #[serde(rename_all = "camelCase")]
 pub struct EditMongoDBView {
     #[serde_as(as = "DisplayFromStr")]
-    id: EditObjectIdType,
+    id: EditIdType,
     #[serde_as(as = "DisplayFromStr")]
     author: UserIdType,
     #[serde_as(as = "DisplayFromStr")]

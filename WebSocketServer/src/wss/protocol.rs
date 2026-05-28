@@ -70,6 +70,11 @@ pub enum ClientError {
         // -- description of the forbidden action that was attempted
         action: String,
     },
+    // -- Edit can't be reversed (i.e. another user has edited the relevant portion of the
+    // whiteboard in the time since the user performed the edit.
+    EditIrreversible {
+        edit: EditIdType,
+    },
     // -- misc. errors not neatly handled by the above common cases
     Other {
         // -- descriptive message to send to client
@@ -303,4 +308,6 @@ pub enum ClientSocketMessage {
         x: f64,
         y: f64,
     },
+    // -- Undo the user's last edit, if possible
+    UndoHistory,
 } // -- end pub enum ClientSocketMessage
