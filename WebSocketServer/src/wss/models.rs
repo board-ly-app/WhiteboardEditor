@@ -1046,6 +1046,7 @@ pub struct EditMongoDBView {
     #[serde_as(as = "DisplayFromStr")]
     whiteboard: WhiteboardIdType,
     committed_at: bson::DateTime,
+    #[serde(flatten)]
     edit: EditKindMongoDBView,
 }// -- end pub struct Edit
 
