@@ -513,7 +513,7 @@ const whiteboardSchema = new Schema<IWhiteboard<Types.ObjectId, Types.ObjectId>,
     root_canvas: { type: Schema.Types.ObjectId, ref: "Canvas", required: true },
     thumbnail_url: { type: String, required: false, default: null },
     user_permissions: [whiteboardUserPermissionSchema],
-    visibility: { type: String, required: true }
+    visibility: { type: String, required: true, default: 'private' }
   },
   {
     // -- options
