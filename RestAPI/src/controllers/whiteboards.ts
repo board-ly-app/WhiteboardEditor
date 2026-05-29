@@ -47,12 +47,8 @@ export const handleGetWhiteboardById = async (
   req: Request<{ whiteboardId: string }, any, AuthorizedRequestBody>,
   res: Response
 ) => {
-  const {
-    authUser,
-  } = req.body;
-  const {
-    id: userId,
-  } = authUser;
+  const authUser = req.body?.authUser;
+  const userId = authUser?.id;
   const {
     whiteboardId,
   } = req.params;
@@ -84,17 +80,18 @@ export const handleGetWhiteboardById = async (
             perm.user.id, true 
           ])
         );
-        console.log("visibility: ", whiteboard.visibility);
-        if (whiteboard.visibility === 'private' && !(userId.toString() in validUserIdSet)) {
-          console.log("not allowed");
-          return res.status(403).json({
-            message: 'You are not authorized to view this resource'
-          });
-        } else {
-          const wbAttribView = whiteboard.toAttribView();
-  
-          return res.status(200).json(wbAttribView);
+
+        if (whiteboard.visibility !== 'public') {
+          // Private board - require authenticated user with permission
+          if (!userId || !(userId.toString() in validUserIdSet)) {
+            return res.status(403).json({
+              message: 'You are not authorized to view this resource'
+            });
+          }
         }
+
+        const wbAttribView = whiteboard.toAttribView();
+        return res.status(200).json(wbAttribView);
     }
     default:
       return res.status(500).json({ message: 'Unexpected error occurred' });
