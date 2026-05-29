@@ -898,13 +898,16 @@ pub enum EditKind {
     DeleteCanvasObjects {
         canvas_objects: HashMap<CanvasObjectIdType, CanvasObject>,
     },
-    CreateCanvas {
-        canvas: Canvas,
+    CreateCanvases {
+        canvases: HashMap<CanvasIdType, Canvas>,
     },
     DeleteCanvases {
         canvases: HashMap<CanvasIdType, Canvas>,
     },
     MergeCanvas {
+        child_canvas: Canvas,
+    },
+    SplitCanvas {
         child_canvas: Canvas,
     },
     UpdateCanvasAllowedUsers {
@@ -913,6 +916,70 @@ pub enum EditKind {
         new_allowed_users: Option<HashSet<UserIdType>>,
     },
 }// -- end pub enum EditKind
+
+impl EditKind {
+    // === pub fn generate_reverse =================================================================
+    //
+    // Generates an EditKind which reverses the effects of the given EditKind.
+    //
+    // =============================================================================================
+    pub fn generate_reverse(&self) -> Self {
+        use EditKind::*;
+
+        match self {
+            CreateCanvasObjects {
+                canvas_objects,
+            } => DeleteCanvasObjects {
+                canvas_objects: canvas_objects.clone(),
+            },
+            UpdateCanvasObjects {
+                updates,
+            } => UpdateCanvasObjects {
+                updates: updates.iter()
+                    .map(|(id, update)| (id.clone(), CanvasObjectUpdate {
+                        canvas_id: update.canvas_id.clone(),
+                        old_fields: update.new_fields.clone(),
+                        new_fields: update.old_fields.clone(),
+                    }))
+                    .collect()
+            },
+            DeleteCanvasObjects {
+                canvas_objects,
+            } => CreateCanvasObjects {
+                canvas_objects: canvas_objects.clone(),
+            },
+            CreateCanvases {
+                canvases,
+            } => DeleteCanvases {
+                canvases: canvases.clone(),
+            },
+            DeleteCanvases {
+                canvases,
+            } => CreateCanvases {
+                canvases: canvases.clone(),
+            },
+            MergeCanvas {
+                child_canvas,
+            } => SplitCanvas {
+                child_canvas: child_canvas.clone(),
+            },
+            SplitCanvas {
+                child_canvas,
+            } => MergeCanvas {
+                child_canvas: child_canvas.clone(),
+            },
+            UpdateCanvasAllowedUsers {
+                canvas_id,
+                old_allowed_users,
+                new_allowed_users,
+            } => UpdateCanvasAllowedUsers {
+                canvas_id: canvas_id.clone(),
+                old_allowed_users: new_allowed_users.clone(),
+                new_allowed_users: old_allowed_users.clone(),
+            },
+        }// -- end match self
+    }// -- end pub fn generate_reverse
+}// -- end impl EditKind
 
 #[derive(Debug,Clone)]
 pub struct Edit {
@@ -972,11 +1039,13 @@ impl Edit {
             } => vec![WhiteboardDiff::DeleteCanvasObjects {
                 canvas_object_ids: canvas_objects.keys().copied().collect()
             }],
-            CreateCanvas {
-                canvas,
-            } => vec![WhiteboardDiff::CreateCanvas {
-                canvas: canvas.clone(),
-            }],
+            CreateCanvases {
+                canvases,
+            } => canvases.values()
+                .map(|canvas| WhiteboardDiff::CreateCanvas {
+                    canvas: canvas.clone(),
+                })
+                .collect(),
             DeleteCanvases {
                 canvases,
             } => vec![WhiteboardDiff::DeleteCanvases {
@@ -1005,6 +1074,32 @@ impl Edit {
                     // -- delete old canvas
                     WhiteboardDiff::DeleteCanvases {
                         canvas_ids: vec![child_canvas.id().clone()],
+                    },
+                ])
+            },
+            SplitCanvas {
+                child_canvas,
+            } => {
+                let parent_canvas = child_canvas.parent_canvas().unwrap();
+
+                Vec::from([
+                    // -- restore old canvas
+                    WhiteboardDiff::CreateCanvas {
+                        canvas: child_canvas.clone(),
+                    },
+                    // -- transfer child canvases back to child
+                    WhiteboardDiff::TransferChildCanvases {
+                        old_parent_id: parent_canvas.canvas_id().clone(),
+                        new_parent_id: child_canvas.id().clone(),
+                        translate_x: -parent_canvas.origin_x(),
+                        translate_y: -parent_canvas.origin_y(),
+                    },
+                    // -- transfer objects
+                    WhiteboardDiff::TransferCanvasObjects {
+                        old_canvas_id: parent_canvas.canvas_id().clone(),
+                        new_canvas_id: child_canvas.id().clone(),
+                        translate_x: -parent_canvas.origin_x(),
+                        translate_y: -parent_canvas.origin_y(),
                     },
                 ])
             },
@@ -1082,13 +1177,16 @@ pub enum EditKindMongoDBView {
     DeleteCanvasObjects {
         canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectMongoDBView>,
     },
-    CreateCanvas {
-        canvas: CanvasMongoDBView,
+    CreateCanvases {
+        canvases: HashMap<CanvasIdType, CanvasMongoDBView>,
     },
     DeleteCanvases {
         canvases: HashMap<CanvasIdType, CanvasMongoDBView>,
     },
     MergeCanvas {
+        child_canvas: CanvasMongoDBView,
+    },
+    SplitCanvas {
         child_canvas: CanvasMongoDBView,
     },
 }// -- end pub enum EditKindMongoDBView
@@ -1120,10 +1218,12 @@ impl EditKindMongoDBView {
                     |(id, obj)| (id.clone(), obj.to_canvas_object())
                 ).collect()
             },
-            EditKindMongoDBView::CreateCanvas {
-                canvas,
-            } => EditKind::CreateCanvas {
-                canvas: canvas.to_canvas()
+            EditKindMongoDBView::CreateCanvases {
+                canvases,
+            } => EditKind::CreateCanvases {
+                canvases: canvases.iter()
+                    .map(|(id, canvas)| (id.clone(), canvas.to_canvas()))
+                    .collect()
             },
             EditKindMongoDBView::DeleteCanvases {
                 canvases,
@@ -1135,6 +1235,11 @@ impl EditKindMongoDBView {
             EditKindMongoDBView::MergeCanvas {
                 child_canvas,
             } => EditKind::MergeCanvas {
+                child_canvas: child_canvas.to_canvas(),
+            },
+            EditKindMongoDBView::SplitCanvas {
+                child_canvas,
+            } => EditKind::SplitCanvas {
                 child_canvas: child_canvas.to_canvas(),
             },
         }// -- end match self
@@ -1166,10 +1271,12 @@ impl EditKindMongoDBView {
                     .map(|(id, obj)| (id.clone(), CanvasObjectMongoDBView::from_canvas_object(obj)))
                     .collect()
             }),
-            EditKind::CreateCanvas {
-                canvas,
-            } => Some(EditKindMongoDBView::CreateCanvas {
-                canvas: CanvasMongoDBView::from_canvas(canvas),
+            EditKind::CreateCanvases {
+                canvases,
+            } => Some(EditKindMongoDBView::CreateCanvases {
+                canvases: canvases.iter()
+                    .map(|(id, canvas)| (id.clone(), CanvasMongoDBView::from_canvas(canvas)))
+                    .collect()
             }),
             EditKind::DeleteCanvases {
                 canvases,
@@ -1179,8 +1286,13 @@ impl EditKindMongoDBView {
                 ).collect(),
             }),
             EditKind::MergeCanvas {
-                child_canvas,
+               child_canvas,
             } => Some(EditKindMongoDBView::MergeCanvas {
+                child_canvas: CanvasMongoDBView::from_canvas(child_canvas),
+            }),
+            EditKind::SplitCanvas {
+                child_canvas,
+            } => Some(EditKindMongoDBView::SplitCanvas {
                 child_canvas: CanvasMongoDBView::from_canvas(child_canvas),
             }),
             EditKind::UpdateCanvasAllowedUsers { .. } => None,

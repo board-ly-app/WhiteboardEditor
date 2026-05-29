@@ -520,8 +520,10 @@ pub async fn handle_authenticated_client_message<'a>(
                     {
                         let mut edits = client_state.base.edits.lock().await;
 
-                        edits.push(client_state.generate_edit(EditKind::CreateCanvas {
-                            canvas: canvas.clone(),
+                        edits.push(client_state.generate_edit(EditKind::CreateCanvases {
+                            canvases: HashMap::from([
+                                (canvas.id().clone(), canvas.clone())
+                            ]),
                         }));
                     }
 
