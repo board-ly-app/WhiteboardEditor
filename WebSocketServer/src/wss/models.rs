@@ -624,7 +624,7 @@ pub struct Whiteboard {
     metadata: WhiteboardMetadata,
     canvases: HashMap<CanvasIdType, Canvas>,
     root_canvas: CanvasIdType,
-    // -- A series of contiguous, ordered 
+    // -- A series of contiguous, chronologically-ordered edits applied to this edit by each author
     edit_history_by_author: HashMap<UserIdType, Vec<Edit>>,
 } // -- end struct Whiteboard
 
@@ -715,6 +715,174 @@ impl Whiteboard {
             None
         }
     }// -- end pub fn pop_edit_by_author
+
+    pub fn clear_edits_by_author(&mut self, author_id: &UserIdType) {
+        self.edit_history_by_author.remove(author_id);
+    }// -- end pub fn clear_edits_by_author
+
+    // === fn apply_edit ===========================================================================
+    //
+    // Applies the effects of an edit to the whiteboard, without manipulating the edit history.
+    //
+    // Assumes the caller has already verified that the edit is valid (i.e. can be applied to the
+    // whiteboard without corrupting the state).
+    //
+    // =============================================================================================
+    fn apply_edit(&mut self, edit: &Edit) {
+        use EditKind::*;
+
+        match &edit.edit {
+            CreateCanvasObjects {
+                canvas_objects,
+            } => {
+                for (obj_id, canvas_object) in canvas_objects.iter() {
+                    let canvas_id = &canvas_object.canvas_id;
+
+                    if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                        canvas.canvas_objects.insert(obj_id.clone(), canvas_object.canvas_object.clone());
+                    }
+                }// -- end for canvas_object in canvas_objects.values()
+            },
+            UpdateCanvasObjects {
+                updates,
+            } => {
+                for (obj_id, update) in updates.iter() {
+                    let canvas_id = &update.canvas_id;
+
+                    if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                        if let Some(obj) = canvas.canvas_objects_mut().get_mut(obj_id) {
+                            *obj = update.new_fields.clone();
+                        }
+                    }
+                }// -- end for (obj_id, update) in updates.iter()
+            },
+            DeleteCanvasObjects {
+                canvas_objects,
+            } => {
+                for (obj_id, canvas_object) in canvas_objects.iter() {
+                    let canvas_id = &canvas_object.canvas_id;
+
+                    if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                        canvas.canvas_objects_mut().remove(obj_id);
+                    }
+                }// -- end for (obj_id, update) in updates.iter()
+            },
+            CreateCanvases {
+                canvases,
+            } => {
+                for (canvas_id, canvas)  in canvases.iter() {
+                    self.canvases_mut().insert(canvas_id.clone(), canvas.clone());
+                }// -- end for (canvas_id, canvas)  in canvases.iter()
+            },
+            DeleteCanvases {
+                canvases,
+            } => {
+                for canvas_id  in canvases.keys() {
+                    let _ = self.canvases_mut().remove(canvas_id);
+                }// -- end for (canvas_id, canvas)  in canvases.iter()
+            },
+            MergeCanvas {
+                child_canvas,
+            } => {
+                if let Some(parent_ref) = child_canvas.parent_canvas() {
+                    // -- Transfer canvases to parent canvas by switching parent ref
+                    for canvas in self.canvases_mut().values_mut() {
+                        if let Some(ref mut target_parent_ref) = canvas.parent_canvas_mut()
+                            && *target_parent_ref.canvas_id() == *child_canvas.id() {
+                                *target_parent_ref.canvas_id_mut() = *parent_ref.canvas_id();
+                                *target_parent_ref.origin_x_mut() += parent_ref.origin_x();
+                                *target_parent_ref.origin_y_mut() += parent_ref.origin_y();
+                            }
+                    } // -- end for canvas
+
+                    // -- Transfer child canvas objects 
+                    let parent_canvas = self.canvases_mut().get_mut(&parent_ref.canvas_id).unwrap();
+                    let parent_canvas_objects = parent_canvas.canvas_objects_mut();
+
+                    for (obj_id, canvas_object) in child_canvas.canvas_objects().iter() {
+                        use CanvasObjectModel::*;
+
+                        let mut transferred_canvas_object = canvas_object.clone();
+
+                        match transferred_canvas_object {
+                            Vector { ref mut points, .. } => {
+                                for i_coord in (0..points.len()).step_by(2) {
+                                    points[i_coord] += parent_ref.origin_x();
+                                    points[i_coord + 1] += parent_ref.origin_y();
+                                }// -- end for i_coord
+                            },
+                            Rect { ref mut x, ref mut y, .. }
+                            | Ellipse { ref mut x, ref mut y, .. }
+                            | Text { ref mut x, ref mut y, .. } => {
+                                *x += parent_ref.origin_x();
+                                *y += parent_ref.origin_y();
+                            },
+                        };// -- end match &mut transferred_canvas_object
+
+                        parent_canvas_objects.insert(obj_id.clone(), transferred_canvas_object);
+                    }// -- end for (obj_id, canvas_object)
+
+                    // -- Delete old child canvas
+                    let _ = self.canvases_mut().remove(child_canvas.id());
+                }
+            },
+            SplitCanvas {
+                child_canvas: restored_canvas,
+            } => {
+                // -- Identify child canvases that fall within the new child canvas and transfer
+                // them by parent ref.
+                if let Some(parent_ref) = restored_canvas.parent_canvas() {
+                    let offset_x = parent_ref.origin_x();
+                    let offset_y = parent_ref.origin_y();
+                    let width = restored_canvas.width();
+                    let height = restored_canvas.height();
+
+                    for canvas in self.canvases_mut().values_mut() {
+                        let child_width = canvas.width();
+                        let child_height = canvas.height();
+
+                        if let Some(ref mut child_parent_ref) = canvas.parent_canvas_mut() {
+                            let origin_x = child_parent_ref.origin_x();
+                            let origin_y = child_parent_ref.origin_y();
+
+                            if *child_parent_ref.canvas_id() == *parent_ref.canvas_id()
+                                && origin_x >= offset_x
+                                && origin_x + child_width <= offset_x + width 
+                                && origin_y >= offset_y
+                                && origin_y + child_height <= offset_y + height 
+                            {
+                                child_parent_ref.canvas_id = restored_canvas.id().clone();
+                                child_parent_ref.origin_x -= offset_x;
+                                child_parent_ref.origin_y -= offset_y;
+                            }
+                        }
+                    }// -- end for canvas
+
+                    // -- Restore child canvas
+                    self.canvases_mut().insert(restored_canvas.id().clone(), restored_canvas.clone());
+
+                    // -- Remove duplicate canvas objects from parent canvas
+                    let parent_canvas = self.canvases_mut()
+                        .get_mut(parent_ref.canvas_id())
+                        .unwrap();
+                    let parent_canvas_objects = parent_canvas.canvas_objects_mut();
+
+                    for obj_id in restored_canvas.canvas_objects().keys() {
+                        parent_canvas_objects.remove(obj_id);
+                    }// -- end for obj_id
+                }
+            },
+            UpdateCanvasAllowedUsers {
+                canvas_id,
+                new_allowed_users,
+                ..
+            } => {
+                if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                    canvas.set_allowed_users(new_allowed_users.as_ref());
+                }
+            },
+        };// -- end match &edit.edit
+    }// -- end pub fn apply_edit
 } // -- end impl Whiteboard
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
