@@ -34,6 +34,7 @@ import Whiteboard from '@/pages/Whiteboard';
 import UserAuth from '@/pages/UserAuth';
 import AccountSettings from '@/pages/AccountSettings';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import PublicWhiteboardRoute from '@/components/PublicWhiteboardRoute';
 import AboutUs from './pages/AboutUs';
 
 const App = () => {
@@ -66,11 +67,11 @@ const App = () => {
               </ProtectedRoute>
             } />
             <Route path="/whiteboard/:whiteboard_id" element={
-              <ProtectedRoute fallback="/login">
+              <PublicWhiteboardRoute>
                 <WebSocketClientMessengerProvider>
                   <Whiteboard />
                 </WebSocketClientMessengerProvider>
-              </ProtectedRoute>
+              </PublicWhiteboardRoute>
             } />
           </Routes>
 
