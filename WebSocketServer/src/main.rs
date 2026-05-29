@@ -434,7 +434,7 @@ async fn handle_connection(
                             println!("Client response: {:?}", &r);
                         }// -- end for r
 
-                        // -- update database, if there are edits
+                        // -- update database and local edit history, if there are edits
                         {
                             let mut edits = client_state_base.edits.lock().await;
 

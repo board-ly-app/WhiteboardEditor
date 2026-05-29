@@ -699,6 +699,22 @@ impl Whiteboard {
     pub fn root_canvas(&self) -> &CanvasIdType {
         &self.root_canvas
     } // -- end pub fn root_canvas
+
+    pub fn push_edit(&mut self, edit: &Edit) {
+        if let Some(author_edit_history) = self.edit_history_by_author.get_mut(&edit.author) {
+            author_edit_history.push(edit.clone());
+        } else {
+            self.edit_history_by_author.insert(edit.author.clone(), vec![ edit.clone() ]);
+        }
+    }// -- end pub fn push_edit
+
+    pub fn pop_edit_by_author(&mut self, author_id: &UserIdType) -> Option<Edit> {
+        if let Some(author_edit_history) = self.edit_history_by_author.get_mut(author_id) {
+            author_edit_history.pop()
+        } else {
+            None
+        }
+    }// -- end pub fn pop_edit_by_author
 } // -- end impl Whiteboard
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
