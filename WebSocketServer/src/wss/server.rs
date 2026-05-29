@@ -309,19 +309,18 @@ pub async fn handle_authenticated_client_message<'a>(
                                 .map(|(obj_id, obj)| (obj_id.clone(), obj.canvas_object.clone()))
                                 .collect();
 
-                            for (obj_id, canvas_object) in obj_models_by_id.iter() {
-                                canvas.canvas_objects_mut().insert(
-                                    obj_id.clone(), canvas_object.clone()
-                                );
-                            }// -- end for (obj_id, canvas_object) in obj_models_by_id.iter()
+                            // -- Generate and commit edit
+                            let edit = client_state.generate_edit(EditKind::CreateCanvasObjects {
+                                canvas_objects: new_canvas_objects,
+                            });
+
+                            whiteboard.force_commit_edit(&edit);
 
                             // -- Write edits to buffer
                             {
                                 let mut edits = client_state.base.edits.lock().await;
 
-                                edits.push(client_state.generate_edit(EditKind::CreateCanvasObjects {
-                                    canvas_objects: new_canvas_objects,
-                                }));
+                                edits.push(edit);
                             }
 
                             ClientMessageResponse {
@@ -384,7 +383,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                                 old_fields: old_obj.clone(),
                                                 new_fields: canvas_object.clone(),
                                             });
-                                            *old_obj = canvas_object.clone();
                                             upated_canvas_objects.insert(obj_id.clone(), canvas_object.clone());
                                         }
                                     },
@@ -403,13 +401,18 @@ pub async fn handle_authenticated_client_message<'a>(
                                 },
                             });
 
+                            // -- Generate and commit edit
+                            let edit = client_state.generate_edit(EditKind::UpdateCanvasObjects {
+                                updates: edit_updates,
+                            });
+
+                            whiteboard.force_commit_edit(&edit);
+
                             // -- write edits to buffer
                             {
                                 let mut edits = client_state.base.edits.lock().await;
 
-                                edits.push(client_state.generate_edit(EditKind::UpdateCanvasObjects {
-                                    updates: edit_updates,
-                                }));
+                                edits.push(edit);
                             }
 
                             ClientMessageResponse {
@@ -425,7 +428,7 @@ pub async fn handle_authenticated_client_message<'a>(
                     let mut deleted_object_ids = Vec::<CanvasObjectIdType>::new();
                     let mut edit_updates = HashMap::<CanvasObjectIdType, CanvasObject>::new();
 
-                    // Delete objects locally
+                    // Mark objects for deletion locally
                     for canvas in whiteboard.canvases_mut().values_mut() {
                         // TODO: refactor to store all canvas objects in one large HashMap
                         for object_id in canvas_object_ids.iter() {
@@ -441,11 +444,8 @@ pub async fn handle_authenticated_client_message<'a>(
                                     });
                                 },
                                 _ => {
-                                    if canvas.canvas_objects().contains_key(&object_id) {
-                                        let old_obj = canvas.canvas_objects_mut().remove(&object_id).unwrap();
-
+                                    if let Some(old_obj) = canvas.canvas_objects().get(&object_id) {
                                         selectors_to_canvas_objects.remove_value(&object_id);
-                                        canvas.canvas_objects_mut().remove(&object_id);
                                         deleted_object_ids.push(object_id.clone());
                                         edit_updates.insert(object_id.clone(), CanvasObject {
                                             id: object_id.clone(),
@@ -469,13 +469,18 @@ pub async fn handle_authenticated_client_message<'a>(
                         },
                     });
 
+                    // -- Generate and commit edit
+                    let edit = client_state.generate_edit(EditKind::DeleteCanvasObjects {
+                        canvas_objects: edit_updates,
+                    });
+
+                    whiteboard.force_commit_edit(&edit);
+
                     // -- write edits to buffer
                     {
                         let mut edits = client_state.base.edits.lock().await;
 
-                        edits.push(client_state.generate_edit(EditKind::DeleteCanvasObjects {
-                            canvas_objects: edit_updates,
-                        }));
+                        edits.push(edit);
                     }
 
                     ClientMessageResponse {
@@ -491,9 +496,6 @@ pub async fn handle_authenticated_client_message<'a>(
                 } => {
                     let mut whiteboard = client_state.base.whiteboard_ref.lock().await;
                     let new_canvas_id = ObjectId::new();
-
-                    // -- allowed_users passed in as parameter from AllowedUsersPopover
-                    // let mut allowed = HashSet::<ObjectId>::new();
 
                     // Initialize new canvas with only current user allowed to edit
                     // TODO: actually fetch user's id from database
@@ -512,19 +514,20 @@ pub async fn handle_authenticated_client_message<'a>(
                         Some(allowed_users),
                     );
 
-                    whiteboard
-                        .canvases_mut()
-                        .insert(new_canvas_id, canvas.clone());
+                    // -- Generate and commit edit
+                    let edit = client_state.generate_edit(EditKind::CreateCanvases {
+                        canvases: HashMap::from([
+                            (canvas.id().clone(), canvas.clone())
+                        ]),
+                    });
+
+                    whiteboard.force_commit_edit(&edit);
 
                     // -- write edits to buffer
                     {
                         let mut edits = client_state.base.edits.lock().await;
 
-                        edits.push(client_state.generate_edit(EditKind::CreateCanvases {
-                            canvases: HashMap::from([
-                                (canvas.id().clone(), canvas.clone())
-                            ]),
-                        }));
+                        edits.push(edit);
                     }
 
                     ClientMessageResponse {
@@ -545,19 +548,24 @@ pub async fn handle_authenticated_client_message<'a>(
 
                     // delete canvases identified by the given ids
                     for id in &canvas_ids {
-                        if let Some(old_canvas) = whiteboard.canvases_mut().remove(id) {
-                            edit_update.insert(id.clone(), old_canvas);
+                        if let Some(old_canvas) = whiteboard.canvases().get(id) {
+                            edit_update.insert(id.clone(), old_canvas.clone());
                             deleted_canvas_ids.push(id.clone());
                         }
                     } // end for id in canvas_ids
+
+                    // -- Generate and commit edit
+                    let edit = client_state.generate_edit(EditKind::DeleteCanvases {
+                        canvases: edit_update,
+                    });
+
+                    whiteboard.force_commit_edit(&edit);
 
                     // -- write edits to buffer
                     {
                         let mut edits = client_state.base.edits.lock().await;
 
-                        edits.push(client_state.generate_edit(EditKind::DeleteCanvases {
-                            canvases: edit_update,
-                        }));
+                        edits.push(edit);
                     }
 
                     ClientMessageResponse {
@@ -613,7 +621,7 @@ pub async fn handle_authenticated_client_message<'a>(
                         };
                     } // -- end for user_id in allowed_users.iter()
 
-                    match whiteboard.canvases_mut().get_mut(&canvas_id) {
+                    match whiteboard.canvases_mut().get(&canvas_id) {
                         None => {
                             // canvas doesn't exist
                             ClientMessageResponse {
@@ -632,21 +640,23 @@ pub async fn handle_authenticated_client_message<'a>(
                                 |users_set| users_set.clone()
                             );
 
-                            // update allowed users
-                            canvas.set_allowed_users(Some(&allowed_users));
+                            // -- Generate and commit edit
+                            let edit = client_state.generate_edit(EditKind::UpdateCanvasAllowedUsers {
+                                canvas_id: canvas.id().clone(),
+                                old_allowed_users,
+                                new_allowed_users: Some(allowed_users.iter().copied().collect()),
+                            });
 
-                            // broadcast to all users
+                            whiteboard.force_commit_edit(&edit);
+
                             // -- write edits to buffer
                             {
                                 let mut edits = client_state.base.edits.lock().await;
 
-                                edits.push(client_state.generate_edit(EditKind::UpdateCanvasAllowedUsers {
-                                    canvas_id: canvas.id().clone(),
-                                    old_allowed_users,
-                                    new_allowed_users: Some(allowed_users.iter().copied().collect()),
-                                }));
+                                edits.push(edit);
                             }
 
+                            // -- broadcast to all users
                             ClientMessageResponse {
                                 messages: vec![ServerSocketMessage::Broadcast {
                                     msg: ServerSocketBroadcastMessage::UpdateCanvasAllowedUsers {
@@ -666,7 +676,6 @@ pub async fn handle_authenticated_client_message<'a>(
                     // Merge the given canvas with its parent
                     let mut whiteboard = client_state.base.whiteboard_ref.lock().await;
                     let parent_ref: CanvasParentRef;
-                    let mut new_parent_canvas_objects: Vec<(CanvasObjectIdType, CanvasObjectModel)>;
 
                     // What to do:
                     //  - Access child canvas and parent canvas sequentially, not at the same time
@@ -678,14 +687,6 @@ pub async fn handle_authenticated_client_message<'a>(
                             // Store copy of parent canvas ref, to allow resetting parent canvas refs
                             // later
                             parent_ref = parent_canvas.clone();
-
-                            // Copy canvas objects/canvas_objects to new map
-                            new_parent_canvas_objects = child_canvas
-                                .canvas_objects()
-                                .iter()
-                                .map(|(k, v)| (*k, v.clone()))
-                                .collect();
-
                         } else {
                             return ClientMessageResponse {
                                 messages: vec![ServerSocketMessage::Individual {
@@ -713,56 +714,7 @@ pub async fn handle_authenticated_client_message<'a>(
                         };
                     };
 
-                    if let Some(parent_canvas) =
-                        whiteboard.canvases_mut().get_mut(parent_ref.canvas_id())
-                    {
-                        // change child canvas objects' coordinates to match position on parent
-                        // canvas
-                        for &mut (_, ref mut canvas_obj) in new_parent_canvas_objects.iter_mut() {
-                            match *canvas_obj {
-                                CanvasObjectModel::Rect {
-                                    ref mut x,
-                                    ref mut y,
-                                    ..
-                                } => {
-                                    *x += parent_ref.origin_x();
-                                    *y += parent_ref.origin_y();
-                                }
-                                CanvasObjectModel::Ellipse {
-                                    ref mut x,
-                                    ref mut y,
-                                    ..
-                                } => {
-                                    *x += parent_ref.origin_x();
-                                    *y += parent_ref.origin_y();
-                                }
-                                CanvasObjectModel::Vector { ref mut points, .. } => {
-                                    for (idx, ref mut coord) in points.iter_mut().enumerate() {
-                                        if idx % 2 == 0 {
-                                            // even-indexed coordinates are x coordinates
-                                            **coord += parent_ref.origin_x();
-                                        } else {
-                                            // odd-indexed coordinates are y coordinates
-                                            **coord += parent_ref.origin_y();
-                                        }
-                                    } // -- end for idx, point
-                                }
-                                CanvasObjectModel::Text {
-                                    ref mut x,
-                                    ref mut y,
-                                    ..
-                                } => {
-                                    *x += parent_ref.origin_x();
-                                    *y += parent_ref.origin_y();
-                                }
-                            }; // -- end match canvas_obj
-                        } // -- end for canvas_obj
-
-                        // extend new canvas objects map with parent canvas' original objects
-                        parent_canvas
-                            .canvas_objects_mut()
-                            .extend(new_parent_canvas_objects.into_iter());
-                    } else {
+                    if ! whiteboard.canvases().contains_key(parent_ref.canvas_id()) {
                         return ClientMessageResponse {
                             messages: vec![ServerSocketMessage::Individual {
                                 target_client_id: client_state.base.client_id.clone(),
@@ -775,27 +727,18 @@ pub async fn handle_authenticated_client_message<'a>(
                         };
                     }
 
-                    // Replace all parent refs pointing to child canvas with references parent canvas,
-                    // recalculating offsets accordingly.
-                    for canvas in whiteboard.canvases_mut().values_mut() {
-                        if let Some(ref mut target_parent_ref) = canvas.parent_canvas_mut()
-                            && *target_parent_ref.canvas_id() == canvas_id {
-                                *target_parent_ref.canvas_id_mut() = *parent_ref.canvas_id();
-                                *target_parent_ref.origin_x_mut() += parent_ref.origin_x();
-                                *target_parent_ref.origin_y_mut() += parent_ref.origin_y();
-                            }
-                    } // -- end for canvas
+                    // -- Generate and commit edit
+                    let edit = client_state.generate_edit(EditKind::MergeCanvas {
+                        child_canvas: old_child_canvas,
+                    });
 
-                    // Remove child canvas from canvases map
-                    whiteboard.canvases_mut().remove(&canvas_id);
+                    whiteboard.force_commit_edit(&edit);
 
                     // -- write edits to buffer
                     {
                         let mut edits = client_state.base.edits.lock().await;
 
-                        edits.push(client_state.generate_edit(EditKind::MergeCanvas {
-                            child_canvas: old_child_canvas,
-                        }));
+                        edits.push(edit);
                     }
 
                     // Tell clients to merge canvases on their end
