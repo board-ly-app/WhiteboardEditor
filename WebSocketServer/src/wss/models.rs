@@ -708,6 +708,50 @@ impl Whiteboard {
         }
     }// -- end pub fn push_edit
 
+    // === force_commit_edit =======================================================================
+    //
+    // Applies and pushes an edit without checking if it applies to the whiteboard. Should only be
+    // performed if the caller knows the whiteboard state hasn't been modified since the edit was
+    // generated.
+    //
+    // =============================================================================================
+    pub fn force_commit_edit(&mut self, edit: &Edit) {
+        self.apply_edit(edit);
+        self.push_edit(edit);
+    }// -- end pub fn force_commit_edit
+
+    // === reverse_edit_by_author ==================================================================
+    //
+    // Reverses the latest edit by the given author, if such an edit exists and can be applied to
+    // the whiteboard.
+    //
+    // =============================================================================================
+    pub fn reverse_edit_by_author(&mut self, author_id: &UserIdType) -> Option<Edit> {
+        let reverse_edit = if let Some(edit_history) = self.edit_history_by_author.get(author_id) {
+            if let Some(last_edit) = edit_history.last() {
+                let reverse_edit = last_edit.generate_reverse(author_id);
+
+                if self.can_apply_edit(&reverse_edit) {
+                    reverse_edit
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        } else {
+            return None;
+        };
+
+        if self.can_apply_edit(&reverse_edit) {
+            self.apply_edit(&reverse_edit);
+
+            self.edit_history_by_author.get_mut(author_id).unwrap().pop()
+        } else {
+            None
+        }
+    }// -- end pub fn reverse_edit_by_author
+
     pub fn pop_edit_by_author(&mut self, author_id: &UserIdType) -> Option<Edit> {
         if let Some(author_edit_history) = self.edit_history_by_author.get_mut(author_id) {
             author_edit_history.pop()
@@ -719,6 +763,113 @@ impl Whiteboard {
     pub fn clear_edits_by_author(&mut self, author_id: &UserIdType) {
         self.edit_history_by_author.remove(author_id);
     }// -- end pub fn clear_edits_by_author
+
+    pub fn can_apply_edit(&self, edit: &Edit) -> bool {
+        use EditKind::*;
+
+        // -- Tolerance for difference between two f64 values, below which they will be treated as
+        // equal
+        const F64_MIN_DIFF : f64 = 1.0e-4;
+
+        match &edit.edit {
+            CreateCanvasObjects{ .. } => true, // -- always vacuously true
+            UpdateCanvasObjects {
+                updates,
+            } => {
+                // -- ensure old state of objects matches current state
+                for (obj_id, update) in updates.iter() {
+                    if let Some(canvas) = self.canvases().get(&update.canvas_id) {
+                        if let Some(curr_obj) = canvas.canvas_objects().get(obj_id) {
+                            if update.old_fields != *curr_obj {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }// -- end for
+
+                true
+            },
+            DeleteCanvasObjects {
+                canvas_objects,
+            } => {
+                // -- ensure deleted objects exist and are in the same state
+                for (obj_id, obj) in canvas_objects.iter() {
+                    if let Some(canvas) = self.canvases().get(&obj.canvas_id) {
+                        if let Some(curr_obj) = canvas.canvas_objects().get(obj_id) {
+                            if obj.canvas_object != *curr_obj {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }// -- end for
+
+                true
+            },
+            CreateCanvases { .. } => true,  // -- always vacuously true
+            DeleteCanvases {
+                canvases,
+            } => {
+                // -- ensure canvas state matches given canvas state
+                for (canvas_id, canvas) in canvases.iter() {
+                    if let Some(curr_canvas) = self.canvases().get(canvas_id) {
+                        // -- use time last modified as a proxy for equality
+                        if curr_canvas.time_last_modified() != canvas.time_last_modified() {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }// -- end for
+
+                true
+            },
+            MergeCanvas {
+                child_canvas,
+            } => {
+                // -- ensure parent canvas exists and given child canvas state matches current canvas state
+                if let Some(parent_ref) = child_canvas.parent_canvas() {
+                    if ! self.canvases().contains_key(parent_ref.canvas_id()) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                };
+
+                if let Some(curr_child_canvas) = self.canvases().get(child_canvas.id()) {
+                    // -- use time last modified as proxy for equality
+                    curr_child_canvas.time_last_modified() == child_canvas.time_last_modified()
+                } else {
+                    return false;
+                }
+            },
+            SplitCanvas { .. } => false, // -- don't want to allow reversing canvas merge for now
+            UpdateCanvasAllowedUsers {
+                canvas_id,
+                old_allowed_users,
+                ..
+            } => {
+                // -- ensure canvas exists and old allowed users matches current allowed users
+                if let Some(canvas) = self.canvases().get(&canvas_id) {
+                    match (canvas.allowed_users(), old_allowed_users.as_ref()) {
+                        (None, None) => true,
+                        (Some(le), Some(ri)) => *le == *ri,
+                        _ => false,
+                    }// -- end match
+                } else {
+                    // -- canvas no longer exists
+                    false
+                }
+            },
+        }// -- end match &edit.edit
+    }// -- end pub fn can_apply_edit
 
     // === fn apply_edit ===========================================================================
     //
@@ -882,7 +1033,7 @@ impl Whiteboard {
                 }
             },
         };// -- end match &edit.edit
-    }// -- end pub fn apply_edit
+    }// -- end fn apply_edit
 } // -- end impl Whiteboard
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -1283,6 +1434,16 @@ impl Edit {
             }],
         }// -- end match self.edit
     }// -- end pub fn get_whiteboard_diffs
+
+    pub fn generate_reverse(&self, author_id: &UserIdType) -> Self {
+        Self {
+            id: ObjectId::new(),
+            author: author_id.clone(),
+            whiteboard: self.whiteboard.clone(),
+            committed_at: Utc::now(),
+            edit: self.edit.generate_reverse(),
+        }
+    }// -- end pub fn generate_reverse
 }// -- end impl Edit
 
 // === EditClientView ==============================================================================
