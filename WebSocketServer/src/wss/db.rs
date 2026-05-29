@@ -115,12 +115,10 @@ pub enum WhiteboardDiff {
         canvas_ids: Vec<CanvasIdType>,
     },
     CreateCanvasObjects {
-        canvas_id: CanvasIdType,
-        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObject>,
     },
     UpdateCanvasObjects {
-        canvas_id: CanvasIdType,
-        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObject>,
     },
     DeleteCanvasObjects {
         canvas_object_ids: Vec<CanvasObjectIdType>,
@@ -290,3 +288,448 @@ pub async fn get_whiteboard_by_id(
         edits.as_slice(),
     )))
 } // -- end fn get_whiteboard_by_id
+
+pub struct MongoDBInterface {
+    whiteboard_metadata_coll: Collection<WhiteboardMetadataMongoDBView>,
+    canvas_coll: Collection<CanvasMongoDBView>,
+    canvas_object_coll: Collection<CanvasObjectMongoDBView>,
+    user_coll: Collection<UserMongoDBView>,
+    edit_coll: Collection<EditMongoDBView>,
+}// -- end pub struct MongoDBInterface
+
+impl MongoDBInterface {
+    pub fn new(db: &Database) -> Self {
+        Self {
+            whiteboard_metadata_coll: db.collection::<WhiteboardMetadataMongoDBView>("whiteboards"),
+            canvas_coll: db.collection::<CanvasMongoDBView>("canvases"),
+            canvas_object_coll: db.collection::<CanvasObjectMongoDBView>("shapes"),
+            user_coll: db.collection::<UserMongoDBView>("users"),
+            edit_coll: db.collection::<EditMongoDBView>("edits"),
+        }
+    }// -- end pub fn new
+
+    pub async fn process_diff(&self, diff: &WhiteboardDiff) {
+        match diff {
+            WhiteboardDiff::CreateCanvas { canvas } => {
+                println!(
+                    "Creating canvas \"{}\" in database ...",
+                    canvas.name()
+                );
+
+                // TODO: make method of Canvas struct
+                let canvas_doc =
+                    CanvasMongoDBView::from_canvas(canvas);
+                let create_canvas_res =
+                    self.canvas_coll.insert_one(&canvas_doc).await;
+
+                match create_canvas_res {
+                    Err(e) => {
+                        eprintln!("CreateCanvas insert failed: {}", e);
+                    }
+                    Ok(insert) => {
+                        eprintln!(
+                            "CreateCanvas new document id: {}",
+                            insert.inserted_id
+                        );
+                    }
+                };
+            }
+            WhiteboardDiff::DeleteCanvases { canvas_ids } => {
+                println!(
+                    "Deleting canvases from database: {:?} ...",
+                    canvas_ids
+                );
+
+                // first delete contained canvas objects
+                let delete_objects_res = self.canvas_object_coll
+                    .delete_many(doc! {
+                        "canvas_id": {
+                            "$in": canvas_ids.clone()
+                        }
+                    })
+                    .await;
+
+                match delete_objects_res {
+                    Err(e) => {
+                        eprintln!(
+                            "DeleteCanvases object deletion failed: {}",
+                            e
+                        );
+                    }
+                    Ok(delete_result) => {
+                        eprintln!(
+                            "DeleteCanvases object deletion count {}",
+                            delete_result.deleted_count
+                        );
+                    }
+                };
+
+                // then, delete canvas itself
+                let delete_canvas_res = self.canvas_coll
+                    .delete_many(doc! {
+                        "_id": {
+                            "$in": canvas_ids.clone()
+                        }
+                    })
+                    .await;
+
+                match delete_canvas_res {
+                    Err(e) => {
+                        eprintln!(
+                            "DeleteCanvases canvas deletion failed: {}",
+                            e
+                        );
+                    }
+                    Ok(delete_result) => {
+                        eprintln!(
+                            "DeleteCanvases canvas deletion count {}",
+                            delete_result.deleted_count
+                        );
+                    }
+                };
+            }
+            WhiteboardDiff::CreateCanvasObjects { canvas_objects } => {
+                println!(
+                    "Creating canvas_objects in database ...",
+                );
+
+                let canvas_obj_docs: Vec<CanvasObjectMongoDBView> =
+                    canvas_objects
+                        .values()
+                        .map(|obj| {
+                            CanvasObjectMongoDBView::from_canvas_object(obj)
+                        })
+                        .collect();
+
+                let create_canvas_objects_res =
+                    self.canvas_object_coll.insert_many(&canvas_obj_docs).await;
+
+                match create_canvas_objects_res {
+                    Err(e) => {
+                        eprintln!("CreateCanvasObjects insert failed: {}", e);
+                    }
+                    Ok(insert) => {
+                        eprintln!(
+                            "CreateCanvasObjects new document ids: {:?}",
+                            insert.inserted_ids
+                        );
+                    }
+                };
+            }
+            WhiteboardDiff::UpdateCanvasObjects { canvas_objects } => {
+                println!(
+                    "Updating canvas_objects in database ...",
+                );
+
+                for (obj_id, canvas_object) in canvas_objects.iter() {
+                    let query_doc = doc! { "_id": *obj_id };
+                    let canvas_obj_doc = CanvasObjectMongoDBView::from_canvas_object(
+                        canvas_object
+                    );
+
+                    let replace_canvas_object_res = self.canvas_object_coll
+                        .replace_one(query_doc, &canvas_obj_doc)
+                        .await;
+
+                    match replace_canvas_object_res {
+                        Err(e) => {
+                            eprintln!(
+                                "UpdateCanvasObjects replace failed: {}",
+                                e
+                            );
+                        }
+                        Ok(update) => {
+                            eprintln!(
+                                "UpdateCanvasObjects matched_count: {}",
+                                update.matched_count
+                            );
+                            eprintln!(
+                                "UpdateCanvasObjects modified_count: {}",
+                                update.modified_count
+                            );
+                            eprintln!(
+                                "UpdateCanvasObjects upserted_id: {:?}",
+                                update.upserted_id
+                            );
+                        }
+                    };
+                } // end for (obj_id, canvas_object) in canvas_objects.iter()
+            }
+            WhiteboardDiff::DeleteCanvasObjects {
+                canvas_object_ids,
+            } => {
+                println!(
+                    "Deleting canvas objects in database: {:?}",
+                    canvas_object_ids
+                );
+
+                let filter = doc! {
+                    "_id": {
+                        "$in": canvas_object_ids.clone()
+                    }
+                };
+                let delete_canvas_objects_res =
+                    self.canvas_object_coll.delete_many(filter).await;
+
+                match delete_canvas_objects_res {
+                    Err(e) => {
+                        eprintln!(
+                            "UpdateCanvasAllowedUsers update failed: {}",
+                            e
+                        );
+                    }
+                    Ok(update) => {
+                        eprintln!(
+                            "UpdateCanvasAllowedUsers deleted: {}",
+                            update.deleted_count
+                        );
+                    }
+                };
+            }
+            WhiteboardDiff::UpdateCanvasAllowedUsers {
+                canvas_id,
+                allowed_users,
+            } => {
+                println!(
+                    "Updating allowed users in database for canvas {} ...",
+                    canvas_id
+                );
+
+                let query = doc! {
+                    "_id": canvas_id,
+                };
+
+                let operator = doc! {
+                    "$set": {
+                        "allowed_users": allowed_users.clone()
+                    }
+                };
+
+                let update_allowed_users_res =
+                    self.canvas_coll.update_one(query, operator).await;
+
+                match update_allowed_users_res {
+                    Err(e) => {
+                        eprintln!(
+                            "UpdateCanvasAllowedUsers update failed: {}",
+                            e
+                        );
+                    }
+                    Ok(update) => {
+                        eprintln!(
+                            "UpdateCanvasAllowedUsers matched_count: {}",
+                            update.matched_count
+                        );
+                        eprintln!(
+                            "UpdateCanvasAllowedUsers modified_count: {}",
+                            update.modified_count
+                        );
+                        eprintln!(
+                            "UpdateCanvasAllowedUsers upserted_id: {:?}",
+                            update.upserted_id
+                        );
+                    }
+                };
+            }
+            WhiteboardDiff::TransferChildCanvases {
+                old_parent_id,
+                new_parent_id,
+                translate_x,
+                translate_y,
+            } => {
+                println!(
+                    "Transfering child canvases from canvas {} to canvas {} ...",
+                    old_parent_id, new_parent_id
+                );
+
+                let query = doc! {
+                    "parent_canvas.canvas_id": old_parent_id,
+                };
+
+                let operator = doc! {
+                    "$set": {
+                        "parent_canvas.canvas_id": new_parent_id,
+                    },
+                    "$inc": {
+                        "parent_canvas.origin_x": translate_x,
+                        "parent_canvas.origin_y": translate_y,
+                    },
+                };
+
+                let update_canvases_res =
+                    self.canvas_coll.update_many(query, operator).await;
+
+                match update_canvases_res {
+                    Err(e) => {
+                        eprintln!(
+                            "TransferChildCanvases failed: {}",
+                            e
+                        );
+                    }
+                    Ok(update) => {
+                        eprintln!(
+                            "TransferChildCanvases matched_count: {}",
+                            update.matched_count
+                        );
+                        eprintln!(
+                            "TransferChildCanvases modified_count: {}",
+                            update.modified_count
+                        );
+                        eprintln!(
+                            "TransferChildCanvases upserted_id: {:?}",
+                            update.upserted_id
+                        );
+                    }
+                };
+            }
+            WhiteboardDiff::TransferCanvasObjects {
+                old_canvas_id,
+                new_canvas_id,
+                translate_x,
+                translate_y,
+            } => {
+                println!(
+                    "Transfering canvas_objects from canvas {} to canvas {} ...",
+                    old_canvas_id, new_canvas_id
+                );
+
+                // query for vectors
+                let query_vec = doc! {
+                    "canvas_id": old_canvas_id,
+                    "type": "vector",
+                };
+
+                // operator for vectors
+                let operator_vec = doc! {
+                    "$set": {
+                        "canvas_id": new_canvas_id,
+                    },
+                    "$inc": {
+                        "points.0": translate_x,
+                        "points.1": translate_y,
+                        "points.2": translate_x,
+                        "points.3": translate_y,
+                    },
+                };
+
+                let update_vectors_res = self.canvas_object_coll
+                    .update_many(query_vec, operator_vec)
+                    .await;
+
+                match update_vectors_res {
+                    Err(e) => {
+                        eprintln!(
+                            "TransferChildCanvasObjects failed on vectors: {}",
+                            e
+                        );
+                    }
+                    Ok(update) => {
+                        eprintln!(
+                            "TransferChildCanvasObjects on vectors matched_count: {}",
+                            update.matched_count
+                        );
+                        eprintln!(
+                            "TransferChildCanvasObjects on vectors modified_count: {}",
+                            update.modified_count
+                        );
+                        eprintln!(
+                            "TransferChildCanvasObjects on vectors upserted_id: {:?}",
+                            update.upserted_id
+                        );
+                    }
+                };
+
+                // query for other canvas objects
+                let query = doc! {
+                    "canvas_id": old_canvas_id,
+                    "type": {
+                        "$ne": "vector",
+                    },
+                };
+
+                // operator for other canvas objects
+                let operator = doc! {
+                    "$set": {
+                        "canvas_id": new_canvas_id,
+                    },
+                    "$inc": {
+                        "x": translate_x,
+                        "y": translate_y,
+                    },
+                };
+
+                let update_objects_res =
+                    self.canvas_object_coll.update_many(query, operator).await;
+
+                match update_objects_res {
+                    Err(e) => {
+                        eprintln!(
+                            "TransferChildCanvasObjects failed on non-vectors: {}",
+                            e
+                        );
+                    }
+                    Ok(update) => {
+                        eprintln!(
+                            "TransferChildCanvasObjects on non-vectors matched_count: {}",
+                            update.matched_count
+                        );
+                        eprintln!(
+                            "TransferChildCanvasObjects on non-vectors modified_count: {}",
+                            update.modified_count
+                        );
+                        eprintln!(
+                            "TransferChildCanvasObjects on non-vectors upserted_id: {:?}",
+                            update.upserted_id
+                        );
+                    }
+                };
+            }
+        }
+    }// -- end pub async fn process_diff
+
+    pub async fn process_edit(&self, edit: &Edit) {
+        // -- Generate and process diffs
+        let diffs = edit.get_whiteboard_diffs();
+
+        for diff in diffs.iter() {
+            self.process_diff(diff).await;
+        }// -- end for diff
+
+        // -- Save edit to database, if applicable
+        if let Some(edit_view) = EditMongoDBView::from_edit(edit) {
+            let _ = self.edit_coll.insert_one(edit_view).await;
+        }
+    }// -- end pub async fn process_edit
+}// -- end impl MongoDBInterface
+
+impl UserStore for MongoDBInterface {
+    async fn get_user_by_id(
+        &self,
+        user_id: &UserIdType,
+    ) -> Result<Option<User>, Box<dyn std::error::Error + Send + Sync>> {
+        match self
+            .user_coll
+            .find_one(doc! { "_id": *user_id })
+            .await?
+        {
+            Some(user_view) => Ok(Some(user_view.to_user())),
+            None => Ok(None),
+        } // -- end match self.user_collection.find_one(doc! { "_id": user_id.clone() }).await
+    }
+}// -- end impl UserStore for MongoDBInterface
+
+impl WhiteboardMetadataStore for MongoDBInterface {
+    async fn get_whiteboard_metadata_by_id(
+        &self,
+        whiteboard_id: &WhiteboardIdType,
+    ) -> Result<Option<WhiteboardMetadata>, Box<dyn std::error::Error + Send + Sync>> {
+        match self
+            .whiteboard_metadata_coll
+            .find_one(doc! { "_id": *whiteboard_id })
+            .await?
+        {
+            Some(metadata_view) => Ok(Some(metadata_view.to_whiteboard_metadata())),
+            None => Ok(None),
+        } // -- end match self.whiteboard_metadata_collection.find_one(doc! { "_id": whiteboard_metadata_id.clone() }).await
+    }
+}// -- end impl WhiteboardMetadataStore for MongoDBInterface

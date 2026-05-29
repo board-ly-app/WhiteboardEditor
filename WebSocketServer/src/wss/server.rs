@@ -30,9 +30,9 @@ pub struct SharedWhiteboardEntry {
     pub whiteboard_ref: Arc<Mutex<Whiteboard>>,
     pub broadcaster: broadcast::Sender<ServerSocketMessage>,
     pub active_clients: Arc<Mutex<HashMap<ClientIdType, UserSummary>>>,
-    pub diffs: Arc<Mutex<Vec<WhiteboardDiff>>>,
     // -- tracking which client is selecting, thereby currently owns, a given canvas object
     pub selectors_to_canvas_objects: Arc<Mutex<OneToOne<ClientIdType, CanvasObjectIdType>>>,
+    pub edits: Arc<Mutex<Vec<Edit>>>,
 } // -- end pub struct SharedWhiteboardEntry
 
 // === Program State ==============================================================================
@@ -61,9 +61,9 @@ pub struct ClientStateBase {
     pub jwt_secret: String,
     // The permission (view/edit/own) the user has on the current whiteboard
     pub active_clients: Arc<Mutex<HashMap<ClientIdType, UserSummary>>>,
-    pub diffs: Arc<Mutex<Vec<WhiteboardDiff>>>,
     // -- tracking which client is selecting, thereby currently owns, a given canvas object
     pub selectors_to_canvas_objects: Arc<Mutex<OneToOne<ClientIdType, CanvasObjectIdType>>>,
+    pub edits: Arc<Mutex<Vec<Edit>>>,
 } // -- end pub struct ClientStateBase
 
 // === pub struct ClientStateAuthenticated =========================================================
@@ -118,8 +118,6 @@ struct ClientMessageInspector {
 pub struct ClientMessageResponse {
     // -- Messages to send back to the client(s)
     pub messages: Vec<ServerSocketMessage>,
-    // -- Edits to commit to the database
-    pub edits: Vec<Edit>,
 }// -- end pub struct ClientMessageResponse
 
 pub struct ClientMessageUnauthenticatedResponse <'a> {
@@ -159,7 +157,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                 },
                             }
                         }],
-                        edits: vec![],
                     };
                 }
                 // Proceed to next step.
@@ -178,7 +175,6 @@ pub async fn handle_authenticated_client_message<'a>(
                             error: ClientError::AlreadyAuthorized,
                         },
                     }],
-                    edits: vec![],
                 },
                 EditingCanvas { canvas_id } => {
                     // TODO: validate that canvas id is valid and user has permission to edit
@@ -190,7 +186,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                 canvas_id,
                             },
                         }],
-                        edits: vec![],
                     }
                 }
                 SelectedCanvasObject {
@@ -210,7 +205,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                         },
                                     }
                                 }],
-                                edits: vec![],
                             }
                         },
                         _ => {
@@ -226,7 +220,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                         canvas_object_id: canvas_object_id.clone(),
                                     },
                                 }],
-                                edits: vec![],
                             }
                         }
                     }// -- end match
@@ -247,7 +240,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                         },
                                     }
                                 }],
-                                edits: vec![],
                             }
                         },
                         _ => {
@@ -262,7 +254,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                         canvas_object_id: canvas_object_id.clone(),
                                     },
                                 }],
-                                edits: vec![],
                             }
                         },
                     }// -- end match
@@ -279,7 +270,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                 client_id: client_state.base.client_id.clone(), x, y,
                             },
                         }],
-                        edits: vec![],
                     }
                 }
                 CreateCanvasObjects {
@@ -299,27 +289,39 @@ pub async fn handle_authenticated_client_message<'a>(
                                     },
                                 }
                             }],
-                            edits: vec![],
                         },
                         Some(canvas) => {
                             // -- Generate new canvas_objects
-                            let mut new_canvas_objects = HashMap::<CanvasObjectIdType, CanvasObjectModel>::new();
+                            let new_canvas_objects : HashMap::<CanvasObjectIdType, CanvasObject>
+                                = canvas_objects.iter()
+                                .map(|obj_model| {
+                                    let obj_id = ObjectId::new();
 
-                            for canvas_object in canvas_objects.iter() {
-                                let obj_id = ObjectId::new();
+                                    (obj_id.clone(), CanvasObject {
+                                        id: obj_id.clone(),
+                                        canvas_id: canvas_id.clone(),
+                                        canvas_object: obj_model.clone(),
+                                    })
+                                })
+                                .collect();
+                            let obj_models_by_id : HashMap::<CanvasObjectIdType, CanvasObjectModel>
+                                = new_canvas_objects.iter()
+                                .map(|(obj_id, obj)| (obj_id.clone(), obj.canvas_object.clone()))
+                                .collect();
 
-                                new_canvas_objects.insert(obj_id, canvas_object.clone());
-                                canvas.canvas_objects_mut().insert(obj_id, canvas_object.clone());
-                            } // end for (idx, &mut canvas_object) in new_canvas_objects.iter_mut().enumerate()
+                            for (obj_id, canvas_object) in obj_models_by_id.iter() {
+                                canvas.canvas_objects_mut().insert(
+                                    obj_id.clone(), canvas_object.clone()
+                                );
+                            }// -- end for (obj_id, canvas_object) in obj_models_by_id.iter()
 
-                            // valid input: add to diffs
+                            // -- Write edits to buffer
                             {
-                                let mut diffs = client_state.base.diffs.lock().await;
+                                let mut edits = client_state.base.edits.lock().await;
 
-                                diffs.push(WhiteboardDiff::CreateCanvasObjects {
-                                    canvas_id,
-                                    canvas_objects: new_canvas_objects.clone(),
-                                });
+                                edits.push(client_state.generate_edit(EditKind::CreateCanvasObjects {
+                                    canvas_objects: new_canvas_objects,
+                                }));
                             }
 
                             ClientMessageResponse {
@@ -327,13 +329,9 @@ pub async fn handle_authenticated_client_message<'a>(
                                     msg: ServerSocketBroadcastMessage::CreateCanvasObjects {
                                         client_id: client_state.base.client_id.clone(),
                                         canvas_id: canvas_id.clone(),
-                                        canvas_objects: new_canvas_objects
-                                            .iter()
-                                            .map(|(obj_id, canvas_object)| (obj_id.clone(), canvas_object.clone()))
-                                            .collect(),
+                                        canvas_objects: obj_models_by_id,
                                     },
                                 }],
-                                edits: vec![],
                             }
                         }
                     }
@@ -356,13 +354,13 @@ pub async fn handle_authenticated_client_message<'a>(
                                     },
                                 }
                             }],
-                            edits: vec![],
                         },
                         Some(canvas) => {
                             let selectors_to_canvas_objects = client_state.base
                                 .selectors_to_canvas_objects.lock().await;
-                            let mut new_canvas_objects = HashMap::<CanvasObjectIdType, CanvasObjectModel>::new();
+                            let mut upated_canvas_objects = HashMap::<CanvasObjectIdType, CanvasObjectModel>::new();
                             let mut responses = Vec::<ServerSocketMessage>::new();
+                            let mut edit_updates = HashMap::<CanvasObjectIdType, CanvasObjectUpdate>::new();
 
                             for (obj_id, canvas_object) in canvas_objects.iter() {
                                 match selectors_to_canvas_objects.get_key_by_value(&obj_id) {
@@ -379,39 +377,43 @@ pub async fn handle_authenticated_client_message<'a>(
                                         });
                                     },
                                     _ => {
-                                        // -- create/modify canvas_objects
-                                        if canvas.canvas_objects().contains_key(&obj_id) {
-                                            canvas.canvas_objects_mut().insert(obj_id.clone(), canvas_object.clone());
-                                            new_canvas_objects.insert(obj_id.clone(), canvas_object.clone());
+                                        // -- modify canvas_objects
+                                        if let Some(old_obj) = canvas.canvas_objects_mut().get_mut(&obj_id) {
+                                            edit_updates.insert(obj_id.clone(), CanvasObjectUpdate {
+                                                canvas_id: canvas_id.clone(),
+                                                old_fields: old_obj.clone(),
+                                                new_fields: canvas_object.clone(),
+                                            });
+                                            *old_obj = canvas_object.clone();
+                                            upated_canvas_objects.insert(obj_id.clone(), canvas_object.clone());
                                         }
                                     },
                                 };// -- end match
                             } // end for (&obj_id, &canvas_object) in canvas_objects.iter_mut()
-                            println!("New CanvasObjects: {:?}", new_canvas_objects);
-                            // valid input: add to diffs
-                            {
-                                let mut diffs = client_state.base.diffs.lock().await;
-
-                                diffs.push(WhiteboardDiff::UpdateCanvasObjects {
-                                    canvas_id,
-                                    canvas_objects: new_canvas_objects.clone(),
-                                });
-                            }
+                            println!("Updated CanvasObjects: {:?}", upated_canvas_objects);
 
                             responses.push(ServerSocketMessage::Broadcast {
                                 msg: ServerSocketBroadcastMessage::UpdateCanvasObjects {
                                     client_id: client_state.base.client_id.clone(),
                                     canvas_id: canvas_id.clone(),
-                                    canvas_objects: new_canvas_objects
+                                    canvas_objects: upated_canvas_objects
                                         .iter()
                                         .map(|(obj_id, canvas_object)| (obj_id.clone(), canvas_object.clone()))
                                         .collect(),
                                 },
                             });
 
+                            // -- write edits to buffer
+                            {
+                                let mut edits = client_state.base.edits.lock().await;
+
+                                edits.push(client_state.generate_edit(EditKind::UpdateCanvasObjects {
+                                    updates: edit_updates,
+                                }));
+                            }
+
                             ClientMessageResponse {
                                 messages: responses,
-                                edits: vec![],
                             }
                         }
                     }
@@ -421,6 +423,7 @@ pub async fn handle_authenticated_client_message<'a>(
                     let mut selectors_to_canvas_objects = client_state.base.selectors_to_canvas_objects.lock().await;
                     let mut responses = Vec::<ServerSocketMessage>::new();
                     let mut deleted_object_ids = Vec::<CanvasObjectIdType>::new();
+                    let mut edit_updates = HashMap::<CanvasObjectIdType, CanvasObject>::new();
 
                     // Delete objects locally
                     for canvas in whiteboard.canvases_mut().values_mut() {
@@ -439,23 +442,21 @@ pub async fn handle_authenticated_client_message<'a>(
                                 },
                                 _ => {
                                     if canvas.canvas_objects().contains_key(&object_id) {
+                                        let old_obj = canvas.canvas_objects_mut().remove(&object_id).unwrap();
+
                                         selectors_to_canvas_objects.remove_value(&object_id);
                                         canvas.canvas_objects_mut().remove(&object_id);
                                         deleted_object_ids.push(object_id.clone());
+                                        edit_updates.insert(object_id.clone(), CanvasObject {
+                                            id: object_id.clone(),
+                                            canvas_id: canvas.id().clone(),
+                                            canvas_object: old_obj.clone(),
+                                        });
                                     }
                                 },
                             };// -- end match
                         } // -- end for object_id
                     } // -- end for let mut canvas
-
-                    // Store diffs to trigger deletion in database
-                    {
-                        let mut diffs = client_state.base.diffs.lock().await;
-
-                        diffs.push(WhiteboardDiff::DeleteCanvasObjects {
-                            canvas_object_ids: deleted_object_ids.clone(),
-                        });
-                    }
 
                     // Forward message to clients
                     responses.push(ServerSocketMessage::Broadcast {
@@ -468,9 +469,17 @@ pub async fn handle_authenticated_client_message<'a>(
                         },
                     });
 
+                    // -- write edits to buffer
+                    {
+                        let mut edits = client_state.base.edits.lock().await;
+
+                        edits.push(client_state.generate_edit(EditKind::DeleteCanvasObjects {
+                            canvas_objects: edit_updates,
+                        }));
+                    }
+
                     ClientMessageResponse {
                         messages: responses,
-                        edits: vec![],
                     }
                 }
                 CreateCanvas {
@@ -507,13 +516,13 @@ pub async fn handle_authenticated_client_message<'a>(
                         .canvases_mut()
                         .insert(new_canvas_id, canvas.clone());
 
-                    // valid input: add to diffs
+                    // -- write edits to buffer
                     {
-                        let mut diffs = client_state.base.diffs.lock().await;
+                        let mut edits = client_state.base.edits.lock().await;
 
-                        diffs.push(WhiteboardDiff::CreateCanvas {
+                        edits.push(client_state.generate_edit(EditKind::CreateCanvas {
                             canvas: canvas.clone(),
-                        });
+                        }));
                     }
 
                     ClientMessageResponse {
@@ -521,36 +530,41 @@ pub async fn handle_authenticated_client_message<'a>(
                             msg: ServerSocketBroadcastMessage::CreateCanvas {
                                 client_id: client_state.base.client_id.clone(),
                                 canvas: canvas.to_client_view(),
+                                // -- write edits to buffer
+                                // 
                             },
                         }],
-                        edits: vec![],
                     }
                 }
                 DeleteCanvases { canvas_ids } => {
                     let mut whiteboard = client_state.base.whiteboard_ref.lock().await;
+                    let mut edit_update = HashMap::<CanvasIdType, Canvas>::new();
+                    let mut deleted_canvas_ids = Vec::<CanvasIdType>::new();
 
                     // delete canvases identified by the given ids
                     for id in &canvas_ids {
-                        whiteboard.canvases_mut().remove(id);
+                        if let Some(old_canvas) = whiteboard.canvases_mut().remove(id) {
+                            edit_update.insert(id.clone(), old_canvas);
+                            deleted_canvas_ids.push(id.clone());
+                        }
                     } // end for id in canvas_ids
 
-                    // valid message: add to diffs
+                    // -- write edits to buffer
                     {
-                        let mut diffs = client_state.base.diffs.lock().await;
+                        let mut edits = client_state.base.edits.lock().await;
 
-                        diffs.push(WhiteboardDiff::DeleteCanvases {
-                            canvas_ids: canvas_ids.clone(),
-                        });
+                        edits.push(client_state.generate_edit(EditKind::DeleteCanvases {
+                            canvases: edit_update,
+                        }));
                     }
 
                     ClientMessageResponse {
                         messages: vec![ServerSocketMessage::Broadcast {
                             msg: ServerSocketBroadcastMessage::DeleteCanvases {
                                 client_id: client_state.base.client_id.clone(),
-                                canvas_ids: canvas_ids.iter().map(|id| id.clone()).collect(),
+                                canvas_ids: deleted_canvas_ids,
                             },
                         }],
-                        edits: vec![],
                     }
                 }
                 UpdateCanvasAllowedUsers {
@@ -575,7 +589,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                             },
                                         },
                                     }],
-                                    edits: vec![],
                                 };
                             }
                             Some(perm) => match perm {
@@ -592,7 +605,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                                 },
                                             },
                                         }],
-                                        edits: vec![],
                                     };
                                 }
                             },
@@ -611,24 +623,28 @@ pub async fn handle_authenticated_client_message<'a>(
                                         },
                                     },
                                 }],
-                                edits: vec![],
                             }
                         }
                         Some(canvas) => {
+                            let old_allowed_users = canvas.allowed_users().map(
+                                |users_set| users_set.clone()
+                            );
+
                             // update allowed users
                             canvas.set_allowed_users(Some(&allowed_users));
 
-                            // record a diff so changes get written back to database
+                            // broadcast to all users
+                            // -- write edits to buffer
                             {
-                                let mut diffs = client_state.base.diffs.lock().await;
+                                let mut edits = client_state.base.edits.lock().await;
 
-                                diffs.push(WhiteboardDiff::UpdateCanvasAllowedUsers {
-                                    canvas_id,
-                                    allowed_users: allowed_users.iter().copied().collect(),
-                                });
+                                edits.push(client_state.generate_edit(EditKind::UpdateCanvasAllowedUsers {
+                                    canvas_id: canvas.id().clone(),
+                                    old_allowed_users,
+                                    new_allowed_users: Some(allowed_users.iter().copied().collect()),
+                                }));
                             }
 
-                            // broadcast to all users
                             ClientMessageResponse {
                                 messages: vec![ServerSocketMessage::Broadcast {
                                     msg: ServerSocketBroadcastMessage::UpdateCanvasAllowedUsers {
@@ -640,7 +656,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                             .collect(),
                                     },
                                 }],
-                                edits: vec![],
                             }
                         }
                     }
@@ -650,16 +665,13 @@ pub async fn handle_authenticated_client_message<'a>(
                     let mut whiteboard = client_state.base.whiteboard_ref.lock().await;
                     let parent_ref: CanvasParentRef;
                     let mut new_parent_canvas_objects: Vec<(CanvasObjectIdType, CanvasObjectModel)>;
-                    // diffs store changes to the database to be made after this function has
-                    // returned
-                    let mut new_diffs = Vec::<WhiteboardDiff>::new();
 
                     // What to do:
                     //  - Access child canvas and parent canvas sequentially, not at the same time
                     //  - Create a new hashmap that contains all the canvas_objects of the parent canvas,
                     //  then extend it with the canvas_objects from the child canvas, then make it the new
                     //  parent canvas canvas_objects
-                    if let Some(child_canvas) = whiteboard.canvases().get(&canvas_id) {
+                    let old_child_canvas = if let Some(child_canvas) = whiteboard.canvases().get(&canvas_id) {
                         if let Some(parent_canvas) = child_canvas.parent_canvas() {
                             // Store copy of parent canvas ref, to allow resetting parent canvas refs
                             // later
@@ -672,21 +684,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                 .map(|(k, v)| (*k, v.clone()))
                                 .collect();
 
-                            // store diff to indicate change in ownership of canvases
-                            new_diffs.push(WhiteboardDiff::TransferCanvasObjects {
-                                old_canvas_id: canvas_id,
-                                new_canvas_id: *parent_canvas.canvas_id(),
-                                translate_x: parent_canvas.origin_x(),
-                                translate_y: parent_canvas.origin_y(),
-                            });
-
-                            // store diff to indicate change of ownership of canvas objects
-                            new_diffs.push(WhiteboardDiff::TransferChildCanvases {
-                                old_parent_id: canvas_id,
-                                new_parent_id: *parent_canvas.canvas_id(),
-                                translate_x: parent_canvas.origin_x(),
-                                translate_y: parent_canvas.origin_y(),
-                            });
                         } else {
                             return ClientMessageResponse {
                                 messages: vec![ServerSocketMessage::Individual {
@@ -697,9 +694,10 @@ pub async fn handle_authenticated_client_message<'a>(
                                         },
                                     },
                                 }],
-                                edits: vec![],
                             }
                         }
+
+                        child_canvas.clone()
                     } else {
                         return ClientMessageResponse {
                             messages: vec![ServerSocketMessage::Individual {
@@ -710,9 +708,8 @@ pub async fn handle_authenticated_client_message<'a>(
                                     },
                                 },
                             }],
-                            edits: vec![],
                         };
-                    }
+                    };
 
                     if let Some(parent_canvas) =
                         whiteboard.canvases_mut().get_mut(parent_ref.canvas_id())
@@ -773,7 +770,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                     },
                                 },
                             }],
-                            edits: vec![],
                         };
                     }
 
@@ -791,16 +787,13 @@ pub async fn handle_authenticated_client_message<'a>(
                     // Remove child canvas from canvases map
                     whiteboard.canvases_mut().remove(&canvas_id);
 
-                    // push diff to indicate that child canvas should be deleted in database
-                    new_diffs.push(WhiteboardDiff::DeleteCanvases {
-                        canvas_ids: vec![canvas_id],
-                    });
-
-                    // Leave diff to indicate that canvas should be merged in database
+                    // -- write edits to buffer
                     {
-                        let mut diffs = client_state.base.diffs.lock().await;
+                        let mut edits = client_state.base.edits.lock().await;
 
-                        diffs.extend_from_slice(&new_diffs[..]);
+                        edits.push(client_state.generate_edit(EditKind::MergeCanvas {
+                            child_canvas: old_child_canvas,
+                        }));
                     }
 
                     // Tell clients to merge canvases on their end
@@ -811,7 +804,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                 canvas_id: canvas_id.clone(),
                             },
                         }],
-                        edits: vec![],
                     }
                 }
                 UndoHistory => todo!()
@@ -830,7 +822,6 @@ pub async fn handle_authenticated_client_message<'a>(
                         },
                     },
                 }],
-                edits: vec![],
             }
         }
     }
@@ -874,7 +865,6 @@ pub async fn handle_unauthenticated_client_message<
                                             error: ClientError::InvalidAuth,
                                         },
                                     }],
-                                    edits: vec![],
                                 },
                             };
                         }
@@ -896,7 +886,6 @@ pub async fn handle_unauthenticated_client_message<
                                             },
                                         },
                                     }],
-                                    edits: vec![],
                                 },
                             };
                         }
@@ -912,7 +901,6 @@ pub async fn handle_unauthenticated_client_message<
                                             },
                                         }
                                     }],
-                                    edits: vec![],
                                 },
                             };
                         }
@@ -989,7 +977,6 @@ pub async fn handle_unauthenticated_client_message<
                                                 .collect()
                                         },
                                     }],
-                                    edits: vec![],
                                 },
                             }
                         }
@@ -1004,7 +991,6 @@ pub async fn handle_unauthenticated_client_message<
                                         error: ClientError::Unauthorized,
                                     }
                                 }],
-                                edits: vec![],
                             },
                         };
                     }
@@ -1019,7 +1005,6 @@ pub async fn handle_unauthenticated_client_message<
                                 error: ClientError::NotAuthenticated,
                             },
                         }],
-                        edits: vec![],
                     },
                 }
             }
@@ -1039,7 +1024,6 @@ pub async fn handle_unauthenticated_client_message<
                             },
                         }
                     }],
-                    edits: vec![],
                 },
             }
         }
@@ -1089,8 +1073,8 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
-            diffs: Arc::new(Mutex::new(Vec::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            edits: Arc::new(Mutex::new(Vec::new())),
         };
 
         let client_state = ClientStateAuthenticated {
@@ -1248,8 +1232,8 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
-            diffs: Arc::new(Mutex::new(Vec::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            edits: Arc::new(Mutex::new(Vec::new())),
         };
 
         let client_state = ClientStateAuthenticated {
@@ -1486,8 +1470,8 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
-            diffs: Arc::new(Mutex::new(Vec::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            edits: Arc::new(Mutex::new(Vec::new())),
         };
 
         let client_state = ClientStateAuthenticated {
@@ -1748,8 +1732,8 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
-            diffs: Arc::new(Mutex::new(Vec::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            edits: Arc::new(Mutex::new(Vec::new())),
         };
 
         // -- create authentication message (json)
@@ -1986,8 +1970,8 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
-            diffs: Arc::new(Mutex::new(Vec::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            edits: Arc::new(Mutex::new(Vec::new())),
         };
 
         let client_state = ClientStateAuthenticated {

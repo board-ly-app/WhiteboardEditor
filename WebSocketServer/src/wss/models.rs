@@ -4,6 +4,8 @@
 //
 // =================================================================================================
 
+use super::db::WhiteboardDiff;
+
 use chrono::{self, Utc};
 use mongodb::bson::{self, oid::ObjectId};
 use serde::{self, Deserialize, Serialize};
@@ -63,9 +65,9 @@ pub enum CanvasObjectModel {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CanvasObject {
-    id: CanvasObjectIdType,
-    canvas_id: CanvasIdType,
-    canvas_object: CanvasObjectModel,
+    pub id: CanvasObjectIdType,
+    pub canvas_id: CanvasIdType,
+    pub canvas_object: CanvasObjectModel,
 }
 
 #[serde_as]
@@ -864,8 +866,9 @@ pub type EditIdType = ObjectId;
 
 #[derive(Clone,Debug)]
 pub struct CanvasObjectUpdate {
-    old_fields: CanvasObjectModel,
-    new_fields: CanvasObjectModel,
+    pub canvas_id: CanvasIdType,
+    pub old_fields: CanvasObjectModel,
+    pub new_fields: CanvasObjectModel,
 }
 
 #[derive(Debug,Clone)]
@@ -882,11 +885,16 @@ pub enum EditKind {
     CreateCanvas {
         canvas: Canvas,
     },
-    DeleteCanvas {
-        canvas: Canvas,
+    DeleteCanvases {
+        canvases: HashMap<CanvasIdType, Canvas>,
     },
     MergeCanvas {
         child_canvas: Canvas,
+    },
+    UpdateCanvasAllowedUsers {
+        canvas_id: CanvasIdType,
+        old_allowed_users: Option<HashSet<UserIdType>>,
+        new_allowed_users: Option<HashSet<UserIdType>>,
     },
 }// -- end pub enum EditKind
 
@@ -918,6 +926,84 @@ impl Edit {
             edit,
         }
     }// -- end pub fn new
+
+    pub fn get_whiteboard_diffs(&self) -> Vec<WhiteboardDiff> {
+        use EditKind::*;
+
+        match &self.edit {
+            CreateCanvasObjects {
+                canvas_objects,
+            } => vec![WhiteboardDiff::CreateCanvasObjects {
+                canvas_objects: canvas_objects.clone(),
+            }],
+            UpdateCanvasObjects {
+                updates,
+            } => vec![
+                WhiteboardDiff::UpdateCanvasObjects {
+                    canvas_objects: updates.iter()
+                        .map(|(obj_id, update)| {
+                            (obj_id.clone(), CanvasObject {
+                                id: obj_id.clone(),
+                                canvas_id: update.canvas_id.clone(),
+                                canvas_object: update.new_fields.clone(),
+                            })
+                        })
+                        .collect()
+                }
+            ],
+            DeleteCanvasObjects {
+                canvas_objects,
+            } => vec![WhiteboardDiff::DeleteCanvasObjects {
+                canvas_object_ids: canvas_objects.keys().copied().collect()
+            }],
+            CreateCanvas {
+                canvas,
+            } => vec![WhiteboardDiff::CreateCanvas {
+                canvas: canvas.clone(),
+            }],
+            DeleteCanvases {
+                canvases,
+            } => vec![WhiteboardDiff::DeleteCanvases {
+                canvas_ids: canvases.keys().copied().collect(),
+            }],
+            MergeCanvas {
+                child_canvas,
+            } => {
+                let parent_canvas = child_canvas.parent_canvas().unwrap();
+
+                Vec::from([
+                    // -- transfer objects
+                    WhiteboardDiff::TransferCanvasObjects {
+                        old_canvas_id: child_canvas.id().clone(),
+                        new_canvas_id: parent_canvas.canvas_id().clone(),
+                        translate_x: parent_canvas.origin_x(),
+                        translate_y: parent_canvas.origin_y(),
+                    },
+                    // -- transfer child canvases
+                    WhiteboardDiff::TransferChildCanvases {
+                        old_parent_id: child_canvas.id().clone(),
+                        new_parent_id: parent_canvas.canvas_id().clone(),
+                        translate_x: parent_canvas.origin_x(),
+                        translate_y: parent_canvas.origin_y(),
+                    },
+                    // -- delete old canvas
+                    WhiteboardDiff::DeleteCanvases {
+                        canvas_ids: vec![child_canvas.id().clone()],
+                    },
+                ])
+            },
+            UpdateCanvasAllowedUsers {
+                canvas_id,
+                new_allowed_users,
+                ..
+            } => vec![WhiteboardDiff::UpdateCanvasAllowedUsers {
+                canvas_id: canvas_id.clone(),
+                allowed_users: new_allowed_users.clone()
+                    .map(|users_set| users_set.iter().copied().collect())
+                    .unwrap_or(vec![]),
+            }],
+        }// -- end match self.edit
+    }// -- end pub fn get_whiteboard_diffs
 }// -- end impl Edit
 
 // === EditClientView ==============================================================================
@@ -957,6 +1043,8 @@ impl EditClientView {
 #[derive(Clone,Debug,Serialize,Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CanvasObjectUpdateMongoDBView {
+    #[serde_as(as = "DisplayFromStr")]
+    canvas_id: CanvasIdType,
     old_fields: CanvasObjectModel,
     new_fields: CanvasObjectModel,
 }
@@ -981,8 +1069,8 @@ pub enum EditKindMongoDBView {
     CreateCanvas {
         canvas: CanvasMongoDBView,
     },
-    DeleteCanvas {
-        canvas: CanvasMongoDBView,
+    DeleteCanvases {
+        canvases: HashMap<CanvasIdType, CanvasMongoDBView>,
     },
     MergeCanvas {
         child_canvas: CanvasMongoDBView,
@@ -1004,6 +1092,7 @@ impl EditKindMongoDBView {
             } => EditKind::UpdateCanvasObjects {
                 updates: updates.iter().map(
                     |(id, update)| (id.clone(), CanvasObjectUpdate {
+                        canvas_id: update.canvas_id.clone(),
                         old_fields: update.old_fields.clone(),
                         new_fields: update.new_fields.clone(),
                 })).collect()
@@ -1020,10 +1109,12 @@ impl EditKindMongoDBView {
             } => EditKind::CreateCanvas {
                 canvas: canvas.to_canvas()
             },
-            EditKindMongoDBView::DeleteCanvas {
-                canvas,
-            } => EditKind::DeleteCanvas {
-                canvas: canvas.to_canvas(),
+            EditKindMongoDBView::DeleteCanvases {
+                canvases,
+            } => EditKind::DeleteCanvases {
+                canvases: canvases.iter().map(
+                    |(id, canvas)| (id.clone(), canvas.to_canvas())
+                ).collect()
             },
             EditKindMongoDBView::MergeCanvas {
                 child_canvas,
@@ -1033,46 +1124,50 @@ impl EditKindMongoDBView {
         }// -- end match self
     }// -- end pub fn to_edit_kind
 
-    pub fn from_edit_kind(edit_kind: &EditKind) -> Self {
+    pub fn from_edit_kind(edit_kind: &EditKind) -> Option<Self> {
         match edit_kind {
             EditKind::CreateCanvasObjects {
                 canvas_objects,
-            } => EditKindMongoDBView::CreateCanvasObjects {
+            } => Some(EditKindMongoDBView::CreateCanvasObjects {
                 canvas_objects: canvas_objects.iter()
                     .map(|(id, obj)| (id.clone(), CanvasObjectMongoDBView::from_canvas_object(obj)))
                     .collect()
-            },
+            }),
             EditKind::UpdateCanvasObjects {
                 updates,
-            } => EditKindMongoDBView::UpdateCanvasObjects {
+            } => Some(EditKindMongoDBView::UpdateCanvasObjects {
                 updates: updates.iter().map(
                     |(id, update)| (id.clone(), CanvasObjectUpdateMongoDBView {
+                        canvas_id: update.canvas_id.clone(),
                         old_fields: update.old_fields.clone(),
                         new_fields: update.new_fields.clone(),
                 })).collect()
-            },
+            }),
             EditKind::DeleteCanvasObjects {
                 canvas_objects,
-            } => EditKindMongoDBView::DeleteCanvasObjects {
+            } => Some(EditKindMongoDBView::DeleteCanvasObjects {
                 canvas_objects: canvas_objects.iter()
                     .map(|(id, obj)| (id.clone(), CanvasObjectMongoDBView::from_canvas_object(obj)))
                     .collect()
-            },
+            }),
             EditKind::CreateCanvas {
                 canvas,
-            } => EditKindMongoDBView::CreateCanvas {
+            } => Some(EditKindMongoDBView::CreateCanvas {
                 canvas: CanvasMongoDBView::from_canvas(canvas),
-            },
-            EditKind::DeleteCanvas {
-                canvas,
-            } => EditKindMongoDBView::DeleteCanvas {
-                canvas: CanvasMongoDBView::from_canvas(canvas),
-            },
+            }),
+            EditKind::DeleteCanvases {
+                canvases,
+            } => Some(EditKindMongoDBView::DeleteCanvases {
+                canvases: canvases.iter().map(
+                    |(id, canvas)| (id.clone(), CanvasMongoDBView::from_canvas(canvas))
+                ).collect(),
+            }),
             EditKind::MergeCanvas {
                 child_canvas,
-            } => EditKindMongoDBView::MergeCanvas {
+            } => Some(EditKindMongoDBView::MergeCanvas {
                 child_canvas: CanvasMongoDBView::from_canvas(child_canvas),
-            },
+            }),
+            EditKind::UpdateCanvasAllowedUsers { .. } => None,
         }// -- end match self
     }// -- end pub fn from_edit_kind
 }// -- end impl EditKindMongoDBView
@@ -1105,15 +1200,18 @@ impl EditMongoDBView {
         }
     }// -- end pub fn to_edit
 
-    pub fn from_edit(edit: &Edit) -> Self {
+    pub fn from_edit(edit: &Edit) -> Option<Self> {
         use super::utils::dt_chrono_utc_to_bson;
 
-        Self {
-            id: edit.id.clone(),
-            author: edit.author.clone(),
-            whiteboard: edit.whiteboard.clone(),
-            committed_at: dt_chrono_utc_to_bson(&edit.committed_at),
-            edit: EditKindMongoDBView::from_edit_kind(&edit.edit),
-        }
+        EditKindMongoDBView::from_edit_kind(&edit.edit).map(
+            |edit_kind| 
+                Self {
+                    id: edit.id.clone(),
+                    author: edit.author.clone(),
+                    whiteboard: edit.whiteboard.clone(),
+                    committed_at: dt_chrono_utc_to_bson(&edit.committed_at),
+                    edit: edit_kind,
+                }
+        )
     }// -- end pub fn from_edit
 }// -- end impl EditMongoDBView
