@@ -292,26 +292,19 @@ pub async fn handle_authenticated_client_message<'a>(
                         },
                         Some(canvas) => {
                             // -- Generate new canvas_objects
-                            let new_canvas_objects : HashMap::<CanvasObjectIdType, CanvasObject>
+                            let new_canvas_objects : HashMap::<CanvasObjectIdType, CanvasObjectModel>
                                 = canvas_objects.iter()
                                 .map(|obj_model| {
                                     let obj_id = ObjectId::new();
 
-                                    (obj_id.clone(), CanvasObject {
-                                        id: obj_id.clone(),
-                                        canvas_id: canvas_id.clone(),
-                                        canvas_object: obj_model.clone(),
-                                    })
+                                    (obj_id.clone(), obj_model.clone())
                                 })
-                                .collect();
-                            let obj_models_by_id : HashMap::<CanvasObjectIdType, CanvasObjectModel>
-                                = new_canvas_objects.iter()
-                                .map(|(obj_id, obj)| (obj_id.clone(), obj.canvas_object.clone()))
                                 .collect();
 
                             // -- Generate and commit edit
                             let edit = client_state.generate_edit(EditKind::CreateCanvasObjects {
-                                canvas_objects: new_canvas_objects,
+                                canvas_id: canvas.id().clone(),
+                                canvas_objects: new_canvas_objects.clone(),
                             });
 
                             whiteboard.force_commit_edit(&edit);
@@ -328,7 +321,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                     msg: ServerSocketBroadcastMessage::CreateCanvasObjects {
                                         client_id: client_state.base.client_id.clone(),
                                         canvas_id: canvas_id.clone(),
-                                        canvas_objects: obj_models_by_id,
+                                        canvas_objects: new_canvas_objects,
                                     },
                                 }],
                             }
@@ -379,7 +372,6 @@ pub async fn handle_authenticated_client_message<'a>(
                                         // -- modify canvas_objects
                                         if let Some(old_obj) = canvas.canvas_objects_mut().get_mut(&obj_id) {
                                             edit_updates.insert(obj_id.clone(), CanvasObjectUpdate {
-                                                canvas_id: canvas_id.clone(),
                                                 old_fields: old_obj.clone(),
                                                 new_fields: canvas_object.clone(),
                                             });
@@ -403,6 +395,7 @@ pub async fn handle_authenticated_client_message<'a>(
 
                             // -- Generate and commit edit
                             let edit = client_state.generate_edit(EditKind::UpdateCanvasObjects {
+                                canvas_id: canvas_id.clone(),
                                 updates: edit_updates,
                             });
 
@@ -421,15 +414,15 @@ pub async fn handle_authenticated_client_message<'a>(
                         }
                     }
                 }
-                DeleteCanvasObjects { canvas_object_ids } => {
+                DeleteCanvasObjects { canvas_id, canvas_object_ids } => {
                     let mut whiteboard = client_state.base.whiteboard_ref.lock().await;
                     let mut selectors_to_canvas_objects = client_state.base.selectors_to_canvas_objects.lock().await;
                     let mut responses = Vec::<ServerSocketMessage>::new();
                     let mut deleted_object_ids = Vec::<CanvasObjectIdType>::new();
-                    let mut edit_updates = HashMap::<CanvasObjectIdType, CanvasObject>::new();
+                    let mut edit_updates = HashMap::<CanvasObjectIdType, CanvasObjectModel>::new();
 
                     // Mark objects for deletion locally
-                    for canvas in whiteboard.canvases_mut().values_mut() {
+                    if let Some(canvas) = whiteboard.canvases_mut().get_mut(&canvas_id) {
                         // TODO: refactor to store all canvas objects in one large HashMap
                         for object_id in canvas_object_ids.iter() {
                             match selectors_to_canvas_objects.get_key_by_value(&object_id) {
@@ -447,16 +440,12 @@ pub async fn handle_authenticated_client_message<'a>(
                                     if let Some(old_obj) = canvas.canvas_objects().get(&object_id) {
                                         selectors_to_canvas_objects.remove_value(&object_id);
                                         deleted_object_ids.push(object_id.clone());
-                                        edit_updates.insert(object_id.clone(), CanvasObject {
-                                            id: object_id.clone(),
-                                            canvas_id: canvas.id().clone(),
-                                            canvas_object: old_obj.clone(),
-                                        });
+                                        edit_updates.insert(object_id.clone(), old_obj.clone());
                                     }
                                 },
                             };// -- end match
                         } // -- end for object_id
-                    } // -- end for let mut canvas
+                    }
 
                     // Forward message to clients
                     responses.push(ServerSocketMessage::Broadcast {
@@ -471,6 +460,7 @@ pub async fn handle_authenticated_client_message<'a>(
 
                     // -- Generate and commit edit
                     let edit = client_state.generate_edit(EditKind::DeleteCanvasObjects {
+                        canvas_id: canvas_id.clone(),
                         canvas_objects: edit_updates,
                     });
 
@@ -1376,12 +1366,14 @@ mod unit_tests {
             r##"
         {{
             "type": "delete_canvas_objects",
+            "canvasId": "{}",
             "canvasObjectIds": [
                 "{}"
             ]
         }}
         "##,
-            object_a_id.to_string()
+            canvas_a_id.to_hex(),
+            object_a_id.to_hex()
         );
 
         let whiteboard_id = ObjectId::new();

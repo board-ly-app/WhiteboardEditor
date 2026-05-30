@@ -80,7 +80,10 @@ export const selectCanvasesWithObjectsByWhiteboardId = (
   }
 };// -- end selectCanvasesWithObjectsByWhiteboardId
 
-export const selectSelectedCanvasByWhiteboard = (state: RootState, whiteboardId: WhiteboardIdType): CanvasIdType | undefined => {
+export const selectSelectedCanvasByWhiteboard = (
+  state: RootState,
+  whiteboardId: WhiteboardIdType
+): CanvasIdType | undefined => {
   return state.selectedCanvasByWhiteboard.selectedCanvasByWhiteboard[whiteboardId];
 };
 

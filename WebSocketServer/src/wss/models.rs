@@ -774,11 +774,12 @@ impl Whiteboard {
         match &edit.edit {
             CreateCanvasObjects{ .. } => true, // -- always vacuously true
             UpdateCanvasObjects {
+                canvas_id,
                 updates,
             } => {
                 // -- ensure old state of objects matches current state
-                for (obj_id, update) in updates.iter() {
-                    if let Some(canvas) = self.canvases().get(&update.canvas_id) {
+                if let Some(canvas) = self.canvases().get(canvas_id) {
+                    for (obj_id, update) in updates.iter() {
                         if let Some(curr_obj) = canvas.canvas_objects().get(obj_id) {
                             if update.old_fields != *curr_obj {
                                 return false;
@@ -786,30 +787,31 @@ impl Whiteboard {
                         } else {
                             return false;
                         }
-                    } else {
-                        return false;
-                    }
-                }// -- end for
+                    }// -- end for
+                } else {
+                    return false;
+                }
 
                 true
             },
             DeleteCanvasObjects {
+                canvas_id,
                 canvas_objects,
             } => {
                 // -- ensure deleted objects exist and are in the same state
-                for (obj_id, obj) in canvas_objects.iter() {
-                    if let Some(canvas) = self.canvases().get(&obj.canvas_id) {
+                if let Some(canvas) = self.canvases().get(canvas_id) {
+                    for (obj_id, obj) in canvas_objects.iter() {
                         if let Some(curr_obj) = canvas.canvas_objects().get(obj_id) {
-                            if obj.canvas_object != *curr_obj {
+                            if *obj != *curr_obj {
                                 return false;
                             }
                         } else {
                             return false;
                         }
-                    } else {
-                        return false;
-                    }
-                }// -- end for
+                    }// -- end for
+                } else {
+                    return false;
+                }
 
                 true
             },
@@ -884,39 +886,36 @@ impl Whiteboard {
 
         match &edit.edit {
             CreateCanvasObjects {
+                canvas_id,
                 canvas_objects,
             } => {
-                for (obj_id, canvas_object) in canvas_objects.iter() {
-                    let canvas_id = &canvas_object.canvas_id;
-
-                    if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
-                        canvas.canvas_objects.insert(obj_id.clone(), canvas_object.canvas_object.clone());
-                    }
-                }// -- end for canvas_object in canvas_objects.values()
+                if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                    for (obj_id, canvas_object) in canvas_objects.iter() {
+                        canvas.canvas_objects.insert(obj_id.clone(), canvas_object.clone());
+                    }// -- end for canvas_object in canvas_objects.values()
+                }
             },
             UpdateCanvasObjects {
+                canvas_id,
                 updates,
             } => {
-                for (obj_id, update) in updates.iter() {
-                    let canvas_id = &update.canvas_id;
-
-                    if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                    for (obj_id, update) in updates.iter() {
                         if let Some(obj) = canvas.canvas_objects_mut().get_mut(obj_id) {
                             *obj = update.new_fields.clone();
                         }
-                    }
-                }// -- end for (obj_id, update) in updates.iter()
+                    }// -- end for (obj_id, update) in updates.iter()
+                }
             },
             DeleteCanvasObjects {
+                canvas_id,
                 canvas_objects,
             } => {
-                for (obj_id, canvas_object) in canvas_objects.iter() {
-                    let canvas_id = &canvas_object.canvas_id;
-
-                    if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                    for obj_id in canvas_objects.keys() {
                         canvas.canvas_objects_mut().remove(obj_id);
-                    }
-                }// -- end for (obj_id, update) in updates.iter()
+                    }// -- end for (obj_id, update) in updates.iter()
+                }
             },
             CreateCanvases {
                 canvases,
@@ -1201,7 +1200,6 @@ pub type EditIdType = ObjectId;
 
 #[derive(Clone,Debug)]
 pub struct CanvasObjectUpdate {
-    pub canvas_id: CanvasIdType,
     pub old_fields: CanvasObjectModel,
     pub new_fields: CanvasObjectModel,
 }
@@ -1209,13 +1207,16 @@ pub struct CanvasObjectUpdate {
 #[derive(Debug,Clone)]
 pub enum EditKind {
     CreateCanvasObjects {
-        canvas_objects: HashMap<CanvasObjectIdType, CanvasObject>,
+        canvas_id: CanvasIdType,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     },
     UpdateCanvasObjects {
+        canvas_id: CanvasIdType,
         updates: HashMap<CanvasObjectIdType, CanvasObjectUpdate>,
     },
     DeleteCanvasObjects {
-        canvas_objects: HashMap<CanvasObjectIdType, CanvasObject>,
+        canvas_id: CanvasIdType,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     },
     CreateCanvases {
         canvases: HashMap<CanvasIdType, Canvas>,
@@ -1247,24 +1248,29 @@ impl EditKind {
 
         match self {
             CreateCanvasObjects {
+                canvas_id,
                 canvas_objects,
             } => DeleteCanvasObjects {
+                canvas_id: canvas_id.clone(),
                 canvas_objects: canvas_objects.clone(),
             },
             UpdateCanvasObjects {
+                canvas_id,
                 updates,
             } => UpdateCanvasObjects {
+                canvas_id: canvas_id.clone(),
                 updates: updates.iter()
                     .map(|(id, update)| (id.clone(), CanvasObjectUpdate {
-                        canvas_id: update.canvas_id.clone(),
                         old_fields: update.new_fields.clone(),
                         new_fields: update.old_fields.clone(),
                     }))
                     .collect()
             },
             DeleteCanvasObjects {
+                canvas_id,
                 canvas_objects,
             } => CreateCanvasObjects {
+                canvas_id: canvas_id.clone(),
                 canvas_objects: canvas_objects.clone(),
             },
             CreateCanvases {
@@ -1334,11 +1340,19 @@ impl Edit {
 
         match &self.edit {
             CreateCanvasObjects {
+                canvas_id,
                 canvas_objects,
             } => vec![WhiteboardDiff::CreateCanvasObjects {
-                canvas_objects: canvas_objects.clone(),
+                canvas_objects: canvas_objects.iter()
+                    .map(|(obj_id, obj)| (obj_id.clone(), CanvasObject {
+                        id: obj_id.clone(),
+                        canvas_id: canvas_id.clone(),
+                        canvas_object: obj.clone(),
+                    }))
+                    .collect(),
             }],
             UpdateCanvasObjects {
+                canvas_id,
                 updates,
             } => vec![
                 WhiteboardDiff::UpdateCanvasObjects {
@@ -1346,7 +1360,7 @@ impl Edit {
                         .map(|(obj_id, update)| {
                             (obj_id.clone(), CanvasObject {
                                 id: obj_id.clone(),
-                                canvas_id: update.canvas_id.clone(),
+                                canvas_id: canvas_id.clone(),
                                 canvas_object: update.new_fields.clone(),
                             })
                         })
@@ -1355,6 +1369,7 @@ impl Edit {
             ],
             DeleteCanvasObjects {
                 canvas_objects,
+                ..
             } => vec![WhiteboardDiff::DeleteCanvasObjects {
                 canvas_object_ids: canvas_objects.keys().copied().collect()
             }],
@@ -1483,8 +1498,6 @@ impl EditClientView {
 #[derive(Clone,Debug,Serialize,Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CanvasObjectUpdateMongoDBView {
-    #[serde_as(as = "DisplayFromStr")]
-    canvas_id: CanvasIdType,
     old_fields: CanvasObjectModel,
     new_fields: CanvasObjectModel,
 }
@@ -1498,13 +1511,16 @@ pub struct CanvasObjectUpdateMongoDBView {
 )]
 pub enum EditKindMongoDBView {
     CreateCanvasObjects {
-        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectMongoDBView>,
+        canvas_id: CanvasIdType,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     },
     UpdateCanvasObjects {
+        canvas_id: CanvasIdType,
         updates: HashMap<CanvasObjectIdType, CanvasObjectUpdateMongoDBView>,
     },
     DeleteCanvasObjects {
-        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectMongoDBView>,
+        canvas_id: CanvasIdType,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     },
     CreateCanvases {
         canvases: HashMap<CanvasIdType, CanvasMongoDBView>,
@@ -1524,27 +1540,32 @@ impl EditKindMongoDBView {
     pub fn to_edit_kind(&self) -> EditKind {
         match self {
             EditKindMongoDBView::CreateCanvasObjects {
+                canvas_id,
                 canvas_objects,
             } => EditKind::CreateCanvasObjects {
+                canvas_id: canvas_id.clone(),
                 canvas_objects: canvas_objects.iter().map(
-                    |(id, obj)| (id.clone(), obj.to_canvas_object())
+                    |(id, obj)| (id.clone(), obj.clone())
                 ).collect()
             },
             EditKindMongoDBView::UpdateCanvasObjects {
+                canvas_id,
                 updates,
             } => EditKind::UpdateCanvasObjects {
+                canvas_id: canvas_id.clone(),
                 updates: updates.iter().map(
                     |(id, update)| (id.clone(), CanvasObjectUpdate {
-                        canvas_id: update.canvas_id.clone(),
                         old_fields: update.old_fields.clone(),
                         new_fields: update.new_fields.clone(),
                 })).collect()
             },
             EditKindMongoDBView::DeleteCanvasObjects {
+                canvas_id,
                 canvas_objects,
             } => EditKind::DeleteCanvasObjects {
+                canvas_id: canvas_id.clone(),
                 canvas_objects: canvas_objects.iter().map(
-                    |(id, obj)| (id.clone(), obj.to_canvas_object())
+                    |(id, obj)| (id.clone(), obj.clone())
                 ).collect()
             },
             EditKindMongoDBView::CreateCanvases {
@@ -1577,27 +1598,32 @@ impl EditKindMongoDBView {
     pub fn from_edit_kind(edit_kind: &EditKind) -> Option<Self> {
         match edit_kind {
             EditKind::CreateCanvasObjects {
+                canvas_id,
                 canvas_objects,
             } => Some(EditKindMongoDBView::CreateCanvasObjects {
+                canvas_id: canvas_id.clone(),
                 canvas_objects: canvas_objects.iter()
-                    .map(|(id, obj)| (id.clone(), CanvasObjectMongoDBView::from_canvas_object(obj)))
+                    .map(|(id, obj)| (id.clone(), obj.clone()))
                     .collect()
             }),
             EditKind::UpdateCanvasObjects {
+                canvas_id,
                 updates,
             } => Some(EditKindMongoDBView::UpdateCanvasObjects {
+                canvas_id: canvas_id.clone(),
                 updates: updates.iter().map(
                     |(id, update)| (id.clone(), CanvasObjectUpdateMongoDBView {
-                        canvas_id: update.canvas_id.clone(),
                         old_fields: update.old_fields.clone(),
                         new_fields: update.new_fields.clone(),
                 })).collect()
             }),
             EditKind::DeleteCanvasObjects {
+                canvas_id,
                 canvas_objects,
             } => Some(EditKindMongoDBView::DeleteCanvasObjects {
+                canvas_id: canvas_id.clone(),
                 canvas_objects: canvas_objects.iter()
-                    .map(|(id, obj)| (id.clone(), CanvasObjectMongoDBView::from_canvas_object(obj)))
+                    .map(|(id, obj)| (id.clone(), obj.clone()))
                     .collect()
             }),
             EditKind::CreateCanvases {

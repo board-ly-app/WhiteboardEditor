@@ -366,6 +366,7 @@ export interface ClientMessageUpdateAllowedUsers {
 
 export interface ClientMessageDeleteCanvasObjects {
   type: 'delete_canvas_objects';
+  canvasId: CanvasIdType;
   canvasObjectIds: CanvasObjectIdType[];
 }
 

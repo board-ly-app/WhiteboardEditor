@@ -276,6 +276,8 @@ pub enum ClientSocketMessage {
         canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     },
     DeleteCanvasObjects {
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
         #[serde_as(as = "Vec<DisplayFromStr>")]
         canvas_object_ids: Vec<CanvasObjectIdType>,
     },

@@ -337,10 +337,13 @@ const CanvasCard = ({
           switch (ev.key) {
             case 'Delete':
             case 'Backspace':
-              clientMessenger?.sendDeleteCanvasObjects({
-                type: 'delete_canvas_objects',
-                canvasObjectIds: selectedCanvasObjects,
-              });
+              if (selectedCanvasId) {
+                clientMessenger?.sendDeleteCanvasObjects({
+                  type: 'delete_canvas_objects',
+                  canvasId: selectedCanvasId,
+                  canvasObjectIds: selectedCanvasObjects,
+                });
+              }
               break;
             case 'Escape':
             case 'Esc':
@@ -358,7 +361,7 @@ const CanvasCard = ({
         };
       }
     },
-    [containerRef, clientMessenger, selectedCanvasObjects, currentDispatcherRef]
+    [containerRef, clientMessenger, selectedCanvasId, selectedCanvasObjects, currentDispatcherRef]
   );
 
   return (
