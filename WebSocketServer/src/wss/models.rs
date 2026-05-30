@@ -4,7 +4,7 @@
 //
 // =================================================================================================
 
-use super::db::WhiteboardDiff;
+use super::{db::WhiteboardDiff,protocol::{ServerSocketMessage,ServerSocketBroadcastMessage}};
 
 use chrono::{self, Utc};
 use mongodb::bson::{self, oid::ObjectId};
@@ -1334,6 +1334,101 @@ impl Edit {
             edit,
         }
     }// -- end pub fn new
+
+    pub fn generate_server_messages(&self, author_client_id: &ClientIdType) -> Vec<ServerSocketMessage> {
+        use EditKind::*;
+
+        match &self.edit {
+            CreateCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => {
+                vec![ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::CreateCanvasObjects {
+                        client_id: author_client_id.clone(),
+                        canvas_id: canvas_id.clone(),
+                        canvas_objects: canvas_objects.clone(),
+                    },
+                }]
+            },
+            UpdateCanvasObjects {
+                canvas_id,
+                updates,
+            } => {
+                vec![ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::UpdateCanvasObjects {
+                        client_id: author_client_id.clone(),
+                        canvas_id: canvas_id.clone(),
+                        canvas_objects: updates.iter()
+                            .map(|(obj_id, update)| (obj_id.clone(), update.new_fields.clone()))
+                            .collect()
+                    },
+                }]
+            },
+            DeleteCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => {
+                vec![ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::DeleteCanvasObjects {
+                        client_id: author_client_id.clone(),
+                        canvas_object_ids: canvas_objects.keys().cloned().collect(),
+                    }
+                }]
+            },
+            CreateCanvases {
+                canvases,
+            } => {
+                canvases.values()
+                    .map(|canvas| {
+                        ServerSocketMessage::Broadcast {
+                            msg: ServerSocketBroadcastMessage::CreateCanvas {
+                                client_id: author_client_id.clone(),
+                                canvas: canvas.to_client_view(),
+                            },
+                        }
+                    })
+                    .collect()
+            },
+            DeleteCanvases {
+                canvases,
+            } => {
+                vec![ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::DeleteCanvases {
+                        client_id: author_client_id.clone(),
+                        canvas_ids: canvases.keys().cloned().collect(),
+                    },
+                }]
+            },
+            MergeCanvas {
+                child_canvas,
+            } => {
+                vec![ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::MergeCanvas {
+                        client_id: author_client_id.clone(),
+                        canvas_id: child_canvas.id().clone(),
+                    },
+                }]
+            },
+            SplitCanvas { .. } => vec![],// -- currently not supported
+            UpdateCanvasAllowedUsers {
+                canvas_id,
+                new_allowed_users,
+                ..
+            } => {
+                vec![ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::UpdateCanvasAllowedUsers {
+                        client_id: author_client_id.clone(),
+                        canvas_id: canvas_id.clone(),
+                        allowed_users: new_allowed_users
+                            .clone()
+                            .map(|user_id_set| user_id_set.iter().cloned().collect())
+                            .unwrap_or(vec![]),
+                    },
+                }]
+            },
+        }// -- end match &self.edit
+    }// -- end pub fn generate_server_messages
 
     pub fn get_whiteboard_diffs(&self) -> Vec<WhiteboardDiff> {
         use EditKind::*;

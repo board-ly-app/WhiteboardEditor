@@ -525,8 +525,6 @@ pub async fn handle_authenticated_client_message<'a>(
                             msg: ServerSocketBroadcastMessage::CreateCanvas {
                                 client_id: client_state.base.client_id.clone(),
                                 canvas: canvas.to_client_view(),
-                                // -- write edits to buffer
-                                // 
                             },
                         }],
                     }
