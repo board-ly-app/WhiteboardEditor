@@ -1589,7 +1589,6 @@ impl EditClientView {
     }// -- end pub fn from_edit
 }// -- end impl EditClientView
 
-#[serde_as]
 #[derive(Clone,Debug,Serialize,Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CanvasObjectUpdateMongoDBView {
@@ -1607,20 +1606,25 @@ pub struct CanvasObjectUpdateMongoDBView {
 pub enum EditKindMongoDBView {
     CreateCanvasObjects {
         canvas_id: CanvasIdType,
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
         canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     },
     UpdateCanvasObjects {
         canvas_id: CanvasIdType,
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
         updates: HashMap<CanvasObjectIdType, CanvasObjectUpdateMongoDBView>,
     },
     DeleteCanvasObjects {
         canvas_id: CanvasIdType,
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
         canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     },
     CreateCanvases {
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
         canvases: HashMap<CanvasIdType, CanvasMongoDBView>,
     },
     DeleteCanvases {
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
         canvases: HashMap<CanvasIdType, CanvasMongoDBView>,
     },
     MergeCanvas {
@@ -1750,15 +1754,12 @@ impl EditKindMongoDBView {
     }// -- end pub fn from_edit_kind
 }// -- end impl EditKindMongoDBView
 
-#[serde_as]
 #[derive(Debug,Clone,Serialize,Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditMongoDBView {
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde(rename = "_id")]
     id: EditIdType,
-    #[serde_as(as = "DisplayFromStr")]
     author: UserIdType,
-    #[serde_as(as = "DisplayFromStr")]
     whiteboard: WhiteboardIdType,
     committed_at: bson::DateTime,
     #[serde(flatten)]

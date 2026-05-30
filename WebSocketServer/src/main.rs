@@ -384,13 +384,11 @@ async fn handle_connection(
 
                         // -- update database, if there are edits
                         {
-                            let mut whiteboard = client_state_base.whiteboard_ref.lock().await;
                             let mut edits = client_state_base.edits.lock().await;
 
                             // -- update local edit history
                             
                             for edit in edits.iter() {
-                                whiteboard.push_edit(edit);
                                 mongo_interface.process_edit(edit).await;
                             }// -- end for edit in edits.iter()
 
@@ -432,7 +430,7 @@ async fn handle_connection(
                             
                             for edit in edits.iter() {
                                 // -- don't wait for mongo to finish processing database updates
-                                let _ = mongo_interface.process_edit(edit);
+                                mongo_interface.process_edit(edit).await;
                             }// -- end for edit in edits.iter()
 
                             edits.clear();

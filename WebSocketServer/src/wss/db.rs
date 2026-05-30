@@ -180,7 +180,6 @@ pub async fn get_whiteboard_by_id(
         .await?;
 
     // -- TODO: renamed "shapes" collection to "canvas_objects" for consistency
-    eprintln!("!! whiteboard view: {:?}", whiteboard_view);
     let canvas_cursor = canvas_coll
         .aggregate([
             // -- locate root canvas
@@ -697,7 +696,7 @@ impl MongoDBInterface {
 
         // -- Save edit to database, if applicable
         if let Some(edit_view) = EditMongoDBView::from_edit(edit) {
-            let _ = self.edit_coll.insert_one(edit_view).await;
+            let res = self.edit_coll.insert_one(edit_view).await;
         }
     }// -- end pub async fn process_edit
 }// -- end impl MongoDBInterface
