@@ -1047,8 +1047,6 @@ const WrappedWhiteboard = () => {
 
   const currentDispatcherRef = useRef<OperationDispatcher | null>(null);
 
-  console.log('!! WHITEBOARD CONTEXT RENDER');
-
   // -- transform canvas object diffs into full updated shapes
   const handleUpdateShapes = useCallback(
     (
