@@ -739,7 +739,30 @@ pub async fn handle_authenticated_client_message<'a>(
                         }],
                     }
                 }
-                UndoHistory => todo!()
+                UndoHistory => {
+                    let mut whiteboard = client_state.base.whiteboard_ref.lock().await;
+                    let client_id = &client_state.user_summary.client_id;
+                    let user_id = &client_state.user_summary.user_id;
+
+                    if let Some(reversed_edit) = whiteboard.reverse_edit_by_author(user_id) {
+                        let edit_reverse = reversed_edit.generate_reverse(user_id);
+
+                        ClientMessageResponse {
+                            messages: edit_reverse.generate_server_messages(client_id),
+                        }
+                    } else {
+                        ClientMessageResponse {
+                            messages: vec![
+                                ServerSocketMessage::Individual {
+                                    target_client_id: client_id.clone(),
+                                    msg: ServerSocketIndividualMessage::Error {
+                                        error: ClientError::EditIrreversible,
+                                    },
+                                },
+                            ],
+                        }
+                    }
+                },
             }
         }
         Err(e) => {

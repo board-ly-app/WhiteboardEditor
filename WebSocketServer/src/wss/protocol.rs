@@ -72,9 +72,7 @@ pub enum ClientError {
     },
     // -- Edit can't be reversed (i.e. another user has edited the relevant portion of the
     // whiteboard in the time since the user performed the edit.
-    EditIrreversible {
-        edit: EditIdType,
-    },
+    EditIrreversible,
     // -- misc. errors not neatly handled by the above common cases
     Other {
         // -- descriptive message to send to client

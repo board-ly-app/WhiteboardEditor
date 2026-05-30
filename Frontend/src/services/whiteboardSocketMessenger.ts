@@ -16,6 +16,7 @@ import {
   type ClientMessageMergeCanvas,
   type ClientMessageDeleteCanvases,
   type ClientMessageUpdateAllowedUsers,
+  type ClientMessageUndoHistory,
 } from '@/types/WebSocketProtocol';
 
 class WhiteboardSocketMessenger {
@@ -76,6 +77,10 @@ class WhiteboardSocketMessenger {
   sendUpdateCanvasObjects(msg: ClientMessageUpdateCanvasObjects) {
     this.#sendMessage(msg);
   }// -- end sendUpdateCanvasObjects
+
+  sendUndoHistory(msg: ClientMessageUndoHistory) {
+    this.#sendMessage(msg);
+  }// -- end sendUndoHistory
 };
 
 export {

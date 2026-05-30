@@ -460,6 +460,10 @@ const WebSocketClientMessengerProvider = ({
                   console.error('Canvas object already selected by client', error.clientId);
                   popupErrorMsg = "Canvas object already selected by another user";
                   break;
+                case 'edit_irreversible':
+                  console.error('Last edit cannot be reversed');
+                  popupErrorMsg = "Last edit cannot be reversed";
+                  break;
                 case 'other':
                   console.error('Socket error:', error.message);
                   popupErrorMsg = error.message;

@@ -143,6 +143,10 @@ export interface ClientErrorCanvasObjectAlreadySelected {
   clientId: string;
 }
 
+export interface ClientErrorEditIrreversible {
+  type: 'edit_irreversible';
+}
+
 // -- misc. errors not neatly handled by the above common cases
 export interface ClientErrorOther {
   type: 'other';
@@ -164,6 +168,7 @@ export type ClientError =
   | ClientErrorCanvasNotFound
   | ClientErrorActionForbidden
   | ClientErrorCanvasObjectAlreadySelected
+  | ClientErrorEditIrreversible
   | ClientErrorOther
 ;
 
@@ -381,6 +386,10 @@ export interface ClientMessageSetCursorPos {
   y: number;
 }
 
+export interface ClientMessageUndoHistory {
+  type: 'undo_history';
+}
+
 // Tagged union of all possible client-server messages
 export type SocketClientMessage =
   | ClientMessageLogin
@@ -395,4 +404,5 @@ export type SocketClientMessage =
   | ClientMessageDeleteCanvasObjects
   | ClientMessageMergeCanvas
   | ClientMessageSetCursorPos
+  | ClientMessageUndoHistory
 ;

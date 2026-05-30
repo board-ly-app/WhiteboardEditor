@@ -349,6 +349,12 @@ const CanvasCard = ({
             case 'Esc':
               currentDispatcherRef.current?.handleCancel();
               break;
+            case 'C':
+              // -- TODO: use Ctrl+c instead
+              clientMessenger?.sendUndoHistory({
+                type: 'undo_history',
+              });
+              break;
           }
         };// -- end handleKeyDown
 
