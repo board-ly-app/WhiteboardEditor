@@ -746,7 +746,7 @@ impl Whiteboard {
         if self.can_apply_edit(&reverse_edit) {
             self.apply_edit(&reverse_edit);
 
-            self.edit_history_by_author.get_mut(author_id).unwrap().pop()
+            self.pop_edit_by_author(author_id)
         } else {
             None
         }

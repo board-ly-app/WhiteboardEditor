@@ -5,7 +5,7 @@
 //
 // =================================================================================================
 
-use super::{db::WhiteboardDiff, models::*, protocol::*, store::*,collections::*};
+use super::{models::*, protocol::*, store::*,collections::*};
 
 use futures::lock::Mutex;
 
@@ -138,8 +138,6 @@ pub async fn handle_authenticated_client_message<'a>(
 
     match serde_json::from_str::<ClientSocketMessage>(client_msg_s) {
         Ok(client_msg) => {
-            println!("Received message from client {}", client_state.base.client_id);
-
             // All actions below require at least edit permission, since they all involve
             // mutating state in some way. Hence, we check permissions first, and send back an
             // error message if the user only has view permission.

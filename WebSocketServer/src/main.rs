@@ -166,7 +166,8 @@ async fn handle_connection(
             ServerSocketIndividualMessage,
         },
         server::{
-            ClientStateBase, SharedWhiteboardEntry, handle_authenticated_client_message,
+            ClientStateBase, SharedWhiteboardEntry,
+            handle_authenticated_client_message,
             handle_unauthenticated_client_message,
         },
         collections,
@@ -361,8 +362,6 @@ async fn handle_connection(
             async move {
                 // Handle client messages in this loop until user authenticates
                 let client_state_authenticated = 'auth: loop {
-                    println!("Client {} sent message ...", current_client_id);
-
                     let msg = if let Some(Ok(msg)) = user_ws_rx.next().await {
                         msg
                     } else {
@@ -379,15 +378,9 @@ async fn handle_connection(
                     }
 
                     if let Ok(msg_s) = msg.to_str() {
-                        println!("Raw message: {}", msg_s);
-
                         let resp =
                             handle_unauthenticated_client_message(&client_state_base, &mongo_interface, msg_s)
                                 .await;
-
-                        for resp in resp.base.messages.iter() {
-                            println!("Client response: {:?}", resp);
-                        }
 
                         // -- update database, if there are edits
                         {
@@ -418,8 +411,6 @@ async fn handle_connection(
 
                 // Once client authenticates, handle client messages in this loop
                 while let Some(Ok(msg)) = user_ws_rx.next().await {
-                    println!("Client {} sent message ...", current_client_id);
-
                     // -- check for whiteboard deletion; if whiteboard deleted, break connection
                     {
                         let whiteboard = client_state_base.whiteboard_ref.lock().await;
@@ -430,25 +421,18 @@ async fn handle_connection(
                     }
 
                     if let Ok(msg_s) = msg.to_str() {
-                        println!("Raw message: {}", msg_s);
-
                         let resp =
                             handle_authenticated_client_message(&client_state_authenticated, msg_s).await;
 
-                        for r in resp.messages.iter() {
-                            println!("Client response: {:?}", &r);
-                        }// -- end for r
-
                         // -- update database and local edit history, if there are edits
                         {
-                            let mut whiteboard = client_state_base.whiteboard_ref.lock().await;
                             let mut edits = client_state_base.edits.lock().await;
 
                             // -- update local edit history
                             
                             for edit in edits.iter() {
-                                whiteboard.push_edit(edit);
-                                mongo_interface.process_edit(edit).await;
+                                // -- don't wait for mongo to finish processing database updates
+                                let _ = mongo_interface.process_edit(edit);
                             }// -- end for edit in edits.iter()
 
                             edits.clear();
