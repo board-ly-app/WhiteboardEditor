@@ -206,6 +206,7 @@ const CanvasCard = ({
 
   // -- set up interval to broadcast cursor position
   const stageRef = useRef<Konva.Stage | null>(null);
+  const cursorPosRef = useRef<{ x: number; y: number; } | null>(null);
 
   useEffect(
     () => {
@@ -216,10 +217,14 @@ const CanvasCard = ({
 
             if (pos) {
               const { x, y } = pos;
+              const coords = { x, y };
 
-              clientMessenger?.sendSetCursorPos({
-                type: 'set_cursor_pos', x, y
-              });
+              if (! lodash.isEqual(coords, cursorPosRef.current)) {
+                cursorPosRef.current = coords;
+                clientMessenger?.sendSetCursorPos({
+                  type: 'set_cursor_pos', x, y
+                });
+              }
             }
           }
         },
@@ -230,7 +235,7 @@ const CanvasCard = ({
         window.clearTimeout(timeoutId);
       };
     },
-    [stageRef, clientMessenger]
+    [stageRef, cursorPosRef, clientMessenger]
   );
 
   useEffect(
