@@ -9,13 +9,14 @@ import {
   type ClientMessageEditingCanvas,
   type ClientMessageSelectedCanvasObject,
   type ClientMessageUnselectedCanvasObject,
-  type ClientMessageCreateShapes,
-  type ClientMessageUpdateShapes,
+  type ClientMessageCreateCanvasObjects,
+  type ClientMessageUpdateCanvasObjects,
   type ClientMessageDeleteCanvasObjects,
   type ClientMessageCreateCanvas,
   type ClientMessageMergeCanvas,
   type ClientMessageDeleteCanvases,
   type ClientMessageUpdateAllowedUsers,
+  type ClientMessageUndoHistory,
 } from '@/types/WebSocketProtocol';
 
 class WhiteboardSocketMessenger {
@@ -49,9 +50,9 @@ class WhiteboardSocketMessenger {
     this.#sendMessage(msg);
   }// -- end sendDeleteCanvases
 
-  sendCreateShapes(msg: ClientMessageCreateShapes) {
+  sendCreateCanvasObjects(msg: ClientMessageCreateCanvasObjects) {
     this.#sendMessage(msg);
-  }// -- end sendCreateShapes
+  }// -- end sendCreateCanvasObjects
 
   sendDeleteCanvasObjects(msg: ClientMessageDeleteCanvasObjects) {
     this.#sendMessage(msg);
@@ -73,9 +74,13 @@ class WhiteboardSocketMessenger {
     this.#sendMessage(msg);
   }// -- end sendCreateCanvas
 
-  sendUpdateShapes(msg: ClientMessageUpdateShapes) {
+  sendUpdateCanvasObjects(msg: ClientMessageUpdateCanvasObjects) {
     this.#sendMessage(msg);
-  }// -- end sendUpdateShapes
+  }// -- end sendUpdateCanvasObjects
+
+  sendUndoHistory(msg: ClientMessageUndoHistory) {
+    this.#sendMessage(msg);
+  }// -- end sendUndoHistory
 };
 
 export {

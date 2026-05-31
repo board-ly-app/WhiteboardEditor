@@ -1047,8 +1047,6 @@ const WrappedWhiteboard = () => {
 
   const currentDispatcherRef = useRef<OperationDispatcher | null>(null);
 
-  console.log('!! WHITEBOARD CONTEXT RENDER');
-
   // -- transform canvas object diffs into full updated shapes
   const handleUpdateShapes = useCallback(
     (
@@ -1076,10 +1074,10 @@ const WrappedWhiteboard = () => {
           }
         }// end for (const [objId, objUpdate] of Object.entries(shapes))
 
-        clientMessenger.sendUpdateShapes({
-          type: 'update_shapes',
+        clientMessenger.sendUpdateCanvasObjects({
+          type: 'update_canvas_objects',
           canvasId,
-          shapes: changedObjects
+          canvasObjects: changedObjects
         });
       }
     },

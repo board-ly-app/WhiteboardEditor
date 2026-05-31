@@ -200,11 +200,11 @@ const WebSocketClientMessengerProvider = ({
           case 'logout_users': 
             {
               const {
-                users,
+                clients,
               } = msg;
 
               // -- retire client colors
-              for (const clientId of users) {
+              for (const clientId of clients) {
                 if (clientId in summariesByClientRef.current) {
                   const {
                     color,
@@ -216,7 +216,7 @@ const WebSocketClientMessengerProvider = ({
               }// -- end for user
 
               // -- remove logged out users
-              removeActiveUsers(dispatch, users);
+              removeActiveUsers(dispatch, clients);
             } 
             break;
           case 'editing_canvas':
@@ -267,15 +267,15 @@ const WebSocketClientMessengerProvider = ({
               removeSelectorsByCanvasObject(dispatch, [canvasObjectId]);
             }
             break;
-          case 'create_shapes':
+          case 'create_canvas_objects':
             {
               const {
                 clientId,
                 canvasId,
-                shapes,
+                canvasObjects,
               } = msg;
 
-              setCanvasObjects(dispatch, canvasId, shapes);
+              setCanvasObjects(dispatch, canvasId, canvasObjects);
               setCurrentEditorsByCanvas(dispatch, { [canvasId]: clientId });
 
               const oldCurrentEditorTimeoutId = currentCanvasEditorTimeoutsByCanvasRef.current[canvasId];
@@ -295,15 +295,15 @@ const WebSocketClientMessengerProvider = ({
               );
             }
             break;
-          case 'update_shapes':
+          case 'update_canvas_objects':
             {
               const {
                 clientId,
                 canvasId,
-                shapes,
+                canvasObjects,
               } = msg;
 
-              setCanvasObjects(dispatch, canvasId, shapes);
+              setCanvasObjects(dispatch, canvasId, canvasObjects);
               setCurrentEditorsByCanvas(dispatch, { [canvasId]: clientId });
 
               const oldCurrentEditorTimeoutId = currentCanvasEditorTimeoutsByCanvasRef.current[canvasId];
@@ -452,6 +452,10 @@ const WebSocketClientMessengerProvider = ({
                   console.error(`Socket error: canvas ${error.canvasId} not found`);
                   popupErrorMsg = `Canvas ${error.canvasId} not found`;
                   break;
+                case 'canvas_object_not_found':
+                  console.error(`Socket error: canvas object ${error.canvasObjectId} not found`);
+                  popupErrorMsg = `Canvas ${error.canvasObjectId} not found`;
+                  break;
                 case 'action_forbidden':
                   console.error(`Socket error: action ${error.action} not permitted`);
                   popupErrorMsg = `You are not authorized to ${error.action}`;
@@ -459,6 +463,10 @@ const WebSocketClientMessengerProvider = ({
                 case 'canvas_object_already_selected':
                   console.error('Canvas object already selected by client', error.clientId);
                   popupErrorMsg = "Canvas object already selected by another user";
+                  break;
+                case 'edit_irreversible':
+                  console.error('Last edit cannot be reversed');
+                  popupErrorMsg = "Last edit cannot be reversed";
                   break;
                 case 'other':
                   console.error('Socket error:', error.message);

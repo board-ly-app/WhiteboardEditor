@@ -56,7 +56,7 @@ export interface CanvasAttribs {
 
 // Contains nested data
 export interface CanvasData extends CanvasAttribs {
-  shapes: Record<CanvasObjectIdType, CanvasObjectModel>,
+  canvasObjects: Record<CanvasObjectIdType, CanvasObjectModel>,
   allowedUsers: string[];
 }
 
@@ -131,6 +131,12 @@ export interface ClientErrorCanvasNotFound {
   canvasId: string;
 }
 
+// -- Client attempted to access canvas object that doesn't exist
+export interface ClientErrorCanvasObjectNotFound {
+  type: 'canvas_object_not_found';
+  canvasObjectId: string;
+}
+
 // -- client doesn't have permission to perform a given action
 export interface ClientErrorActionForbidden {
   type: 'action_forbidden';
@@ -141,6 +147,10 @@ export interface ClientErrorActionForbidden {
 export interface ClientErrorCanvasObjectAlreadySelected {
   type: 'canvas_object_already_selected';
   clientId: string;
+}
+
+export interface ClientErrorEditIrreversible {
+  type: 'edit_irreversible';
 }
 
 // -- misc. errors not neatly handled by the above common cases
@@ -162,8 +172,10 @@ export type ClientError =
   | ClientErrorUserNotFound
   | ClientErrorWhiteboardNotFound
   | ClientErrorCanvasNotFound
+  | ClientErrorCanvasObjectNotFound
   | ClientErrorActionForbidden
   | ClientErrorCanvasObjectAlreadySelected
+  | ClientErrorEditIrreversible
   | ClientErrorOther
 ;
 
@@ -183,7 +195,7 @@ export interface ServerMessageLoginUsers {
 
 export interface ServerMessageLogoutUsers {
   type: 'logout_users';
-  users: ClientIdType[];
+  clients: ClientIdType[];
 }
 
 // Used to notify clients when a user has started editing a canvas but hasn't
@@ -212,19 +224,19 @@ export interface ServerMessageUnselectedCanvasObject {
 }
 
 // Creates a new shape in a canvas
-export interface ServerMessageCreateShapes {
-  type: "create_shapes";
+export interface ServerMessageCreateCanvasObjects {
+  type: "create_canvas_objects";
   clientId: ClientIdType;
   canvasId: CanvasIdType;
-  shapes: Record<CanvasObjectIdType, CanvasObjectRecord>;
+  canvasObjects: Record<CanvasObjectIdType, CanvasObjectRecord>;
 }
 
 // Update existing shapes in a canvas
-export interface ServerMessageUpdateShapes {
-  type: "update_shapes";
+export interface ServerMessageUpdateCanvasObjects {
+  type: "update_canvas_objects";
   clientId: ClientIdType;
   canvasId: CanvasIdType;
-  shapes: Record<CanvasObjectIdType, CanvasObjectRecord>;
+  canvasObjects: Record<CanvasObjectIdType, CanvasObjectRecord>;
 }
 
 export interface ServerMessageCreateCanvas {
@@ -281,8 +293,8 @@ export type SocketServerMessage =
   | ServerMessageEditingCanvas
   | ServerMessageSelectedCanvasObject
   | ServerMessageUnselectedCanvasObject
-  | ServerMessageCreateShapes
-  | ServerMessageUpdateShapes
+  | ServerMessageCreateCanvasObjects
+  | ServerMessageUpdateCanvasObjects
   | ServerMessageCreateCanvas
   | ServerMessageDeleteCanvases
   | ServerMessageUpdateAllowedUsers
@@ -324,17 +336,17 @@ export interface ClientMessageUnselectedCanvasObject {
 }
 
 // Notify the server that the client has created a new shape.
-export interface ClientMessageCreateShapes {
-  type: "create_shapes";
+export interface ClientMessageCreateCanvasObjects {
+  type: "create_canvas_objects";
   canvasId: CanvasIdType;
-  shapes: CanvasObjectModel[];
+  canvasObjects: CanvasObjectModel[];
 }
 
 // Notify the server that the client has updated shape(s)
-export interface ClientMessageUpdateShapes {
-  type: "update_shapes";
+export interface ClientMessageUpdateCanvasObjects {
+  type: "update_canvas_objects";
   canvasId: CanvasIdType;
-  shapes: Record<CanvasObjectIdType, CanvasObjectModel>;
+  canvasObjects: Record<CanvasObjectIdType, CanvasObjectModel>;
 }
 
 // Notify server that client has created a new canvas
@@ -366,6 +378,7 @@ export interface ClientMessageUpdateAllowedUsers {
 
 export interface ClientMessageDeleteCanvasObjects {
   type: 'delete_canvas_objects';
+  canvasId: CanvasIdType;
   canvasObjectIds: CanvasObjectIdType[];
 }
 
@@ -380,18 +393,23 @@ export interface ClientMessageSetCursorPos {
   y: number;
 }
 
+export interface ClientMessageUndoHistory {
+  type: 'undo_history';
+}
+
 // Tagged union of all possible client-server messages
 export type SocketClientMessage =
   | ClientMessageLogin
   | ClientMessageEditingCanvas
   | ClientMessageSelectedCanvasObject
   | ClientMessageUnselectedCanvasObject
-  | ClientMessageCreateShapes
-  | ClientMessageUpdateShapes
+  | ClientMessageCreateCanvasObjects
+  | ClientMessageUpdateCanvasObjects
   | ClientMessageCreateCanvas
   | ClientMessageDeleteCanvases
   | ClientMessageUpdateAllowedUsers
   | ClientMessageDeleteCanvasObjects
   | ClientMessageMergeCanvas
   | ClientMessageSetCursorPos
+  | ClientMessageUndoHistory
 ;

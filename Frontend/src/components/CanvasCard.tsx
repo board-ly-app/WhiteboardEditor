@@ -206,6 +206,7 @@ const CanvasCard = ({
 
   // -- set up interval to broadcast cursor position
   const stageRef = useRef<Konva.Stage | null>(null);
+  const cursorPosRef = useRef<{ x: number; y: number; } | null>(null);
 
   useEffect(
     () => {
@@ -216,10 +217,14 @@ const CanvasCard = ({
 
             if (pos) {
               const { x, y } = pos;
+              const coords = { x, y };
 
-              clientMessenger?.sendSetCursorPos({
-                type: 'set_cursor_pos', x, y
-              });
+              if (! lodash.isEqual(coords, cursorPosRef.current)) {
+                cursorPosRef.current = coords;
+                clientMessenger?.sendSetCursorPos({
+                  type: 'set_cursor_pos', x, y
+                });
+              }
             }
           }
         },
@@ -230,7 +235,7 @@ const CanvasCard = ({
         window.clearTimeout(timeoutId);
       };
     },
-    [stageRef, clientMessenger]
+    [stageRef, cursorPosRef, clientMessenger]
   );
 
   useEffect(
@@ -337,14 +342,25 @@ const CanvasCard = ({
           switch (ev.key) {
             case 'Delete':
             case 'Backspace':
-              clientMessenger?.sendDeleteCanvasObjects({
-                type: 'delete_canvas_objects',
-                canvasObjectIds: selectedCanvasObjects,
-              });
+              if (selectedCanvasId) {
+                clientMessenger?.sendDeleteCanvasObjects({
+                  type: 'delete_canvas_objects',
+                  canvasId: selectedCanvasId,
+                  canvasObjectIds: selectedCanvasObjects,
+                });
+              }
               break;
             case 'Escape':
             case 'Esc':
               currentDispatcherRef.current?.handleCancel();
+              break;
+            case 'z':
+              // -- undo edit
+              if (ev.ctrlKey || ev.metaKey) {
+                clientMessenger?.sendUndoHistory({
+                  type: 'undo_history',
+                });
+              }
               break;
           }
         };// -- end handleKeyDown
@@ -358,7 +374,7 @@ const CanvasCard = ({
         };
       }
     },
-    [containerRef, clientMessenger, selectedCanvasObjects, currentDispatcherRef]
+    [containerRef, clientMessenger, selectedCanvasId, selectedCanvasObjects, currentDispatcherRef]
   );
 
   return (

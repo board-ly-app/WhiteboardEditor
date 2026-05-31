@@ -28,6 +28,10 @@ import {
 } from '@/store/client/clientSelectors';
 
 import {
+  selectSelectedCanvasByWhiteboard,
+} from '@/store/canvases/canvasesSelectors';
+
+import {
   selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
@@ -40,6 +44,7 @@ import WhiteboardContext from '@/context/WhiteboardContext';
 import {
   type ClientIdType,
   type ClientMessageDeleteCanvasObjects,
+  type CanvasIdType,
 } from '@/types/WebSocketProtocol';
 
 import type { 
@@ -76,6 +81,11 @@ const DeleteShapesButton = () => {
     lodash.isEqual
   );
 
+  const selectedCanvasId : CanvasIdType | undefined = useSelector(
+    (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId),
+    lodash.isEqual
+  );
+
   const selectedCanvasObjectIds : CanvasObjectIdType[] = useSelector(
     (state: RootState) => selectSelectedCanvasObjectsByWhiteboard(
       state, whiteboardId, clientId
@@ -85,16 +95,17 @@ const DeleteShapesButton = () => {
 
   const handleSubmit = useCallback(
     () => {
-      if (clientMessenger) {
+      if (clientMessenger && selectedCanvasId) {
         const deleteCanvasObjectsMsg : ClientMessageDeleteCanvasObjects = {
           type: 'delete_canvas_objects',
+          canvasId: selectedCanvasId,
           canvasObjectIds: selectedCanvasObjectIds,
         };
 
         clientMessenger.sendDeleteCanvasObjects(deleteCanvasObjectsMsg);
       }
     },
-    [clientMessenger, selectedCanvasObjectIds]
+    [clientMessenger, selectedCanvasId, selectedCanvasObjectIds]
   );
 
   if ((! selectedCanvasObjectIds) || (selectedCanvasObjectIds.length === 0)) {

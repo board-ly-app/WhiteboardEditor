@@ -14,13 +14,14 @@ import {
   type ClientMessageLogin,
   type ClientMessageDeleteCanvases,
   type ClientMessageMergeCanvas,
-  type ClientMessageCreateShapes,
+  type ClientMessageCreateCanvasObjects,
   type ClientMessageDeleteCanvasObjects,
   type ClientMessageEditingCanvas,
   type ClientMessageSelectedCanvasObject,
   type ClientMessageUnselectedCanvasObject,
   type ClientMessageCreateCanvas,
-  type ClientMessageUpdateShapes,
+  type ClientMessageUpdateCanvasObjects,
+  type ClientMessageUndoHistory,
 } from '@/types/WebSocketProtocol';
 
 export interface IWhiteboardClientMessenger {
@@ -28,12 +29,13 @@ export interface IWhiteboardClientMessenger {
   sendUpdateCanvasAllowedUsers: (msg: ClientMessageUpdateAllowedUsers) => unknown;
   sendLogin: (msg: ClientMessageLogin) => unknown;
   sendDeleteCanvases: (msg: ClientMessageDeleteCanvases) => unknown;
-  sendCreateShapes: (msg: ClientMessageCreateShapes) => unknown;
+  sendCreateCanvasObjects: (msg: ClientMessageCreateCanvasObjects) => unknown;
   sendDeleteCanvasObjects: (msg: ClientMessageDeleteCanvasObjects) => unknown;
   sendEditingCanvas: (msg: ClientMessageEditingCanvas) => unknown;
   sendSelectedCanvasObject: (msg: ClientMessageSelectedCanvasObject) => unknown;
   sendUnselectedCanvasObject: (msg: ClientMessageUnselectedCanvasObject) => unknown;
   sendCreateCanvas: (msg: ClientMessageCreateCanvas) => unknown;
   sendMergeCanvas: (msg: ClientMessageMergeCanvas) => unknown;
-  sendUpdateShapes: (msg: ClientMessageUpdateShapes) => unknown;
+  sendUpdateCanvasObjects: (msg: ClientMessageUpdateCanvasObjects) => unknown;
+  sendUndoHistory: (msg: ClientMessageUndoHistory) => unknown;
 }// -- end interface IWhiteboardClientMessenger

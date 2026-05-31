@@ -4,6 +4,8 @@
 //
 // =================================================================================================
 
+use super::{db::WhiteboardDiff,protocol::{ServerSocketMessage,ServerSocketBroadcastMessage}};
+
 use chrono::{self, Utc};
 use mongodb::bson::{self, oid::ObjectId};
 use serde::{self, Deserialize, Serialize};
@@ -12,10 +14,10 @@ use serde_with::{DisplayFromStr, serde_as};
 use std::collections::{HashMap, HashSet};
 
 pub type ClientIdType = String;
+pub type UserIdType = ObjectId;
 pub type CanvasIdType = ObjectId;
 pub type CanvasObjectIdType = ObjectId;
 pub type WhiteboardIdType = ObjectId;
-pub type UserIdType = ObjectId;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(
@@ -23,7 +25,7 @@ pub type UserIdType = ObjectId;
     rename_all = "snake_case",
     rename_all_fields = "camelCase"
 )]
-pub enum ShapeModel {
+pub enum CanvasObjectModel {
     Rect {
         x: f64,
         y: f64,
@@ -63,8 +65,39 @@ pub enum ShapeModel {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CanvasObject {
-    id: CanvasObjectIdType,
-    shape: ShapeModel,
+    pub id: CanvasObjectIdType,
+    pub canvas_id: CanvasIdType,
+    pub canvas_object: CanvasObjectModel,
+}
+
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CanvasObjectClientView {
+    #[serde_as(as = "DisplayFromStr")]
+    pub id: CanvasObjectIdType,
+    #[serde_as(as = "DisplayFromStr")]
+    pub canvas_id: CanvasIdType,
+    #[serde(flatten)]
+    pub canvas_object: CanvasObjectModel,
+}
+
+impl CanvasObjectClientView {
+    pub fn from_canvas_object(src: &CanvasObject) -> Self {
+        Self {
+            id: src.id.clone(),
+            canvas_id: src.canvas_id.clone(),
+            canvas_object: src.canvas_object.clone(),
+        }
+    }// -- end pub fn from_canvas_object
+
+    pub fn to_canvas_object(&self) -> CanvasObject {
+        CanvasObject {
+            id: self.id.clone(),
+            canvas_id: self.canvas_id.clone(),
+            canvas_object: self.canvas_object.clone(),
+        }
+    }// -- end pub fn to_canvas_object
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -74,22 +107,23 @@ pub struct CanvasObjectMongoDBView {
     pub id: ObjectId,
     pub canvas_id: ObjectId,
     #[serde(flatten)]
-    pub shape: ShapeModel,
+    pub canvas_object: CanvasObjectModel,
 }
 
 impl CanvasObjectMongoDBView {
     pub fn to_canvas_object(&self) -> CanvasObject {
         CanvasObject {
             id: self.id,
-            shape: self.shape.clone(),
+            canvas_id: self.canvas_id,
+            canvas_object: self.canvas_object.clone(),
         }
     }
 
-    pub fn from_canvas_object(obj: &CanvasObject, canvas_id: &CanvasIdType) -> Self {
+    pub fn from_canvas_object(obj: &CanvasObject) -> Self {
         Self {
             id: obj.id,
-            canvas_id: *canvas_id,
-            shape: obj.shape.clone(),
+            canvas_id: obj.canvas_id.clone(),
+            canvas_object: obj.canvas_object.clone(),
         }
     }
 }
@@ -250,11 +284,14 @@ impl UserMongoDBView {
     } // end to_user
 }
 
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserSummary {
+    #[serde_as(as = "DisplayFromStr")]
     pub client_id: ClientIdType,
-    pub user_id: String,
+    #[serde_as(as = "DisplayFromStr")]
+    pub user_id: UserIdType,
     pub username: String,
 }
 
@@ -273,7 +310,7 @@ pub struct CanvasClientView {
     pub time_created: String,       // rfc3339-encoded datetime
     pub time_last_modified: String, // rfc3339-encoded datetime
     #[serde_as(as = "HashMap<DisplayFromStr, _>")]
-    pub shapes: std::collections::HashMap<CanvasObjectIdType, ShapeModel>,
+    pub canvas_objects: std::collections::HashMap<CanvasObjectIdType, CanvasObjectModel>,
     #[serde_as(as = "Vec<DisplayFromStr>")]
     pub allowed_users: Vec<ObjectId>, // cast ObjectId to string for proper client-side parsing
 } // -- end struct CanvasClientView
@@ -290,7 +327,8 @@ pub struct WhiteboardClientView {
     pub canvases: Vec<CanvasClientView>,
     #[serde_as(as = "DisplayFromStr")]
     pub root_canvas: CanvasIdType,
-    pub permissions_by_user_id: HashMap<String, WhiteboardPermissionEnum>,
+    #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+    pub permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
 } // -- end struct WhiteboardClientView
 
 // === CanvasParentRef ============================================================================
@@ -395,7 +433,7 @@ pub struct Canvas {
     time_created: chrono::DateTime<Utc>,
     time_last_modified: chrono::DateTime<Utc>,
     parent_canvas: Option<CanvasParentRef>,
-    shapes: HashMap<CanvasObjectIdType, ShapeModel>,
+    canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
     allowed_users: Option<HashSet<ObjectId>>, // None = open to all
 }
 
@@ -408,7 +446,7 @@ impl Canvas {
         time_created: &chrono::DateTime<Utc>,
         time_last_modified: &chrono::DateTime<Utc>,
         parent_canvas: Option<&CanvasParentRef>,
-        shapes: HashMap<CanvasObjectIdType, ShapeModel>,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
         allowed_users: Option<HashSet<ObjectId>>, // None = open to all
     ) -> Self {
         Self {
@@ -419,7 +457,7 @@ impl Canvas {
             time_created: *time_created,
             time_last_modified: *time_last_modified,
             parent_canvas: parent_canvas.cloned(),
-            shapes,
+            canvas_objects,
             allowed_users,
         }
     } // -- end pub fn new
@@ -433,7 +471,7 @@ impl Canvas {
             height: self.height,
             name: self.name.clone(),
             parent_canvas: self.parent_canvas.as_ref().map(CanvasParentRefClientView::from_canvas_parent_ref),
-            shapes: self.shapes.clone(),
+            canvas_objects: self.canvas_objects.clone(),
             time_created: self.time_created.to_rfc3339(),
             time_last_modified: self.time_last_modified.to_rfc3339(),
             allowed_users: match &self.allowed_users {
@@ -471,13 +509,13 @@ impl Canvas {
         self.allowed_users.as_ref()
     } // -- end pub fn allowed_users
 
-    pub fn shapes(&self) -> &HashMap<CanvasObjectIdType, ShapeModel> {
-        &self.shapes
-    } // -- end pub fn shapes
+    pub fn canvas_objects(&self) -> &HashMap<CanvasObjectIdType, CanvasObjectModel> {
+        &self.canvas_objects
+    } // -- end pub fn canvas_objects
 
-    pub fn shapes_mut(&mut self) -> &mut HashMap<CanvasObjectIdType, ShapeModel> {
-        &mut self.shapes
-    } // -- end pub fn shapes
+    pub fn canvas_objects_mut(&mut self) -> &mut HashMap<CanvasObjectIdType, CanvasObjectModel> {
+        &mut self.canvas_objects
+    } // -- end pub fn canvas_objects
 
     pub fn parent_canvas(&self) -> Option<&CanvasParentRef> {
         self.parent_canvas.as_ref()
@@ -545,14 +583,14 @@ pub struct WhiteboardMetadata {
     user_permissions: Vec<WhiteboardPermission>,
     // For permissions attached to an existing account, index by user id, to enable faster
     // retrieval when users log in.
-    permissions_by_user_id: HashMap<String, WhiteboardPermissionEnum>,
+    permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
 } // -- end WhiteboardMetadata
 
 impl WhiteboardMetadata {
     pub fn new(
         name: String,
         user_permissions: Vec<WhiteboardPermission>,
-        permissions_by_user_id: HashMap<String, WhiteboardPermissionEnum>,
+        permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
     ) -> Self {
         Self {
             name,
@@ -569,11 +607,16 @@ impl WhiteboardMetadata {
         &self.user_permissions
     }
 
-    pub fn permission_for_user(&self, user_id: &str) -> Option<WhiteboardPermissionEnum> {
+    pub fn permission_for_user(&self, user_id: &UserIdType) -> Option<WhiteboardPermissionEnum> {
         self.permissions_by_user_id.get(user_id).copied()
     }
 }
 
+// === Whiteboard ==================================================================================
+//
+// Encompasses all business logic regarding a single whiteboard.
+//
+// =================================================================================================
 #[derive(Clone, Debug)]
 pub struct Whiteboard {
     id: WhiteboardIdType,
@@ -581,6 +624,8 @@ pub struct Whiteboard {
     metadata: WhiteboardMetadata,
     canvases: HashMap<CanvasIdType, Canvas>,
     root_canvas: CanvasIdType,
+    // -- A series of contiguous, chronologically-ordered edits applied to this edit by each author
+    edit_history_by_author: HashMap<UserIdType, Vec<Edit>>,
 } // -- end struct Whiteboard
 
 impl Whiteboard {
@@ -590,13 +635,25 @@ impl Whiteboard {
         metadata: WhiteboardMetadata,
         root_canvas: CanvasIdType,
         canvases: HashMap<CanvasIdType, Canvas>,
+        edit_history: Vec<Edit>,
     ) -> Self {
+        let mut edit_history_by_author = HashMap::<UserIdType, Vec<Edit>>::new();
+
+        for edit in edit_history.iter() {
+            if let Some(edits) = edit_history_by_author.get_mut(&edit.author) {
+                edits.push(edit.clone());
+            } else {
+                edit_history_by_author.insert(edit.author.clone(), vec![ edit.clone() ]);
+            }
+        }// -- end for edit
+
         Self {
             id,
             is_active,
             metadata,
             canvases,
             root_canvas,
+            edit_history_by_author,
         }
     } // -- end pub fn new
 
@@ -642,6 +699,344 @@ impl Whiteboard {
     pub fn root_canvas(&self) -> &CanvasIdType {
         &self.root_canvas
     } // -- end pub fn root_canvas
+
+    pub fn push_edit(&mut self, edit: &Edit) {
+        if let Some(author_edit_history) = self.edit_history_by_author.get_mut(&edit.author) {
+            author_edit_history.push(edit.clone());
+        } else {
+            self.edit_history_by_author.insert(edit.author.clone(), vec![ edit.clone() ]);
+        }
+    }// -- end pub fn push_edit
+
+    // === force_commit_edit =======================================================================
+    //
+    // Applies and pushes an edit without checking if it applies to the whiteboard. Should only be
+    // performed if the caller knows the whiteboard state hasn't been modified since the edit was
+    // generated.
+    //
+    // =============================================================================================
+    pub fn force_commit_edit(&mut self, edit: &Edit) {
+        self.apply_edit(edit);
+        self.push_edit(edit);
+    }// -- end pub fn force_commit_edit
+
+    // === reverse_edit_by_author ==================================================================
+    //
+    // Reverses the latest edit by the given author, if such an edit exists and can be applied to
+    // the whiteboard.
+    //
+    // =============================================================================================
+    pub fn reverse_edit_by_author(&mut self, author_id: &UserIdType) -> Option<Edit> {
+        let reverse_edit = if let Some(edit_history) = self.edit_history_by_author.get(author_id) {
+            if let Some(last_edit) = edit_history.last() {
+                let reverse_edit = last_edit.generate_reverse(author_id);
+
+                if self.can_apply_edit(&reverse_edit) {
+                    reverse_edit
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        } else {
+            return None;
+        };
+
+        if self.can_apply_edit(&reverse_edit) {
+            self.apply_edit(&reverse_edit);
+
+            self.pop_edit_by_author(author_id)
+        } else {
+            None
+        }
+    }// -- end pub fn reverse_edit_by_author
+
+    pub fn pop_edit_by_author(&mut self, author_id: &UserIdType) -> Option<Edit> {
+        if let Some(author_edit_history) = self.edit_history_by_author.get_mut(author_id) {
+            author_edit_history.pop()
+        } else {
+            None
+        }
+    }// -- end pub fn pop_edit_by_author
+
+    pub fn clear_edits_by_author(&mut self, author_id: &UserIdType) {
+        self.edit_history_by_author.remove(author_id);
+    }// -- end pub fn clear_edits_by_author
+
+    pub fn can_apply_edit(&self, edit: &Edit) -> bool {
+        use EditKind::*;
+
+        // -- Tolerance for difference between two f64 values, below which they will be treated as
+        // equal
+        const F64_MIN_DIFF : f64 = 1.0e-4;
+
+        match &edit.edit {
+            CreateCanvasObjects{ .. } => true, // -- always vacuously true
+            UpdateCanvasObjects {
+                canvas_id,
+                updates,
+            } => {
+                // -- ensure old state of objects matches current state
+                if let Some(canvas) = self.canvases().get(canvas_id) {
+                    for (obj_id, update) in updates.iter() {
+                        if let Some(curr_obj) = canvas.canvas_objects().get(obj_id) {
+                            if update.old_fields != *curr_obj {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    }// -- end for
+                } else {
+                    return false;
+                }
+
+                true
+            },
+            DeleteCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => {
+                // -- ensure deleted objects exist and are in the same state
+                if let Some(canvas) = self.canvases().get(canvas_id) {
+                    for (obj_id, obj) in canvas_objects.iter() {
+                        if let Some(curr_obj) = canvas.canvas_objects().get(obj_id) {
+                            if *obj != *curr_obj {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    }// -- end for
+                } else {
+                    return false;
+                }
+
+                true
+            },
+            CreateCanvases { .. } => true,  // -- always vacuously true
+            DeleteCanvases {
+                canvases,
+            } => {
+                // -- ensure canvas state matches given canvas state
+                for (canvas_id, canvas) in canvases.iter() {
+                    if let Some(curr_canvas) = self.canvases().get(canvas_id) {
+                        // -- use time last modified as a proxy for equality
+                        if curr_canvas.time_last_modified() != canvas.time_last_modified() {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }// -- end for
+
+                true
+            },
+            MergeCanvas {
+                child_canvas,
+            } => {
+                // -- ensure parent canvas exists and given child canvas state matches current canvas state
+                if let Some(parent_ref) = child_canvas.parent_canvas() {
+                    if ! self.canvases().contains_key(parent_ref.canvas_id()) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                };
+
+                if let Some(curr_child_canvas) = self.canvases().get(child_canvas.id()) {
+                    // -- use time last modified as proxy for equality
+                    curr_child_canvas.time_last_modified() == child_canvas.time_last_modified()
+                } else {
+                    return false;
+                }
+            },
+            SplitCanvas { .. } => false, // -- don't want to allow reversing canvas merge for now
+            UpdateCanvasAllowedUsers {
+                canvas_id,
+                old_allowed_users,
+                ..
+            } => {
+                // -- ensure canvas exists and old allowed users matches current allowed users
+                if let Some(canvas) = self.canvases().get(&canvas_id) {
+                    match (canvas.allowed_users(), old_allowed_users.as_ref()) {
+                        (None, None) => true,
+                        (Some(le), Some(ri)) => *le == *ri,
+                        _ => false,
+                    }// -- end match
+                } else {
+                    // -- canvas no longer exists
+                    false
+                }
+            },
+            UndoEdit { .. } => false,// -- can't apply this edit directly
+            RedoEdit { .. } => false,// -- can't apply this edit directly
+        }// -- end match &edit.edit
+    }// -- end pub fn can_apply_edit
+
+    // === fn apply_edit ===========================================================================
+    //
+    // Applies the effects of an edit to the whiteboard, without manipulating the edit history.
+    //
+    // Assumes the caller has already verified that the edit is valid (i.e. can be applied to the
+    // whiteboard without corrupting the state).
+    //
+    // =============================================================================================
+    fn apply_edit(&mut self, edit: &Edit) {
+        use EditKind::*;
+
+        match &edit.edit {
+            CreateCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => {
+                if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                    for (obj_id, canvas_object) in canvas_objects.iter() {
+                        canvas.canvas_objects.insert(obj_id.clone(), canvas_object.clone());
+                    }// -- end for canvas_object in canvas_objects.values()
+                }
+            },
+            UpdateCanvasObjects {
+                canvas_id,
+                updates,
+            } => {
+                if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                    for (obj_id, update) in updates.iter() {
+                        if let Some(obj) = canvas.canvas_objects_mut().get_mut(obj_id) {
+                            *obj = update.new_fields.clone();
+                        }
+                    }// -- end for (obj_id, update) in updates.iter()
+                }
+            },
+            DeleteCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => {
+                if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                    for obj_id in canvas_objects.keys() {
+                        canvas.canvas_objects_mut().remove(obj_id);
+                    }// -- end for (obj_id, update) in updates.iter()
+                }
+            },
+            CreateCanvases {
+                canvases,
+            } => {
+                for (canvas_id, canvas)  in canvases.iter() {
+                    self.canvases_mut().insert(canvas_id.clone(), canvas.clone());
+                }// -- end for (canvas_id, canvas)  in canvases.iter()
+            },
+            DeleteCanvases {
+                canvases,
+            } => {
+                for canvas_id  in canvases.keys() {
+                    let _ = self.canvases_mut().remove(canvas_id);
+                }// -- end for (canvas_id, canvas)  in canvases.iter()
+            },
+            MergeCanvas {
+                child_canvas,
+            } => {
+                if let Some(parent_ref) = child_canvas.parent_canvas() {
+                    // -- Transfer canvases to parent canvas by switching parent ref
+                    for canvas in self.canvases_mut().values_mut() {
+                        if let Some(ref mut target_parent_ref) = canvas.parent_canvas_mut()
+                            && *target_parent_ref.canvas_id() == *child_canvas.id() {
+                                *target_parent_ref.canvas_id_mut() = *parent_ref.canvas_id();
+                                *target_parent_ref.origin_x_mut() += parent_ref.origin_x();
+                                *target_parent_ref.origin_y_mut() += parent_ref.origin_y();
+                            }
+                    } // -- end for canvas
+
+                    // -- Transfer child canvas objects 
+                    let parent_canvas = self.canvases_mut().get_mut(&parent_ref.canvas_id).unwrap();
+                    let parent_canvas_objects = parent_canvas.canvas_objects_mut();
+
+                    for (obj_id, canvas_object) in child_canvas.canvas_objects().iter() {
+                        use CanvasObjectModel::*;
+
+                        let mut transferred_canvas_object = canvas_object.clone();
+
+                        match transferred_canvas_object {
+                            Vector { ref mut points, .. } => {
+                                for i_coord in (0..points.len()).step_by(2) {
+                                    points[i_coord] += parent_ref.origin_x();
+                                    points[i_coord + 1] += parent_ref.origin_y();
+                                }// -- end for i_coord
+                            },
+                            Rect { ref mut x, ref mut y, .. }
+                            | Ellipse { ref mut x, ref mut y, .. }
+                            | Text { ref mut x, ref mut y, .. } => {
+                                *x += parent_ref.origin_x();
+                                *y += parent_ref.origin_y();
+                            },
+                        };// -- end match &mut transferred_canvas_object
+
+                        parent_canvas_objects.insert(obj_id.clone(), transferred_canvas_object);
+                    }// -- end for (obj_id, canvas_object)
+
+                    // -- Delete old child canvas
+                    let _ = self.canvases_mut().remove(child_canvas.id());
+                }
+            },
+            SplitCanvas {
+                child_canvas: restored_canvas,
+            } => {
+                // -- Identify child canvases that fall within the new child canvas and transfer
+                // them by parent ref.
+                if let Some(parent_ref) = restored_canvas.parent_canvas() {
+                    let offset_x = parent_ref.origin_x();
+                    let offset_y = parent_ref.origin_y();
+                    let width = restored_canvas.width();
+                    let height = restored_canvas.height();
+
+                    for canvas in self.canvases_mut().values_mut() {
+                        let child_width = canvas.width();
+                        let child_height = canvas.height();
+
+                        if let Some(ref mut child_parent_ref) = canvas.parent_canvas_mut() {
+                            let origin_x = child_parent_ref.origin_x();
+                            let origin_y = child_parent_ref.origin_y();
+
+                            if *child_parent_ref.canvas_id() == *parent_ref.canvas_id()
+                                && origin_x >= offset_x
+                                && origin_x + child_width <= offset_x + width 
+                                && origin_y >= offset_y
+                                && origin_y + child_height <= offset_y + height 
+                            {
+                                child_parent_ref.canvas_id = restored_canvas.id().clone();
+                                child_parent_ref.origin_x -= offset_x;
+                                child_parent_ref.origin_y -= offset_y;
+                            }
+                        }
+                    }// -- end for canvas
+
+                    // -- Restore child canvas
+                    self.canvases_mut().insert(restored_canvas.id().clone(), restored_canvas.clone());
+
+                    // -- Remove duplicate canvas objects from parent canvas
+                    let parent_canvas = self.canvases_mut()
+                        .get_mut(parent_ref.canvas_id())
+                        .unwrap();
+                    let parent_canvas_objects = parent_canvas.canvas_objects_mut();
+
+                    for obj_id in restored_canvas.canvas_objects().keys() {
+                        parent_canvas_objects.remove(obj_id);
+                    }// -- end for obj_id
+                }
+            },
+            UpdateCanvasAllowedUsers {
+                canvas_id,
+                new_allowed_users,
+                ..
+            } => {
+                if let Some(canvas) = self.canvases_mut().get_mut(canvas_id) {
+                    canvas.set_allowed_users(new_allowed_users.as_ref());
+                }
+            },
+            UndoEdit { .. } => panic!("Can't apply UndoEdit directly"),// -- don't apply this edit directly
+            RedoEdit { .. } => panic!("Can't apply RedoEdit directly"),// -- don't apply this edit directly
+        };// -- end match &edit.edit
+    }// -- end fn apply_edit
 } // -- end impl Whiteboard
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -662,7 +1057,7 @@ pub struct CanvasMongoDBView {
     pub canvas_hierarchy: Option<Vec<CanvasMongoDBView>>,
     // virtual field - don't serialize
     #[serde(skip_serializing)]
-    pub shapes: Vec<CanvasObjectMongoDBView>,
+    pub canvas_objects: Vec<CanvasObjectMongoDBView>,
     pub allowed_users: Option<Vec<ObjectId>>,
 }
 
@@ -677,10 +1072,10 @@ impl CanvasMongoDBView {
             name: self.name.clone(),
             time_created: dt_bson_to_chrono_utc(&self.time_created),
             time_last_modified: dt_bson_to_chrono_utc(&self.time_last_modified),
-            shapes: self
-                .shapes
+            canvas_objects: self
+                .canvas_objects
                 .iter()
-                .map(|shape| (shape.id, shape.to_canvas_object().shape))
+                .map(|canvas_object| (canvas_object.id, canvas_object.to_canvas_object().canvas_object))
                 .collect(),
             parent_canvas: self.parent_canvas.as_ref().map(|parent_ref| parent_ref.to_canvas_parent_ref()),
             allowed_users: self.allowed_users.as_ref().map(|users| users.iter().copied().collect()),
@@ -703,7 +1098,7 @@ impl CanvasMongoDBView {
                 .map(CanvasParentRefMongoDBView::from_canvas_parent_ref),
             // canvas_hierarchy: Option<Vec<CanvasMongoDBView>>,
             canvas_hierarchy: None,
-            shapes: vec![],
+            canvas_objects: vec![],
             allowed_users: None,
         }
     } // -- end pub fn from_canvas
@@ -746,7 +1141,7 @@ impl WhiteboardMetadataMongoDBView {
             .iter()
             .filter_map(|wb_perm| match wb_perm.permission_type {
                 WhiteboardPermissionType::User { ref user, .. } => {
-                    Some((user.to_string(), wb_perm.permission))
+                    Some((user.clone(), wb_perm.permission))
                 }
                 _ => None,
             })
@@ -769,7 +1164,17 @@ pub struct WhiteboardMongoDBView {
 } // -- end struct WhiteboardMongoDBView
 
 impl WhiteboardMongoDBView {
-    pub fn to_whiteboard(&self, canvases: &[Canvas]) -> Whiteboard {
+    pub fn to_whiteboard(&self, canvases: &[Canvas], edits: &[Edit]) -> Whiteboard {
+        let mut edit_history_by_author = HashMap::<UserIdType, Vec<Edit>>::new();
+
+        for edit in edits.iter() {
+            if let Some(edits) = edit_history_by_author.get_mut(&edit.author) {
+                edits.push(edit.clone());
+            } else {
+                edit_history_by_author.insert(edit.author.clone(), vec![ edit.clone() ]);
+            }
+        }// -- end for edit
+         //
         Whiteboard {
             id: self.id,
             is_active: true,
@@ -779,6 +1184,651 @@ impl WhiteboardMongoDBView {
                 .map(|canvas| (canvas.id, canvas.clone()))
                 .collect(),
             root_canvas: self.root_canvas,
+            edit_history_by_author,
         }
     }
 }
+
+// === Edits =======================================================================================
+//
+// Define atomic, reversible edits to a whiteboard.
+//
+// Each edit contains:
+//  - An author (user) id
+//  - A whiteboard id
+//  - A timestamp
+//
+// =================================================================================================
+
+pub type EditIdType = ObjectId;
+
+#[derive(Clone,Debug)]
+pub struct CanvasObjectUpdate {
+    pub old_fields: CanvasObjectModel,
+    pub new_fields: CanvasObjectModel,
+}
+
+#[derive(Debug,Clone)]
+pub enum EditKind {
+    CreateCanvasObjects {
+        canvas_id: CanvasIdType,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
+    },
+    UpdateCanvasObjects {
+        canvas_id: CanvasIdType,
+        updates: HashMap<CanvasObjectIdType, CanvasObjectUpdate>,
+    },
+    DeleteCanvasObjects {
+        canvas_id: CanvasIdType,
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
+    },
+    CreateCanvases {
+        canvases: HashMap<CanvasIdType, Canvas>,
+    },
+    DeleteCanvases {
+        canvases: HashMap<CanvasIdType, Canvas>,
+    },
+    MergeCanvas {
+        child_canvas: Canvas,
+    },
+    SplitCanvas {
+        child_canvas: Canvas,
+    },
+    UpdateCanvasAllowedUsers {
+        canvas_id: CanvasIdType,
+        old_allowed_users: Option<HashSet<UserIdType>>,
+        new_allowed_users: Option<HashSet<UserIdType>>,
+    },
+    UndoEdit {
+        target_edit_id: EditIdType,
+    },
+    RedoEdit {
+        target_edit_id: EditIdType,
+    },
+}// -- end pub enum EditKind
+
+impl EditKind {
+    // === pub fn generate_reverse =================================================================
+    //
+    // Generates an EditKind which reverses the effects of the given EditKind.
+    //
+    // =============================================================================================
+    pub fn generate_reverse(&self) -> Self {
+        use EditKind::*;
+
+        match self {
+            CreateCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => DeleteCanvasObjects {
+                canvas_id: canvas_id.clone(),
+                canvas_objects: canvas_objects.clone(),
+            },
+            UpdateCanvasObjects {
+                canvas_id,
+                updates,
+            } => UpdateCanvasObjects {
+                canvas_id: canvas_id.clone(),
+                updates: updates.iter()
+                    .map(|(id, update)| (id.clone(), CanvasObjectUpdate {
+                        old_fields: update.new_fields.clone(),
+                        new_fields: update.old_fields.clone(),
+                    }))
+                    .collect()
+            },
+            DeleteCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => CreateCanvasObjects {
+                canvas_id: canvas_id.clone(),
+                canvas_objects: canvas_objects.clone(),
+            },
+            CreateCanvases {
+                canvases,
+            } => DeleteCanvases {
+                canvases: canvases.clone(),
+            },
+            DeleteCanvases {
+                canvases,
+            } => CreateCanvases {
+                canvases: canvases.clone(),
+            },
+            MergeCanvas {
+                child_canvas,
+            } => SplitCanvas {
+                child_canvas: child_canvas.clone(),
+            },
+            SplitCanvas {
+                child_canvas,
+            } => MergeCanvas {
+                child_canvas: child_canvas.clone(),
+            },
+            UpdateCanvasAllowedUsers {
+                canvas_id,
+                old_allowed_users,
+                new_allowed_users,
+            } => UpdateCanvasAllowedUsers {
+                canvas_id: canvas_id.clone(),
+                old_allowed_users: new_allowed_users.clone(),
+                new_allowed_users: old_allowed_users.clone(),
+            },
+            UndoEdit {
+                target_edit_id,
+            } => RedoEdit {
+                target_edit_id: target_edit_id.clone(),
+            },
+            RedoEdit {
+                target_edit_id,
+            } => UndoEdit {
+                target_edit_id: target_edit_id.clone(),
+            },
+        }// -- end match self
+    }// -- end pub fn generate_reverse
+}// -- end impl EditKind
+
+#[derive(Debug,Clone)]
+pub struct Edit {
+    id: EditIdType,
+    author: UserIdType,
+    whiteboard: WhiteboardIdType,
+    committed_at: chrono::DateTime<Utc>,
+    edit: EditKind,
+}// -- end pub struct Edit
+
+impl Edit {
+    // === pub fn new ==============================================================================
+    //
+    // Generates a new Edit at the current time (in UTC) with a unique object ID.
+    //
+    // =============================================================================================
+    pub fn new(
+        author: &UserIdType,
+        whiteboard: &WhiteboardIdType,
+        edit: EditKind,
+    ) -> Self {
+        Self {
+            id: ObjectId::new(),
+            author: author.clone(),
+            whiteboard: whiteboard.clone(),
+            committed_at: Utc::now(),
+            edit,
+        }
+    }// -- end pub fn new
+
+    pub fn id(&self) -> &EditIdType {
+        &self.id
+    }// -- end pub fn id
+
+    pub fn generate_server_messages(&self, author_client_id: &ClientIdType) -> Vec<ServerSocketMessage> {
+        use EditKind::*;
+
+        match &self.edit {
+            CreateCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => {
+                vec![ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::CreateCanvasObjects {
+                        client_id: author_client_id.clone(),
+                        canvas_id: canvas_id.clone(),
+                        canvas_objects: canvas_objects.clone(),
+                    },
+                }]
+            },
+            UpdateCanvasObjects {
+                canvas_id,
+                updates,
+            } => {
+                vec![ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::UpdateCanvasObjects {
+                        client_id: author_client_id.clone(),
+                        canvas_id: canvas_id.clone(),
+                        canvas_objects: updates.iter()
+                            .map(|(obj_id, update)| (obj_id.clone(), update.new_fields.clone()))
+                            .collect()
+                    },
+                }]
+            },
+            DeleteCanvasObjects {
+                canvas_objects,
+                ..
+            } => {
+                vec![ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::DeleteCanvasObjects {
+                        client_id: author_client_id.clone(),
+                        canvas_object_ids: canvas_objects.keys().cloned().collect(),
+                    }
+                }]
+            },
+            CreateCanvases {
+                canvases,
+            } => {
+                canvases.values()
+                    .map(|canvas| {
+                        ServerSocketMessage::Broadcast {
+                            msg: ServerSocketBroadcastMessage::CreateCanvas {
+                                client_id: author_client_id.clone(),
+                                canvas: canvas.to_client_view(),
+                            },
+                        }
+                    })
+                    .collect()
+            },
+            DeleteCanvases {
+                canvases,
+            } => {
+                vec![ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::DeleteCanvases {
+                        client_id: author_client_id.clone(),
+                        canvas_ids: canvases.keys().cloned().collect(),
+                    },
+                }]
+            },
+            MergeCanvas {
+                child_canvas,
+            } => {
+                vec![ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::MergeCanvas {
+                        client_id: author_client_id.clone(),
+                        canvas_id: child_canvas.id().clone(),
+                    },
+                }]
+            },
+            SplitCanvas { .. } => vec![],// -- currently not supported
+            UpdateCanvasAllowedUsers {
+                canvas_id,
+                new_allowed_users,
+                ..
+            } => {
+                vec![ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::UpdateCanvasAllowedUsers {
+                        client_id: author_client_id.clone(),
+                        canvas_id: canvas_id.clone(),
+                        allowed_users: new_allowed_users
+                            .clone()
+                            .map(|user_id_set| user_id_set.iter().cloned().collect())
+                            .unwrap_or(vec![]),
+                    },
+                }]
+            },
+            UndoEdit { .. } => vec![],// -- nothing to send to clients
+            RedoEdit { .. } => vec![],// -- nothing to send to clients
+        }// -- end match &self.edit
+    }// -- end pub fn generate_server_messages
+
+    pub fn get_whiteboard_diffs(&self) -> Vec<WhiteboardDiff> {
+        use EditKind::*;
+
+        match &self.edit {
+            CreateCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => vec![WhiteboardDiff::CreateCanvasObjects {
+                canvas_objects: canvas_objects.iter()
+                    .map(|(obj_id, obj)| (obj_id.clone(), CanvasObject {
+                        id: obj_id.clone(),
+                        canvas_id: canvas_id.clone(),
+                        canvas_object: obj.clone(),
+                    }))
+                    .collect(),
+            }],
+            UpdateCanvasObjects {
+                canvas_id,
+                updates,
+            } => vec![
+                WhiteboardDiff::UpdateCanvasObjects {
+                    canvas_objects: updates.iter()
+                        .map(|(obj_id, update)| {
+                            (obj_id.clone(), CanvasObject {
+                                id: obj_id.clone(),
+                                canvas_id: canvas_id.clone(),
+                                canvas_object: update.new_fields.clone(),
+                            })
+                        })
+                        .collect()
+                }
+            ],
+            DeleteCanvasObjects {
+                canvas_objects,
+                ..
+            } => vec![WhiteboardDiff::DeleteCanvasObjects {
+                canvas_object_ids: canvas_objects.keys().copied().collect()
+            }],
+            CreateCanvases {
+                canvases,
+            } => canvases.values()
+                .map(|canvas| WhiteboardDiff::CreateCanvas {
+                    canvas: canvas.clone(),
+                })
+                .collect(),
+            DeleteCanvases {
+                canvases,
+            } => vec![WhiteboardDiff::DeleteCanvases {
+                canvas_ids: canvases.keys().copied().collect(),
+            }],
+            MergeCanvas {
+                child_canvas,
+            } => {
+                let parent_canvas = child_canvas.parent_canvas().unwrap();
+
+                Vec::from([
+                    // -- transfer objects
+                    WhiteboardDiff::TransferCanvasObjects {
+                        old_canvas_id: child_canvas.id().clone(),
+                        new_canvas_id: parent_canvas.canvas_id().clone(),
+                        translate_x: parent_canvas.origin_x(),
+                        translate_y: parent_canvas.origin_y(),
+                    },
+                    // -- transfer child canvases
+                    WhiteboardDiff::TransferChildCanvases {
+                        old_parent_id: child_canvas.id().clone(),
+                        new_parent_id: parent_canvas.canvas_id().clone(),
+                        translate_x: parent_canvas.origin_x(),
+                        translate_y: parent_canvas.origin_y(),
+                    },
+                    // -- delete old canvas
+                    WhiteboardDiff::DeleteCanvases {
+                        canvas_ids: vec![child_canvas.id().clone()],
+                    },
+                ])
+            },
+            SplitCanvas {
+                child_canvas,
+            } => {
+                let parent_canvas = child_canvas.parent_canvas().unwrap();
+
+                Vec::from([
+                    // -- restore old canvas
+                    WhiteboardDiff::CreateCanvas {
+                        canvas: child_canvas.clone(),
+                    },
+                    // -- transfer child canvases back to child
+                    WhiteboardDiff::TransferChildCanvases {
+                        old_parent_id: parent_canvas.canvas_id().clone(),
+                        new_parent_id: child_canvas.id().clone(),
+                        translate_x: -parent_canvas.origin_x(),
+                        translate_y: -parent_canvas.origin_y(),
+                    },
+                    // -- transfer objects
+                    WhiteboardDiff::TransferCanvasObjects {
+                        old_canvas_id: parent_canvas.canvas_id().clone(),
+                        new_canvas_id: child_canvas.id().clone(),
+                        translate_x: -parent_canvas.origin_x(),
+                        translate_y: -parent_canvas.origin_y(),
+                    },
+                ])
+            },
+            UpdateCanvasAllowedUsers {
+                canvas_id,
+                new_allowed_users,
+                ..
+            } => vec![WhiteboardDiff::UpdateCanvasAllowedUsers {
+                canvas_id: canvas_id.clone(),
+                allowed_users: new_allowed_users.clone()
+                    .map(|users_set| users_set.iter().copied().collect())
+                    .unwrap_or(vec![]),
+            }],
+            UndoEdit {
+                target_edit_id,
+            } => vec![WhiteboardDiff::UndoEdit {
+                target_edit_id: target_edit_id.clone(),
+            }],
+            RedoEdit {
+                target_edit_id,
+            } => vec![WhiteboardDiff::RedoEdit {
+                target_edit_id: target_edit_id.clone(),
+            }],
+        }// -- end match self.edit
+    }// -- end pub fn get_whiteboard_diffs
+
+    pub fn generate_reverse(&self, author_id: &UserIdType) -> Self {
+        Self {
+            id: ObjectId::new(),
+            author: author_id.clone(),
+            whiteboard: self.whiteboard.clone(),
+            committed_at: Utc::now(),
+            edit: self.edit.generate_reverse(),
+        }
+    }// -- end pub fn generate_reverse
+}// -- end impl Edit
+
+// === EditClientView ==============================================================================
+//
+// An edit as provided to a client.
+//
+// The actual contents of each edit aren't provided vai the web socket server, only the metadata.
+//
+// Users will be able to see the results of applying/reversing each edit by instructing the web
+// socket server to apply/reverse each edit.
+//
+// =================================================================================================
+#[serde_as]
+#[derive(Debug,Clone,Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditClientView {
+    #[serde_as(as = "DisplayFromStr")]
+    id: EditIdType,
+    #[serde_as(as = "DisplayFromStr")]
+    author: UserIdType,
+    committed_at: bson::DateTime,
+}// -- end pub struct Edit
+
+impl EditClientView {
+    pub fn from_edit(edit: &Edit) -> Self {
+        use super::utils::dt_chrono_utc_to_bson;
+
+        Self {
+            id: edit.id.clone(),
+            author: edit.author.clone(),
+            committed_at: dt_chrono_utc_to_bson(&edit.committed_at),
+        }
+    }// -- end pub fn from_edit
+}// -- end impl EditClientView
+
+#[derive(Clone,Debug,Serialize,Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CanvasObjectUpdateMongoDBView {
+    old_fields: CanvasObjectModel,
+    new_fields: CanvasObjectModel,
+}
+
+#[serde_as]
+#[derive(Debug,Clone,Serialize,Deserialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+pub enum EditKindMongoDBView {
+    CreateCanvasObjects {
+        canvas_id: CanvasIdType,
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
+    },
+    UpdateCanvasObjects {
+        canvas_id: CanvasIdType,
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+        updates: HashMap<CanvasObjectIdType, CanvasObjectUpdateMongoDBView>,
+    },
+    DeleteCanvasObjects {
+        canvas_id: CanvasIdType,
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+        canvas_objects: HashMap<CanvasObjectIdType, CanvasObjectModel>,
+    },
+    CreateCanvases {
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+        canvases: HashMap<CanvasIdType, CanvasMongoDBView>,
+    },
+    DeleteCanvases {
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+        canvases: HashMap<CanvasIdType, CanvasMongoDBView>,
+    },
+    MergeCanvas {
+        child_canvas: CanvasMongoDBView,
+    },
+    SplitCanvas {
+        child_canvas: CanvasMongoDBView,
+    },
+}// -- end pub enum EditKindMongoDBView
+
+impl EditKindMongoDBView {
+    pub fn to_edit_kind(&self) -> EditKind {
+        match self {
+            EditKindMongoDBView::CreateCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => EditKind::CreateCanvasObjects {
+                canvas_id: canvas_id.clone(),
+                canvas_objects: canvas_objects.iter().map(
+                    |(id, obj)| (id.clone(), obj.clone())
+                ).collect()
+            },
+            EditKindMongoDBView::UpdateCanvasObjects {
+                canvas_id,
+                updates,
+            } => EditKind::UpdateCanvasObjects {
+                canvas_id: canvas_id.clone(),
+                updates: updates.iter().map(
+                    |(id, update)| (id.clone(), CanvasObjectUpdate {
+                        old_fields: update.old_fields.clone(),
+                        new_fields: update.new_fields.clone(),
+                })).collect()
+            },
+            EditKindMongoDBView::DeleteCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => EditKind::DeleteCanvasObjects {
+                canvas_id: canvas_id.clone(),
+                canvas_objects: canvas_objects.iter().map(
+                    |(id, obj)| (id.clone(), obj.clone())
+                ).collect()
+            },
+            EditKindMongoDBView::CreateCanvases {
+                canvases,
+            } => EditKind::CreateCanvases {
+                canvases: canvases.iter()
+                    .map(|(id, canvas)| (id.clone(), canvas.to_canvas()))
+                    .collect()
+            },
+            EditKindMongoDBView::DeleteCanvases {
+                canvases,
+            } => EditKind::DeleteCanvases {
+                canvases: canvases.iter().map(
+                    |(id, canvas)| (id.clone(), canvas.to_canvas())
+                ).collect()
+            },
+            EditKindMongoDBView::MergeCanvas {
+                child_canvas,
+            } => EditKind::MergeCanvas {
+                child_canvas: child_canvas.to_canvas(),
+            },
+            EditKindMongoDBView::SplitCanvas {
+                child_canvas,
+            } => EditKind::SplitCanvas {
+                child_canvas: child_canvas.to_canvas(),
+            },
+        }// -- end match self
+    }// -- end pub fn to_edit_kind
+
+    pub fn from_edit_kind(edit_kind: &EditKind) -> Option<Self> {
+        match edit_kind {
+            EditKind::CreateCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => Some(EditKindMongoDBView::CreateCanvasObjects {
+                canvas_id: canvas_id.clone(),
+                canvas_objects: canvas_objects.iter()
+                    .map(|(id, obj)| (id.clone(), obj.clone()))
+                    .collect()
+            }),
+            EditKind::UpdateCanvasObjects {
+                canvas_id,
+                updates,
+            } => Some(EditKindMongoDBView::UpdateCanvasObjects {
+                canvas_id: canvas_id.clone(),
+                updates: updates.iter().map(
+                    |(id, update)| (id.clone(), CanvasObjectUpdateMongoDBView {
+                        old_fields: update.old_fields.clone(),
+                        new_fields: update.new_fields.clone(),
+                })).collect()
+            }),
+            EditKind::DeleteCanvasObjects {
+                canvas_id,
+                canvas_objects,
+            } => Some(EditKindMongoDBView::DeleteCanvasObjects {
+                canvas_id: canvas_id.clone(),
+                canvas_objects: canvas_objects.iter()
+                    .map(|(id, obj)| (id.clone(), obj.clone()))
+                    .collect()
+            }),
+            EditKind::CreateCanvases {
+                canvases,
+            } => Some(EditKindMongoDBView::CreateCanvases {
+                canvases: canvases.iter()
+                    .map(|(id, canvas)| (id.clone(), CanvasMongoDBView::from_canvas(canvas)))
+                    .collect()
+            }),
+            EditKind::DeleteCanvases {
+                canvases,
+            } => Some(EditKindMongoDBView::DeleteCanvases {
+                canvases: canvases.iter().map(
+                    |(id, canvas)| (id.clone(), CanvasMongoDBView::from_canvas(canvas))
+                ).collect(),
+            }),
+            EditKind::MergeCanvas {
+               child_canvas,
+            } => Some(EditKindMongoDBView::MergeCanvas {
+                child_canvas: CanvasMongoDBView::from_canvas(child_canvas),
+            }),
+            EditKind::SplitCanvas {
+                child_canvas,
+            } => Some(EditKindMongoDBView::SplitCanvas {
+                child_canvas: CanvasMongoDBView::from_canvas(child_canvas),
+            }),
+            EditKind::UpdateCanvasAllowedUsers { .. } => None,
+            EditKind::UndoEdit { .. } => None,
+            EditKind::RedoEdit { .. } => None,
+        }// -- end match self
+    }// -- end pub fn from_edit_kind
+}// -- end impl EditKindMongoDBView
+
+#[derive(Debug,Clone,Serialize,Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditMongoDBView {
+    #[serde(rename = "_id")]
+    id: EditIdType,
+    author: UserIdType,
+    whiteboard: WhiteboardIdType,
+    committed_at: bson::DateTime,
+    #[serde(flatten)]
+    edit: EditKindMongoDBView,
+}// -- end pub struct Edit
+
+impl EditMongoDBView {
+    pub fn to_edit(&self) -> Edit {
+        use super::utils::dt_bson_to_chrono_utc;
+
+        Edit {
+            id: self.id.clone(),
+            author: self.author.clone(),
+            whiteboard: self.whiteboard.clone(),
+            committed_at: dt_bson_to_chrono_utc(&self.committed_at),
+            edit: self.edit.to_edit_kind(),
+        }
+    }// -- end pub fn to_edit
+
+    pub fn from_edit(edit: &Edit) -> Option<Self> {
+        use super::utils::dt_chrono_utc_to_bson;
+
+        EditKindMongoDBView::from_edit_kind(&edit.edit).map(
+            |edit_kind| 
+                Self {
+                    id: edit.id.clone(),
+                    author: edit.author.clone(),
+                    whiteboard: edit.whiteboard.clone(),
+                    committed_at: dt_chrono_utc_to_bson(&edit.committed_at),
+                    edit: edit_kind,
+                }
+        )
+    }// -- end pub fn from_edit
+}// -- end impl EditMongoDBView

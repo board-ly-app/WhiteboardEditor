@@ -13,8 +13,7 @@ use warp::Filter;
 use warp::ws::{Message, WebSocket};
 
 use mongodb::{
-    Collection,
-    bson::{self, doc},
+    bson,
 };
 
 // -- local imports
@@ -156,10 +155,9 @@ async fn handle_connection(
     connection_state_ref: Arc<wss::server::ConnectionState>,
 ) {
     use wss::{
-        db::{MongoDBStore, WhiteboardDiff, get_whiteboard_by_id},
+        db::{MongoDBInterface, get_whiteboard_by_id},
         models::{
-            CanvasMongoDBView, CanvasObjectMongoDBView, ClientIdType, UserMongoDBView,
-            WhiteboardMetadataMongoDBView,
+            ClientIdType,
         },
         protocol::{
             ClientError,
@@ -168,7 +166,8 @@ async fn handle_connection(
             ServerSocketIndividualMessage,
         },
         server::{
-            ClientState, SharedWhiteboardEntry, handle_authenticated_client_message,
+            ClientStateBase, SharedWhiteboardEntry,
+            handle_authenticated_client_message,
             handle_unauthenticated_client_message,
         },
         collections,
@@ -236,7 +235,7 @@ async fn handle_connection(
 
                         let err_msg = ServerSocketIndividualMessage::Error {
                             error: ClientError::WhiteboardNotFound {
-                                whiteboard_id: whiteboard_id.to_string(),
+                                whiteboard_id: whiteboard_id,
                             },
                         };
 
@@ -255,11 +254,10 @@ async fn handle_connection(
                         let (tx, _rx) = broadcast::channel::<ServerSocketMessage>(100);
                         let shared_whiteboard_entry = SharedWhiteboardEntry {
                             whiteboard_ref: Arc::clone(&whiteboard_ref),
-                            whiteboard_id,
                             broadcaster: tx.clone(),
                             active_clients: Arc::new(Mutex::new(HashMap::new())),
-                            diffs: Arc::new(Mutex::new(Vec::new())),
                             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+                            edits: Arc::new(Mutex::new(Vec::new())),
                         };
 
                         // insert whiteboard into cache
@@ -284,19 +282,17 @@ async fn handle_connection(
     let mut rx = tx.subscribe();
 
     // -- create client state
-    let client_state_ref = Arc::new(ClientState {
+    let client_state_base = ClientStateBase {
         client_id: current_client_id.clone(),
-        user_summary: Mutex::new(None),
         jwt_secret: connection_state_ref.jwt_secret.clone(),
-        // None = user unauthenticated
-        user_whiteboard_permission: Mutex::new(None),
+        whiteboard_id: whiteboard_id.clone(),
         whiteboard_ref: Arc::clone(&shared_whiteboard_entry.whiteboard_ref),
         active_clients: Arc::clone(&shared_whiteboard_entry.active_clients),
-        diffs: Arc::clone(&shared_whiteboard_entry.diffs),
         selectors_to_canvas_objects: Arc::clone(
             &shared_whiteboard_entry.selectors_to_canvas_objects
         ),
-    });
+        edits: Arc::clone(&shared_whiteboard_entry.edits),
+    };
 
     let send_task = {
         let current_client_id = current_client_id.clone();
@@ -339,7 +335,6 @@ async fn handle_connection(
 
         tokio::spawn({
             let tx = tx.clone();
-            let client_state_ref = Arc::clone(&client_state_ref);
             let db = match connection_state_ref.mongo_client.default_database() {
                 None => {
                     // No database specified in mongo uri
@@ -356,29 +351,28 @@ async fn handle_connection(
                         },
                     };
 
-                    let _ = tx.send(err_msg);
+                   if let Err(e) = tx.send(err_msg) {
+                       eprintln!("ERROR: failed to send message to client: {:?}", e);
+                   }
 
                     return;
                 }
                 Some(db) => db,
             };
-            let whiteboard_metadata_coll: Collection<WhiteboardMetadataMongoDBView> =
-                db.collection::<WhiteboardMetadataMongoDBView>("whiteboards");
-            let canvas_coll: Collection<CanvasMongoDBView> =
-                db.collection::<CanvasMongoDBView>("canvases");
-            let shape_coll: Collection<CanvasObjectMongoDBView> =
-                db.collection::<CanvasObjectMongoDBView>("shapes");
-            let user_coll: Collection<UserMongoDBView> = db.collection::<UserMongoDBView>("users");
-            let store = MongoDBStore::new(&user_coll, &whiteboard_metadata_coll);
+            let mongo_interface = MongoDBInterface::new(&db);
 
             async move {
                 // Handle client messages in this loop until user authenticates
-                while let Some(Ok(msg)) = user_ws_rx.next().await {
-                    println!("Client {} sent message ...", current_client_id);
+                let client_state_authenticated = 'auth: loop {
+                    let msg = if let Some(Ok(msg)) = user_ws_rx.next().await {
+                        msg
+                    } else {
+                        return;
+                    };
 
                     // -- check for whiteboard deletion; if whiteboard deleted, break connection
                     {
-                        let whiteboard = client_state_ref.whiteboard_ref.lock().await;
+                        let whiteboard = client_state_base.whiteboard_ref.lock().await;
 
                         if !whiteboard.is_active() {
                             return;
@@ -386,445 +380,51 @@ async fn handle_connection(
                     }
 
                     if let Ok(msg_s) = msg.to_str() {
-                        println!("Raw message: {}", msg_s);
-
-                        let resps =
-                            handle_unauthenticated_client_message(&client_state_ref, &store, msg_s)
+                        let resp =
+                            handle_unauthenticated_client_message(&client_state_base, &mongo_interface, msg_s)
                                 .await;
 
-                        for resp in &resps {
-                            println!("Client response: {:?}", resp);
-                        }
-
-                        // -- update database, if there are diffs
+                        // -- update database, if there are edits
                         {
-                            let mut diffs = client_state_ref.diffs.lock().await;
+                            let mut edits = client_state_base.edits.lock().await;
 
-                            if !diffs.is_empty() {
-                                for diff in diffs.iter() {
-                                    match &diff {
-                                        WhiteboardDiff::CreateCanvas { canvas } => {
-                                            println!(
-                                                "Creating canvas \"{}\" in database ...",
-                                                canvas.name()
-                                            );
+                            // -- update local edit history
+                            
+                            for edit in edits.iter() {
+                                mongo_interface.process_edit(edit).await;
+                            }// -- end for edit in edits.iter()
 
-                                            // TODO: make method of Canvas struct
-                                            let canvas_doc =
-                                                CanvasMongoDBView::from_canvas(canvas);
-                                            let create_canvas_res =
-                                                canvas_coll.insert_one(&canvas_doc).await;
-
-                                            match create_canvas_res {
-                                                Err(e) => {
-                                                    eprintln!("CreateCanvas insert failed: {}", e);
-                                                }
-                                                Ok(insert) => {
-                                                    eprintln!(
-                                                        "CreateCanvas new document id: {}",
-                                                        insert.inserted_id
-                                                    );
-                                                }
-                                            };
-                                        }
-                                        WhiteboardDiff::DeleteCanvases { canvas_ids } => {
-                                            println!(
-                                                "Deleting canvases from database: {:?} ...",
-                                                canvas_ids
-                                            );
-
-                                            // first delete contained canvas objects
-                                            let delete_objects_res = shape_coll
-                                                .delete_many(doc! {
-                                                    "canvas_id": {
-                                                        "$in": canvas_ids.clone()
-                                                    }
-                                                })
-                                                .await;
-
-                                            match delete_objects_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "DeleteCanvases object deletion failed: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(delete_result) => {
-                                                    eprintln!(
-                                                        "DeleteCanvases object deletion count {}",
-                                                        delete_result.deleted_count
-                                                    );
-                                                }
-                                            };
-
-                                            // then, delete canvas itself
-                                            let delete_canvas_res = canvas_coll
-                                                .delete_many(doc! {
-                                                    "_id": {
-                                                        "$in": canvas_ids.clone()
-                                                    }
-                                                })
-                                                .await;
-
-                                            match delete_canvas_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "DeleteCanvases canvas deletion failed: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(delete_result) => {
-                                                    eprintln!(
-                                                        "DeleteCanvases canvas deletion count {}",
-                                                        delete_result.deleted_count
-                                                    );
-                                                }
-                                            };
-                                        }
-                                        WhiteboardDiff::CreateShapes { canvas_id, shapes } => {
-                                            println!(
-                                                "Creating shapes in database for canvas {} ...",
-                                                canvas_id
-                                            );
-
-                                            let canvas_obj_docs: Vec<CanvasObjectMongoDBView> =
-                                                shapes
-                                                    .iter()
-                                                    .map(|(obj_id, shape)| {
-                                                        CanvasObjectMongoDBView {
-                                                            id: *obj_id,
-                                                            canvas_id: *canvas_id,
-                                                            shape: shape.clone(),
-                                                        }
-                                                    })
-                                                    .collect();
-
-                                            let create_shapes_res =
-                                                shape_coll.insert_many(&canvas_obj_docs).await;
-
-                                            match create_shapes_res {
-                                                Err(e) => {
-                                                    eprintln!("CreateShapes insert failed: {}", e);
-                                                }
-                                                Ok(insert) => {
-                                                    eprintln!(
-                                                        "CreateShapes new document ids: {:?}",
-                                                        insert.inserted_ids
-                                                    );
-                                                }
-                                            };
-                                        }
-                                        WhiteboardDiff::UpdateShapes { canvas_id, shapes } => {
-                                            println!(
-                                                "Updating shapes in database for canvas {} ...",
-                                                canvas_id
-                                            );
-
-                                            for (obj_id, shape) in shapes.iter() {
-                                                let query_doc = doc! { "_id": *obj_id };
-                                                let canvas_obj_doc = CanvasObjectMongoDBView {
-                                                    id: *obj_id,
-                                                    canvas_id: *canvas_id,
-                                                    shape: shape.clone(),
-                                                };
-
-                                                let replace_shape_res = shape_coll
-                                                    .replace_one(query_doc, &canvas_obj_doc)
-                                                    .await;
-
-                                                match replace_shape_res {
-                                                    Err(e) => {
-                                                        eprintln!(
-                                                            "UpdateShapes replace failed: {}",
-                                                            e
-                                                        );
-                                                    }
-                                                    Ok(update) => {
-                                                        eprintln!(
-                                                            "UpdateShapes matched_count: {}",
-                                                            update.matched_count
-                                                        );
-                                                        eprintln!(
-                                                            "UpdateShapes modified_count: {}",
-                                                            update.modified_count
-                                                        );
-                                                        eprintln!(
-                                                            "UpdateShapes upserted_id: {:?}",
-                                                            update.upserted_id
-                                                        );
-                                                    }
-                                                };
-                                            } // end for (obj_id, shape) in shapes.iter()
-                                        }
-                                        WhiteboardDiff::DeleteCanvasObjects {
-                                            canvas_object_ids,
-                                        } => {
-                                            println!(
-                                                "Deleting canvas objects in database: {:?}",
-                                                canvas_object_ids
-                                            );
-
-                                            let filter = doc! {
-                                                "_id": {
-                                                    "$in": canvas_object_ids.clone()
-                                                }
-                                            };
-                                            let delete_canvas_objects_res =
-                                                shape_coll.delete_many(filter).await;
-
-                                            match delete_canvas_objects_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "UpdateCanvasAllowedUsers update failed: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(update) => {
-                                                    eprintln!(
-                                                        "UpdateCanvasAllowedUsers deleted: {}",
-                                                        update.deleted_count
-                                                    );
-                                                }
-                                            };
-                                        }
-                                        WhiteboardDiff::UpdateCanvasAllowedUsers {
-                                            canvas_id,
-                                            allowed_users,
-                                        } => {
-                                            println!(
-                                                "Updating allowed users in database for canvas {} ...",
-                                                canvas_id
-                                            );
-
-                                            let query = doc! {
-                                                "_id": canvas_id,
-                                            };
-
-                                            let operator = doc! {
-                                                "$set": {
-                                                    "allowed_users": allowed_users.clone()
-                                                }
-                                            };
-
-                                            let update_allowed_users_res =
-                                                canvas_coll.update_one(query, operator).await;
-
-                                            match update_allowed_users_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "UpdateCanvasAllowedUsers update failed: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(update) => {
-                                                    eprintln!(
-                                                        "UpdateCanvasAllowedUsers matched_count: {}",
-                                                        update.matched_count
-                                                    );
-                                                    eprintln!(
-                                                        "UpdateCanvasAllowedUsers modified_count: {}",
-                                                        update.modified_count
-                                                    );
-                                                    eprintln!(
-                                                        "UpdateCanvasAllowedUsers upserted_id: {:?}",
-                                                        update.upserted_id
-                                                    );
-                                                }
-                                            };
-                                        }
-                                        WhiteboardDiff::TransferChildCanvases {
-                                            old_parent_id,
-                                            new_parent_id,
-                                            translate_x,
-                                            translate_y,
-                                        } => {
-                                            println!(
-                                                "Transfering child canvases from canvas {} to canvas {} ...",
-                                                old_parent_id, new_parent_id
-                                            );
-
-                                            let query = doc! {
-                                                "parent_canvas.canvas_id": old_parent_id,
-                                            };
-
-                                            let operator = doc! {
-                                                "$set": {
-                                                    "parent_canvas.canvas_id": new_parent_id,
-                                                },
-                                                "$inc": {
-                                                    "parent_canvas.origin_x": translate_x,
-                                                    "parent_canvas.origin_y": translate_y,
-                                                },
-                                            };
-
-                                            let update_canvases_res =
-                                                canvas_coll.update_many(query, operator).await;
-
-                                            match update_canvases_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "TransferChildCanvases failed: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(update) => {
-                                                    eprintln!(
-                                                        "TransferChildCanvases matched_count: {}",
-                                                        update.matched_count
-                                                    );
-                                                    eprintln!(
-                                                        "TransferChildCanvases modified_count: {}",
-                                                        update.modified_count
-                                                    );
-                                                    eprintln!(
-                                                        "TransferChildCanvases upserted_id: {:?}",
-                                                        update.upserted_id
-                                                    );
-                                                }
-                                            };
-                                        }
-                                        WhiteboardDiff::TransferCanvasObjects {
-                                            old_canvas_id,
-                                            new_canvas_id,
-                                            translate_x,
-                                            translate_y,
-                                        } => {
-                                            println!(
-                                                "Transfering canvas_objects from canvas {} to canvas {} ...",
-                                                old_canvas_id, new_canvas_id
-                                            );
-
-                                            // query for vectors
-                                            let query_vec = doc! {
-                                                "canvas_id": old_canvas_id,
-                                                "type": "vector",
-                                            };
-
-                                            // operator for vectors
-                                            let operator_vec = doc! {
-                                                "$set": {
-                                                    "canvas_id": new_canvas_id,
-                                                },
-                                                "$inc": {
-                                                    "points.0": translate_x,
-                                                    "points.1": translate_y,
-                                                    "points.2": translate_x,
-                                                    "points.3": translate_y,
-                                                },
-                                            };
-
-                                            let update_vectors_res = shape_coll
-                                                .update_many(query_vec, operator_vec)
-                                                .await;
-
-                                            match update_vectors_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects failed on vectors: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(update) => {
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects on vectors matched_count: {}",
-                                                        update.matched_count
-                                                    );
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects on vectors modified_count: {}",
-                                                        update.modified_count
-                                                    );
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects on vectors upserted_id: {:?}",
-                                                        update.upserted_id
-                                                    );
-                                                }
-                                            };
-
-                                            // query for other canvas objects
-                                            let query = doc! {
-                                                "canvas_id": old_canvas_id,
-                                                "type": {
-                                                    "$ne": "vector",
-                                                },
-                                            };
-
-                                            // operator for other canvas objects
-                                            let operator = doc! {
-                                                "$set": {
-                                                    "canvas_id": new_canvas_id,
-                                                },
-                                                "$inc": {
-                                                    "x": translate_x,
-                                                    "y": translate_y,
-                                                },
-                                            };
-
-                                            let update_objects_res =
-                                                shape_coll.update_many(query, operator).await;
-
-                                            match update_objects_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects failed on non-vectors: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(update) => {
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects on non-vectors matched_count: {}",
-                                                        update.matched_count
-                                                    );
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects on non-vectors modified_count: {}",
-                                                        update.modified_count
-                                                    );
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects on non-vectors upserted_id: {:?}",
-                                                        update.upserted_id
-                                                    );
-                                                }
-                                            };
-                                        }
-                                    }
-                                } // -- end for &diff in diffs
-
-                                // -- clear diffs
-                                diffs.clear();
-                            }
+                            edits.clear();
                         }
+
 
                         // -- send response to clients, if requested
-                        for resp in resps {
-                            tx.send(resp).ok();
-                        }
-                    }
-
-                    if let Some(_) = *client_state_ref.user_whiteboard_permission.lock().await {
-                        // break if user has been authenticated (indicated by user_permission field
-                        // being set in client state)
-
-                        // First, notify all clients of new login
-                        if let Some(ref user_summary) = *client_state_ref.user_summary.lock().await
-                        {
-                            tx.send(ServerSocketMessage::Broadcast {
-                                msg: ServerSocketBroadcastMessage::LoginUsers {
-                                    users: vec![user_summary.clone()],
-                                },
-                            })
-                            .ok();
+                        for r in resp.base.messages.iter() {
+                           if let Err(e) = tx.send(r.clone()) {
+                               eprintln!("ERROR: failed to send message to client: {:?}", e);
+                           }
                         }
 
-                        break;
+                        if let Some(authenticated_state) = resp.authenticated_state {
+                            break 'auth authenticated_state;
+                        }
                     }
-                } // end while let Some(Ok(msg)) = user_ws_rx.next().await
+                };// -- end let client_state_authenticated = 'auth: loop
 
-                // Once client authenticates, handle client messages in this loop
+                // -- Broadcast client login
+               if let Err(e) = tx.send(ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::LoginUsers {
+                        users: vec![ client_state_authenticated.user_summary.clone() ],
+                    },
+                }) {
+                    eprintln!("ERROR: failed to send message to client: {:?}", e);
+               }
+
+                // -- Now that client has authenticated, handle client messages in this loop
                 while let Some(Ok(msg)) = user_ws_rx.next().await {
-                    println!("Client {} sent message ...", current_client_id);
-
                     // -- check for whiteboard deletion; if whiteboard deleted, break connection
                     {
-                        let whiteboard = client_state_ref.whiteboard_ref.lock().await;
+                        let whiteboard = client_state_base.whiteboard_ref.lock().await;
 
                         if !whiteboard.is_active() {
                             return;
@@ -832,415 +432,29 @@ async fn handle_connection(
                     }
 
                     if let Ok(msg_s) = msg.to_str() {
-                        println!("Raw message: {}", msg_s);
+                        let resp =
+                            handle_authenticated_client_message(&client_state_authenticated, msg_s).await;
 
-                        let resps =
-                            handle_authenticated_client_message(&client_state_ref, msg_s).await;
-
-                        for resp in &resps {
-                            println!("Client response: {:?}", resp);
-                        }
-
-                        // -- update database, if there are diffs
+                        // -- update database and local edit history, if there are edits
                         {
-                            let mut diffs = client_state_ref.diffs.lock().await;
+                            let mut edits = client_state_base.edits.lock().await;
 
-                            if !diffs.is_empty() {
-                                for diff in diffs.iter() {
-                                    match &diff {
-                                        WhiteboardDiff::CreateCanvas { canvas } => {
-                                            println!(
-                                                "Creating canvas \"{}\" in database ...",
-                                                canvas.name()
-                                            );
+                            // -- update local edit history
+                            
+                            for edit in edits.iter() {
+                                // -- don't wait for mongo to finish processing database updates
+                                mongo_interface.process_edit(edit).await;
+                            }// -- end for edit in edits.iter()
 
-                                            let canvas_doc =
-                                                CanvasMongoDBView::from_canvas(canvas);
-                                            let create_canvas_res =
-                                                canvas_coll.insert_one(&canvas_doc).await;
-
-                                            match create_canvas_res {
-                                                Err(e) => {
-                                                    eprintln!("CreateCanvas insert failed: {}", e);
-                                                }
-                                                Ok(insert) => {
-                                                    eprintln!(
-                                                        "CreateCanvas new document id: {}",
-                                                        insert.inserted_id
-                                                    );
-                                                }
-                                            };
-                                        }
-                                        WhiteboardDiff::DeleteCanvases { canvas_ids } => {
-                                            println!(
-                                                "Deleting canvases from database: {:?} ...",
-                                                canvas_ids
-                                            );
-
-                                            // first delete contained canvas objects
-                                            let delete_objects_res = shape_coll
-                                                .delete_many(doc! {
-                                                    "canvas_id": {
-                                                        "$in": canvas_ids.clone()
-                                                    }
-                                                })
-                                                .await;
-
-                                            match delete_objects_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "DeleteCanvases object deletion failed: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(delete_result) => {
-                                                    eprintln!(
-                                                        "DeleteCanvases object deletion count {}",
-                                                        delete_result.deleted_count
-                                                    );
-                                                }
-                                            };
-
-                                            // then, delete canvas itself
-                                            let delete_canvas_res = canvas_coll
-                                                .delete_many(doc! {
-                                                    "_id": {
-                                                        "$in": canvas_ids.clone()
-                                                    }
-                                                })
-                                                .await;
-
-                                            match delete_canvas_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "DeleteCanvases canvas deletion failed: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(delete_result) => {
-                                                    eprintln!(
-                                                        "DeleteCanvases canvas deletion count {}",
-                                                        delete_result.deleted_count
-                                                    );
-                                                }
-                                            };
-                                        }
-                                        WhiteboardDiff::CreateShapes { canvas_id, shapes } => {
-                                            println!(
-                                                "Creating shapes in database for canvas {} ...",
-                                                canvas_id
-                                            );
-
-                                            let canvas_obj_docs: Vec<CanvasObjectMongoDBView> =
-                                                shapes
-                                                    .iter()
-                                                    .map(|(obj_id, shape)| {
-                                                        CanvasObjectMongoDBView {
-                                                            id: *obj_id,
-                                                            canvas_id: *canvas_id,
-                                                            shape: shape.clone(),
-                                                        }
-                                                    })
-                                                    .collect();
-
-                                            let create_shapes_res =
-                                                shape_coll.insert_many(&canvas_obj_docs).await;
-
-                                            match create_shapes_res {
-                                                Err(e) => {
-                                                    eprintln!("CreateShapes insert failed: {}", e);
-                                                }
-                                                Ok(insert) => {
-                                                    eprintln!(
-                                                        "CreateShapes new document ids: {:?}",
-                                                        insert.inserted_ids
-                                                    );
-                                                }
-                                            };
-                                        }
-                                        WhiteboardDiff::UpdateShapes { canvas_id, shapes } => {
-                                            println!(
-                                                "Updating shapes in database for canvas {} ...",
-                                                canvas_id
-                                            );
-
-                                            for (obj_id, shape) in shapes.iter() {
-                                                let query_doc = doc! { "_id": *obj_id };
-                                                let canvas_obj_doc = CanvasObjectMongoDBView {
-                                                    id: *obj_id,
-                                                    canvas_id: *canvas_id,
-                                                    shape: shape.clone(),
-                                                };
-
-                                                let replace_shape_res = shape_coll
-                                                    .replace_one(query_doc, &canvas_obj_doc)
-                                                    .await;
-
-                                                match replace_shape_res {
-                                                    Err(e) => {
-                                                        eprintln!(
-                                                            "UpdateShapes replace failed: {}",
-                                                            e
-                                                        );
-                                                    }
-                                                    Ok(update) => {
-                                                        eprintln!(
-                                                            "UpdateShapes matched_count: {}",
-                                                            update.matched_count
-                                                        );
-                                                        eprintln!(
-                                                            "UpdateShapes modified_count: {}",
-                                                            update.modified_count
-                                                        );
-                                                        eprintln!(
-                                                            "UpdateShapes upserted_id: {:?}",
-                                                            update.upserted_id
-                                                        );
-                                                    }
-                                                };
-                                            } // end for (obj_id, shape) in shapes.iter()
-                                        }
-                                        WhiteboardDiff::DeleteCanvasObjects {
-                                            canvas_object_ids,
-                                        } => {
-                                            println!(
-                                                "Deleting canvas objects in database: {:?}",
-                                                canvas_object_ids
-                                            );
-
-                                            let filter = doc! {
-                                                "_id": {
-                                                    "$in": canvas_object_ids.clone()
-                                                }
-                                            };
-                                            let delete_canvas_objects_res =
-                                                shape_coll.delete_many(filter).await;
-
-                                            match delete_canvas_objects_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "UpdateCanvasAllowedUsers update failed: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(update) => {
-                                                    eprintln!(
-                                                        "UpdateCanvasAllowedUsers deleted: {}",
-                                                        update.deleted_count
-                                                    );
-                                                }
-                                            };
-                                        }
-                                        WhiteboardDiff::UpdateCanvasAllowedUsers {
-                                            canvas_id,
-                                            allowed_users,
-                                        } => {
-                                            println!(
-                                                "Updating allowed users in database for canvas {} ...",
-                                                canvas_id
-                                            );
-
-                                            let query = doc! {
-                                                "_id": canvas_id,
-                                            };
-
-                                            let operator = doc! {
-                                                "$set": {
-                                                    "allowed_users": allowed_users.clone()
-                                                }
-                                            };
-
-                                            let update_allowed_users_res =
-                                                canvas_coll.update_one(query, operator).await;
-
-                                            match update_allowed_users_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "UpdateCanvasAllowedUsers update failed: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(update) => {
-                                                    eprintln!(
-                                                        "UpdateCanvasAllowedUsers matched_count: {}",
-                                                        update.matched_count
-                                                    );
-                                                    eprintln!(
-                                                        "UpdateCanvasAllowedUsers modified_count: {}",
-                                                        update.modified_count
-                                                    );
-                                                    eprintln!(
-                                                        "UpdateCanvasAllowedUsers upserted_id: {:?}",
-                                                        update.upserted_id
-                                                    );
-                                                }
-                                            };
-                                        }
-                                        WhiteboardDiff::TransferChildCanvases {
-                                            old_parent_id,
-                                            new_parent_id,
-                                            translate_x,
-                                            translate_y,
-                                        } => {
-                                            println!(
-                                                "Transfering child canvases from canvas {} to canvas {} ...",
-                                                old_parent_id, new_parent_id
-                                            );
-
-                                            let query = doc! {
-                                                "parent_canvas.canvas_id": old_parent_id,
-                                            };
-
-                                            let operator = doc! {
-                                                "$set": {
-                                                    "parent_canvas.canvas_id": new_parent_id,
-                                                },
-                                                "$inc": {
-                                                    "parent_canvas.origin_x": translate_x,
-                                                    "parent_canvas.origin_y": translate_y,
-                                                },
-                                            };
-
-                                            let update_canvases_res =
-                                                canvas_coll.update_many(query, operator).await;
-
-                                            match update_canvases_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "TransferChildCanvases failed: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(update) => {
-                                                    eprintln!(
-                                                        "TransferChildCanvases matched_count: {}",
-                                                        update.matched_count
-                                                    );
-                                                    eprintln!(
-                                                        "TransferChildCanvases modified_count: {}",
-                                                        update.modified_count
-                                                    );
-                                                    eprintln!(
-                                                        "TransferChildCanvases upserted_id: {:?}",
-                                                        update.upserted_id
-                                                    );
-                                                }
-                                            };
-                                        }
-                                        WhiteboardDiff::TransferCanvasObjects {
-                                            old_canvas_id,
-                                            new_canvas_id,
-                                            translate_x,
-                                            translate_y,
-                                        } => {
-                                            println!(
-                                                "Transfering canvas_objects from canvas {} to canvas {} ...",
-                                                old_canvas_id, new_canvas_id
-                                            );
-
-                                            // query for vectors
-                                            let query_vec = doc! {
-                                                "canvas_id": old_canvas_id,
-                                                "type": "vector",
-                                            };
-
-                                            // operator for vectors
-                                            let operator_vec = doc! {
-                                                "$set": {
-                                                    "canvas_id": new_canvas_id,
-                                                },
-                                                "$inc": {
-                                                    "points.0": translate_x,
-                                                    "points.1": translate_y,
-                                                    "points.2": translate_x,
-                                                    "points.3": translate_y,
-                                                },
-                                            };
-
-                                            let update_vectors_res = shape_coll
-                                                .update_many(query_vec, operator_vec)
-                                                .await;
-
-                                            match update_vectors_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "TransferChildCanvases failed on vectors: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(update) => {
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects on vectors matched_count: {}",
-                                                        update.matched_count
-                                                    );
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects on vectors modified_count: {}",
-                                                        update.modified_count
-                                                    );
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects on vectors upserted_id: {:?}",
-                                                        update.upserted_id
-                                                    );
-                                                }
-                                            };
-
-                                            // query for other canvas objects
-                                            let query = doc! {
-                                                "canvas_id": old_canvas_id,
-                                                "type": {
-                                                    "$ne": "vector",
-                                                },
-                                            };
-
-                                            // operator for other canvas objects
-                                            let operator = doc! {
-                                                "$set": {
-                                                    "canvas_id": new_canvas_id,
-                                                },
-                                                "$inc": {
-                                                    "x": translate_x,
-                                                    "y": translate_y,
-                                                },
-                                            };
-
-                                            let update_objects_res =
-                                                shape_coll.update_many(query, operator).await;
-
-                                            match update_objects_res {
-                                                Err(e) => {
-                                                    eprintln!(
-                                                        "TransferChildCanvases failed on non-vectors: {}",
-                                                        e
-                                                    );
-                                                }
-                                                Ok(update) => {
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects on non-vectors matched_count: {}",
-                                                        update.matched_count
-                                                    );
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects on non-vectors modified_count: {}",
-                                                        update.modified_count
-                                                    );
-                                                    eprintln!(
-                                                        "TransferChildCanvasObjects on non-vectors upserted_id: {:?}",
-                                                        update.upserted_id
-                                                    );
-                                                }
-                                            };
-                                        }
-                                    }
-                                } // -- end for &diff in diffs
-
-                                // -- clear diffs
-                                diffs.clear();
-                            }
+                            edits.clear();
                         }
 
                         // -- send response to clients, if requested
-                        for resp in resps {
-                            tx.send(resp).ok();
-                        }
+                        for r in resp.messages.iter() {
+                            if let Err(e) = tx.send(r.clone()) {
+                                eprintln!("Failed to send message to client: {:?}", e);
+                            }
+                        }// -- end for r
                     }
                 } // end while let Some(Ok(msg)) = user_ws_rx.next().await
             }

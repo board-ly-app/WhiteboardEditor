@@ -32,6 +32,10 @@ import {
 } from '@/store/activeUsers/selectorsByCanvasObjectSlice';
 
 import {
+  removeCurrentEditors,
+} from '@/store/activeUsers/currentEditorsByCanvasSlice';
+
+import {
   addActiveUsersByWhiteboard as addActiveUsersByWhiteboardReducer,
   setActiveUsersByWhiteboard as setActiveUsersByWhiteboardReducer,
   removeActiveUsers as removeActiveUsersReducer,
@@ -65,6 +69,8 @@ export const removeActiveUsers = (
 ) => {
   dispatch(removeActiveUsersReducer(userClientIds));
   dispatch(unsetCursorPosByClient(userClientIds));
+  dispatch(reducerRemoveCanvasObjectsBySelector(userClientIds));
+  dispatch(removeCurrentEditors(userClientIds));
 };
 
 export const setSelectorsByCanvasObject = (
