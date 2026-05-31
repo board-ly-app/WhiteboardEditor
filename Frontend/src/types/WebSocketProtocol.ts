@@ -131,6 +131,12 @@ export interface ClientErrorCanvasNotFound {
   canvasId: string;
 }
 
+// -- Client attempted to access canvas object that doesn't exist
+export interface ClientErrorCanvasObjectNotFound {
+  type: 'canvas_object_not_found';
+  canvasObjectId: string;
+}
+
 // -- client doesn't have permission to perform a given action
 export interface ClientErrorActionForbidden {
   type: 'action_forbidden';
@@ -166,6 +172,7 @@ export type ClientError =
   | ClientErrorUserNotFound
   | ClientErrorWhiteboardNotFound
   | ClientErrorCanvasNotFound
+  | ClientErrorCanvasObjectNotFound
   | ClientErrorActionForbidden
   | ClientErrorCanvasObjectAlreadySelected
   | ClientErrorEditIrreversible

@@ -452,6 +452,10 @@ const WebSocketClientMessengerProvider = ({
                   console.error(`Socket error: canvas ${error.canvasId} not found`);
                   popupErrorMsg = `Canvas ${error.canvasId} not found`;
                   break;
+                case 'canvas_object_not_found':
+                  console.error(`Socket error: canvas object ${error.canvasObjectId} not found`);
+                  popupErrorMsg = `Canvas ${error.canvasObjectId} not found`;
+                  break;
                 case 'action_forbidden':
                   console.error(`Socket error: action ${error.action} not permitted`);
                   popupErrorMsg = `You are not authorized to ${error.action}`;
