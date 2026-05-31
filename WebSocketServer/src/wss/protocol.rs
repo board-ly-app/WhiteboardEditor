@@ -55,6 +55,11 @@ pub enum ClientError {
         #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
     },
+    // -- Client attempted to access canvas object that doesn't exist
+    CanvasObjectNotFound {
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_object_id: CanvasIdType,
+    },
     NoParentCanvas {
         #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
@@ -146,7 +151,6 @@ pub enum ServerSocketBroadcastMessage {
         #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
     },
-    // TODO: replace HashMaps with Vectors, so object ids don't need to be cast to strings
     CreateCanvasObjects {
         #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
