@@ -87,7 +87,7 @@ const AllowedUsersPopover = ({ selected, onChange }: AllowedUsersPopoverProps) =
   } = useQuery<APIWhiteboard, AxiosError>({
     queryKey: ["whiteboard", whiteboardId, 'user_permissions'],
     queryFn: async () => {
-      const res : AxiosResponse<APIWhiteboard> = await api.get(`/whiteboards/${whiteboardId}`);
+      const res : AxiosResponse<APIWhiteboard> = await api.get(`/whiteboards/id/${whiteboardId}`);
 
       return res.data;
     },

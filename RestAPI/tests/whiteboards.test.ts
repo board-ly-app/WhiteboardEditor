@@ -161,7 +161,7 @@ describe("Whiteboards API", () => {
       return;
     }
 
-    const targetUrl = `/api/v1/whiteboards/${whiteboard._id.toString()}`;
+    const targetUrl = `/api/v1/whiteboards/id/${whiteboard._id.toString()}`;
 
     // Generate signed JWT
     const authToken = jwt.sign(
@@ -801,7 +801,7 @@ describe("Whiteboards API", () => {
       return;
     }
 
-    const targetUrl = `/api/v1/whiteboards/${whiteboard._id.toString()}`;
+    const targetUrl = `/api/v1/whiteboards/id/${whiteboard._id.toString()}`;
 
     // Generate signed JWT
     const authToken = jwt.sign(
@@ -981,7 +981,7 @@ describe("Whiteboards API", () => {
       );
 
       const resp = await request(app)
-        .get(`/api/v1/whiteboards/${whiteboardOrig._id.toHexString()}`)
+        .get(`/api/v1/whiteboards/id/${whiteboardOrig._id.toHexString()}`)
         .set("Authorization", `Bearer ${authToken}`)
         .send()
         .expect(200);

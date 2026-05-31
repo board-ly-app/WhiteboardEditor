@@ -26,7 +26,7 @@ const PublicWhiteboardRoute = ({ children }: PropsWithChildren): React.JSX.Eleme
       return;
     }
 
-    api.get(`/whiteboards/${whiteboardId}`)
+    api.get(`/whiteboards/id/${whiteboardId}`)
       .then(async (res) => {
         const wb = res.data;
 
