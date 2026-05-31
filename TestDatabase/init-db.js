@@ -274,6 +274,7 @@ const whiteboards = [
     _id: new ObjectId('68d5e8d4829da666aece0400'),
     name: "Project Alpha",
     kind: "permanent_whiteboard",
+    visibility: "private",
     time_created: new Date("2025-08-01T12:00:00.000Z"),
     root_canvas: insertedCanvases[0]._id,
     user_permissions: [
@@ -289,6 +290,7 @@ const whiteboards = [
     _id: new ObjectId('68d5e8d4829da666aece0401'),
     name: "Project Beta",
     kind: "permanent_whiteboard",
+    visibility: "private",
     time_created: new Date("2025-08-02T12:10:00.000Z"),
     root_canvas: insertedCanvases[1]._id,
     user_permissions: [
@@ -304,6 +306,7 @@ const whiteboards = [
     _id: new ObjectId('68d5e8d4829da666aece0402'),
     name: "Project Gamma",
     kind: "permanent_whiteboard",
+    visibility: "private",
     time_created: new Date("2025-08-02T12:10:00.000Z"),
     root_canvas: new ObjectId('68d5e8d4829da666aece0206'),
     user_permissions: [
@@ -325,6 +328,7 @@ const whiteboards = [
     _id: new ObjectId('68d5e8d4829da666aece0403'),
     name: "Project Delta",
     kind: "permanent_whiteboard",
+    visibility: "private",
     time_created: new Date("2025-08-02T12:10:00.000Z"),
     root_canvas: new ObjectId('68d5e8d4829da666aece0207'),
     user_permissions: [
@@ -419,6 +423,7 @@ const whiteboards = [
     _id: new ObjectId('68d5e8d4829da666aece0408'),
     name: "Temp Whiteboard 1",
     kind: "temp_whiteboard",
+    visibility: "public",
     createdAt: new Date("2025-08-02T12:10:00.000Z"),
     root_canvas: new ObjectId('68d5e8d4829da666aece020c'),
     user_permissions: [
@@ -433,6 +438,7 @@ const whiteboards = [
     _id: new ObjectId('68d5e8d4829da666aece0409'),
     name: "Temp Whiteboard 2",
     kind: "temp_whiteboard",
+    visibility: "public",
     createdAt: new Date("2025-08-02T12:10:00.000Z"),
     root_canvas: new ObjectId('68d5e8d4829da666aece020c'),
     user_permissions: [

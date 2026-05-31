@@ -2090,6 +2090,7 @@ mod unit_tests {
             true,
             WhiteboardMetadata::new(
                 String::from("Test"),
+                WhiteboardVisibilityEnum::Private,
                 vec![WhiteboardPermission {
                     permission_type: WhiteboardPermissionType::User {
                         user: test_user_id.clone(),
@@ -2286,6 +2287,7 @@ mod unit_tests {
             true,
             WhiteboardMetadata::new(
                 String::from("Test"),
+                WhiteboardVisibilityEnum::Private,
                 vec![WhiteboardPermission {
                     permission_type: WhiteboardPermissionType::User {
                         user: test_user_id.clone(),
@@ -2451,6 +2453,7 @@ mod unit_tests {
             true,
             WhiteboardMetadata::new(
                 String::from("Test"),
+                WhiteboardVisibilityEnum::Private,
                 vec![WhiteboardPermission {
                         permission_type: WhiteboardPermissionType::User {
                             user: user_a_id.clone(),
