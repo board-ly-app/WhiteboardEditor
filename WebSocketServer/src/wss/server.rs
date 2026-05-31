@@ -1978,7 +1978,7 @@ mod unit_tests {
 
     // === test_reverse_entire_edit_history ========================================================
     //
-    // Test one client performing five operations on a simple, single-canvas whiteboard, then
+    // Test one client performing three operations on a simple, single-canvas whiteboard, then
     // reversing all edits. The whiteboard should allow reversing all edits without issue.
     //
     // ============================================================================================
@@ -1990,7 +1990,7 @@ mod unit_tests {
             WhiteboardPermissionEnum, WhiteboardPermissionType,
         };
         use mongodb::bson::oid::ObjectId;
-        use protocol::{ClientError,ServerSocketMessage::*,ServerSocketBroadcastMessage::*};
+        use protocol::{ServerSocketMessage::*,ServerSocketBroadcastMessage::*};
         use server::{ClientStateBase, ClientStateAuthenticated, handle_authenticated_client_message};
         use std::sync::Arc;
         use utils::generate_unique_client_id;
@@ -2164,5 +2164,221 @@ mod unit_tests {
                 }
             };// -- end server_msg
         }// -- end for
-    } // -- end test_create_canvas_objects_nonexistent_canvas_id
+    } // -- end test_reverse_entire_edit_history
+
+    // === test_reverse_entire_edit_history_plus_one ===============================================
+    //
+    // Test one client performing three operations on a simple, single-canvas whiteboard, then
+    // reversing all edits, then attempting one more. The Whiteboard should allow reversing the
+    // first three edits, then refuse to undo the last edit.
+    //
+    // ============================================================================================
+    #[tokio::test]
+    async fn test_reverse_entire_edit_history_plus_one() {
+        use futures::lock::Mutex;
+        use models::{
+            UserSummary, Whiteboard, WhiteboardMetadata, WhiteboardPermission,
+            WhiteboardPermissionEnum, WhiteboardPermissionType,
+        };
+        use mongodb::bson::oid::ObjectId;
+        use protocol::{
+            ClientError,
+            ServerSocketMessage::*,
+            ServerSocketBroadcastMessage::*,
+            ServerSocketIndividualMessage,
+        };
+        use server::{ClientStateBase, ClientStateAuthenticated, handle_authenticated_client_message};
+        use std::sync::Arc;
+        use utils::generate_unique_client_id;
+
+        let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
+        let test_user_id = ObjectId::new();
+        let canvas_a_id = ObjectId::new();
+        // -- create a rectangle, an ellipse, and a vector
+        let initial_client_message_chain = vec![
+            format!(
+                r#"{{
+                    "type": "create_canvas_objects",
+                    "canvasId": "{}",
+                    "canvasObjects": [
+                        {{
+                            "type": "rect",
+                            "x": 10.0,
+                            "y": 10.0,
+                            "width": 10.0,
+                            "height": 10.0,
+                            "rotation": 0,
+                            "strokeWidth": 1.0,
+                            "strokeColor": "black",
+                            "fillColor": "red"
+                        }}
+                    ]
+                }}"#,
+                canvas_a_id,
+            ),
+            format!(
+                r#"{{
+                    "type": "create_canvas_objects",
+                    "canvasId": "{}",
+                    "canvasObjects": [
+                        {{
+                            "type": "ellipse",
+                            "x": 30.0,
+                            "y": 10.0,
+                            "radiusX": 5.0,
+                            "radiusY": 5.0,
+                            "rotation": 0,
+                            "strokeWidth": 1.0,
+                            "strokeColor": "black",
+                            "fillColor": "red"
+                        }}
+                    ]
+                }}"#,
+                canvas_a_id,
+            ),
+            format!(
+                r#"{{
+                    "type": "create_canvas_objects",
+                    "canvasId": "{}",
+                    "canvasObjects": [
+                        {{
+                            "type": "vector",
+                            "points": [40.0, 40.0, 60.0, 60.0],
+                            "strokeWidth": 1.0,
+                            "strokeColor": "black"
+                        }}
+                    ]
+                }}"#,
+                canvas_a_id,
+            ),
+        ];// -- end let initial_message_chain
+
+        // -- initialize client state
+        let canvas_a = Canvas::new(
+            &canvas_a_id,
+            100.0,
+            100.0,
+            "Canvas A",
+            &Utc::now(),
+            &Utc::now(),
+            None,
+            HashMap::new(),
+            None,
+        );
+
+        let whiteboard_id = ObjectId::new();
+
+        let whiteboard = Whiteboard::new(
+            whiteboard_id.clone(),
+            true,
+            WhiteboardMetadata::new(
+                String::from("Test"),
+                vec![WhiteboardPermission {
+                    permission_type: WhiteboardPermissionType::User {
+                        user: test_user_id.clone(),
+                        email: None,
+                    },
+                    permission: WhiteboardPermissionEnum::Edit,
+                }],
+                HashMap::from([(test_user_id.clone(), WhiteboardPermissionEnum::Edit)]),
+            ),
+            // One canvas only
+            canvas_a_id.clone(),
+            HashMap::from([
+                (canvas_a_id.clone(), canvas_a),
+            ]),
+            // -- Blank edit history
+            Vec::new(),
+        );
+
+        let client_state_base = ClientStateBase {
+            client_id: test_client_id.clone(),
+            jwt_secret: String::from("abcd"),
+            whiteboard_id: whiteboard_id.clone(),
+            whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
+            active_clients: Arc::new(Mutex::new(HashMap::new())),
+            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            edits: Arc::new(Mutex::new(Vec::new())),
+        };
+
+        let client_state = ClientStateAuthenticated {
+            base: &client_state_base,
+            user_summary: UserSummary {
+                client_id: test_client_id.clone(),
+                user_id: test_user_id.clone(),
+                username: String::from("Tester"),
+            },
+            user_whiteboard_permission: WhiteboardPermissionEnum::Own,
+        };
+
+        // -- Create initial canvas objects
+        for msg in initial_client_message_chain.iter() {
+            let res = handle_authenticated_client_message(&client_state, msg.as_str()).await;
+            let server_msg = res.messages.into_iter()
+                .next()
+                .expect("Expected some client message, got empty vec");
+
+            match server_msg {
+                Broadcast {
+                    msg: CreateCanvasObjects {
+                        client_id,
+                        canvas_id,
+                        ..
+                    },
+                } => {
+                    assert_eq!(client_id, test_client_id);
+                    assert_eq!(canvas_id, canvas_a_id);
+                }
+                bad_res => {
+                    panic!("expected CreateCanvasObjects in response, got {:?}", bad_res);
+                }
+            };
+        }// -- end for msg
+
+        // -- Undo all three previous edits
+        let undo_edit_msg_s = r#"{
+            "type": "undo_history"
+        }"#;
+
+        for _ in 0..initial_client_message_chain.len() {
+            let res = handle_authenticated_client_message(&client_state, undo_edit_msg_s).await;
+            let server_msg = res.messages.into_iter()
+                .next()
+                .expect("Expected some client message, got empty vec");
+
+            match server_msg {
+                Broadcast {
+                    msg: DeleteCanvasObjects {
+                        client_id,
+                        ..
+                    },
+                } => {
+                    assert_eq!(client_id, test_client_id);
+                }
+                bad_res => {
+                    panic!("expected DeleteCanvasObjects in response, got {:?}", bad_res);
+                }
+            };// -- end server_msg
+        }// -- end for
+
+        // -- Try to reverse one more edit
+        let res = handle_authenticated_client_message(&client_state, undo_edit_msg_s).await;
+        let server_msg = res.messages.into_iter()
+            .next()
+            .expect("Expected some client message, got empty vec");
+
+        match server_msg {
+            Individual {
+                target_client_id,
+                msg: ServerSocketIndividualMessage::Error {
+                    error: ClientError::EditIrreversible,
+                },
+            } => {
+                assert_eq!(target_client_id, test_client_id);
+            }
+            bad_res => {
+                panic!("expected ClientError::EditIrreversible in response, got {:?}", bad_res);
+            }
+        };// -- end server_msg
+    } // -- end test_reverse_entire_edit_history_plus_one
 }
