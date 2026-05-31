@@ -139,6 +139,12 @@ pub enum WhiteboardDiff {
         translate_x: f64,
         translate_y: f64,
     },
+    UndoEdit {
+        target_edit_id: EditIdType,
+    },
+    RedoEdit {
+        target_edit_id: EditIdType,
+    },
 } // -- end enum WhiteboardDiff
 
 pub async fn get_whiteboard_metadata_by_id(
@@ -684,7 +690,17 @@ impl MongoDBInterface {
                         );
                     }
                 };
-            }
+            },
+            WhiteboardDiff::UndoEdit {
+                target_edit_id,
+            } => {
+                let _ = self.edit_coll.delete_one(doc! { "_id" : { "$eq": target_edit_id.clone(), }});
+            },
+            WhiteboardDiff::RedoEdit {
+                ..
+            } => {
+                // -- currently no way to handle this at the database level
+            },
         }
     }// -- end pub async fn process_diff
 

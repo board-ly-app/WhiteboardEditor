@@ -870,6 +870,8 @@ impl Whiteboard {
                     false
                 }
             },
+            UndoEdit { .. } => false,// -- can't apply this edit directly
+            RedoEdit { .. } => false,// -- can't apply this edit directly
         }// -- end match &edit.edit
     }// -- end pub fn can_apply_edit
 
@@ -1031,6 +1033,8 @@ impl Whiteboard {
                     canvas.set_allowed_users(new_allowed_users.as_ref());
                 }
             },
+            UndoEdit { .. } => panic!("Can't apply UndoEdit directly"),// -- don't apply this edit directly
+            RedoEdit { .. } => panic!("Can't apply RedoEdit directly"),// -- don't apply this edit directly
         };// -- end match &edit.edit
     }// -- end fn apply_edit
 } // -- end impl Whiteboard
@@ -1235,6 +1239,12 @@ pub enum EditKind {
         old_allowed_users: Option<HashSet<UserIdType>>,
         new_allowed_users: Option<HashSet<UserIdType>>,
     },
+    UndoEdit {
+        target_edit_id: EditIdType,
+    },
+    RedoEdit {
+        target_edit_id: EditIdType,
+    },
 }// -- end pub enum EditKind
 
 impl EditKind {
@@ -1301,6 +1311,16 @@ impl EditKind {
                 canvas_id: canvas_id.clone(),
                 old_allowed_users: new_allowed_users.clone(),
                 new_allowed_users: old_allowed_users.clone(),
+            },
+            UndoEdit {
+                target_edit_id,
+            } => RedoEdit {
+                target_edit_id: target_edit_id.clone(),
+            },
+            RedoEdit {
+                target_edit_id,
+            } => UndoEdit {
+                target_edit_id: target_edit_id.clone(),
             },
         }// -- end match self
     }// -- end pub fn generate_reverse
@@ -1427,6 +1447,8 @@ impl Edit {
                     },
                 }]
             },
+            UndoEdit { .. } => vec![],// -- nothing to send to clients
+            RedoEdit { .. } => vec![],// -- nothing to send to clients
         }// -- end match &self.edit
     }// -- end pub fn generate_server_messages
 
@@ -1541,6 +1563,16 @@ impl Edit {
                 allowed_users: new_allowed_users.clone()
                     .map(|users_set| users_set.iter().copied().collect())
                     .unwrap_or(vec![]),
+            }],
+            UndoEdit {
+                target_edit_id,
+            } => vec![WhiteboardDiff::UndoEdit {
+                target_edit_id: target_edit_id.clone(),
+            }],
+            RedoEdit {
+                target_edit_id,
+            } => vec![WhiteboardDiff::RedoEdit {
+                target_edit_id: target_edit_id.clone(),
             }],
         }// -- end match self.edit
     }// -- end pub fn get_whiteboard_diffs
@@ -1750,6 +1782,8 @@ impl EditKindMongoDBView {
                 child_canvas: CanvasMongoDBView::from_canvas(child_canvas),
             }),
             EditKind::UpdateCanvasAllowedUsers { .. } => None,
+            EditKind::UndoEdit { .. } => None,
+            EditKind::RedoEdit { .. } => None,
         }// -- end match self
     }// -- end pub fn from_edit_kind
 }// -- end impl EditKindMongoDBView
