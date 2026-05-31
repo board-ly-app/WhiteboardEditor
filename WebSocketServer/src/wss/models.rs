@@ -1355,6 +1355,10 @@ impl Edit {
         }
     }// -- end pub fn new
 
+    pub fn id(&self) -> &EditIdType {
+        &self.id
+    }// -- end pub fn id
+
     pub fn generate_server_messages(&self, author_client_id: &ClientIdType) -> Vec<ServerSocketMessage> {
         use EditKind::*;
 

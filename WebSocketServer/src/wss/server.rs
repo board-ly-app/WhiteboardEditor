@@ -745,6 +745,15 @@ pub async fn handle_authenticated_client_message<'a>(
                     if let Some(reversed_edit) = whiteboard.reverse_edit_by_author(user_id) {
                         let edit_reverse = reversed_edit.generate_reverse(user_id);
 
+                        // -- Leave edit to instruct database to remove edit from database
+                        {
+                            let mut edits = client_state.base.edits.lock().await;
+
+                            edits.push(client_state.generate_edit(EditKind::UndoEdit {
+                                target_edit_id: reversed_edit.id().clone(),
+                            }));
+                        }
+
                         ClientMessageResponse {
                             messages: edit_reverse.generate_server_messages(client_id),
                         }

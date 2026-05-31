@@ -694,7 +694,11 @@ impl MongoDBInterface {
             WhiteboardDiff::UndoEdit {
                 target_edit_id,
             } => {
-                let _ = self.edit_coll.delete_one(doc! { "_id" : { "$eq": target_edit_id.clone(), }});
+                let res = self.edit_coll.delete_one(doc! { "_id" : { "$eq": target_edit_id.clone(), }}).await;
+
+                if let Err(e) = res {
+                    eprintln!("ERROR: could not delete edit: {:?}", e);
+                }
             },
             WhiteboardDiff::RedoEdit {
                 ..
