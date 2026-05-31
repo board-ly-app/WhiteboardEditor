@@ -200,11 +200,11 @@ const WebSocketClientMessengerProvider = ({
           case 'logout_users': 
             {
               const {
-                users,
+                clients,
               } = msg;
 
               // -- retire client colors
-              for (const clientId of users) {
+              for (const clientId of clients) {
                 if (clientId in summariesByClientRef.current) {
                   const {
                     color,
@@ -216,7 +216,7 @@ const WebSocketClientMessengerProvider = ({
               }// -- end for user
 
               // -- remove logged out users
-              removeActiveUsers(dispatch, users);
+              removeActiveUsers(dispatch, clients);
             } 
             break;
           case 'editing_canvas':

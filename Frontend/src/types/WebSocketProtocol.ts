@@ -188,7 +188,7 @@ export interface ServerMessageLoginUsers {
 
 export interface ServerMessageLogoutUsers {
   type: 'logout_users';
-  users: ClientIdType[];
+  clients: ClientIdType[];
 }
 
 // Used to notify clients when a user has started editing a canvas but hasn't
