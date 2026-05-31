@@ -37,11 +37,8 @@ const changeWhiteboardNameLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// -- Get user's own whiteboards
-router.get("/own", authenticateJWT, handleGetOwnWhiteboards);
-
 // -- Get whiteboard by id
-router.get('/:whiteboardId', authenticateJWTOptional, handleGetWhiteboardById);
+router.get('/id/:whiteboardId', authenticateJWTOptional, handleGetWhiteboardById);
 
 // -- all routes authenticated
 router.use(authenticateJWT);
@@ -51,6 +48,9 @@ router.post("/", handleCreateWhiteboard);
 
 // -- Create a new temp whiteboard
 router.post("/temp", handleCreateTempWhiteboard);
+
+// -- Get user's own whiteboards
+router.get("/own", handleGetOwnWhiteboards);
 
 // -- Convert a temp whiteboard to a permanent one
 router.post('/:whiteboardId/convert_temp_to_perm', convertTempToPermLimiter, handleConvertTempToPerm);
