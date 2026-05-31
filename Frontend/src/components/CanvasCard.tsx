@@ -356,7 +356,7 @@ const CanvasCard = ({
               break;
             case 'z':
               // -- undo edit
-              if (ev.ctrlKey) {
+              if (ev.ctrlKey || ev.metaKey) {
                 clientMessenger?.sendUndoHistory({
                   type: 'undo_history',
                 });
