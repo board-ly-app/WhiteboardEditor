@@ -218,6 +218,14 @@ const canvases = [
     // null allowed_users = all users allowed
     // allowed_users: [],
   },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece020c'),
+    width: 3000,
+    height: 3000,
+    name: "Canvas Public",
+    time_created: new Date("2025-08-01T12:10:00.000Z"),
+    time_last_modified: new Date("2025-08-10T12:10:00.000Z"),
+  },
 ];
 
 db.canvases.insertMany(canvases);
@@ -431,6 +439,22 @@ const whiteboards = [
       {
         type: 'user',
         user: new ObjectId('68d5e8d4829da666aece0107'), // TempUser68d5e8d4829da666aece0107
+        permission: 'own',
+      },
+    ],
+  },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece040a'),
+    name: "Project Public",
+    kind: "permanent_whiteboard",
+    visibility: "public",
+    time_created: new Date("2025-08-02T12:10:00.000Z"),
+    root_canvas: new ObjectId('68d5e8d4829da666aece020d'),
+    user_permissions: [
+      {
+        type: 'user',
+        user: new ObjectId('68d5e8d4829da666aece0102'), // Bob
+        email: "bob@example.com",
         permission: 'own',
       },
     ],
