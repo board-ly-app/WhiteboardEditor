@@ -173,8 +173,10 @@ pub async fn get_whiteboard_by_id(
         Some(wb) => wb,
     };
 
+    // -- Sort edits ascending by commit time
     let edit_views : Vec<EditMongoDBView> = edit_coll
         .find(doc! { "whiteboard": { "$eq": *wid }})
+        .sort(doc! { "committedAt": 1 })
         .await?
         .try_collect()
         .await?;
@@ -696,7 +698,7 @@ impl MongoDBInterface {
 
         // -- Save edit to database, if applicable
         if let Some(edit_view) = EditMongoDBView::from_edit(edit) {
-            let res = self.edit_coll.insert_one(edit_view).await;
+            let _ = self.edit_coll.insert_one(edit_view).await;
         }
     }// -- end pub async fn process_edit
 }// -- end impl MongoDBInterface

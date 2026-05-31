@@ -351,7 +351,9 @@ async fn handle_connection(
                         },
                     };
 
-                    let _ = tx.send(err_msg);
+                   if let Err(e) = tx.send(err_msg) {
+                       eprintln!("ERROR: failed to send message to client: {:?}", e);
+                   }
 
                     return;
                 }
@@ -398,7 +400,9 @@ async fn handle_connection(
 
                         // -- send response to clients, if requested
                         for r in resp.base.messages.iter() {
-                            tx.send(r.clone()).ok();
+                           if let Err(e) = tx.send(r.clone()) {
+                               eprintln!("ERROR: failed to send message to client: {:?}", e);
+                           }
                         }
 
                         if let Some(authenticated_state) = resp.authenticated_state {
@@ -407,7 +411,16 @@ async fn handle_connection(
                     }
                 };// -- end let client_state_authenticated = 'auth: loop
 
-                // Once client authenticates, handle client messages in this loop
+                // -- Broadcast client login
+               if let Err(e) = tx.send(ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::LoginUsers {
+                        users: vec![ client_state_authenticated.user_summary.clone() ],
+                    },
+                }) {
+                    eprintln!("ERROR: failed to send message to client: {:?}", e);
+               }
+
+                // -- Now that client has authenticated, handle client messages in this loop
                 while let Some(Ok(msg)) = user_ws_rx.next().await {
                     // -- check for whiteboard deletion; if whiteboard deleted, break connection
                     {
@@ -438,7 +451,9 @@ async fn handle_connection(
 
                         // -- send response to clients, if requested
                         for r in resp.messages.iter() {
-                            tx.send(r.clone()).ok();
+                            if let Err(e) = tx.send(r.clone()) {
+                                eprintln!("Failed to send message to client: {:?}", e);
+                            }
                         }// -- end for r
                     }
                 } // end while let Some(Ok(msg)) = user_ws_rx.next().await

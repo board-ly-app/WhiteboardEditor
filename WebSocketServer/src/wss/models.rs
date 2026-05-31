@@ -1366,8 +1366,8 @@ impl Edit {
                 }]
             },
             DeleteCanvasObjects {
-                canvas_id,
                 canvas_objects,
+                ..
             } => {
                 vec![ServerSocketMessage::Broadcast {
                     msg: ServerSocketBroadcastMessage::DeleteCanvasObjects {
