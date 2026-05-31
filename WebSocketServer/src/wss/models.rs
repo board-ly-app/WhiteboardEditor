@@ -327,6 +327,7 @@ pub struct WhiteboardClientView {
     pub canvases: Vec<CanvasClientView>,
     #[serde_as(as = "DisplayFromStr")]
     pub root_canvas: CanvasIdType,
+    pub visibility: WhiteboardVisibilityEnum,
     #[serde_as(as = "HashMap<DisplayFromStr, _>")]
     pub permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
 } // -- end struct WhiteboardClientView
@@ -535,6 +536,13 @@ impl Canvas {
 } // -- end impl Canvas
 
 #[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WhiteboardVisibilityEnum {
+    Public,
+    Private,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "permission", rename_all = "camelCase")]
 pub enum WhiteboardPermissionEnum {
     View,
@@ -580,6 +588,7 @@ pub type WhiteboardPermissionClientView = WhiteboardPermission;
 #[derive(Clone, Debug)]
 pub struct WhiteboardMetadata {
     name: String,
+    visibility: WhiteboardVisibilityEnum,
     user_permissions: Vec<WhiteboardPermission>,
     // For permissions attached to an existing account, index by user id, to enable faster
     // retrieval when users log in.
@@ -589,11 +598,13 @@ pub struct WhiteboardMetadata {
 impl WhiteboardMetadata {
     pub fn new(
         name: String,
+        visibility: WhiteboardVisibilityEnum,
         user_permissions: Vec<WhiteboardPermission>,
         permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
     ) -> Self {
         Self {
             name,
+            visibility,
             user_permissions,
             permissions_by_user_id,
         }
@@ -603,11 +614,18 @@ impl WhiteboardMetadata {
         &self.name
     }
 
+    pub fn visibility(&self) -> WhiteboardVisibilityEnum {
+        self.visibility
+    }
+
     pub fn user_permissions(&self) -> &[WhiteboardPermission] {
         &self.user_permissions
     }
 
     pub fn permission_for_user(&self, user_id: &UserIdType) -> Option<WhiteboardPermissionEnum> {
+        if self.visibility == WhiteboardVisibilityEnum::Public {
+            return Some(WhiteboardPermissionEnum::Edit);
+        }
         self.permissions_by_user_id.get(user_id).copied()
     }
 }
@@ -668,6 +686,7 @@ impl Whiteboard {
                 .canvases.values().map(|canvas| canvas.to_client_view())
                 .collect(),
             root_canvas: self.root_canvas,
+            visibility: self.metadata.visibility(),
             permissions_by_user_id: self.metadata.permissions_by_user_id.clone(),
         }
     } // end pub fn to_client_view(&self) -> CanvasClientView
@@ -1130,6 +1149,7 @@ pub enum UserPermission {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct WhiteboardMetadataMongoDBView {
     pub name: String,
+    pub visibility: WhiteboardVisibilityEnum,
     #[serde(rename = "user_permissions")]
     pub user_permissions: Vec<WhiteboardPermissionMongoDBView>,
 } // -- end struct WhiteboardMetadataMongoDBView
@@ -1148,6 +1168,7 @@ impl WhiteboardMetadataMongoDBView {
             .collect();
         WhiteboardMetadata::new(
             self.name.clone(),
+            self.visibility,
             self.user_permissions.clone(),
             permissions_by_user_id,
         )
