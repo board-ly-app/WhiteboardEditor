@@ -37,8 +37,15 @@ const changeWhiteboardNameLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const getWhiteboardByIdLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 120, // limit each IP to 120 fetch requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // -- Get whiteboard by id
-router.get('/id/:whiteboardId', authenticateJWTOptional, handleGetWhiteboardById);
+router.get('/id/:whiteboardId', getWhiteboardByIdLimiter, authenticateJWTOptional, handleGetWhiteboardById);
 
 // -- all routes authenticated
 router.use(authenticateJWT);
