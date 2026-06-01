@@ -106,24 +106,28 @@ export const tempUserLoginService = async (): Promise<CreateTempUserRes> => {
     const tempUserId = new mongoose.Types.ObjectId();
     // -- Generate temp user name
     const tempUsernameBase : string = uniqueNamesGenerator(uniqueNamesConfig);
-    let tempUsername = tempUsernameBase;
-    let tempUsernameCounter = 1;
 
     // -- While temp name already exists, try appending integers until a truly
-    while (true) {
-      const existingUserWithName = await User.findOne({
-        username: {
-          "$eq": tempUsername,
-        },
-      });
+    const tempUsername : string = await (async () => {
+      let username = tempUsernameBase;
 
-      if (! existingUserWithName) {
-        break;
-      } else {
-        ++tempUsernameCounter;
-        tempUsername = `${tempUsernameBase}-${tempUsernameCounter}`;
-      }
-    }// -- end while true
+      for (let tempUsernameCounter = 2; tempUsernameCounter < 1000; ++tempUsernameCounter) {
+        const existingUserWithName = await User.findOne({
+          username: {
+            "$eq": username,
+          },
+        });
+
+        if (! existingUserWithName) {
+          return username;
+        } else {
+          username = `${tempUsernameBase}-${tempUsernameCounter}`;
+        }
+      }// -- end for tempUsernameCounter
+
+      // -- Fall back on "TempUser<User Object ID>"
+      return `TempUser-${tempUserId.toHexString()}`;
+    })();
 
     // unique name is found
     const expirationTime = process.env.TEMP_USER_EXPIRATION_SECS;
