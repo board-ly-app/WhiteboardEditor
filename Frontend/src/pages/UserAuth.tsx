@@ -82,6 +82,7 @@ const UserAuth = ({
         const tempWhiteboardData: CreateWhiteboardFormData = {
           name: `${userResp.data.user.username}'s Whiteboard`,
           collaboratorPermissions: [],
+          visibility: 'public',
           width: 3000,
           height: 3000
         };
