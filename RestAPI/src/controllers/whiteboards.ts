@@ -55,7 +55,6 @@ export const handleGetWhiteboardById = async (
   
   // fetch whiteboard by id
   const resp = await getWhiteboardById(whiteboardId);
-  console.log("resp: ", resp);
   
   switch (resp.status) {
     case 'server_error':
