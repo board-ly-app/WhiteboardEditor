@@ -664,7 +664,7 @@ const Whiteboard = ({
             </>
             : <>
               <HeaderUnauthed
-                title={"Trial Whiteboard"}
+                title={title}
                 toolbarElemsLeft={[
                   (
                     <HeaderButton 
