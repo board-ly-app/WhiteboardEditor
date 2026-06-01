@@ -1,6 +1,13 @@
 // -- third-party imports
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import {
+  uniqueNamesGenerator,
+  Config as UniqueNamesConfig,
+  adjectives,
+  colors,
+  animals,
+} from 'unique-names-generator';
 
 // -- local imports
 import {
@@ -88,9 +95,37 @@ export type CreateTempUserRes =
 ;
 
 export const tempUserLoginService = async (): Promise<CreateTempUserRes> => {
+  // -- Config for generating random unique names
+  const uniqueNamesConfig : UniqueNamesConfig = {
+    dictionaries: [adjectives, colors, animals],
+    separator: "-",
+    length: 3,
+  };
+
   try{
     const tempUserId = new mongoose.Types.ObjectId();
-    const tempUsername = `TempUser${tempUserId.toHexString()}`;
+    // -- Generate temp user name
+    const tempUsernameBase : string = uniqueNamesGenerator(uniqueNamesConfig);
+    let tempUsername = tempUsernameBase;
+    let tempUsernameCounter = 1;
+
+    // -- While temp name already exists, try appending integers until a truly
+    while (true) {
+      const existingUserWithName = await User.findOne({
+        username: {
+          "$eq": tempUsername,
+        },
+      });
+
+      if (! existingUserWithName) {
+        break;
+      } else {
+        ++tempUsernameCounter;
+        tempUsername = `${tempUsernameBase}-${tempUsernameCounter}`;
+      }
+    }// -- end while true
+
+    // unique name is found
     const expirationTime = process.env.TEMP_USER_EXPIRATION_SECS;
     if (!expirationTime) {
       console.error("TEMP_USER_EXPIRATION_SECS not defined in env.");
