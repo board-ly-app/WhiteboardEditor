@@ -218,6 +218,14 @@ const canvases = [
     // null allowed_users = all users allowed
     // allowed_users: [],
   },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece020c'),
+    width: 3000,
+    height: 3000,
+    name: "Canvas Public",
+    time_created: new Date("2025-08-01T12:10:00.000Z"),
+    time_last_modified: new Date("2025-08-10T12:10:00.000Z"),
+  },
 ];
 
 db.canvases.insertMany(canvases);
@@ -266,6 +274,7 @@ const whiteboards = [
     _id: new ObjectId('68d5e8d4829da666aece0400'),
     name: "Project Alpha",
     kind: "permanent_whiteboard",
+    visibility: "private",
     time_created: new Date("2025-08-01T12:00:00.000Z"),
     root_canvas: insertedCanvases[0]._id,
     user_permissions: [
@@ -281,6 +290,7 @@ const whiteboards = [
     _id: new ObjectId('68d5e8d4829da666aece0401'),
     name: "Project Beta",
     kind: "permanent_whiteboard",
+    visibility: "private",
     time_created: new Date("2025-08-02T12:10:00.000Z"),
     root_canvas: insertedCanvases[1]._id,
     user_permissions: [
@@ -296,6 +306,7 @@ const whiteboards = [
     _id: new ObjectId('68d5e8d4829da666aece0402'),
     name: "Project Gamma",
     kind: "permanent_whiteboard",
+    visibility: "private",
     time_created: new Date("2025-08-02T12:10:00.000Z"),
     root_canvas: new ObjectId('68d5e8d4829da666aece0206'),
     user_permissions: [
@@ -317,6 +328,7 @@ const whiteboards = [
     _id: new ObjectId('68d5e8d4829da666aece0403'),
     name: "Project Delta",
     kind: "permanent_whiteboard",
+    visibility: "private",
     time_created: new Date("2025-08-02T12:10:00.000Z"),
     root_canvas: new ObjectId('68d5e8d4829da666aece0207'),
     user_permissions: [
@@ -411,6 +423,7 @@ const whiteboards = [
     _id: new ObjectId('68d5e8d4829da666aece0408'),
     name: "Temp Whiteboard 1",
     kind: "temp_whiteboard",
+    visibility: "public",
     createdAt: new Date("2025-08-02T12:10:00.000Z"),
     root_canvas: new ObjectId('68d5e8d4829da666aece020c'),
     user_permissions: [
@@ -425,12 +438,29 @@ const whiteboards = [
     _id: new ObjectId('68d5e8d4829da666aece0409'),
     name: "Temp Whiteboard 2",
     kind: "temp_whiteboard",
+    visibility: "public",
     createdAt: new Date("2025-08-02T12:10:00.000Z"),
     root_canvas: new ObjectId('68d5e8d4829da666aece020c'),
     user_permissions: [
       {
         type: 'user',
         user: new ObjectId('68d5e8d4829da666aece0107'), // TempUser68d5e8d4829da666aece0107
+        permission: 'own',
+      },
+    ],
+  },
+  {
+    _id: new ObjectId('68d5e8d4829da666aece040a'),
+    name: "Project Public",
+    kind: "permanent_whiteboard",
+    visibility: "public",
+    time_created: new Date("2025-08-02T12:10:00.000Z"),
+    root_canvas: new ObjectId('68d5e8d4829da666aece020d'),
+    user_permissions: [
+      {
+        type: 'user',
+        user: new ObjectId('68d5e8d4829da666aece0102'), // Bob
+        email: "bob@example.com",
         permission: 'own',
       },
     ],

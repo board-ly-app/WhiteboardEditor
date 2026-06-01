@@ -161,7 +161,7 @@ describe("Whiteboards API", () => {
       return;
     }
 
-    const targetUrl = `/api/v1/whiteboards/${whiteboard._id.toString()}`;
+    const targetUrl = `/api/v1/whiteboards/id/${whiteboard._id.toString()}`;
 
     // Generate signed JWT
     const authToken = jwt.sign(
@@ -801,7 +801,7 @@ describe("Whiteboards API", () => {
       return;
     }
 
-    const targetUrl = `/api/v1/whiteboards/${whiteboard._id.toString()}`;
+    const targetUrl = `/api/v1/whiteboards/id/${whiteboard._id.toString()}`;
 
     // Generate signed JWT
     const authToken = jwt.sign(
@@ -981,7 +981,7 @@ describe("Whiteboards API", () => {
       );
 
       const resp = await request(app)
-        .get(`/api/v1/whiteboards/${whiteboardOrig._id.toHexString()}`)
+        .get(`/api/v1/whiteboards/id/${whiteboardOrig._id.toHexString()}`)
         .set("Authorization", `Bearer ${authToken}`)
         .send()
         .expect(200);
@@ -1113,6 +1113,105 @@ describe("Whiteboards API", () => {
     expect(updatedWhiteboard).toHaveProperty('createdAt');
     expect(updatedWhiteboard).not.toHaveProperty('time_created');
     expect(updatedWhiteboard.kind).toBe('temp_whiteboard');
+  });
+
+  it('should allow an unauthed user to open a public whiteboard', async () => {
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Public" });
+
+    expect(whiteboard).not.toBeNull();
+
+    if (!whiteboard) {
+      return;
+    }
+
+    const wbRes = await request(app)
+      .get(`/api/v1/whiteboards/id/${whiteboard._id.toString()}`)
+      .send()
+      .expect(200);
+
+    validateWhiteboardAttribView(wbRes.body, {
+      name: "Project Public",
+      kind: "permanent_whiteboard",
+    });
+  });
+
+  it("should allow an authed user to open a public whiteboard that they don't have permissions on", async () => {
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+    const userCollection = mongoose.connection.collection('users');
+
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Public" });
+    const alice = await userCollection.findOne({ username: 'alice' });
+
+    expect(whiteboard).not.toBeNull();
+    expect(alice).not.toBeNull();
+
+    if (!whiteboard || !alice) {
+      return;
+    }
+
+    const authToken = jwt.sign(
+      { sub: alice._id.toString() },
+      JWT_SECRET!,
+      { expiresIn: '1h' }
+    );
+
+    const wbRes = await request(app)
+      .get(`/api/v1/whiteboards/id/${whiteboard._id.toString()}`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send()
+      .expect(200);
+
+    validateWhiteboardAttribView(wbRes.body, {
+      name: "Project Public",
+      kind: "permanent_whiteboard",
+    });
+  });
+
+  it('should not allow an unauthed user to open a private whiteboard', async () => {
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Alpha" });
+
+    expect(whiteboard).not.toBeNull();
+
+    if (!whiteboard) {
+      return;
+    }
+
+    await request(app)
+      .get(`/api/v1/whiteboards/id/${whiteboard._id.toString()}`)
+      .send()
+      .expect(403);
+  });
+
+  it("should not allow an authed user without permissions to open a private whiteboard", async () => {
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+    const userCollection = mongoose.connection.collection('users');
+
+    // Project Beta is owned by Bob; alice has no permissions on it
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Beta" });
+    const alice = await userCollection.findOne({ username: 'alice' });
+
+    expect(whiteboard).not.toBeNull();
+    expect(alice).not.toBeNull();
+
+    if (!whiteboard || !alice) {
+      return;
+    }
+
+    const authToken = jwt.sign(
+      { sub: alice._id.toString() },
+      JWT_SECRET!,
+      { expiresIn: '1h' }
+    );
+
+    await request(app)
+      .get(`/api/v1/whiteboards/id/${whiteboard._id.toString()}`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send()
+      .expect(403);
   });
 });
 

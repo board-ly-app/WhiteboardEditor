@@ -64,6 +64,7 @@ export interface WhiteboardAttribs {
   id: WhiteboardIdType;
   name: string;
   rootCanvas: CanvasIdType;
+  visibility: 'public' | 'private';
   userPermissions: UserPermission[];
   permissionsByUserId: Record<UserIdType, {
     permission: UserPermissionEnum;

@@ -5,7 +5,8 @@ import rateLimit from "express-rate-limit";
 
 // --- local imports
 import {
-  authenticateJWT
+  authenticateJWT,
+  authenticateJWTOptional
 } from '../middleware/auth';
 
 import {
@@ -36,6 +37,16 @@ const changeWhiteboardNameLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const getWhiteboardByIdLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 120, // limit each IP to 120 fetch requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// -- Get whiteboard by id
+router.get('/id/:whiteboardId', getWhiteboardByIdLimiter, authenticateJWTOptional, handleGetWhiteboardById);
+
 // -- all routes authenticated
 router.use(authenticateJWT);
 
@@ -47,9 +58,6 @@ router.post("/temp", handleCreateTempWhiteboard);
 
 // -- Get user's own whiteboards
 router.get("/own", handleGetOwnWhiteboards);
-
-// -- Get whiteboard by id
-router.get('/:whiteboardId', handleGetWhiteboardById);
 
 // -- Convert a temp whiteboard to a permanent one
 router.post('/:whiteboardId/convert_temp_to_perm', convertTempToPermLimiter, handleConvertTempToPerm);

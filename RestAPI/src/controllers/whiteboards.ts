@@ -13,6 +13,7 @@ import {
   type IWhiteboardUserPermissionModel,
   type IWhiteboardUserPermissionById,
   type IWhiteboardUserPermissionByEmail,
+  type IWhiteboardVisibilityEnum,
 } from '../models/Whiteboard';
 
 import {
@@ -39,18 +40,15 @@ export interface CreateWhiteboardRequest extends AuthorizedRequestBody {
   collaboratorPermissions?: IWhiteboardUserPermissionByEmail[];
   width: number;
   height: number;
+  visibility: IWhiteboardVisibilityEnum;
 }
 
 export const handleGetWhiteboardById = async (
   req: Request<{ whiteboardId: string }, any, AuthorizedRequestBody>,
   res: Response
 ) => {
-  const {
-    authUser,
-  } = req.body;
-  const {
-    id: userId,
-  } = authUser;
+  const authUser = req.body?.authUser;
+  const userId = authUser?.id;
   const {
     whiteboardId,
   } = req.params;
@@ -81,16 +79,18 @@ export const handleGetWhiteboardById = async (
             perm.user.id, true 
           ])
         );
-  
-        if (! (userId.toString() in validUserIdSet)) {
-          return res.status(403).json({
-            message: 'You are not authorized to view this resource'
-          });
-        } else {
-          const wbAttribView = whiteboard.toAttribView();
-  
-          return res.status(200).json(wbAttribView);
+
+        if (whiteboard.visibility !== 'public') {
+          // Private board - require authenticated user with permission
+          if (!userId || !(userId.toString() in validUserIdSet)) {
+            return res.status(403).json({
+              message: 'You are not authorized to view this resource'
+            });
+          }
         }
+
+        const wbAttribView = whiteboard.toAttribView();
+        return res.status(200).json(wbAttribView);
     }
     default:
       return res.status(500).json({ message: 'Unexpected error occurred' });
@@ -102,7 +102,7 @@ export const handleCreateWhiteboard = async (
   res: Response
 ) => {
   try {
-    const { authUser, name } = req.body;
+    const { authUser, name, visibility } = req.body;
     const { id: ownerId } = authUser;
     console.log("handleCreateWhiteboard req.body: ", req.body);
     
@@ -174,7 +174,8 @@ export const handleCreateWhiteboard = async (
       kind: 'permanent_whiteboard',
       root_canvas: rootCanvas._id,
       thumbnail_url: null,
-      user_permissions: [ownerPermission, ...collaboratorPermissionsFinal]
+      user_permissions: [ownerPermission, ...collaboratorPermissionsFinal],
+      visibility: visibility,
     });
 
     console.log('Attempting to create new whiteboard:', whiteboard);
@@ -221,6 +222,7 @@ export const handleCreateTempWhiteboard = async (
       root_canvas: rootCanvas._id,
       thumbnail_url: null,
       user_permissions: [ownerPermission],
+      visibility: 'public',
       createdAt: new Date(Date.now())
     });
 
@@ -292,7 +294,7 @@ export const handleConvertTempToPerm = async (
           name: 'Trial Whiteboard',
           kind: 'permanent_whiteboard',
           time_created: new Date(),
-          user_permissions: updatedPermissions
+          user_permissions: updatedPermissions,
         },
         $unset: {
           createdAt: ""

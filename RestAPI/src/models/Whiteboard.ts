@@ -370,6 +370,11 @@ export type WhiteboardTypeEnum =
   | "temp_whiteboard"
 ;
 
+export type IWhiteboardVisibilityEnum = 
+  | 'public'
+  | 'private'
+;
+
 // === IWhiteboard ========================================================================
 //  
 // Base whiteboard model containing fields shared by all whiteboard types in the system.
@@ -380,6 +385,7 @@ export interface IWhiteboardModel <UserType, CanvasType> {
   root_canvas: CanvasType;
   thumbnail_url: string;
   kind: WhiteboardTypeEnum;
+  visibility: IWhiteboardVisibilityEnum;
 
   // -- vector fields: exclude from attribute view
   user_permissions: IWhiteboardUserPermission<UserType>[];
@@ -507,6 +513,7 @@ const whiteboardSchema = new Schema<IWhiteboard<Types.ObjectId, Types.ObjectId>,
     root_canvas: { type: Schema.Types.ObjectId, ref: "Canvas", required: true },
     thumbnail_url: { type: String, required: false, default: null },
     user_permissions: [whiteboardUserPermissionSchema],
+    visibility: { type: String, required: true, default: 'private' }
   },
   {
     // -- options

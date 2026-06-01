@@ -664,7 +664,7 @@ const Whiteboard = ({
             </>
             : <>
               <HeaderUnauthed
-                title={"Trial Whiteboard"}
+                title={title}
                 toolbarElemsLeft={[
                   (
                     <HeaderButton 
@@ -1012,7 +1012,7 @@ const WrappedWhiteboard = () => {
     queryKey: whiteboardKey,
     queryFn: async (): Promise<APIWhiteboard> => {
       const res : AxiosResp<APIWhiteboard> | AxiosResp<APIErrorResponse> = await api.get(
-        `/whiteboards/${whiteboardId}`
+        `/whiteboards/id/${whiteboardId}`
       );
 
       if (axiosResponseIsError(res)) {

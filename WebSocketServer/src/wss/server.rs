@@ -1017,7 +1017,7 @@ mod unit_tests {
     #[tokio::test]
     async fn handle_invalid_client_message() {
         use futures::lock::Mutex;
-        use models::{UserSummary, Whiteboard, WhiteboardMetadata};
+        use models::{UserSummary, Whiteboard, WhiteboardMetadata, WhiteboardVisibilityEnum};
         use protocol::{ServerSocketMessage,ServerSocketIndividualMessage};
         use server::{ClientStateBase, ClientStateAuthenticated, handle_authenticated_client_message};
         use std::sync::Arc;
@@ -1034,7 +1034,7 @@ mod unit_tests {
         let whiteboard = Whiteboard::new(
             whiteboard_id.clone(),
             true,
-            WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
+            WhiteboardMetadata::new(String::from("Test"), WhiteboardVisibilityEnum::Private, vec![], HashMap::new()),
             test_canvas_id,
             HashMap::new(),
             // -- Edit history irrelevant
@@ -1088,7 +1088,7 @@ mod unit_tests {
         use futures::lock::Mutex;
         use models::{
             Canvas, CanvasObjectModel, UserSummary, Whiteboard, WhiteboardMetadata,
-            WhiteboardPermissionEnum,
+            WhiteboardPermissionEnum, WhiteboardVisibilityEnum
         };
         use protocol::{ServerSocketMessage,ServerSocketBroadcastMessage};
         use server::{ClientStateBase, ClientStateAuthenticated, handle_authenticated_client_message};
@@ -1180,7 +1180,7 @@ mod unit_tests {
         let whiteboard = Whiteboard::new(
             whiteboard_id.clone(),
             true,
-            WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
+            WhiteboardMetadata::new(String::from("Test"), WhiteboardVisibilityEnum::Private, vec![], HashMap::new()),
             canvas_a_id,
             HashMap::from([(
                 canvas_a_id.clone(),
@@ -1344,7 +1344,7 @@ mod unit_tests {
         use futures::lock::Mutex;
         use models::{
             Canvas, CanvasObjectModel, UserSummary, Whiteboard, WhiteboardMetadata,
-            WhiteboardPermissionEnum,
+            WhiteboardPermissionEnum, WhiteboardVisibilityEnum
         };
         use protocol::{ServerSocketMessage,ServerSocketBroadcastMessage};
         use server::{ClientStateBase, ClientStateAuthenticated, handle_authenticated_client_message};
@@ -1420,7 +1420,7 @@ mod unit_tests {
         let whiteboard = Whiteboard::new(
             whiteboard_id.clone(),
             true,
-            WhiteboardMetadata::new(String::from("Test"), vec![], HashMap::new()),
+            WhiteboardMetadata::new(String::from("Test"), WhiteboardVisibilityEnum::Private, vec![], HashMap::new()),
             canvas_a_id,
             HashMap::from([(
                 canvas_a_id.clone(),
@@ -1637,7 +1637,7 @@ mod unit_tests {
         use jwt::SignWithKey;
         use models::{
             User, UserSummary, Whiteboard, WhiteboardMetadata, WhiteboardPermission,
-            WhiteboardPermissionEnum, WhiteboardPermissionType,
+            WhiteboardPermissionEnum, WhiteboardPermissionType, WhiteboardVisibilityEnum,
         };
         use mongodb::bson::oid::ObjectId;
         use protocol::{ServerSocketMessage,ServerSocketIndividualMessage};
@@ -1687,6 +1687,7 @@ mod unit_tests {
             true,
             WhiteboardMetadata::new(
                 String::from("Test"),
+                WhiteboardVisibilityEnum::Private,
                 vec![WhiteboardPermission {
                     permission_type: WhiteboardPermissionType::User {
                         user: target_uid,
@@ -1884,7 +1885,7 @@ mod unit_tests {
         use futures::lock::Mutex;
         use models::{
             UserSummary, Whiteboard, WhiteboardMetadata, WhiteboardPermission,
-            WhiteboardPermissionEnum, WhiteboardPermissionType,
+            WhiteboardPermissionEnum, WhiteboardPermissionType, WhiteboardVisibilityEnum,
         };
         use mongodb::bson::oid::ObjectId;
         use protocol::{ClientError,ServerSocketMessage::*,ServerSocketIndividualMessage};
@@ -1924,6 +1925,7 @@ mod unit_tests {
             true,
             WhiteboardMetadata::new(
                 String::from("Test"),
+                WhiteboardVisibilityEnum::Private,
                 vec![WhiteboardPermission {
                     permission_type: WhiteboardPermissionType::User {
                         user: test_user_id,
@@ -2088,6 +2090,7 @@ mod unit_tests {
             true,
             WhiteboardMetadata::new(
                 String::from("Test"),
+                WhiteboardVisibilityEnum::Private,
                 vec![WhiteboardPermission {
                     permission_type: WhiteboardPermissionType::User {
                         user: test_user_id.clone(),
@@ -2284,6 +2287,7 @@ mod unit_tests {
             true,
             WhiteboardMetadata::new(
                 String::from("Test"),
+                WhiteboardVisibilityEnum::Private,
                 vec![WhiteboardPermission {
                     permission_type: WhiteboardPermissionType::User {
                         user: test_user_id.clone(),
@@ -2449,6 +2453,7 @@ mod unit_tests {
             true,
             WhiteboardMetadata::new(
                 String::from("Test"),
+                WhiteboardVisibilityEnum::Private,
                 vec![WhiteboardPermission {
                         permission_type: WhiteboardPermissionType::User {
                             user: user_a_id.clone(),

@@ -62,9 +62,14 @@ export const selectWhiteboardPermissionByUser = (
 ): UserPermissionEnum | null => {
   if (! (whiteboardId in state.whiteboards)) {
     return null;
-  } else {
-    const whiteboard = state.whiteboards[whiteboardId];
-
-    return whiteboard.permissionsByUserId[userId]?.permission ?? null;
   }
+
+  const whiteboard = state.whiteboards[whiteboardId];
+  const explicit = whiteboard.permissionsByUserId[userId]?.permission ?? null;
+
+  if (explicit !== null) {
+    return explicit;
+  }
+
+  return whiteboard.visibility === 'public' ? 'edit' : null;
 };// -- end selectWhiteboardPermissionByUser

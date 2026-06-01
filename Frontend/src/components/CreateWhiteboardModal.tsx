@@ -25,6 +25,14 @@ import {
 } from "@/components/ui/popover";
 
 import {
+  Checkbox
+} from '@/components/ui/checkbox';
+
+import {
+  Label
+} from '@/components/ui/label';
+
+import {
   Command,
 } from '@/components/ui/command';
 
@@ -57,6 +65,7 @@ export interface CreateWhiteboardFormData extends CreateWhiteboardFormAttribs {
   collaboratorPermissions: UserPermission[];
   width: number;
   height: number;
+  visibility: 'public' | 'private';
 }
 
 export interface CreateWhiteboardModalProps {
@@ -77,6 +86,7 @@ const CreateWhiteboardModal = ({
   );
   const [permissionsByKey, setPermissionsByKey] = useState<Record<string, UserPermission>>({});
 
+  const [visibility, setVisibility] = useState<'public' | 'private'>('private');
   const [submitButtonStatus, setSubmitButtonStatus] = useState<ButtonStatus>('enabled');
 
   // -- derived state
@@ -146,6 +156,7 @@ const CreateWhiteboardModal = ({
         collaboratorPermissions: permissions,
         width: rootCanvasWidth,
         height: rootCanvasHeight,
+        visibility,
       };
 
       if (! data.name) {
@@ -165,7 +176,7 @@ const CreateWhiteboardModal = ({
           setSubmitButtonStatus('enabled');
         });
     },
-    [setSubmitButtonStatus, formInputs, onSubmit, permissions]
+    [setSubmitButtonStatus, formInputs, onSubmit, permissions, visibility]
   );
 
   const makeHandleRemoveByKey = (key: string) => () => {
@@ -259,16 +270,29 @@ const CreateWhiteboardModal = ({
           <h2 className="text-center text-2xl font-bold m-2">Create a new whiteboard</h2>
 
           <Command className="flex flex-col flex-shrink p-4">
-            <div className="flex flex-col">
-              <label htmlFor="whiteboard-name">Whiteboard Name:</label>
-              <Input
-                name="name"
-                type="text"
-                onChange={handleChangeInput}
-                value={formInputs.name}
-                required
-                placeholder="Whiteboard Name"
-              />
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col">
+                <label htmlFor="whiteboard-name">Whiteboard Name:</label>
+                <Input
+                  name="name"
+                  type="text"
+                  onChange={handleChangeInput}
+                  value={formInputs.name}
+                  required
+                  placeholder="Whiteboard Name"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="visibility"
+                  checked={visibility === 'public'}
+                  onCheckedChange={(checked) =>
+                    setVisibility(checked ? 'public' : 'private')
+                  }
+                />
+                <Label htmlFor="visibility">Make this whiteboard public</Label>
+              </div>
             </div>
           </Command>
 
