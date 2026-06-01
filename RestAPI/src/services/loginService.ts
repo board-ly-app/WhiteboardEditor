@@ -100,7 +100,8 @@ export const tempUserLoginService = async (): Promise<CreateTempUserRes> => {
     dictionaries: [adjectives, colors, animals],
     separator: "-",
     length: 3,
-  };
+    style: 'capital',
+  };// -- end uniqueNamesConfig
 
   try{
     const tempUserId = new mongoose.Types.ObjectId();
