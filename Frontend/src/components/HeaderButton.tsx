@@ -14,7 +14,7 @@ import {
 import type { ReactNode } from 'react';
 
 const buttonVariants = cva(
-  "px-4 py-2 rounded-lg",
+  "px-4 py-2 rounded-lg text-nowrap",
   {
     variants: {
       variant: {
