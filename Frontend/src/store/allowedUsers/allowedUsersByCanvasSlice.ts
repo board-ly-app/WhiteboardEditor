@@ -9,37 +9,36 @@ import {
   type CanvasIdType,
 } from '@/types/WebSocketProtocol';
 
+type SliceState = Record<CanvasIdType, Record<UserIdType, unknown>>;
+
+const initialState : SliceState = {};
+
 const allowedUsersByCanvasSlice = createSlice({
   name: 'allowedUsersByCanvas',
-  initialState: {} as Record<CanvasIdType, UserIdType[]>,
+  initialState,
   reducers: {
     setAllowedUsersByCanvas(state, action: PayloadAction<Record<CanvasIdType, UserIdType[]>>) {
-      return {
-        ...state,
-        ...action.payload
-      };
+      for (const [canvasId, userIds] of Object.entries(action.payload)) {
+        state[canvasId] = Object.fromEntries(userIds.map((userId) => [userId, true]));
+      }// -- end for
+
+      return state;
     },
     addAllowedUsersByCanvas(state, action: PayloadAction<Record<CanvasIdType, UserIdType[]>>) {
-      const out = { ...state };
+      for (const [canvasId, userIds] of Object.entries(action.payload)) {
+        for (const userId of userIds) {
+          state[canvasId][userId] = true;
+        }// -- end for userId
+      }// -- end for
 
-      Object.entries(action.payload).forEach(([id, users]) => {
-        if (id in state) {
-          out[id] = [...state[id], ...users];
-        } else {
-          out[id] = users;
-        }
-      });
-
-      return out;
+      return state;
     },
     removeAllowedUsersByCanvas(state, action: PayloadAction<CanvasIdType[]>) {
-      const out = { ...state };
+      for (const canvasId of action.payload) {
+        delete state[canvasId];
+      }// -- end for canvasId
 
-      for (const id of action.payload) {
-        delete out[id];
-      }
-
-      return out;
+      return state;
     }
   },
   selectors: {

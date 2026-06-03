@@ -7,8 +7,8 @@ import {
 } from '@/store';
 
 import {
+  type UserIdType,
   type CanvasAttribs,
-  type CanvasData,
   type CanvasIdType,
   type WhiteboardIdType
 } from '@/types/WebSocketProtocol';
@@ -44,42 +44,6 @@ export const selectCanvasWithObjects = createSelector(
   (canvas, objects) => canvas ? ({ ...canvas, canvasObjects: objects }) : null
 );
 
-export const selectCanvasesWithObjectsByWhiteboardId = (
-  state: RootState,
-  whiteboardId: WhiteboardIdType
-): CanvasData[] => {
-  if (! (whiteboardId in state.canvasesByWhiteboard.canvasesByWhiteboard)) {
-    return [];
-  } else {
-    return Object.keys(state.canvasesByWhiteboard.canvasesByWhiteboard[whiteboardId])
-      .map((canvasId: CanvasIdType) => {
-        const canvas = state.canvases[canvasId] || null;
-
-        if (! canvas) {
-          return null;
-        } else {
-          return ({
-            ...canvas,
-            canvasObjects: Object.fromEntries(Object.keys(state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId])
-              .map(canvasObjectId => {
-                if (! (canvasObjectId in state.canvasObjects)) {
-                  return null;
-                } else {
-                  const canvasObjectRecord = state.canvasObjects[canvasObjectId];
-
-                  return [canvasObjectId, canvasObjectRecord];
-                }
-              })
-              .filter(entry => !!entry)
-            ),
-            allowedUsers: state.allowedUsersByCanvas[canvasId] || []
-          });
-        }
-      })
-      .filter((canvas: CanvasData | null) => !!canvas);
-  }
-};// -- end selectCanvasesWithObjectsByWhiteboardId
-
 export const selectSelectedCanvasByWhiteboard = (
   state: RootState,
   whiteboardId: WhiteboardIdType
@@ -97,3 +61,18 @@ export const selectChildCanvasIdsByCanvas = (
     return Object.keys(state.childCanvasesByCanvas.childCanvasesByCanvas[canvasId]);
   }
 };// -- end selectChildCanvasIdsByCanvas
+
+export const selectUserHasAccessToCanvas = (
+  state: RootState,
+  canvasId: CanvasIdType,
+  userId: UserIdType,
+): boolean => {
+  if (! (canvasId in state.allowedUsersByCanvas)) {
+    // -- If no explicit allowed users set, assume true
+    return true;
+  }
+
+  const allowedUserIdSet = state.allowedUsersByCanvas[canvasId];
+
+  return ((userId in allowedUserIdSet) || (Object.keys(allowedUserIdSet).length === 0));
+};// -- end selectUserHasAccessToCanvas

@@ -49,25 +49,28 @@ export const UserCacheProvider = ({
 
   const usersByIdRef = useRef<Record<string, User>>({});
 
-  const getUserById = async (userId: string): Promise<User | null> => {
-    if (userId in usersByIdRef.current) {
-      return usersByIdRef.current[userId];
-    } else {
-      const res : AxiosResponse<User> = await api.get(`/users/${userId}`);
-
-      if (res.status >= 400) {
-        console.error('Could not fetch user', userId, `- received ${res.status} (${res.statusText})`);
-        // no change
-        return null;
+  const getUserById = useCallback(
+    async (userId: string): Promise<User | null> => {
+      if (userId in usersByIdRef.current) {
+        return usersByIdRef.current[userId];
       } else {
-        const user = res.data;
+        const res : AxiosResponse<User> = await api.get(`/users/${userId}`);
 
-        usersByIdRef.current[userId] = user;
+        if (res.status >= 400) {
+          console.error('Could not fetch user', userId, `- received ${res.status} (${res.statusText})`);
+          // no change
+          return null;
+        } else {
+          const user = res.data;
 
-        return user;
+          usersByIdRef.current[userId] = user;
+
+          return user;
+        }
       }
-    }
-  };// end getUserById
+    },
+    []
+  );// -- end getUserById
 
   const fetchUserById = useCallback(
     async (userId: string): Promise<User | null> => {

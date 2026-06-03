@@ -244,7 +244,7 @@ const CanvasCard = ({
         setSelectedCanvasAllowedUsers(null);
       } else {
         const mapUsers = async () => {
-          const newAllowedUsers = (await Promise.all(allowedUserIds
+          const newAllowedUsers = (await Promise.all(Object.keys(allowedUserIds)
             .map(uid => getUserById(uid))))
             .filter(user => !!user);
 

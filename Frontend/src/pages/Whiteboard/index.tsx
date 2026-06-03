@@ -76,10 +76,6 @@ import {
 } from '@/store/whiteboards/whiteboardsSelectors';
 
 import {
-  selectCanvasesWithObjectsByWhiteboardId,
-} from '@/store/canvases/canvasesSelectors';
-
-import {
   selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
@@ -131,7 +127,6 @@ import {
 
 import type {
   ClientMessageCreateCanvas,
-  CanvasData,
   CanvasIdType,
   WhiteboardIdType,
 } from '@/types/WebSocketProtocol';
@@ -301,11 +296,6 @@ const Whiteboard = ({
       }
     },
     [currentTool]
-  );
-
-  const canvases: CanvasData[] = useSelector(
-    (state: RootState) => selectCanvasesWithObjectsByWhiteboardId(state, whiteboardId),
-    lodash.isEqual
   );
 
   const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
@@ -610,10 +600,6 @@ const Whiteboard = ({
         currWhiteboard,
       } = status;
       
-      const canvasesSorted = [...canvases];
-      
-      canvasesSorted.sort((a, b) => new Date(a.timeCreated) < new Date(b.timeCreated) ? -1 : 1);
-      
       const {
         name: title,
         rootCanvas: rootCanvasId,
@@ -880,10 +866,6 @@ const Whiteboard = ({
       const {
         rootCanvas: rootCanvasId,
       } = currWhiteboard;
-      
-      const canvasesSorted = [...canvases];
-      
-      canvasesSorted.sort((a, b) => new Date(a.timeCreated) < new Date(b.timeCreated) ? -1 : 1);
       
       const title = `[DELETED] ${currWhiteboard.name}`;
       
