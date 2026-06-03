@@ -40,15 +40,12 @@ import {
 
 import {
   selectCanvasById,
+  selectUserHasAccessToCanvas,
 } from '@/store/canvases/canvasesSelectors';
 
 import {
   selectWhiteboardPermissionByUser,
 } from '@/store/whiteboards/whiteboardsSelectors';
-
-import {
-  useUser,
-} from '@/hooks/useUser';
 
 import WhiteboardContext from "@/context/WhiteboardContext";
 
@@ -56,13 +53,18 @@ import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
 
+import {
+  useUser,
+} from '@/hooks/useUser';
+
 import AllowedUsersPopover from "@/components/AllowedUsersPopover";
 
-import type { 
-  CanvasIdType, 
-  WhiteboardIdType,
-  WhiteboardAttribs,
-  CanvasAttribs,
+import { 
+  type UserIdType,
+  type CanvasIdType, 
+  type WhiteboardIdType,
+  type WhiteboardAttribs,
+  type CanvasAttribs,
 } from "@/types/WebSocketProtocol";
 
 import {
@@ -94,11 +96,13 @@ const CanvasMenu = ({
   allowedUsernames,
 }: CanvasMenuProps) => {
   const [allowedUsersMenuOpen, setAllowedUsersMenuOpen] = useState(false);
-  const allowedUsers = useSelector((state: RootState) =>
+  const allowedUserIdSet : Record<UserIdType, unknown> = useSelector((state: RootState) =>
     selectAllowedUsersByCanvas(state, canvasId) ?? [],
     lodash.isEqual
   );
-  const [selectedUsers, setSelectedUsers] = useState<string[]>(allowedUsers);
+  const [selectedAllowedUsers, setSelectedAllowedUsers] = useState<string[]>(
+    Object.keys(allowedUserIdSet)
+  );
 
   // -- unpack Whiteboard context
   const whiteboardContext = useContext(WhiteboardContext);
@@ -134,6 +138,11 @@ const CanvasMenu = ({
   const {
     clientMessenger,
   } = clientMessengerContext;
+
+  const userHasAccess = useSelector(
+    (state: RootState) => selectUserHasAccessToCanvas(state, canvasId, user.id),
+    lodash.isEqual
+  );
 
   const whiteboard: WhiteboardAttribs | null = useSelector((state: RootState) => (
     selectWhiteboardById(state, whiteboardId)),
@@ -221,6 +230,20 @@ const CanvasMenu = ({
     [canvas.name, canvasGroupRefsByIdRef, canvasId, whiteboard.name]
   );// -- end handleDownload
 
+  // === handleRequestEditPermission ===============================================
+  //
+  // Requests edit access to this canvas. All users who currently have edit
+  // access will be notified, and any one of them will be able to fulfill the
+  // request.
+  //
+  // ===========================================================================
+  const handleRequestEditPermission = useCallback(
+    () => {
+      console.log('!! TODO');
+    },
+    []
+  );// -- end handleRequestEditPermission
+
   return (
     <div>
       <DropdownMenu>
@@ -249,7 +272,7 @@ const CanvasMenu = ({
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               {
-                (ownPermission === 'own') && (
+                ((ownPermission === 'own') && (
                   <>
                     <DropdownMenuItem 
                       className="flex justify-center" 
@@ -260,7 +283,7 @@ const CanvasMenu = ({
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
-                )
+                ))
               }
               {allowedUsernames.map((u) => (
                 <DropdownMenuLabel key={u}>
@@ -269,6 +292,17 @@ const CanvasMenu = ({
               ))}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+
+          {
+            (ownPermission !== 'own') && (! userHasAccess) && (
+              <DropdownMenuItem 
+                onSelect={handleRequestEditPermission}
+              >
+                Request Edit Access
+                <SquarePen/>
+              </DropdownMenuItem>
+            )
+          }
 
           <DropdownMenuItem onSelect={handleDownload}>
             Export to PNG
@@ -301,19 +335,19 @@ const CanvasMenu = ({
           </DialogHeader>
 
           <AllowedUsersPopover 
-            selected={selectedUsers}
-            onChange={setSelectedUsers}
+            selected={selectedAllowedUsers}
+            onChange={setSelectedAllowedUsers}
           />
 
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="secondary" onClick={() => {
-              setSelectedUsers(allowedUsers); // Reset to original selection
+              setSelectedAllowedUsers(Object.keys(allowedUserIdSet)); // Reset to original selection
               setAllowedUsersMenuOpen(false);
             }}>
               Cancel
             </Button>
             <Button onClick={() => {
-              handleUpdateAllowedUsers(selectedUsers);
+              handleUpdateAllowedUsers(selectedAllowedUsers);
               setAllowedUsersMenuOpen(false);
             }}>
               Save
