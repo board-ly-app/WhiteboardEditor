@@ -17,7 +17,7 @@ use mongodb::{Client, bson::oid::ObjectId};
 
 use serde::{self, Deserialize, Serialize};
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::{HashMap,HashSet}, sync::Arc};
 
 // === SharedWhiteboardEntry ======================================================================
 //
@@ -779,6 +779,69 @@ pub async fn handle_authenticated_client_message<'a>(
                                 },
                             ],
                         }
+                    }
+                },
+                RequestCanvasEditPermission {
+                    canvas_id,
+                } => {
+                    let whiteboard = client_state.base.whiteboard_ref.lock().await;
+
+                    let (allowed_editors, canvas_name) : (&HashSet<UserIdType>, &str)
+                        = 'get_allowed_editors: {
+                        if let Some(canvas) = whiteboard.canvases().get(&canvas_id) {
+                            if let Some(allowed_users) = canvas.allowed_users() {
+                                if ! allowed_users.contains(&client_state.user_summary.user_id) {
+                                    // -- User indeed doesn't yet have edit access
+                                    break 'get_allowed_editors (allowed_users, canvas.name());
+                                }
+                            }
+
+                            // -- All users can already edit
+                            return ClientMessageResponse {
+                                messages: vec![
+                                    ServerSocketMessage::Individual {
+                                        target_client_id: client_state.base.client_id.clone(),
+                                        msg: ServerSocketIndividualMessage::Error {
+                                            error: ClientError::Other {
+                                                message: format!(
+                                                    "You already have edit access to canvas \"{}\"",
+                                                    canvas.name()
+                                                ),
+                                            },
+                                        },
+                                    },
+                                ],
+                            };
+                        } else {
+                            // -- Canvas doesn't exist
+                            return ClientMessageResponse {
+                                messages: vec![
+                                    ServerSocketMessage::Individual {
+                                        target_client_id: client_state.base.client_id.clone(),
+                                        msg: ServerSocketIndividualMessage::Error {
+                                            error: ClientError::CanvasNotFound {
+                                                canvas_id: canvas_id.clone(),
+                                            },
+                                        },
+                                    },
+                                ],
+                            };
+                        }
+                    };// -- end 'get_allowed_editors
+
+                    ClientMessageResponse {
+                        // -- Notify client of successful receipt of request
+                        messages: vec![
+                            ServerSocketMessage::Individual {
+                                target_client_id: client_state.base.client_id.clone(),
+                                msg: ServerSocketIndividualMessage::Confirm {
+                                    message: format!(
+                                        "Successfully requested access to canvas \"{}\"",
+                                        canvas_name
+                                    ),
+                                },
+                            },
+                        ],
                     }
                 },
             }

@@ -239,9 +239,12 @@ const CanvasMenu = ({
   // ===========================================================================
   const handleRequestEditPermission = useCallback(
     () => {
-      console.log('!! TODO');
+      clientMessenger?.sendRequestCanvasEditPermission({
+        type: 'request_canvas_edit_permission',
+        canvasId,
+      });
     },
-    []
+    [clientMessenger, canvasId]
   );// -- end handleRequestEditPermission
 
   return (

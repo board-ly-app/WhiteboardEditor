@@ -22,6 +22,7 @@ import {
   type ClientMessageCreateCanvas,
   type ClientMessageUpdateCanvasObjects,
   type ClientMessageUndoHistory,
+  type ClientMessageRequestCanvasEditPermission,
 } from '@/types/WebSocketProtocol';
 
 export interface IWhiteboardClientMessenger {
@@ -38,4 +39,5 @@ export interface IWhiteboardClientMessenger {
   sendMergeCanvas: (msg: ClientMessageMergeCanvas) => unknown;
   sendUpdateCanvasObjects: (msg: ClientMessageUpdateCanvasObjects) => unknown;
   sendUndoHistory: (msg: ClientMessageUndoHistory) => unknown;
+  sendRequestCanvasEditPermission: (msg: ClientMessageRequestCanvasEditPermission) => unknown;
 }// -- end interface IWhiteboardClientMessenger

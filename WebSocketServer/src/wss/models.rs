@@ -1853,3 +1853,135 @@ impl EditMongoDBView {
         )
     }// -- end pub fn from_edit
 }// -- end impl EditMongoDBView
+
+// === Notifications ==============================================================================
+//
+// Notifications served to users within their notifications list.
+//
+// ================================================================================================
+pub type NotificationIdType = ObjectId;
+
+#[derive(Clone, Debug)]
+pub enum NotificationKind {
+    RequestCanvasEditPermission {
+        canvas_id: CanvasIdType,
+        grantee: UserIdType,
+    },
+}// -- end pub enum NotificationKind
+
+#[derive(Clone, Debug)]
+pub struct Notification {
+    id: NotificationIdType,
+    created_at: chrono::DateTime<Utc>,
+    kind: NotificationKind,
+}// -- end pub struct Notification
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+pub enum NotificationKindMongoDBView {
+    RequestCanvasEditPermission {
+        canvas_id: CanvasIdType,
+        grantee: UserIdType,
+    },
+}// -- end pub struct NotificationKindMongoDBView
+
+impl NotificationKindMongoDBView {
+    pub fn from_notification_kind(nk: &NotificationKind) -> Self {
+        use NotificationKind::*;
+
+        match nk {
+            RequestCanvasEditPermission {
+                canvas_id,
+                grantee,
+            } => Self::RequestCanvasEditPermission {
+                canvas_id: canvas_id.clone(),
+                grantee: grantee.clone(),
+            },
+        }// -- end match nk
+    }// -- end fn from_notification_kind
+
+    pub fn to_notification_kind(&self) -> NotificationKind {
+        use NotificationKind::*;
+
+        match self {
+            Self::RequestCanvasEditPermission {
+                canvas_id,
+                grantee,
+            } => RequestCanvasEditPermission {
+                canvas_id: canvas_id.clone(),
+                grantee: grantee.clone(),
+            },
+        }// -- end match self
+    }// -- end fn to_notification_kind
+}// -- end impl NotificationKindMongoDBView
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationMongoDBView {
+    #[serde(rename = "_id")]
+    id: ObjectId,
+    created_at: bson::DateTime,
+    #[serde(flatten)]
+    kind: NotificationKindMongoDBView,
+}// -- end pub struct NotificationMongoDBView
+
+#[serde_as]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+pub enum NotificationKindClientView {
+    RequestCanvasEditPermission {
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
+        #[serde_as(as = "DisplayFromStr")]
+        grantee: UserIdType,
+    },
+}// -- end pub struct NotificationKindClientView
+
+impl NotificationKindClientView {
+    pub fn from_notification_kind(nk: &NotificationKind) -> Self {
+        use NotificationKind::*;
+
+        match nk {
+            RequestCanvasEditPermission {
+                canvas_id,
+                grantee,
+            } => Self::RequestCanvasEditPermission {
+                canvas_id: canvas_id.clone(),
+                grantee: grantee.clone(),
+            },
+        }// -- end match nk
+    }// -- end fn from_notification_kind
+
+    pub fn to_notification_kind(&self) -> NotificationKind {
+        use NotificationKind::*;
+
+        match self {
+            Self::RequestCanvasEditPermission {
+                canvas_id,
+                grantee,
+            } => RequestCanvasEditPermission {
+                canvas_id: canvas_id.clone(),
+                grantee: grantee.clone(),
+            },
+        }// -- end match self
+    }// -- end fn to_notification_kind
+}// -- end impl NotificationKindClientView
+
+#[serde_as]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationClientView {
+    #[serde_as(as = "DisplayFromStr")]
+    id: ObjectId,
+    created_at: bson::DateTime,
+    #[serde(flatten)]
+    kind: NotificationKindClientView,
+}// -- end pub struct NotificationClientView
