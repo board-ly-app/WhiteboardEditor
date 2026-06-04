@@ -40,7 +40,7 @@ const Header = ({
     <>
       {/** Floating header **/}
       <div
-        className="fixed top-1 left-0 right-0 max-h-15 backdrop-blur-md shadow-2xl rounded-lg border-border border-1 mx-5 lg:mx-30 m-1 px-3 py-1 bg-bar-background/80"
+        className="fixed top-1 left-0 right-0 max-h-15 backdrop-blur-md shadow-2xl rounded-lg border-border border-1 mx-5 lg:mx-30 m-1 px-3 py-2 bg-bar-background/80"
         style={{ zIndex }}
       > 
         <div className="relative flex items-center justify-between"> 
