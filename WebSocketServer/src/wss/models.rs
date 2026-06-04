@@ -1864,6 +1864,7 @@ pub type NotificationIdType = ObjectId;
 #[derive(Clone, Debug)]
 pub enum NotificationKind {
     RequestCanvasEditPermission {
+        whiteboard_id: WhiteboardIdType,
         canvas_id: CanvasIdType,
         grantee: UserIdType,
     },
@@ -1898,6 +1899,7 @@ impl Notification {
 )]
 pub enum NotificationKindMongoDBView {
     RequestCanvasEditPermission {
+        whiteboard_id: WhiteboardIdType,
         canvas_id: CanvasIdType,
         grantee: UserIdType,
     },
@@ -1909,9 +1911,11 @@ impl NotificationKindMongoDBView {
 
         match nk {
             RequestCanvasEditPermission {
+                whiteboard_id,
                 canvas_id,
                 grantee,
             } => Self::RequestCanvasEditPermission {
+                whiteboard_id: whiteboard_id.clone(),
                 canvas_id: canvas_id.clone(),
                 grantee: grantee.clone(),
             },
@@ -1923,9 +1927,11 @@ impl NotificationKindMongoDBView {
 
         match self {
             Self::RequestCanvasEditPermission {
+                whiteboard_id,
                 canvas_id,
                 grantee,
             } => RequestCanvasEditPermission {
+                whiteboard_id: whiteboard_id.clone(),
                 canvas_id: canvas_id.clone(),
                 grantee: grantee.clone(),
             },
@@ -1981,6 +1987,8 @@ impl NotificationMongoDBView {
 pub enum NotificationKindClientView {
     RequestCanvasEditPermission {
         #[serde_as(as = "DisplayFromStr")]
+        whiteboard_id: WhiteboardIdType,
+        #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
         #[serde_as(as = "DisplayFromStr")]
         grantee: UserIdType,
@@ -1993,9 +2001,11 @@ impl NotificationKindClientView {
 
         match nk {
             RequestCanvasEditPermission {
+                whiteboard_id,
                 canvas_id,
                 grantee,
             } => Self::RequestCanvasEditPermission {
+                whiteboard_id: whiteboard_id.clone(),
                 canvas_id: canvas_id.clone(),
                 grantee: grantee.clone(),
             },
@@ -2007,9 +2017,11 @@ impl NotificationKindClientView {
 
         match self {
             Self::RequestCanvasEditPermission {
+                whiteboard_id,
                 canvas_id,
                 grantee,
             } => RequestCanvasEditPermission {
+                whiteboard_id: whiteboard_id.clone(),
                 canvas_id: canvas_id.clone(),
                 grantee: grantee.clone(),
             },
