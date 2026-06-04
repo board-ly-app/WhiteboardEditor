@@ -673,6 +673,9 @@ const Whiteboard = ({
                     />
                   ),
                 ]}
+                toolbarElemsRight={[
+                  <ActiveUsersHeaderDropdown />,
+                ]}
                 noMarginTop={true}
               />
             </>}
