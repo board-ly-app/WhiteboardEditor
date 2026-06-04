@@ -38,6 +38,7 @@ export type NotificationTypeEnum =
 export interface INotificationModel {
   kind: NotificationTypeEnum;
   createdAt: Date;
+  isSent: boolean;
 }
 
 // === Base Data Transfer Objects ======================================
@@ -142,6 +143,7 @@ const notficiationSchema = new Schema<
   {
     kind: { type: String, enum: ['request_canvas_edit_permission'], required: true },
     createdAt: { type: Schema.Types.Date, required: true },
+    isSent: { type: Schema.Types.Boolean, required: true, default: false },
   },
   {
     // -- options

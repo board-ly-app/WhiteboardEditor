@@ -410,6 +410,18 @@ const WebSocketClientMessengerProvider = ({
             toast.success(message);
           }
           break;
+          case 'notify':
+          {
+            // -- Notify user
+            // -- TODO: instead, add to notification queue
+            const {
+              notification,
+            } = msg;
+
+            console.log('!! Notification:', notification);
+            toast.success(`Notification:${JSON.stringify(notification)}`);
+          }
+          break;
           case 'error':
             {
               const {

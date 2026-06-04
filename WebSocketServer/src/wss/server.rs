@@ -30,6 +30,7 @@ pub struct SharedWhiteboardEntry {
     pub whiteboard_ref: Arc<Mutex<Whiteboard>>,
     pub broadcaster: broadcast::Sender<ServerSocketMessage>,
     pub active_clients: Arc<Mutex<HashMap<ClientIdType, UserSummary>>>,
+    pub clients_by_user_id: Arc<Mutex<OneToMany<UserIdType, ClientIdType>>>,
     // -- tracking which client is selecting, thereby currently owns, a given canvas object
     pub selectors_to_canvas_objects: Arc<Mutex<OneToOne<ClientIdType, CanvasObjectIdType>>>,
     pub edits: Arc<Mutex<Vec<Edit>>>,
@@ -61,6 +62,7 @@ pub struct ClientStateBase {
     pub jwt_secret: String,
     // The permission (view/edit/own) the user has on the current whiteboard
     pub active_clients: Arc<Mutex<HashMap<ClientIdType, UserSummary>>>,
+    pub clients_by_user_id: Arc<Mutex<OneToMany<UserIdType, ClientIdType>>>,
     // -- tracking which client is selecting, thereby currently owns, a given canvas object
     pub selectors_to_canvas_objects: Arc<Mutex<OneToOne<ClientIdType, CanvasObjectIdType>>>,
     pub edits: Arc<Mutex<Vec<Edit>>>,
@@ -118,6 +120,7 @@ struct ClientMessageInspector {
 pub struct ClientMessageResponse {
     // -- Messages to send back to the client(s)
     pub messages: Vec<ServerSocketMessage>,
+    pub notifications: Vec<Notification>,
 }// -- end pub struct ClientMessageResponse
 
 pub struct ClientMessageUnauthenticatedResponse <'a> {
@@ -155,6 +158,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                 },
                             }
                         }],
+                        notifications: vec![],
                     };
                 }
                 // Proceed to next step.
@@ -173,6 +177,7 @@ pub async fn handle_authenticated_client_message<'a>(
                             error: ClientError::AlreadyAuthorized,
                         },
                     }],
+                    notifications: vec![],
                 },
                 EditingCanvas { canvas_id } => {
                     // TODO: validate that canvas id is valid and user has permission to edit
@@ -184,6 +189,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                 canvas_id,
                             },
                         }],
+                        notifications: vec![],
                     }
                 }
                 SelectedCanvasObject {
@@ -203,6 +209,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                         },
                                     }
                                 }],
+                                notifications: vec![],
                             }
                         },
                         _ => {
@@ -218,6 +225,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                         canvas_object_id: canvas_object_id.clone(),
                                     },
                                 }],
+                                notifications: vec![],
                             }
                         }
                     }// -- end match
@@ -238,6 +246,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                         },
                                     }
                                 }],
+                                notifications: vec![],
                             }
                         },
                         _ => {
@@ -252,6 +261,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                         canvas_object_id: canvas_object_id.clone(),
                                     },
                                 }],
+                                notifications: vec![],
                             }
                         },
                     }// -- end match
@@ -268,6 +278,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                 client_id: client_state.base.client_id.clone(), x, y,
                             },
                         }],
+                        notifications: vec![],
                     }
                 }
                 CreateCanvasObjects {
@@ -287,6 +298,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                     },
                                 }
                             }],
+                            notifications: vec![],
                         },
                         Some(canvas) => {
                             // -- Generate new canvas_objects
@@ -322,6 +334,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                         canvas_objects: new_canvas_objects,
                                     },
                                 }],
+                                notifications: vec![],
                             }
                         }
                     }
@@ -344,6 +357,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                     },
                                 }
                             }],
+                            notifications: vec![],
                         },
                         Some(canvas) => {
                             let selectors_to_canvas_objects = client_state.base
@@ -419,6 +433,7 @@ pub async fn handle_authenticated_client_message<'a>(
 
                             ClientMessageResponse {
                                 messages: responses,
+                                notifications: vec![],
                             }
                         }
                     }
@@ -484,6 +499,7 @@ pub async fn handle_authenticated_client_message<'a>(
 
                     ClientMessageResponse {
                         messages: responses,
+                        notifications: vec![],
                     }
                 }
                 CreateCanvas {
@@ -536,6 +552,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                 canvas: canvas.to_client_view(),
                             },
                         }],
+                        notifications: vec![],
                     }
                 }
                 DeleteCanvases { canvas_ids } => {
@@ -572,6 +589,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                 canvas_ids: deleted_canvas_ids,
                             },
                         }],
+                        notifications: vec![],
                     }
                 }
                 UpdateCanvasAllowedUsers {
@@ -596,6 +614,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                             },
                                         },
                                     }],
+                                    notifications: vec![],
                                 };
                             }
                             Some(perm) => match perm {
@@ -612,6 +631,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                                 },
                                             },
                                         }],
+                                        notifications: vec![],
                                     };
                                 }
                             },
@@ -630,6 +650,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                         },
                                     },
                                 }],
+                                notifications: vec![],
                             }
                         }
                         Some(canvas) => {
@@ -665,6 +686,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                             .collect(),
                                     },
                                 }],
+                                notifications: vec![],
                             }
                         }
                     }
@@ -694,6 +716,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                         },
                                     },
                                 }],
+                                notifications: vec![],
                             }
                         }
 
@@ -708,6 +731,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                     },
                                 },
                             }],
+                            notifications: vec![],
                         };
                     };
 
@@ -721,6 +745,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                     },
                                 },
                             }],
+                            notifications: vec![],
                         };
                     }
 
@@ -746,6 +771,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                 canvas_id: canvas_id.clone(),
                             },
                         }],
+                        notifications: vec![],
                     }
                 }
                 UndoHistory => {
@@ -767,6 +793,7 @@ pub async fn handle_authenticated_client_message<'a>(
 
                         ClientMessageResponse {
                             messages: edit_reverse.generate_server_messages(client_id),
+                            notifications: vec![],
                         }
                     } else {
                         ClientMessageResponse {
@@ -778,6 +805,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                     },
                                 },
                             ],
+                            notifications: vec![],
                         }
                     }
                 },
@@ -811,6 +839,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                         },
                                     },
                                 ],
+                                notifications: vec![],
                             };
                         } else {
                             // -- Canvas doesn't exist
@@ -825,6 +854,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                         },
                                     },
                                 ],
+                                notifications: vec![],
                             };
                         }
                     };// -- end 'get_allowed_editors
@@ -842,6 +872,14 @@ pub async fn handle_authenticated_client_message<'a>(
                                 },
                             },
                         ],
+                        notifications: allowed_editors.iter()
+                            .map(|user_id| Notification::new(
+                                &user_id,
+                                NotificationKind::RequestCanvasEditPermission {
+                                    canvas_id: canvas_id.clone(),
+                                    grantee: client_state.user_summary.user_id.clone(),
+                            }))
+                            .collect(),
                     }
                 },
             }
@@ -859,6 +897,7 @@ pub async fn handle_authenticated_client_message<'a>(
                         },
                     },
                 }],
+                notifications: vec![],
             }
         }
     }
@@ -902,6 +941,7 @@ pub async fn handle_unauthenticated_client_message<
                                             error: ClientError::InvalidAuth,
                                         },
                                     }],
+                                    notifications: vec![],
                                 },
                             };
                         }
@@ -923,6 +963,7 @@ pub async fn handle_unauthenticated_client_message<
                                             },
                                         },
                                     }],
+                                    notifications: vec![],
                                 },
                             };
                         }
@@ -938,6 +979,7 @@ pub async fn handle_unauthenticated_client_message<
                                             },
                                         }
                                     }],
+                                    notifications: vec![],
                                 },
                             };
                         }
@@ -982,8 +1024,10 @@ pub async fn handle_unauthenticated_client_message<
                             // Return a clone of clients here to avoid acquiring two locks at the
                             // same time (reduces risk of deadlock).
                             let mut clients = client_state.active_clients.lock().await;
+                            let mut clients_by_user_id = client_state.clients_by_user_id.lock().await;
 
                             clients.insert(client_state.client_id.clone(), user_summary.clone());
+                            clients_by_user_id.insert(user_id.clone(), client_state.client_id.clone());
 
                             clients.clone()
                         };
@@ -1014,6 +1058,7 @@ pub async fn handle_unauthenticated_client_message<
                                                 .collect()
                                         },
                                     }],
+                                    notifications: vec![],
                                 },
                             }
                         }
@@ -1028,6 +1073,7 @@ pub async fn handle_unauthenticated_client_message<
                                         error: ClientError::Unauthorized,
                                     }
                                 }],
+                                notifications: vec![],
                             },
                         };
                     }
@@ -1042,6 +1088,7 @@ pub async fn handle_unauthenticated_client_message<
                                 error: ClientError::NotAuthenticated,
                             },
                         }],
+                        notifications: vec![],
                     },
                 }
             }
@@ -1061,6 +1108,7 @@ pub async fn handle_unauthenticated_client_message<
                             },
                         }
                     }],
+                    notifications: vec![],
                 },
             }
         }
