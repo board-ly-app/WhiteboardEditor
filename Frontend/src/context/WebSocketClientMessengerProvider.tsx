@@ -400,6 +400,16 @@ const WebSocketClientMessengerProvider = ({
             setClientCursorPos(dispatch, clientId, x, y);
           }
           break;
+          case 'confirm':
+          {
+            // -- notify client of success
+            const {
+              message,
+            } = msg;
+
+            toast.success(message);
+          }
+          break;
           case 'error':
             {
               const {

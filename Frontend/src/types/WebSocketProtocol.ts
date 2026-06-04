@@ -281,6 +281,11 @@ export interface ServerMessageSetCursorPos {
   y: number;
 }
 
+export interface ServerMessageConfirm {
+  type: 'confirm';
+  message: string;
+}
+
 export interface ServerMessageError {
   type: 'error';
   error: ClientError;
@@ -303,6 +308,7 @@ export type SocketServerMessage =
   | ServerMessageMergeCanvas
   | ServerMessageDeleteWhiteboard
   | ServerMessageSetCursorPos
+  | ServerMessageConfirm
   | ServerMessageError
 ;
 
@@ -398,6 +404,11 @@ export interface ClientMessageUndoHistory {
   type: 'undo_history';
 }
 
+export interface ClientMessageRequestCanvasEditPermission {
+  type: 'request_canvas_edit_permission';
+  canvasId: CanvasIdType;
+}
+
 // Tagged union of all possible client-server messages
 export type SocketClientMessage =
   | ClientMessageLogin
@@ -413,4 +424,5 @@ export type SocketClientMessage =
   | ClientMessageMergeCanvas
   | ClientMessageSetCursorPos
   | ClientMessageUndoHistory
+  | ClientMessageRequestCanvasEditPermission
 ;
