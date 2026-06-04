@@ -100,6 +100,12 @@ import HeaderAuthed from '@/components/HeaderAuthed';
 import shapeAttributesReducer from '@/reducers/shapeAttributesReducer';
 import type { ToolChoice } from '@/components/Tool';
 
+// -- page-specific components
+import {
+  NotificationsHeaderMenu,
+} from '@/pages/Whiteboard/NotificationsHeaderMenu';
+
+// -- ui components
 import {
   ActiveUsersHeaderDropdown,
 } from '@/components/ActiveUsersHeaderDropdown';
@@ -641,6 +647,7 @@ const Whiteboard = ({
                 toolbarElemsLeft={[
                   <ShareWhiteboardButton />,
                   <DeleteWhiteboardButton />,
+                  <NotificationsHeaderMenu />,
                 ]}
                 toolbarElemsRight={[
                   <ActiveUsersHeaderDropdown />,
