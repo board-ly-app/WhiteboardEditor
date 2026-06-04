@@ -61,7 +61,7 @@ export const ActiveUsersHeaderDropdown = () => {
     lodash.isEqual
   );
 
-  let activeUsersLength =  Object.keys(activeUsers).length;
+  const activeUsersLength =  Object.keys(activeUsers).length;
 
   return (
     activeUsersLength < ACTIVE_USERS_LIMIT
