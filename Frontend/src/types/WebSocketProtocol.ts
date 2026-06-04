@@ -76,6 +76,28 @@ export interface WhiteboardData extends WhiteboardAttribs {
   canvases: CanvasData[];
 }
 
+// === Notification ============================================================
+//
+// A notification sent from the server.
+//
+// =============================================================================
+
+export type NotificationIdType = string;
+
+interface NotificationBase {
+    id: NotificationIdType;
+    createdAt: Date;
+}// -- end interface NotificationBase
+
+export interface NotificationRequestCanvasEditPermission extends NotificationBase {
+  canvas_id: CanvasIdType;
+  grantee: UserIdType;
+}// -- end NotificationRequestCanvasEditPermission
+
+export type Notification =
+  | NotificationRequestCanvasEditPermission
+;
+
 // ========================== SERVER → CLIENT ==================================
 //
 // =============================================================================
@@ -286,6 +308,11 @@ export interface ServerMessageConfirm {
   message: string;
 }
 
+export interface ServerMessageNotify {
+  type: 'notify';
+  notification: Notification;
+}
+
 export interface ServerMessageError {
   type: 'error';
   error: ClientError;
@@ -309,6 +336,7 @@ export type SocketServerMessage =
   | ServerMessageDeleteWhiteboard
   | ServerMessageSetCursorPos
   | ServerMessageConfirm
+  | ServerMessageNotify
   | ServerMessageError
 ;
 

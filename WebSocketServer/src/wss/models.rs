@@ -1871,10 +1871,24 @@ pub enum NotificationKind {
 
 #[derive(Clone, Debug)]
 pub struct Notification {
-    id: NotificationIdType,
-    created_at: chrono::DateTime<Utc>,
-    kind: NotificationKind,
+    pub id: NotificationIdType,
+    pub recipient: UserIdType,
+    pub created_at: chrono::DateTime<Utc>,
+    pub is_sent: bool,
+    pub kind: NotificationKind,
 }// -- end pub struct Notification
+
+impl Notification {
+    pub fn new(recipient: &UserIdType, kind: NotificationKind) -> Self {
+        Self {
+            id: ObjectId::new(),
+            recipient: recipient.clone(),
+            created_at: Utc::now(),
+            is_sent: false,
+            kind,
+        }
+    }// -- end pub fn new
+}// -- end impl Notification
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(
@@ -1923,11 +1937,39 @@ impl NotificationKindMongoDBView {
 #[serde(rename_all = "camelCase")]
 pub struct NotificationMongoDBView {
     #[serde(rename = "_id")]
-    id: ObjectId,
-    created_at: bson::DateTime,
+    pub id: ObjectId,
+    pub recipient: UserIdType,
+    pub created_at: bson::DateTime,
+    pub is_sent: bool,
     #[serde(flatten)]
-    kind: NotificationKindMongoDBView,
+    pub kind: NotificationKindMongoDBView,
 }// -- end pub struct NotificationMongoDBView
+
+impl NotificationMongoDBView {
+    pub fn from_notification(nt: &Notification) -> Self {
+        use super::utils::dt_chrono_utc_to_bson;
+
+        Self {
+            id: nt.id.clone(),
+            recipient: nt.recipient.clone(),
+            created_at: dt_chrono_utc_to_bson(&nt.created_at),
+            is_sent: nt.is_sent,
+            kind: NotificationKindMongoDBView::from_notification_kind(&nt.kind),
+        }
+    }// -- end pub fn from_notification
+
+    pub fn to_notification(&self) -> Notification {
+        use super::utils::dt_bson_to_chrono_utc;
+
+        Notification {
+            id: self.id.clone(),
+            recipient: self.recipient.clone(),
+            created_at: dt_bson_to_chrono_utc(&self.created_at),
+            is_sent: self.is_sent,
+            kind: self.kind.to_notification_kind(),
+        }
+    }// -- end pub fn to_notification
+}// -- end impl NotificationMongoDBView
 
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1985,3 +2027,15 @@ pub struct NotificationClientView {
     #[serde(flatten)]
     kind: NotificationKindClientView,
 }// -- end pub struct NotificationClientView
+
+impl NotificationClientView {
+    pub fn from_notification(nt: &Notification) -> Self {
+        use super::utils::dt_chrono_utc_to_bson;
+
+        Self {
+            id: nt.id.clone(),
+            created_at: dt_chrono_utc_to_bson(&nt.created_at),
+            kind: NotificationKindClientView::from_notification_kind(&nt.kind),
+        }
+    }// -- end pub fn from_notification
+}// -- end impl NotificationClientView

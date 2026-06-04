@@ -302,6 +302,7 @@ pub struct MongoDBInterface {
     canvas_object_coll: Collection<CanvasObjectMongoDBView>,
     user_coll: Collection<UserMongoDBView>,
     edit_coll: Collection<EditMongoDBView>,
+    notification_coll: Collection<NotificationMongoDBView>,
 }// -- end pub struct MongoDBInterface
 
 impl MongoDBInterface {
@@ -312,6 +313,7 @@ impl MongoDBInterface {
             canvas_object_coll: db.collection::<CanvasObjectMongoDBView>("shapes"),
             user_coll: db.collection::<UserMongoDBView>("users"),
             edit_coll: db.collection::<EditMongoDBView>("edits"),
+            notification_coll: db.collection::<NotificationMongoDBView>("notifications"),
         }
     }// -- end pub fn new
 
@@ -721,6 +723,11 @@ impl MongoDBInterface {
             let _ = self.edit_coll.insert_one(edit_view).await;
         }
     }// -- end pub async fn process_edit
+
+    pub async fn save_notification(&self, notif: &Notification) {
+        let notif_view = NotificationMongoDBView::from_notification(&notif);
+        let _ = self.notification_coll.insert_one(notif_view).await;
+    }// -- end save_notification
 }// -- end impl MongoDBInterface
 
 impl UserStore for MongoDBInterface {

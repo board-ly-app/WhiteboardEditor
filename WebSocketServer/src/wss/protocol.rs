@@ -112,6 +112,9 @@ pub enum ServerSocketIndividualMessage {
     Confirm {
         message: String,
     },
+    Notify {
+        notification: NotificationClientView,
+    },
     Error {
         error: ClientError,
     },
