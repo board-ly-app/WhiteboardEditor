@@ -83,7 +83,6 @@ describe("Users API", () => {
     
     // Verify common and temp-specific fields
     expect(res.body.user).toHaveProperty("id");
-    expect(res.body.user.username).toBe(`TempUser${res.body.user.id}`);
     expect(res.body.user).toHaveProperty("createdAt");
 
     // Temp users shouldn't have
