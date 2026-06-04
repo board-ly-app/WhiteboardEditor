@@ -876,6 +876,7 @@ pub async fn handle_authenticated_client_message<'a>(
                             .map(|user_id| Notification::new(
                                 &user_id,
                                 NotificationKind::RequestCanvasEditPermission {
+                                    whiteboard_id: client_state.base.whiteboard_id.clone(),
                                     canvas_id: canvas_id.clone(),
                                     grantee: client_state.user_summary.user_id.clone(),
                             }))
@@ -1158,6 +1159,7 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
+            clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
@@ -1317,6 +1319,7 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
+            clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
@@ -1557,6 +1560,7 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
+            clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
@@ -1820,6 +1824,7 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
+            clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
@@ -2059,6 +2064,7 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
+            clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
@@ -2226,6 +2232,7 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
+            clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
@@ -2423,6 +2430,7 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
+            clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
@@ -2596,6 +2604,7 @@ mod unit_tests {
         // -- Init shared whiteboard data
         let whiteboard_ref = Arc::new(Mutex::new(whiteboard.clone()));
         let active_clients = Arc::new(Mutex::new(HashMap::new()));
+        let clients_by_user_id = Arc::new(Mutex::new(collections::OneToMany::new()));
         let selectors_to_canvas_objects = Arc::new(Mutex::new(collections::OneToOne::new()));
         let edits = Arc::new(Mutex::new(Vec::new()));
 
@@ -2605,6 +2614,7 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::clone(&whiteboard_ref),
             active_clients: Arc::clone(&active_clients),
+            clients_by_user_id: Arc::clone(&clients_by_user_id),
             selectors_to_canvas_objects: Arc::clone(&selectors_to_canvas_objects),
             edits: Arc::clone(&edits),
         };
@@ -2625,6 +2635,7 @@ mod unit_tests {
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::clone(&whiteboard_ref),
             active_clients: Arc::clone(&active_clients),
+            clients_by_user_id: Arc::clone(&clients_by_user_id),
             selectors_to_canvas_objects: Arc::clone(&selectors_to_canvas_objects),
             edits: Arc::clone(&edits),
         };
