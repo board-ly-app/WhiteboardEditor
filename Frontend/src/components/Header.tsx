@@ -23,9 +23,9 @@ export interface HeaderProps {
   title: string;
   zIndex?: number;
   // Buttons and other elements to display on left side of header
-  toolbarElemsLeft?: React.JSX.Element[];
+  toolbarElemsLeft?: React.ReactNode[];
   // Buttons and other elements to display on right side of header
-  toolbarElemsRight?: React.JSX.Element[];
+  toolbarElemsRight?: React.ReactNode[];
   noMarginTop?: boolean;
 }
 
