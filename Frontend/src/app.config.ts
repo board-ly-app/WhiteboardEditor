@@ -36,5 +36,5 @@ export const WHITEBOARD_DELETED_NOTIFICATION_NUM_MILLIS = 5000;
 
 // -- Number of active users to display outside dropdown menu on Whiteboard page
 // header.
-export const ACTIVE_USERS_DISPLAY_LIMIT = 1;
+export const ACTIVE_USERS_DISPLAY_LIMIT = 3;
 
