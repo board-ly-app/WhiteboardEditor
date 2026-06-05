@@ -21,6 +21,7 @@ import lodash from 'lodash';
 // -- local imports
 import {
   type Notification,
+  type NotificationRequestCanvasEditPermission,
 } from '@/types/Notification';
 
 import {
@@ -32,8 +33,38 @@ import {
 } from '@/store/notifications/notificationsSelectors';
 
 import {
+  selectCanvasById,
+} from '@/store/canvases/canvasesSelectors';
+
+import {
   NotificationsHeaderMenu as NotificationsHeaderMenuUI,
 } from '@/components/NotificationsHeaderMenu';
+
+interface RequestCanvasEditPermDescriptionProps {
+  notification: NotificationRequestCanvasEditPermission;
+}// -- end interface RequestCanvasEditPermDescriptionProps
+
+const RequestCanvasEditPermDescription = ({
+  notification,
+}: RequestCanvasEditPermDescriptionProps): React.ReactNode => {
+  const {
+    canvasId,
+    grantee,
+  } = notification;
+
+  const canvas = useSelector((state: RootState) => selectCanvasById(state, canvasId));
+
+  if (! canvas) {
+    throw new Error(`Canvas ${canvasId} not found`);
+  }
+
+  // -- TODO: fetch username
+  return (
+    <>
+      User {grantee} is requesting edit access to canvas "{canvas.name}"
+    </>
+  );
+};// -- end RequestCanvasEditPermDescription
 
 export const NotificationsHeaderMenu = (): React.JSX.Element => {
   const notificationsById = useSelector(
@@ -46,8 +77,7 @@ export const NotificationsHeaderMenu = (): React.JSX.Element => {
     (notif: Notification) => {
       switch (notif.kind) {
         case 'request_canvas_edit_permission':
-          // -- TODO: fill with username, canvas name
-          return `User ${notif.grantee} is requesting edit access to canvas ${notif.canvasId}`;
+          return (<RequestCanvasEditPermDescription notification={notif} />);
       }// -- end switch (notif.kind)
     },
     []
