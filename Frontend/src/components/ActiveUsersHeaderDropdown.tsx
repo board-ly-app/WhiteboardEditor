@@ -39,7 +39,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-const ACTIVE_USERS_LIMIT = 2;
+const ACTIVE_USERS_LIMIT = 1;
 
 export const ActiveUsersHeaderDropdown = () => {
   // TODO: Abstract out a generic dropdown menu
@@ -64,7 +64,7 @@ export const ActiveUsersHeaderDropdown = () => {
   const activeUsersLength =  Object.keys(activeUsers).length;
 
   return (
-    activeUsersLength < ACTIVE_USERS_LIMIT
+    activeUsersLength <= ACTIVE_USERS_LIMIT
       ? 
       // Display all user icons side-by-side on header
       <div className="flex items-center gap-1">
@@ -72,7 +72,7 @@ export const ActiveUsersHeaderDropdown = () => {
           <div
             key={u.clientId}
             className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white select-none"
-            style={{ backgroundColor: u.color }}
+            style={{ border: `2px solid ${u.color}` }}
             title={u.username}
           >
             {u.username[0].toUpperCase()}
@@ -87,18 +87,18 @@ export const ActiveUsersHeaderDropdown = () => {
         onOpenChange={setIsActiveUsersOpen}
       >
         <div className='flex justify-center items-center gap-2'>
-          {activeUsers && Object.values(activeUsers).slice(0, ACTIVE_USERS_LIMIT - 1).map((u) => (
+          {activeUsers && Object.values(activeUsers).slice(0, ACTIVE_USERS_LIMIT).map((u) => (
             <div
               key={u.clientId}
               className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white select-none"
-              style={{ backgroundColor: u.color }}
+              style={{ border: `2px solid ${u.color}` }}
               title={u.username}
             >
               {u.username[0].toUpperCase()}
             </div>
           ))}
-          <DropdownMenuTrigger className="text-header-button-text group flex items-center gap-1 px-0 py-2 rounded-lg hover:cursor-pointer hover:text-header-button-text-hover whitespace-nowrap">
-            ...
+          <DropdownMenuTrigger className="text-header-button-text group flex items-center gap-1 px-0 py-2 rounded-lg hover:cursor-pointer hover:text-header-button-text-hover whitespace-nowrap" title="View all active users">
+            {`... +${activeUsersLength - ACTIVE_USERS_LIMIT}`}
             <ChevronDown className="w-4 h-4 transition-transform duration-300 group-data-[state=open]:rotate-180"/>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -111,7 +111,7 @@ export const ActiveUsersHeaderDropdown = () => {
                   <Circle
                     size={20}
                     stroke={u.color}
-                    strokeWidth={4}
+                    strokeWidth={2}
                   />
                   <span className="pl-2">
                     {u.username}
