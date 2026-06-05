@@ -65,10 +65,9 @@ export const ActiveUsersHeaderDropdown = () => {
 
   const activeUsersLength =  Object.keys(activeUsers).length;
 
-  return (
-    activeUsersLength <= ACTIVE_USERS_DISPLAY_LIMIT
-      ? 
-      // Display all user icons side-by-side on header
+  if (activeUsersLength <= ACTIVE_USERS_DISPLAY_LIMIT) {
+    // -- Display all user icons side-by-side on header
+    return (
       <div className="flex items-center gap-1">
         {activeUsers && Object.values(activeUsers).map((u) => (
           <div
@@ -81,10 +80,11 @@ export const ActiveUsersHeaderDropdown = () => {
           </div>
         ))}
       </div>
-      : 
-      // Display first <ACTIVE_USERS_DISPLAY_LIMIT> user icons on header with dropdown option to see all
+    );
+  } else {
+    // -- Display first <ACTIVE_USERS_DISPLAY_LIMIT> user icons on header with dropdown option to see all
+    return (
       <DropdownMenu
-        key="active-users"
         open={isActiveUsersOpen}
         onOpenChange={setIsActiveUsersOpen}
       >
@@ -124,5 +124,6 @@ export const ActiveUsersHeaderDropdown = () => {
           </DropdownMenuContent>
         </div>
       </DropdownMenu>
-  );
+    );
+  }
 };// -- end ActiveUsersHeaderDropdown
