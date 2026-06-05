@@ -92,6 +92,7 @@ import {
   removeSelectorsByCanvasObject,
   removeActiveUsers,
   setSelectorsByCanvasObject,
+  setNotifications,
 } from '@/controllers';
 
 // -- type declarations
@@ -413,13 +414,19 @@ const WebSocketClientMessengerProvider = ({
           case 'notify':
           {
             // -- Notify user
-            // -- TODO: instead, add to notification queue
             const {
               notification,
             } = msg;
 
-            console.log('!! Notification:', notification);
-            toast.success(`Notification:${JSON.stringify(notification)}`);
+            // -- add notifications to store
+            setNotifications(dispatch, {
+              [notification.id]: {
+                ...notification,
+                isRead: false,
+              },
+            });
+
+            toast.success("You have one new notification");
           }
           break;
           case 'error':

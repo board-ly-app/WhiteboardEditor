@@ -90,8 +90,9 @@ interface NotificationBase {
 }// -- end interface NotificationBase
 
 export interface NotificationRequestCanvasEditPermission extends NotificationBase {
-  whiteboard_id: WhiteboardIdType;
-  canvas_id: CanvasIdType;
+  kind: 'request_canvas_edit_permission';
+  whiteboardId: WhiteboardIdType;
+  canvasId: CanvasIdType;
   grantee: UserIdType;
 }// -- end NotificationRequestCanvasEditPermission
 

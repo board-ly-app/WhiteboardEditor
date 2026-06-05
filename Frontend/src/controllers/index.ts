@@ -39,6 +39,11 @@ import {
   removeCurrentEditorsByCanvas,
 } from './currentCanvasEditors';
 
+import {
+  setNotifications,
+  setNotificationsRead,
+} from './notifications';
+
 export {
   setClientId,
   unsetClientId,
@@ -61,4 +66,6 @@ export {
   setSelectorsByCanvasObject,
   removeSelectorsByCanvasObject,
   removeCanvasObjectsBySelector,
+  setNotifications,
+  setNotificationsRead,
 };
