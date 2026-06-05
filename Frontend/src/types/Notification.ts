@@ -8,10 +8,14 @@
 import {
   type NotificationIdType as NotificationIdTypeBase,
   type Notification as NotificationBase,
+  type NotificationRequestCanvasEditPermission as NotificationRequestCanvasEditPermissionBase,
 } from '@/types/WebSocketProtocol';
 
 // -- Re-export NotificationIdType
 export type NotificationIdType = NotificationIdTypeBase;
+
+// -- Re-exports
+export type NotificationRequestCanvasEditPermission = NotificationRequestCanvasEditPermissionBase;
 
 export interface Notification extends NotificationBase {
   isRead: boolean;

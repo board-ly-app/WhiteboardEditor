@@ -37,11 +37,16 @@ import {
 
 import {
   type RootState,
+  store,
 } from '@/store';
 
 import {
   selectNotificationById,
 } from '@/store/notifications/notificationsSelectors';
+
+import {
+  setNotificationsRead,
+} from '@/controllers';
 
 import { 
   DropdownMenu, 
@@ -58,7 +63,7 @@ export interface NotificationsHeaderMenuProps {
   notifications: Record<NotificationIdType, Notification>;
   isExpanded: boolean;
   setIsExpanded: Dispatch<boolean | ((old: boolean) => boolean)>;
-  getNotificationDescription: (ntf: Notification) => string;
+  getNotificationDescription: (ntf: Notification) => React.ReactNode | string;
 }// -- end interface NotificationsHeaderMenuProps
 
 interface NotificationsButtonProps {
@@ -100,7 +105,7 @@ const NotificationsButton = ({
 
 interface NotificationListItemProps {
   notificationId: NotificationIdType;
-  getNotificationDescription: (ntf: Notification) => string;
+  getNotificationDescription: (ntf: Notification) => React.ReactNode | string;
 }// -- end interface NotificationListItemProps
 
 const NotificationListItem = ({
@@ -113,13 +118,24 @@ const NotificationListItem = ({
   );
 
   if (! notification) {
-    throw new Error(`Notificationi ${notificationId} not found`);
+    throw new Error(`Notification ${notificationId} not found`);
   }
 
+  const handleSelect = useCallback(
+    () => {
+      setNotificationsRead(store.dispatch, [notificationId]);
+    },
+    [notificationId]
+  );// -- end handleSelect
+
   return (
-    <span>
-      {new Date(notification.createdAt).toLocaleString()} | {getNotificationDescription(notification)}
-    </span>
+    <DropdownMenuItem
+      onSelect={handleSelect}
+    >
+      <span>
+        {new Date(notification.createdAt).toLocaleString()} | {getNotificationDescription(notification)}
+      </span>
+    </DropdownMenuItem>
   );
 };// -- end NotificationListItem
 
@@ -183,13 +199,11 @@ export const NotificationsHeaderMenu = ({
         <DropdownMenuSeparator />
 
         {notificationsSorted.map(notif => (
-          <DropdownMenuItem>
-            <NotificationListItem
-              key={notif.id}
-              notificationId={notif.id}
-              getNotificationDescription={getNotificationDescription}
-            />
-          </DropdownMenuItem>
+          <NotificationListItem
+            key={notif.id}
+            notificationId={notif.id}
+            getNotificationDescription={getNotificationDescription}
+          />
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
