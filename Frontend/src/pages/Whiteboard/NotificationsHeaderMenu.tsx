@@ -9,6 +9,8 @@
 import {
   useState,
   useCallback,
+  useContext,
+  useEffect,
 } from 'react';
 
 // -- third-party imports
@@ -18,11 +20,19 @@ import {
 
 import lodash from 'lodash';
 
+import {
+  LoaderCircle,
+} from 'lucide-react';
+
 // -- local imports
 import {
   type Notification,
   type NotificationRequestCanvasEditPermission,
 } from '@/types/Notification';
+
+import {
+  type User,
+} from '@/types/User';
 
 import {
   type RootState,
@@ -35,6 +45,8 @@ import {
 import {
   selectCanvasById,
 } from '@/store/canvases/canvasesSelectors';
+
+import UserCacheContext from '@/context/UserCacheContext';
 
 import {
   NotificationsHeaderMenu as NotificationsHeaderMenuUI,
@@ -49,21 +61,50 @@ const RequestCanvasEditPermDescription = ({
 }: RequestCanvasEditPermDescriptionProps): React.ReactNode => {
   const {
     canvasId,
-    grantee,
+    grantee: granteeId,
   } = notification;
 
-  const canvas = useSelector((state: RootState) => selectCanvasById(state, canvasId));
+  const canvasName : string | null = useSelector(
+    (state: RootState) => selectCanvasById(state, canvasId)?.name ?? null,
+    lodash.isEqual
+  );
 
-  if (! canvas) {
+  if (! canvasName) {
     throw new Error(`Canvas ${canvasId} not found`);
   }
 
-  // -- TODO: fetch username
-  return (
-    <>
-      User {grantee} is requesting edit access to canvas "{canvas.name}"
-    </>
+  const userCacheContext = useContext(UserCacheContext);
+
+  if (! userCacheContext) {
+    throw new Error('No UserCacheContext provided');
+  }
+
+  const {
+    getUserById,
+  } = userCacheContext;
+
+  const [grantee, setGrantee] = useState<User | null>(null);
+
+  useEffect(
+    () => {
+      const fetchGrantee = async () => {
+        setGrantee(await getUserById(granteeId));
+      };// -- end fetchGrantee
+
+      fetchGrantee();
+    },
+    [granteeId, setGrantee]
   );
+
+  if (! grantee) {
+    return (<LoaderCircle />);
+  } else {
+    return (
+      <>
+        {grantee.username} is requesting permission to edit canvas "{canvasName}"
+      </>
+    );
+  }
 };// -- end RequestCanvasEditPermDescription
 
 export const NotificationsHeaderMenu = (): React.JSX.Element => {
