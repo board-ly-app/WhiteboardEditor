@@ -8,6 +8,7 @@
 // -- std imports
 import {
   useState,
+  useCallback,
 } from 'react';
 
 // -- third-party imports
@@ -18,6 +19,10 @@ import {
 import lodash from 'lodash';
 
 // -- local imports
+import {
+  type Notification,
+} from '@/types/Notification';
+
 import {
   type RootState,
 } from '@/store';
@@ -37,12 +42,25 @@ export const NotificationsHeaderMenu = (): React.JSX.Element => {
   );
 
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const getNotificationDescription = useCallback(
+    (notif: Notification) => {
+      switch (notif.kind) {
+        case 'request_canvas_edit_permission':
+          // -- TODO: fill with username, canvas name
+          return `User ${notif.grantee} is requesting edit access to canvas ${notif.canvasId}`;
+      }// -- end switch (notif.kind)
+    },
+    []
+  );// -- end getNotificationDescription
 
   return (
-    <NotificationsHeaderMenuUI
-      notifications={notificationsById}
-      isExpanded={isExpanded}
-      setIsExpanded={setIsExpanded}
-    />
+    <div className="z-50">
+      <NotificationsHeaderMenuUI
+        notifications={notificationsById}
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
+        getNotificationDescription={getNotificationDescription}
+      />
+    </div>
   );
 };// -- end NotificationsHeaderMenu
