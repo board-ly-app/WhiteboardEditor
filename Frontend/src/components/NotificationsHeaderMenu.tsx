@@ -48,6 +48,8 @@ import {
   DropdownMenuTrigger, 
   DropdownMenuContent, 
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
 import HeaderButton from '@/components/HeaderButton';
@@ -173,7 +175,13 @@ export const NotificationsHeaderMenu = ({
       </DropdownMenuTrigger>
 
       {/** Begin list of notifications **/}
-      <DropdownMenuContent className="absolute left-24 top-24 w-128 z-100">
+      <DropdownMenuContent className="absolute left-24 top-16 w-128 z-100">
+        <DropdownMenuLabel className="text-center">
+          Notifications ({notificationsSorted.length})
+        </DropdownMenuLabel>
+
+        <DropdownMenuSeparator />
+
         {notificationsSorted.map(notif => (
           <DropdownMenuItem>
             <NotificationListItem
