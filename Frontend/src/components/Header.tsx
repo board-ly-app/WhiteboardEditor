@@ -71,7 +71,7 @@ const Header = ({
           </NavigationMenu>
 
           {/* Left Side Items */}
-          <div className="text-h2-text mx-4 gap-4 hidden md:flex w-60 items-center">
+          <div className="text-h2-text mx-4 gap-4 hidden md:flex items-center">
             {toolbarElemsLeft}
           </div>
 
@@ -81,7 +81,7 @@ const Header = ({
           </h1>
           
           {/* Right Side Items */}
-          <div className="text-h2-text mx-4 gap-4 hidden md:flex w-60 items-center justify-end">
+          <div className="text-h2-text mx-4 gap-4 hidden md:flex items-center justify-end">
             {toolbarElemsRight}
           </div>
         </div>
