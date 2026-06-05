@@ -15,6 +15,10 @@ import {
 } from 'lucide-react';
 
 import {
+  ACTIVE_USERS_DISPLAY_LIMIT,
+} from '@/app.config';
+
+import {
   type ClientIdType,
 } from '@/types/WebSocketProtocol';
 
@@ -39,8 +43,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-const ACTIVE_USERS_LIMIT = 1;
-
 export const ActiveUsersHeaderDropdown = () => {
   // TODO: Abstract out a generic dropdown menu
   // Active Users
@@ -57,14 +59,14 @@ export const ActiveUsersHeaderDropdown = () => {
   const [isActiveUsersOpen, setIsActiveUsersOpen] = useState<boolean>(false);
 
   const activeUsers : Record<ClientIdType, ClientSummary> = useSelector(
-    (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId) || null,
+    (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId) || {},
     lodash.isEqual
   );
 
   const activeUsersLength =  Object.keys(activeUsers).length;
 
   return (
-    activeUsersLength <= ACTIVE_USERS_LIMIT
+    activeUsersLength <= ACTIVE_USERS_DISPLAY_LIMIT
       ? 
       // Display all user icons side-by-side on header
       <div className="flex items-center gap-1">
@@ -80,14 +82,14 @@ export const ActiveUsersHeaderDropdown = () => {
         ))}
       </div>
       : 
-      // Display first <ACTIVE_USERS_LIMIT> user icons on header with dropdown option to see all
+      // Display first <ACTIVE_USERS_DISPLAY_LIMIT> user icons on header with dropdown option to see all
       <DropdownMenu
         key="active-users"
         open={isActiveUsersOpen}
         onOpenChange={setIsActiveUsersOpen}
       >
         <div className='flex justify-center items-center gap-2'>
-          {activeUsers && Object.values(activeUsers).slice(0, ACTIVE_USERS_LIMIT).map((u) => (
+          {activeUsers && Object.values(activeUsers).slice(0, ACTIVE_USERS_DISPLAY_LIMIT).map((u) => (
             <div
               key={u.clientId}
               className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white select-none"
@@ -98,7 +100,7 @@ export const ActiveUsersHeaderDropdown = () => {
             </div>
           ))}
           <DropdownMenuTrigger className="text-header-button-text group flex items-center gap-1 px-0 py-2 rounded-lg hover:cursor-pointer hover:text-header-button-text-hover whitespace-nowrap" title="View all active users">
-            {`... +${activeUsersLength - ACTIVE_USERS_LIMIT}`}
+            {`... +${activeUsersLength - ACTIVE_USERS_DISPLAY_LIMIT}`}
             <ChevronDown className="w-4 h-4 transition-transform duration-300 group-data-[state=open]:rotate-180"/>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
