@@ -118,7 +118,7 @@ const NotificationListItem = ({
 
   return (
     <span>
-      {notification.createdAt.toLocaleString()} | {getNotificationDescription(notification)}
+      {new Date(notification.createdAt).toLocaleString()} | {getNotificationDescription(notification)}
     </span>
   );
 };// -- end NotificationListItem

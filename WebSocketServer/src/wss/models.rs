@@ -7,7 +7,7 @@
 use super::{db::WhiteboardDiff,protocol::{ServerSocketMessage,ServerSocketBroadcastMessage}};
 
 use chrono::{self, Utc};
-use mongodb::bson::{self, oid::ObjectId};
+use mongodb::bson::{self, oid::ObjectId, serde_helpers::bson_datetime_as_rfc3339_string};
 use serde::{self, Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
 
@@ -2035,6 +2035,7 @@ impl NotificationKindClientView {
 pub struct NotificationClientView {
     #[serde_as(as = "DisplayFromStr")]
     id: ObjectId,
+    #[serde(with = "bson_datetime_as_rfc3339_string")]
     created_at: bson::DateTime,
     #[serde(flatten)]
     kind: NotificationKindClientView,
