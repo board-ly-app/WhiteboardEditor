@@ -77,7 +77,7 @@ const WhiteboardList = (props: WhiteboardListProps): React.JSX.Element => {
         } else {
           return (
             <ul
-              className="flex flex-col md:flex-row justify-center flex-wrap content-center"
+              className="flex justify-center flex-wrap content-center gap-2"
             >
             {
               whiteboardsAttribs

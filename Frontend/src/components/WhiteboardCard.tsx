@@ -162,7 +162,7 @@ function WhiteboardCard({
   return (
     <>
       <div
-        className="flex flex-col justify-center align-items-center m-2 md:m-4 w-75 rounded-xl border-1 border-border shadow-2xl bg-card-background"
+        className="flex flex-col justify-center align-items-center w-69 rounded-xl border-1 border-border shadow-2xl bg-card-background"
       >
         <Link 
           key={id}
@@ -170,7 +170,7 @@ function WhiteboardCard({
           className="hover:bg-button-hover"
         >
           <img
-            className={`rounded-t-xl w-full h-50 bg-canvas-background ${
+            className={`rounded-t-xl w-full h-46 bg-canvas-background ${
               thumbnail_url ? 'object-contain' : 'object-cover'
             }`}
             src={thumbnail_url || "/images/testThumbnail.png"} 
