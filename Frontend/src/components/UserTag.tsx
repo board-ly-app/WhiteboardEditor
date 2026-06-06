@@ -26,6 +26,7 @@ import {
 } from "@/lib/utils"
 
 export type EnumUserTagSize =
+  | 'xsmall'
   | 'small'
   | 'medium'
   | 'large'
@@ -91,7 +92,7 @@ export type UserTagProps =
 ;
 
 const userTagVariants = cva(
-  "text-h3-text inline-block align-middle rounded-2xl bg-button-300 border-1 border-border font-semibold",
+  "text-h3-text inline-flex items-center rounded-md bg-button-300 border-1 border-border font-semibold gap-2",
   {
     variants: {
       role: {
@@ -99,9 +100,10 @@ const userTagVariants = cva(
         button: "hover:cursor-pointer hover:text-gray-200 hover:bg-gray-600",
       },
       size: {
-        small: "m-2 px-2 py-1 text-sm",
-        medium: "m-4 px-4 py-2 text-md",
-        large: "m-6 px-6 py-4 text-lg",
+        xsmall: "px-2 py-1 text-xs",
+        small: "px-2 py-1 text-sm",
+        medium: "px-4 py-2 text-md",
+        large: "px-6 py-4 text-lg",
       }
     }
   }
@@ -140,8 +142,10 @@ const UserTagBase = ({
       className={cn(userTagVariants({ size, role, className }))}
       onClick={onClick}
     >
-      {children}
-      {note}
+      <div className="flex-1 min-w-0 flex items-center">
+        {children}
+      </div>
+      {note && <span className="shink-0">{note}</span>}
     </div>
   );
 };
@@ -171,7 +175,7 @@ export const UserTagBrief = ({
       role={onClick ? 'button' : 'default'}
       onClick={onClick && (() => onClick(user))}
     >
-      <span>{username} {`<${email}>`}</span>
+      <span className="truncate" title={`${username} \`<${email}>\``}>{username} {`<${email}>`}</span>
     </UserTagBase>
   );
 };
@@ -208,7 +212,7 @@ export const UserTagBriefDeleter = ({
       >
         <X size={getIconSizeByTagSize(baseProps.size)} />
       </button>
-      <span>{username} ({email})</span>
+      <span className="truncate" title={`${username} (${email})`}>{username} ({email})</span>
     </UserTagBase>
   );
 };
@@ -228,7 +232,7 @@ export const UserTagUsername = ({
       role={onClick ? 'button' : 'default'}
       onClick={onClick && (() => onClick(user))}
     >
-      <span>{username}</span>
+      <span className="truncate" title={username}>{username}</span>
     </UserTagBase>
   );
 };
@@ -255,12 +259,11 @@ export const UserTagUsernameDeleter = ({
       >
         <X size={getIconSizeByTagSize(baseProps.size)} />
       </button>
-      <span>{username}</span>
+      <span className="truncate" title={username}>{username}</span>
     </UserTagBase>
   );
 };
 
-// interface UserTagPropsEmail extends UserTagPropsBase {
 export const UserTagEmail = ({
   email,
   onClick,
@@ -272,7 +275,7 @@ export const UserTagEmail = ({
       role={onClick ? 'button' : 'default'}
       onClick={onClick && (() => onClick(email))}
     >
-      <span>{email}</span>
+      <span className="truncate" title={email}>{email}</span>
     </UserTagBase>
   );
 };
@@ -295,7 +298,7 @@ export const UserTagEmailDeleter = ({
       >
         <X size={getIconSizeByTagSize(baseProps.size)} />
       </button>
-      <span>{email}</span>
+      <span className="truncate" title={email}>{email}</span>
     </UserTagBase>
   );
 };
