@@ -3,18 +3,18 @@ import lodash from 'lodash';
 
 export const THROTTLE_INTERVAL = 100; // ms between updates
 
-export function useThrottledCallback<T extends (...args: unknown[]) => unknown>(
-  callback: T,
+export function useThrottledCallback<TArgs extends unknown[], TReturn>(
+  callback: (...args: TArgs) => TReturn,
   interval: number
-): T {
+): (...args: TArgs) => TReturn {
   const latestCallback = useRef(callback);
   latestCallback.current = callback;
 
   const throttledFn = useRef(
     lodash.throttle(
-      (...args: Parameters<T>) => {
+      (...args: TArgs) => {
         latestCallback.current(...args);
-      }, 
+      },
       interval,
       { leading: true, trailing: true }
     )
@@ -22,5 +22,5 @@ export function useThrottledCallback<T extends (...args: unknown[]) => unknown>(
 
   useEffect(() => () => throttledFn.cancel(), [throttledFn]);
 
-  return throttledFn as unknown as T;
+  return throttledFn as unknown as (...args: TArgs) => TReturn;
 }
