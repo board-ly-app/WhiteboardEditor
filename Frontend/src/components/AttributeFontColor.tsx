@@ -1,8 +1,4 @@
 import {
-  useCallback,
-} from 'react';
-
-import {
   useSelector,
 } from 'react-redux';
 
@@ -19,6 +15,7 @@ import {
 import type { AttributeDefinition, AttributeProps } from "@/types/Attribute";
 import type { CanvasObjectIdType, CanvasObjectModel } from "@/types/CanvasObjectModel";
 import AttributeMenuItem from "./AttributeMenuItem";
+import { THROTTLE_INTERVAL, useThrottledCallback } from '@/hooks/useThrottledCallback';
 
 const FontColorComponent = ({
   selectedShapeIds, 
@@ -32,24 +29,25 @@ const FontColorComponent = ({
     lodash.isEqual
   );
 
-  const onChangeFontColor = useCallback(
-    (ev: React.ChangeEvent<HTMLInputElement>) => {
-      ev.preventDefault();
-      const color = ev.target.value;
-    
-      dispatch({ type: 'SET_FONT_COLOR', payload: color });
-    
+  const throttledUpdate = useThrottledCallback(
+    (color: string) => {
+      dispatch({ type: 'SET_FONT_COLOR', payload: color});
+
       if (canvasObjectsById) {
         handleUpdateShapes(
           canvasId,
           canvasObjectsById,
           Object.fromEntries(selectedShapeIds.map(id => [id, { color: color }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
-        );  
+        );
       }
     },
-    [dispatch, handleUpdateShapes, canvasId, canvasObjectsById, selectedShapeIds]
-  );// -- end onChangeFontColor
- 
+    THROTTLE_INTERVAL
+  );
+
+  const onChangeFontColor = (ev: React.ChangeEvent<HTMLInputElement>) => {
+    throttledUpdate(ev.target.value);
+  }
+  
   return (
     <div>
       <AttributeMenuItem title="Font Color">
