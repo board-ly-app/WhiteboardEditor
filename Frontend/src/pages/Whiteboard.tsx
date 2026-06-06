@@ -251,7 +251,7 @@ const Whiteboard = ({
     x: 0,
     y: 0,
     rotation: 0,
-    fillColor: '#999999',
+    fillColor: '#ec8e41',
     strokeColor: '#000000',
     strokeWidth: 1,
     fontSize: 20,

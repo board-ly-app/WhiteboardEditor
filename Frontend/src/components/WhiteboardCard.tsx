@@ -2,6 +2,7 @@
 import {
   useContext,
   useCallback,
+  useState,
 } from 'react';
 
 import {
@@ -96,11 +97,19 @@ function WhiteboardCard({
     }
   };
 
+  const [expanded, setExpanded] = useState(false);
+
   const {
     Modal: DeletionModal,
     openModal: openDeletionModal,
     closeModal: closeDeletionModal,
   } = useModal();
+
+  const MAX_COLLABORATORS = 3;
+  const visiblePermissions = expanded
+    ? userPermissions
+    : userPermissions.slice(0, MAX_COLLABORATORS);
+  const hiddenCount = Math.max(0, userPermissions.length - MAX_COLLABORATORS);
 
   // -- miscellaneous callback functions
   const handleSubmitDeleteWhiteboard = useCallback(
@@ -162,62 +171,82 @@ function WhiteboardCard({
   return (
     <>
       <div
-        className="flex flex-col justify-center align-items-center w-69 rounded-xl border-1 border-border shadow-2xl bg-card-background"
+        className="flex flex-col m-2 md:m-4 w-69 rounded-xl border-1 border-border shadow-2xl bg-card-background"
       >
-        <Link 
+        <Link
           key={id}
           to={`/whiteboard/${id}`}
-          className="hover:bg-button-hover"
+          className="hover:bg-button-hover rounded-t-xl"
         >
           <img
             className={`rounded-t-xl w-full h-46 bg-canvas-background ${
               thumbnail_url ? 'object-contain' : 'object-cover'
             }`}
-            src={thumbnail_url || "/images/testThumbnail.png"} 
-            alt="Whiteboard Thumbnail" 
+            src={thumbnail_url || "/images/testThumbnail.png"}
+            alt="Whiteboard Thumbnail"
           />
-          <div className="p-5">
-            <h1 className="text-lg text-h2-text font-bold">{name}</h1>
-
-            {/** List shared users **/}
-            <h3 className="text-h3-text">Collaborators: </h3>
-            <ul
-              className="flex flex-row flex-wrap"
-            >
-              {userPermissions?.map(perm => {
-                if (perm.type === 'user') {
-                  if ((typeof perm.user) !== 'object') {
-                    throw new Error(`User must be object; received ${perm.user}`);
-                  }
-
-                  return (
-                    <li key={`user:${perm.user.id}`}>
-                      <UserTagBrief
-                        size="small"
-                        user={perm.user}
-                        note={
-                          <span> ({permissionTypeToUserRole(perm.permission)})</span>
-                        }
-                      />
-                    </li>
-                  );
-                } else {
-                  return (
-                    <li key={`email:${perm.email}`}>
-                      <UserTagEmail
-                        size="small"
-                        email={perm.email}
-                        note={
-                          <span> ({permissionTypeToUserRole(perm.permission)})</span>
-                        }
-                      />
-                    </li>
-                  );
-                }
-              })}
-            </ul>
+          <div className="px-2 pt-2 pb-1">
+            <h1 className="text-md text-h2-text font-bold truncate" title={name}>{name}</h1>
           </div>
         </Link>
+
+        {/** Collaborators — outside Link so the expand toggle doesn't navigate **/}
+        <div className="p-2 flex-1">
+          <h3 className="text-sm text-h3-text ps-2">Collaborators:</h3>
+          <ul className="flex flex-col gap-1 mt-1">
+            {visiblePermissions.map(perm => {
+              if (perm.type === 'user') {
+                if ((typeof perm.user) !== 'object') {
+                  throw new Error(`User must be object; received ${perm.user}`);
+                }
+
+                return (
+                  <li key={`user:${perm.user.id}`}>
+                    <UserTagBrief
+                      size="xsmall"
+                      user={perm.user}
+                      note={
+                        <span> ({permissionTypeToUserRole(perm.permission)})</span>
+                      }
+                      className="max-w-full"
+                    />
+                  </li>
+                );
+              } else {
+                return (
+                  <li key={`email:${perm.email}`}>
+                    <UserTagEmail
+                      size="xsmall"
+                      email={perm.email}
+                      note={
+                        <span> ({permissionTypeToUserRole(perm.permission)})</span>
+                      }
+                      className="max-w-full"
+                    />
+                  </li>
+                );
+              }
+            })}
+          </ul>
+          <div className="mt-1 text-center">
+            {!expanded && hiddenCount > 0 && (
+              <button
+                className="text-sm text-h3-text hover:underline"
+                onClick={() => setExpanded(true)}
+              >
+                ... See more (+{hiddenCount})
+              </button>
+            )}
+            {expanded && (
+              <button
+                className="text-sm text-h3-text hover:underline"
+                onClick={() => setExpanded(false)}
+              >
+                Show less
+              </button>
+            )}
+          </div>
+        </div>
 
         {
           /** If this is whiteboard is owned by the user, give them the option
