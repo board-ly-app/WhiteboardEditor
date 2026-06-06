@@ -3,7 +3,7 @@ import lodash from 'lodash';
 
 export const THROTTLE_INTERVAL = 100; // ms between updates
 
-export function useThrottledCallback<T extends (...args: any[]) => any>(
+export function useThrottledCallback<T extends (...args: unknown[]) => unknown>(
   callback: T,
   interval: number
 ): T {
