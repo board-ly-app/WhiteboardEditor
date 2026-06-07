@@ -1,5 +1,6 @@
 import {
   type AppDispatch,
+  store,
 } from '@/store';
 
 import {
@@ -10,6 +11,7 @@ import {
 import {
   setNotifications as setNotificationsReducer,
   patchNotifications as patchNotificationsReducer,
+  removeNotifications as removeNotificationsReducer,
 } from '@/store/notifications/notificationsSlice';
 
 export const setNotifications = (
@@ -29,3 +31,11 @@ export const setNotificationsRead = (
 
   dispatch(patchNotificationsReducer(update));
 };// -- end setNotificationsRead
+
+export const removeNotifications = (
+  notificationIds: NotificationIdType[]
+) => {
+  const dispatch = store.dispatch;
+
+  dispatch(removeNotificationsReducer(notificationIds));
+}// -- end removeNotifications
