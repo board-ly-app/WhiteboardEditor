@@ -8,6 +8,7 @@ import healthRouter from './routes/health';
 import usersRouter from './routes/users';
 import authRouter from './routes/auth';
 import whiteboardsRouter from './routes/whiteboards';
+import notificationsRouter from './routes/notifications';
 
 const API_VERSION = 'v1';
 
@@ -21,5 +22,6 @@ app.use(`/api/${API_VERSION}/health`, healthRouter);
 app.use(`/api/${API_VERSION}/users`, usersRouter);
 app.use(`/api/${API_VERSION}/auth`, authRouter);
 app.use(`/api/${API_VERSION}/whiteboards`, whiteboardsRouter);
+app.use(`/api/${API_VERSION}/notifications`, notificationsRouter);
 
 export default app;
