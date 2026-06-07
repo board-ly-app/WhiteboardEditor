@@ -368,7 +368,7 @@ const WebSocketClientMessengerProvider = ({
             const canvas : CanvasAttribs | null = selectCanvasById(state, canvasId);
             const prevAllowedUsers : Record<UserIdType, unknown> | null = selectAllowedUsersByCanvas(state, canvasId);
 
-            if (canvas) {
+            if (canvas && prevAllowedUsers) {
               if ((! (user.id in prevAllowedUsers)) && (allowedUsers.indexOf(user.id) >= 0)) {
                 toast.success(`Edit permission granted on canvas "${canvas.name}"`);
               } else if ((user.id in prevAllowedUsers) && (allowedUsers.indexOf(user.id) < 0)) {
