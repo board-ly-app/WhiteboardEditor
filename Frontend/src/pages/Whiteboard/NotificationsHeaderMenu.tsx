@@ -203,7 +203,7 @@ export const NotificationsHeaderMenu = (): React.JSX.Element => {
   );// -- end getNotificationDescription
 
   return (
-    <div className="z-50">
+    <div className="flex z-50">
       <NotificationsHeaderMenuUI
         notifications={notificationsById}
         isExpanded={isExpanded}
