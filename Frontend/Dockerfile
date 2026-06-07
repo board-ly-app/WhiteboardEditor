@@ -22,6 +22,7 @@ RUN rm -rf /usr/share/nginx/html/*
 
 # Copy built assets from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/src/assets/ /usr/share/nginx/html/assets/
 
 # Copy nginx.conf
 COPY nginx.conf /etc/nginx/nginx.conf
