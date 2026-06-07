@@ -5,6 +5,10 @@ import {
 import lodash from 'lodash';
 
 import {
+  THROTTLE_INTERVAL,
+} from '@/app.config';
+
+import {
   type RootState,
 } from '@/store';
 
@@ -15,7 +19,7 @@ import {
 import type { AttributeDefinition, AttributeProps } from "@/types/Attribute";
 import type { CanvasObjectIdType, CanvasObjectModel } from "@/types/CanvasObjectModel";
 import AttributeMenuItem from "./AttributeMenuItem";
-import { THROTTLE_INTERVAL, useThrottledCallback } from '@/hooks/useThrottledCallback';
+import { useThrottledCallback } from '@/hooks/useThrottledCallback';
 
 const StrokeColorComponent = ({
   selectedShapeIds, 

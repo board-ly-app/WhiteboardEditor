@@ -23,6 +23,10 @@ import {
 import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
+  THROTTLE_INTERVAL,
+} from '@/app.config';
+
+import {
   type RootState,
 } from '@/store';
 
@@ -32,7 +36,7 @@ import {
 
 import AttributeMenuItem from "./AttributeMenuItem";
 
-import { THROTTLE_INTERVAL, useThrottledCallback } from '@/hooks/useThrottledCallback';
+import { useThrottledCallback } from '@/hooks/useThrottledCallback';
 
 const FillColorComponent = ({
   selectedShapeIds, 

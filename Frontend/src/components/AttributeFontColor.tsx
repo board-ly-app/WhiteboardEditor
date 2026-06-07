@@ -10,12 +10,15 @@ import {
 } from '@/store';
 
 import {
+  THROTTLE_INTERVAL,
+} from '@/app.config';
+import {
   selectCanvasObjectsByCanvas,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 import type { AttributeDefinition, AttributeProps } from "@/types/Attribute";
 import type { CanvasObjectIdType, CanvasObjectModel } from "@/types/CanvasObjectModel";
 import AttributeMenuItem from "./AttributeMenuItem";
-import { THROTTLE_INTERVAL, useThrottledCallback } from '@/hooks/useThrottledCallback';
+import { useThrottledCallback } from '@/hooks/useThrottledCallback';
 
 const FontColorComponent = ({
   selectedShapeIds, 
