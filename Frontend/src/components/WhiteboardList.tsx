@@ -84,6 +84,7 @@ const WhiteboardList = (props: WhiteboardListProps): React.JSX.Element => {
                 .map(attribs => (
                   <li
                     key={attribs.id}
+                    className='flex'
                   >
                     <WhiteboardCard
                       {...attribs}
