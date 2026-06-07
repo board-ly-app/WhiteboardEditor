@@ -171,7 +171,7 @@ function WhiteboardCard({
   return (
     <>
       <div
-        className="flex flex-col m-2 md:m-4 w-69 rounded-xl border-1 border-border shadow-2xl bg-card-background"
+        className="flex flex-col w-69 rounded-xl border-1 border-border shadow-2xl bg-card-background"
       >
         <Link
           key={id}

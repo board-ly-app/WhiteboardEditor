@@ -204,8 +204,8 @@ const Dashboard = (): React.JSX.Element => {
         </div>
 
         <div className='flex flex-col md:flex-row border-t-1 border-border'>
-          <div className="flex-1 flex-col md:border-r-1 border-border px-2">
-            <h1 className="pt-12 mb-8 text-center text-2xl text-h2-text font-bold">
+          <div className="flex-1 flex-col md:border-r-1 border-border px-4">
+            <h1 className="pt-2 mb-4 text-center text-2xl text-h2-text font-bold">
               Your Whiteboards
             </h1>
             {(() => {
@@ -229,8 +229,8 @@ const Dashboard = (): React.JSX.Element => {
             })()}
           </div>
 
-          <div className="flex-1 flex-col">
-            <h1 className="pt-12 mb-8 text-center text-2xl text-h2-text font-bold">
+          <div className="flex-1 flex-col px-4">
+            <h1 className="pt-2 mb-4 text-center text-2xl text-h2-text font-bold">
               Shared Whiteboards
             </h1>
             {(() => {
