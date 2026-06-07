@@ -52,6 +52,7 @@ import {
 import {
   Button,
 } from '@/components/ui/button';
+import { WB_CARD_COLLABORATORS_DISPLAY_LIMIT } from '@/app.config';
 
 export type WhiteboardProps = Whiteboard;
 
@@ -105,11 +106,10 @@ function WhiteboardCard({
     closeModal: closeDeletionModal,
   } = useModal();
 
-  const MAX_COLLABORATORS = 3;
   const visiblePermissions = expanded
     ? userPermissions
-    : userPermissions.slice(0, MAX_COLLABORATORS);
-  const hiddenCount = Math.max(0, userPermissions.length - MAX_COLLABORATORS);
+    : userPermissions.slice(0, WB_CARD_COLLABORATORS_DISPLAY_LIMIT);
+  const hiddenCount = Math.max(0, userPermissions.length - WB_CARD_COLLABORATORS_DISPLAY_LIMIT);
 
   // -- miscellaneous callback functions
   const handleSubmitDeleteWhiteboard = useCallback(
