@@ -73,6 +73,7 @@ import {
 
 import {
   selectWhiteboardById,
+  selectWhiteboardPermissionByUser,
 } from '@/store/whiteboards/whiteboardsSelectors';
 
 import {
@@ -92,6 +93,9 @@ import {
   type NewCanvasDimensions,
 } from '@/types/CreateCanvas';
 import WhiteboardContext from '@/context/WhiteboardContext';
+import {
+  useUser,
+} from '@/hooks/useUser';
 import { captureImage, type ImageTypeEnum } from '@/lib/captureImage';
 import api from '@/api/axios';
 
@@ -166,6 +170,13 @@ const CanvasCard = ({
     clientMessenger,
   } = clientMessengerContext;
 
+  const {
+    user,
+  } = useUser();
+
+  if (! user) {
+    throw new Error('No authenticated user provided');
+  }
   const [selectedCanvasAllowedUsers, setSelectedCanvasAllowedUsers] = useState<User[] | null>(null);
 
   const rootCanvas : CanvasAttribs | null = useSelector(
@@ -204,6 +215,11 @@ const CanvasCard = ({
     lodash.isEqual
   );
 
+  const ownPermission = useSelector(
+    (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id),
+    lodash.isEqual
+  );
+
   // -- set up interval to broadcast cursor position
   const stageRef = useRef<Konva.Stage | null>(null);
   const cursorPosRef = useRef<{ x: number; y: number; } | null>(null);
@@ -212,7 +228,7 @@ const CanvasCard = ({
     () => {
       const timeoutId = window.setInterval(
         () => {
-          if (stageRef.current) {
+          if (stageRef.current && ownPermission !== 'view') {
             const pos = stageRef.current.getRelativePointerPosition();
 
             if (pos) {
@@ -235,7 +251,7 @@ const CanvasCard = ({
         window.clearTimeout(timeoutId);
       };
     },
-    [stageRef, cursorPosRef, clientMessenger]
+    [stageRef, cursorPosRef, clientMessenger, ownPermission]
   );
 
   useEffect(
