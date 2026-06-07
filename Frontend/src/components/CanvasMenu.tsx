@@ -3,6 +3,7 @@ import {
   useState,
   useContext,
   useCallback,
+  useEffect,
 } from "react";
 
 import lodash from 'lodash';
@@ -102,6 +103,14 @@ const CanvasMenu = ({
   );
   const [selectedAllowedUsers, setSelectedAllowedUsers] = useState<string[]>(
     Object.keys(allowedUserIdSet)
+  );
+
+  // -- Reset selectedAllowedUsers whenever allowed users updated in-state
+  useEffect(
+    () => {
+      setSelectedAllowedUsers(Object.keys(allowedUserIdSet));
+    },
+    [allowedUserIdSet]
   );
 
   // -- unpack Whiteboard context
