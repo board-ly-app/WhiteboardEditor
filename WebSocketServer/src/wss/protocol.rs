@@ -108,6 +108,13 @@ pub enum ServerSocketIndividualMessage {
         #[serde_as(as = "HashMap<DisplayFromStr, DisplayFromStr>")]
         selectors_by_canvas_objects: HashMap<CanvasObjectIdType, ClientIdType>,
     },
+    // -- Generic message for confirming success of some action
+    Confirm {
+        message: String,
+    },
+    Notify {
+        notification: NotificationClientView,
+    },
     Error {
         error: ClientError,
     },
@@ -314,4 +321,9 @@ pub enum ClientSocketMessage {
     },
     // -- Undo the user's last edit, if possible
     UndoHistory,
+    // -- Request access to a canvas
+    RequestCanvasEditPermission {
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
+    },
 } // -- end pub enum ClientSocketMessage

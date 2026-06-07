@@ -77,6 +77,10 @@ jobs:
             # Format: mongodb+srv://<USER>:<PASSWORD>@<URL>/<DATABASE>
             WHITEBOARD_EDITOR_MONGO_URI=mongodb://test_db:27017/testdb
 
+            # Maximum number of Rest API requests to accept in a 15-minute
+            # window
+            WHITEBOARD_EDITOR_RATE_LIMIT=999999
+
             # Number of seconds before a jwt expires
             WHITEBOARD_EDITOR_JWT_EXPIRATION_SECS=999999999
 

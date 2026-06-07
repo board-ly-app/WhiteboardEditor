@@ -7,7 +7,7 @@
 use super::{db::WhiteboardDiff,protocol::{ServerSocketMessage,ServerSocketBroadcastMessage}};
 
 use chrono::{self, Utc};
-use mongodb::bson::{self, oid::ObjectId};
+use mongodb::bson::{self, oid::ObjectId, serde_helpers::bson_datetime_as_rfc3339_string};
 use serde::{self, Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
 
@@ -1853,3 +1853,202 @@ impl EditMongoDBView {
         )
     }// -- end pub fn from_edit
 }// -- end impl EditMongoDBView
+
+// === Notifications ==============================================================================
+//
+// Notifications served to users within their notifications list.
+//
+// ================================================================================================
+pub type NotificationIdType = ObjectId;
+
+#[derive(Clone, Debug)]
+pub enum NotificationKind {
+    RequestCanvasEditPermission {
+        whiteboard_id: WhiteboardIdType,
+        canvas_id: CanvasIdType,
+        grantee: UserIdType,
+    },
+}// -- end pub enum NotificationKind
+
+#[derive(Clone, Debug)]
+pub struct Notification {
+    pub id: NotificationIdType,
+    pub recipient: UserIdType,
+    pub created_at: chrono::DateTime<Utc>,
+    pub is_sent: bool,
+    pub kind: NotificationKind,
+}// -- end pub struct Notification
+
+impl Notification {
+    pub fn new(recipient: &UserIdType, kind: NotificationKind) -> Self {
+        Self {
+            id: ObjectId::new(),
+            recipient: recipient.clone(),
+            created_at: Utc::now(),
+            is_sent: false,
+            kind,
+        }
+    }// -- end pub fn new
+}// -- end impl Notification
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+pub enum NotificationKindMongoDBView {
+    RequestCanvasEditPermission {
+        whiteboard_id: WhiteboardIdType,
+        canvas_id: CanvasIdType,
+        grantee: UserIdType,
+    },
+}// -- end pub struct NotificationKindMongoDBView
+
+impl NotificationKindMongoDBView {
+    pub fn from_notification_kind(nk: &NotificationKind) -> Self {
+        use NotificationKind::*;
+
+        match nk {
+            RequestCanvasEditPermission {
+                whiteboard_id,
+                canvas_id,
+                grantee,
+            } => Self::RequestCanvasEditPermission {
+                whiteboard_id: whiteboard_id.clone(),
+                canvas_id: canvas_id.clone(),
+                grantee: grantee.clone(),
+            },
+        }// -- end match nk
+    }// -- end fn from_notification_kind
+
+    pub fn to_notification_kind(&self) -> NotificationKind {
+        use NotificationKind::*;
+
+        match self {
+            Self::RequestCanvasEditPermission {
+                whiteboard_id,
+                canvas_id,
+                grantee,
+            } => RequestCanvasEditPermission {
+                whiteboard_id: whiteboard_id.clone(),
+                canvas_id: canvas_id.clone(),
+                grantee: grantee.clone(),
+            },
+        }// -- end match self
+    }// -- end fn to_notification_kind
+}// -- end impl NotificationKindMongoDBView
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationMongoDBView {
+    #[serde(rename = "_id")]
+    pub id: ObjectId,
+    pub recipient: UserIdType,
+    pub created_at: bson::DateTime,
+    pub is_sent: bool,
+    #[serde(flatten)]
+    pub kind: NotificationKindMongoDBView,
+}// -- end pub struct NotificationMongoDBView
+
+impl NotificationMongoDBView {
+    pub fn from_notification(nt: &Notification) -> Self {
+        use super::utils::dt_chrono_utc_to_bson;
+
+        Self {
+            id: nt.id.clone(),
+            recipient: nt.recipient.clone(),
+            created_at: dt_chrono_utc_to_bson(&nt.created_at),
+            is_sent: nt.is_sent,
+            kind: NotificationKindMongoDBView::from_notification_kind(&nt.kind),
+        }
+    }// -- end pub fn from_notification
+
+    pub fn to_notification(&self) -> Notification {
+        use super::utils::dt_bson_to_chrono_utc;
+
+        Notification {
+            id: self.id.clone(),
+            recipient: self.recipient.clone(),
+            created_at: dt_bson_to_chrono_utc(&self.created_at),
+            is_sent: self.is_sent,
+            kind: self.kind.to_notification_kind(),
+        }
+    }// -- end pub fn to_notification
+}// -- end impl NotificationMongoDBView
+
+#[serde_as]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+pub enum NotificationKindClientView {
+    RequestCanvasEditPermission {
+        #[serde_as(as = "DisplayFromStr")]
+        whiteboard_id: WhiteboardIdType,
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
+        #[serde_as(as = "DisplayFromStr")]
+        grantee: UserIdType,
+    },
+}// -- end pub struct NotificationKindClientView
+
+impl NotificationKindClientView {
+    pub fn from_notification_kind(nk: &NotificationKind) -> Self {
+        use NotificationKind::*;
+
+        match nk {
+            RequestCanvasEditPermission {
+                whiteboard_id,
+                canvas_id,
+                grantee,
+            } => Self::RequestCanvasEditPermission {
+                whiteboard_id: whiteboard_id.clone(),
+                canvas_id: canvas_id.clone(),
+                grantee: grantee.clone(),
+            },
+        }// -- end match nk
+    }// -- end fn from_notification_kind
+
+    pub fn to_notification_kind(&self) -> NotificationKind {
+        use NotificationKind::*;
+
+        match self {
+            Self::RequestCanvasEditPermission {
+                whiteboard_id,
+                canvas_id,
+                grantee,
+            } => RequestCanvasEditPermission {
+                whiteboard_id: whiteboard_id.clone(),
+                canvas_id: canvas_id.clone(),
+                grantee: grantee.clone(),
+            },
+        }// -- end match self
+    }// -- end fn to_notification_kind
+}// -- end impl NotificationKindClientView
+
+#[serde_as]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationClientView {
+    #[serde_as(as = "DisplayFromStr")]
+    id: ObjectId,
+    #[serde(with = "bson_datetime_as_rfc3339_string")]
+    created_at: bson::DateTime,
+    #[serde(flatten)]
+    kind: NotificationKindClientView,
+}// -- end pub struct NotificationClientView
+
+impl NotificationClientView {
+    pub fn from_notification(nt: &Notification) -> Self {
+        use super::utils::dt_chrono_utc_to_bson;
+
+        Self {
+            id: nt.id.clone(),
+            created_at: dt_chrono_utc_to_bson(&nt.created_at),
+            kind: NotificationKindClientView::from_notification_kind(&nt.kind),
+        }
+    }// -- end pub fn from_notification
+}// -- end impl NotificationClientView

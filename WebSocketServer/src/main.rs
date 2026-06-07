@@ -158,6 +158,7 @@ async fn handle_connection(
         db::{MongoDBInterface, get_whiteboard_by_id},
         models::{
             ClientIdType,
+            NotificationClientView,
         },
         protocol::{
             ClientError,
@@ -256,6 +257,7 @@ async fn handle_connection(
                             whiteboard_ref: Arc::clone(&whiteboard_ref),
                             broadcaster: tx.clone(),
                             active_clients: Arc::new(Mutex::new(HashMap::new())),
+                            clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
                             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
                             edits: Arc::new(Mutex::new(Vec::new())),
                         };
@@ -288,6 +290,7 @@ async fn handle_connection(
         whiteboard_id: whiteboard_id.clone(),
         whiteboard_ref: Arc::clone(&shared_whiteboard_entry.whiteboard_ref),
         active_clients: Arc::clone(&shared_whiteboard_entry.active_clients),
+        clients_by_user_id: Arc::clone(&shared_whiteboard_entry.clients_by_user_id),
         selectors_to_canvas_objects: Arc::clone(
             &shared_whiteboard_entry.selectors_to_canvas_objects
         ),
@@ -432,8 +435,38 @@ async fn handle_connection(
                     }
 
                     if let Ok(msg_s) = msg.to_str() {
-                        let resp =
+                        let mut resp =
                             handle_authenticated_client_message(&client_state_authenticated, msg_s).await;
+
+                        // -- send notifications to logged-in users, save notifications to database
+                        // for other users
+                        {
+                            let clients_by_user_ids = client_state_base.clients_by_user_id.lock().await;
+
+                            for nt in resp.notifications.iter_mut() {
+                                // -- If user is currently logged in, send them the notification
+                                // directly
+                                if let Some(client_ids) = clients_by_user_ids
+                                    .get_values_by_key(&nt.recipient) {
+                                        // -- set notification to sent
+                                        // -- TODO: move this logic to individual sender to confirm
+                                        // receipt by client
+                                        nt.is_sent = true;
+
+                                        for client_id in client_ids.iter() {
+                                            resp.messages.push(ServerSocketMessage::Individual {
+                                                target_client_id: client_id.clone(),
+                                                msg: ServerSocketIndividualMessage::Notify {
+                                                    notification: NotificationClientView::from_notification(&nt)
+                                                },
+                                            });
+                                        }// -- end for client_id
+                                }
+
+                                // -- save notification to database
+                                mongo_interface.save_notification(nt).await;
+                            }// -- end for nt
+                        }
 
                         // -- update database and local edit history, if there are edits
                         {
@@ -469,10 +502,12 @@ async fn handle_connection(
     // Clean up when client disconnects
     {
         let mut clients = shared_whiteboard_entry.active_clients.lock().await;
+        let mut clients_by_user_id = shared_whiteboard_entry.clients_by_user_id.lock().await;
         let mut selectors_to_canvas_objects = shared_whiteboard_entry
             .selectors_to_canvas_objects.lock().await;
 
         clients.remove(&current_client_id);
+        clients_by_user_id.remove_value(&current_client_id);
         selectors_to_canvas_objects.remove_key(&current_client_id);
 
         // -- notify other clients of client disconnect

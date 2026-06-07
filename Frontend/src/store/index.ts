@@ -48,6 +48,9 @@ import whiteboardsReducer, {
 import whiteboardStatusReducer, {
   type WhiteboardStatusActions,
 } from './whiteboards/whiteboardStatusSlice';
+import notificationsReducer, {
+  type NotificationsActions,
+} from './notifications/notificationsSlice';
 
 // -- root reducers
 import {
@@ -78,6 +81,7 @@ const rootReducer = combineReducers({
   selectedCanvasByWhiteboard: selectedCanvasByWhiteboardReducer,
   whiteboards: whiteboardsReducer,
   whiteboardStatus: whiteboardStatusReducer,
+  notifications: notificationsReducer,
 });// -- end rootReducer
 
 type ActionType =
@@ -96,6 +100,7 @@ type ActionType =
   | SelectedCanvasByWhiteboardActions
   | WhiteboardsActions
   | WhiteboardStatusActions
+  | NotificationsActions
   | MergeCanvasActionType
   | DeleteWhiteboardsActionType
 ;

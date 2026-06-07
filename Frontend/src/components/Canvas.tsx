@@ -46,8 +46,8 @@ import {
 } from '@/store';
 
 import {
-  selectAllowedUsersByCanvas,
-} from '@/store/allowedUsers/allowedUsersByCanvasSlice';
+  selectUserHasAccessToCanvas,
+} from '@/store/canvases/canvasesSelectors';
 
 import {
   selectCurrentEditorByCanvas,
@@ -85,9 +85,9 @@ import {
   CanvasObject,
 } from '@/components/CanvasObject';
 
-import type {
-  CanvasObjectIdType,
-  CanvasObjectModel,
+import {
+  type CanvasObjectIdType,
+  type CanvasObjectModel,
 } from '@/types/CanvasObjectModel';
 
 import {
@@ -198,12 +198,6 @@ const Canvas = ({
     lodash.isEqual
   );
 
-  const allowedUserIds = useSelector(
-    // '' is effectively a null canvas id
-    (state: RootState) => selectAllowedUsersByCanvas(state, canvasId || ''),
-    lodash.isEqual
-  );
-
   const currentEditor : ClientSummary | null = useSelector(
     (state: RootState) => selectCurrentEditorByCanvas(state, canvasId),
     lodash.isEqual
@@ -214,17 +208,9 @@ const Canvas = ({
     lodash.isEqual
   );
 
-  const userHasAccess : boolean = useMemo(
-    () => {
-      if (user?.id) {
-        return allowedUserIds === undefined
-          || allowedUserIds.length === 0
-          || allowedUserIds.includes(user.id);
-      } else {
-        return false;
-      }
-    },
-    [user, allowedUserIds]
+  const userHasAccess : boolean = useSelector(
+    (state: RootState) => selectUserHasAccessToCanvas(state, canvasId, user.id),
+    lodash.isEqual
   );
 
   const groupRef = useRef<Konva.Group | null>(null);
@@ -406,7 +392,9 @@ const Canvas = ({
   );
 
   // TODO: delegate draggability to tool definitions
-  const areShapesDraggable = ((ownPermission !== 'view') && (currentTool === 'hand') && userHasAccess);
+  const areShapesDraggable = userHasAccess
+    && (ownPermission !== 'view')
+    && (currentTool === 'hand');
 
   const tooltipText = useMemo(
     () => {

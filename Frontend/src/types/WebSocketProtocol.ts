@@ -76,6 +76,30 @@ export interface WhiteboardData extends WhiteboardAttribs {
   canvases: CanvasData[];
 }
 
+// === Notification ============================================================
+//
+// A notification sent from the server.
+//
+// =============================================================================
+
+export type NotificationIdType = string;
+
+interface NotificationBase {
+    id: NotificationIdType;
+    createdAt: Date;
+}// -- end interface NotificationBase
+
+export interface NotificationRequestCanvasEditPermission extends NotificationBase {
+  kind: 'request_canvas_edit_permission';
+  whiteboardId: WhiteboardIdType;
+  canvasId: CanvasIdType;
+  grantee: UserIdType;
+}// -- end NotificationRequestCanvasEditPermission
+
+export type Notification =
+  | NotificationRequestCanvasEditPermission
+;
+
 // ========================== SERVER → CLIENT ==================================
 //
 // =============================================================================
@@ -281,6 +305,16 @@ export interface ServerMessageSetCursorPos {
   y: number;
 }
 
+export interface ServerMessageConfirm {
+  type: 'confirm';
+  message: string;
+}
+
+export interface ServerMessageNotify {
+  type: 'notify';
+  notification: Notification;
+}
+
 export interface ServerMessageError {
   type: 'error';
   error: ClientError;
@@ -303,6 +337,8 @@ export type SocketServerMessage =
   | ServerMessageMergeCanvas
   | ServerMessageDeleteWhiteboard
   | ServerMessageSetCursorPos
+  | ServerMessageConfirm
+  | ServerMessageNotify
   | ServerMessageError
 ;
 
@@ -398,6 +434,11 @@ export interface ClientMessageUndoHistory {
   type: 'undo_history';
 }
 
+export interface ClientMessageRequestCanvasEditPermission {
+  type: 'request_canvas_edit_permission';
+  canvasId: CanvasIdType;
+}
+
 // Tagged union of all possible client-server messages
 export type SocketClientMessage =
   | ClientMessageLogin
@@ -413,4 +454,5 @@ export type SocketClientMessage =
   | ClientMessageMergeCanvas
   | ClientMessageSetCursorPos
   | ClientMessageUndoHistory
+  | ClientMessageRequestCanvasEditPermission
 ;

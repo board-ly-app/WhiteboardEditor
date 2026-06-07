@@ -59,6 +59,10 @@ import {
   type ErrorResponse as APIErrorResponse,
 } from '@/types/APIProtocol';
 
+import {
+  type Notification,
+} from '@/types/Notification';
+
 // -- program state
 import {
   store,
@@ -74,10 +78,6 @@ import {
   selectWhiteboardStatus,
   selectWhiteboardPermissionByUser,
 } from '@/store/whiteboards/whiteboardsSelectors';
-
-import {
-  selectCanvasesWithObjectsByWhiteboardId,
-} from '@/store/canvases/canvasesSelectors';
 
 import {
   selectSelectedCanvasObjectsByWhiteboard,
@@ -104,6 +104,12 @@ import HeaderAuthed from '@/components/HeaderAuthed';
 import shapeAttributesReducer from '@/reducers/shapeAttributesReducer';
 import type { ToolChoice } from '@/components/Tool';
 
+// -- page-specific components
+import {
+  NotificationsHeaderMenu,
+} from '@/pages/Whiteboard/NotificationsHeaderMenu';
+
+// -- ui components
 import {
   ActiveUsersHeaderDropdown,
 } from '@/components/ActiveUsersHeaderDropdown';
@@ -131,7 +137,6 @@ import {
 
 import type {
   ClientMessageCreateCanvas,
-  CanvasData,
   CanvasIdType,
   WhiteboardIdType,
 } from '@/types/WebSocketProtocol';
@@ -150,6 +155,7 @@ import { useUser } from '@/hooks/useUser';
 import {
   removeSelectorsByCanvasObject,
   updateWhiteboard,
+  setNotifications,
 } from '@/controllers';
 
 type ComponentStatus = 
@@ -228,6 +234,24 @@ const Whiteboard = ({
     error: whiteboardError,
   } = query;
 
+  // -- fetch unread notifications
+  useEffect(
+    () => {
+      api.get('/notifications')
+        .then((res) => {
+          const notifications : Notification[] = res.data.notifications;
+
+          setNotifications(dispatch, Object.fromEntries(
+            notifications.map(notif => [notif.id, notif])
+          ));
+        })
+        .catch((e: unknown) => {
+          console.error('Could not fetch notifications:', e);
+        });
+    },
+    [dispatch]
+  );
+
   // alert user of any errors fetching whiteboard
   useEffect(
     () => {
@@ -301,11 +325,6 @@ const Whiteboard = ({
       }
     },
     [currentTool]
-  );
-
-  const canvases: CanvasData[] = useSelector(
-    (state: RootState) => selectCanvasesWithObjectsByWhiteboardId(state, whiteboardId),
-    lodash.isEqual
   );
 
   const selectedCanvasObjects : CanvasObjectIdType[] = useSelector(
@@ -610,10 +629,6 @@ const Whiteboard = ({
         currWhiteboard,
       } = status;
       
-      const canvasesSorted = [...canvases];
-      
-      canvasesSorted.sort((a, b) => new Date(a.timeCreated) < new Date(b.timeCreated) ? -1 : 1);
-      
       const {
         name: title,
         rootCanvas: rootCanvasId,
@@ -654,6 +669,7 @@ const Whiteboard = ({
                 toolbarElemsLeft={[
                   ((ownPermission === 'own') && <ShareWhiteboardButton />),
                   ((ownPermission === 'own') && <DeleteWhiteboardButton />),
+                  <NotificationsHeaderMenu />,
                 ]}
                 toolbarElemsRight={[
                   <ActiveUsersHeaderDropdown />,
@@ -882,10 +898,6 @@ const Whiteboard = ({
       const {
         rootCanvas: rootCanvasId,
       } = currWhiteboard;
-      
-      const canvasesSorted = [...canvases];
-      
-      canvasesSorted.sort((a, b) => new Date(a.timeCreated) < new Date(b.timeCreated) ? -1 : 1);
       
       const title = `[DELETED] ${currWhiteboard.name}`;
       

@@ -17,6 +17,7 @@ import {
   type ClientMessageDeleteCanvases,
   type ClientMessageUpdateAllowedUsers,
   type ClientMessageUndoHistory,
+  type ClientMessageRequestCanvasEditPermission,
 } from '@/types/WebSocketProtocol';
 
 class WhiteboardSocketMessenger {
@@ -79,6 +80,10 @@ class WhiteboardSocketMessenger {
   }// -- end sendUpdateCanvasObjects
 
   sendUndoHistory(msg: ClientMessageUndoHistory) {
+    this.#sendMessage(msg);
+  }// -- end sendUndoHistory
+
+  sendRequestCanvasEditPermission(msg: ClientMessageRequestCanvasEditPermission) {
     this.#sendMessage(msg);
   }// -- end sendUndoHistory
 };
