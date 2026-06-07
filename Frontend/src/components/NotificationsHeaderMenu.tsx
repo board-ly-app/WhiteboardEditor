@@ -27,6 +27,7 @@ import {
 
 import {
   CircleAlert,
+  Circle,
 } from 'lucide-react';
 
 // -- local imports
@@ -128,12 +129,23 @@ const NotificationListItem = ({
     [notificationId]
   );// -- end handleSelect
 
+  const ReadIndicator = useCallback(
+    () => (
+      <Circle
+        size={4}
+        color={notification.isRead ? "gray" : "yellow"}
+        className="m-2"
+      />
+    ),
+    [notification.isRead]
+  );// -- end ReadIndicator
+
   return (
     <DropdownMenuItem
       onSelect={handleSelect}
     >
-      <span>
-        {new Date(notification.createdAt).toLocaleString()} | {getNotificationDescription(notification)}
+      <span className="flex flex-row">
+        <ReadIndicator /> {new Date(notification.createdAt).toLocaleString()} | {getNotificationDescription(notification)}
       </span>
     </DropdownMenuItem>
   );
