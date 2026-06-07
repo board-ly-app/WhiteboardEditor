@@ -231,15 +231,15 @@ function WhiteboardCard({
           <div className="mt-1 text-center">
             {!expanded && hiddenCount > 0 && (
               <button
-                className="text-sm text-h3-text hover:underline"
+                className="text-sm text-h3-text hover:underline hover:cursor-pointer"
                 onClick={() => setExpanded(true)}
               >
-                ... See more (+{hiddenCount})
+                ... Show more (+{hiddenCount})
               </button>
             )}
             {expanded && (
               <button
-                className="text-sm text-h3-text hover:underline"
+                className="text-sm text-h3-text hover:underline hover:cursor-pointer"
                 onClick={() => setExpanded(false)}
               >
                 Show less
