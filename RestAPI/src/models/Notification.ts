@@ -35,8 +35,9 @@ export type NotificationTypeEnum =
 // Base notification model, 
 // 
 // ==================================================================================
-export interface INotificationModel {
+export interface INotificationModel <UserType> {
   kind: NotificationTypeEnum;
+  recipient: UserType;
   createdAt: Date;
   isSent: boolean;
 }
@@ -44,24 +45,32 @@ export interface INotificationModel {
 // === Base Data Transfer Objects ======================================
 
 // -- User with id and other basic document info
-export type INotificationDocument = ViewDocument<INotificationModel>;
+export type INotificationDocument <UserType> = ViewDocument<INotificationModel <UserType>>;
 
 // -- Notification, excluding sensitive fields
 export type NotificationProtectedFields = "";
-export type INotificationPublicView = Omit<INotificationDocument, NotificationProtectedFields>;
+export type INotificationPublicView = Omit<
+  INotificationDocument <IUserPublicView>,
+  NotificationProtectedFields
+>;
 
 // -- Public view, excluding vector attributes
 // -- In this case, there are no vector attributes
-export type INotificationAttribView = INotificationPublicView;
+export type INotificationAttribView = Omit<
+  INotificationDocument <IUserAttribView>,
+  NotificationProtectedFields
+>;
 
 export type INotificationVirtual = DocumentVirtualBase;
 
-export type NotificationModelType = Model<INotificationDocument, {}, {}, INotificationVirtual>;
+export type NotificationModelType = Model<INotificationDocument <
+  Types.ObjectId>, {}, {}, INotificationVirtual
+>;
 
 // -- Notification as a Mongo document
-export type INotification = 
-  & INotificationDocument
-  & DocumentViewMethods<INotification, INotificationPublicView, INotificationAttribView>
+export type INotification <UserType> = 
+  & INotificationDocument <UserType>
+  & DocumentViewMethods<INotification <UserType>, INotificationPublicView, INotificationAttribView>
   & Document <Types.ObjectId>
 ;
 // -- End INotification
@@ -72,7 +81,7 @@ export type INotification =
 //
 // =============================================================================
 export interface IRequestCanvasEditPermissionNotificationModel <UserType, CanvasType>
-extends INotificationModel {
+extends INotificationModel <UserType> {
   kind: 'request_canvas_edit_permission';
   grantee: UserType;
   canvas: CanvasType;
@@ -142,6 +151,7 @@ const notficiationSchema = new Schema<
   // -- fields
   {
     kind: { type: String, enum: ['request_canvas_edit_permission'], required: true },
+    recipient:    { type: Schema.Types.ObjectId, ref: 'User', required: true, },
     createdAt: { type: Schema.Types.Date, required: true },
     isSent: { type: Schema.Types.Boolean, required: true, default: false },
   },
