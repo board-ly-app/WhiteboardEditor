@@ -65,6 +65,8 @@ import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
 
+import WhiteboardContext from '@/context/WhiteboardContext';
+
 import {
   NotificationsHeaderMenu as NotificationsHeaderMenuUI,
 } from '@/components/NotificationsHeaderMenu';
@@ -82,6 +84,7 @@ const RequestCanvasEditPermDescription = ({
 }: RequestCanvasEditPermDescriptionProps): React.ReactNode => {
   const {
     id: notificationId,
+    whiteboardId,
     canvasId,
     grantee: granteeId,
   } = notification;
@@ -114,6 +117,12 @@ const RequestCanvasEditPermDescription = ({
   const {
     clientMessenger,
   } = clientMessengerContext;
+
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
+    throw new Error('No WhiteboardContext provided');
+  }
 
   const [grantee, setGrantee] = useState<User | null>(null);
 
@@ -155,12 +164,15 @@ const RequestCanvasEditPermDescription = ({
     return (
       <>
         {grantee.username} is requesting permission to edit canvas "{canvasName}"
-        <Button
-          size="sm"
-          onClick={handleApproveRequest}
-        >
-          Approve
-        </Button>
+
+        {(whiteboardId === whiteboardContext.whiteboardId) && (
+          <Button
+            size="sm"
+            onClick={handleApproveRequest}
+          >
+            Approve
+          </Button>
+        )}
       </>
     );
   }
