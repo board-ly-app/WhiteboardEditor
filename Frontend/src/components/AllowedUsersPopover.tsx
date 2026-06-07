@@ -186,7 +186,7 @@ const AllowedUsersPopover = ({ selected, onChange }: AllowedUsersPopoverProps) =
                       key={userPerm.user.id}
                       value={userPerm.user.id}
                       onSelect={() => toggleUser(userPerm.user.id)}
-                      className='flex items-center gap-2'
+                      className='flex items-center gap-2 hover:cursor-pointer'
                     >
                       {userPerm.user.username}
                       <Check 
