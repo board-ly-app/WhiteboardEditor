@@ -33,3 +33,10 @@ export const DEFAULT_CLIENT_COLORS = [
 // -- Number of milliseconds to display a notification when a whiteboard is
 // deleted, before redirecting the user to their dashboard.
 export const WHITEBOARD_DELETED_NOTIFICATION_NUM_MILLIS = 5000;
+
+// -- Number of active users to display outside dropdown menu on Whiteboard page
+// header.
+export const ACTIVE_USERS_DISPLAY_LIMIT = 3;
+
+// -- Milliseconds to wait between throttled function execuations
+export const THROTTLE_INTERVAL = 100;

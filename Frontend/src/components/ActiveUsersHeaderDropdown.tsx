@@ -15,6 +15,10 @@ import {
 } from 'lucide-react';
 
 import {
+  ACTIVE_USERS_DISPLAY_LIMIT,
+} from '@/app.config';
+
+import {
   type ClientIdType,
 } from '@/types/WebSocketProtocol';
 
@@ -55,39 +59,71 @@ export const ActiveUsersHeaderDropdown = () => {
   const [isActiveUsersOpen, setIsActiveUsersOpen] = useState<boolean>(false);
 
   const activeUsers : Record<ClientIdType, ClientSummary> = useSelector(
-    (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId) || null,
+    (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId) || {},
     lodash.isEqual
   );
 
-  return (
-    <DropdownMenu
-      key="active-users"
-      open={isActiveUsersOpen}
-      onOpenChange={setIsActiveUsersOpen}
-    >
-      <DropdownMenuTrigger className="text-header-button-text group flex items-center gap-1 px-4 py-2 rounded-lg hover:cursor-pointer hover:text-header-button-text-hover whitespace-nowrap">
-        Active Users
-        <ChevronDown className="w-4 h-4 transition-transform duration-300 group-data-[state=open]:rotate-180"/>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <div className="flex flex-col">
-          {activeUsers && Object.values(activeUsers).map((u) => (
-            <DropdownMenuLabel
+  const activeUsersLength =  Object.keys(activeUsers).length;
+
+  if (activeUsersLength <= ACTIVE_USERS_DISPLAY_LIMIT) {
+    // -- Display all user icons side-by-side on header
+    return (
+      <div className="flex items-center gap-1">
+        {activeUsers && Object.values(activeUsers).map((u) => (
+          <div
+            key={u.clientId}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white select-none"
+            style={{ border: `2px solid ${u.color}` }}
+            title={u.username}
+          >
+            {u.username[0].toUpperCase()}
+          </div>
+        ))}
+      </div>
+    );
+  } else {
+    // -- Display first <ACTIVE_USERS_DISPLAY_LIMIT> user icons on header with dropdown option to see all
+    return (
+      <DropdownMenu
+        open={isActiveUsersOpen}
+        onOpenChange={setIsActiveUsersOpen}
+      >
+        <div className='flex justify-center items-center gap-2'>
+          {activeUsers && Object.values(activeUsers).slice(0, ACTIVE_USERS_DISPLAY_LIMIT).map((u) => (
+            <div
               key={u.clientId}
-              className="flex flex-row content-center"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white select-none"
+              style={{ border: `2px solid ${u.color}` }}
+              title={u.username}
             >
-              <Circle
-                size={20}
-                stroke={u.color}
-                strokeWidth={4}
-              />
-              <span className="pl-2">
-                {u.username}
-              </span>
-            </DropdownMenuLabel>
+              {u.username[0].toUpperCase()}
+            </div>
           ))}
+          <DropdownMenuTrigger className="text-header-button-text group flex items-center gap-1 px-0 py-2 rounded-lg hover:cursor-pointer hover:text-header-button-text-hover whitespace-nowrap" title="View all active users">
+            {`... +${activeUsersLength - ACTIVE_USERS_DISPLAY_LIMIT}`}
+            <ChevronDown className="w-4 h-4 transition-transform duration-300 group-data-[state=open]:rotate-180"/>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <div className="flex flex-col">
+              {activeUsers && Object.values(activeUsers).map((u) => (
+                <DropdownMenuLabel
+                  key={u.clientId}
+                  className="flex flex-row content-center"
+                >
+                  <Circle
+                    size={20}
+                    stroke={u.color}
+                    strokeWidth={2}
+                  />
+                  <span className="pl-2">
+                    {u.username}
+                  </span>
+                </DropdownMenuLabel>
+              ))}
+            </div>
+          </DropdownMenuContent>
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+      </DropdownMenu>
+    );
+  }
 };// -- end ActiveUsersHeaderDropdown

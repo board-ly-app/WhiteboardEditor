@@ -23,9 +23,9 @@ export interface HeaderProps {
   title: string;
   zIndex?: number;
   // Buttons and other elements to display on left side of header
-  toolbarElemsLeft?: React.JSX.Element[];
+  toolbarElemsLeft?: React.ReactNode[];
   // Buttons and other elements to display on right side of header
-  toolbarElemsRight?: React.JSX.Element[];
+  toolbarElemsRight?: React.ReactNode[];
   noMarginTop?: boolean;
 }
 
@@ -40,7 +40,7 @@ const Header = ({
     <>
       {/** Floating header **/}
       <div
-        className="fixed top-1 left-0 right-0 max-h-15 backdrop-blur-md shadow-2xl rounded-lg border-border border-1 mx-5 lg:mx-30 m-1 px-3 py-1 bg-bar-background/80"
+        className="fixed top-1 left-0 right-0 max-h-15 backdrop-blur-md shadow-2xl rounded-lg border-border border-1 mx-5 lg:mx-30 m-1 px-3 py-2 bg-bar-background/80"
         style={{ zIndex }}
       > 
         <div className="relative flex items-center justify-between"> 
@@ -71,7 +71,7 @@ const Header = ({
           </NavigationMenu>
 
           {/* Left Side Items */}
-          <div className="text-h2-text mx-4 gap-4 hidden md:flex w-60 items-center">
+          <div className="text-h2-text mx-4 gap-4 hidden md:flex items-center">
             {toolbarElemsLeft}
           </div>
 
@@ -81,7 +81,7 @@ const Header = ({
           </h1>
           
           {/* Right Side Items */}
-          <div className="text-h2-text mx-4 gap-4 hidden md:flex w-60 items-center justify-end">
+          <div className="text-h2-text mx-4 gap-4 hidden md:flex items-center justify-end">
             {toolbarElemsRight}
           </div>
         </div>

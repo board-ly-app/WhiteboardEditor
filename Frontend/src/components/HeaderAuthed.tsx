@@ -56,7 +56,7 @@ const HeaderAuthed = ({
         (
           // Profile Dropdown
           <DropdownMenu key="profile">
-            <DropdownMenuTrigger className="text-header-button-text group flex items-center gap-1 px-4 py-2 text-xl font-bold rounded-md hover:cursor-pointer hover:text-header-button-text-hover">
+            <DropdownMenuTrigger className="text-header-button-text group flex items-center gap-1 text-xl font-bold rounded-md hover:cursor-pointer hover:text-header-button-text-hover">
               {user?.username}
               <ChevronDown className="w-4 h-4 transition-transform duration-300 group-data-[state=open]:rotate-180"/>
             </DropdownMenuTrigger>

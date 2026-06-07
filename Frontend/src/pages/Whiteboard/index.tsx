@@ -646,14 +646,13 @@ const Whiteboard = ({
       );
 
       // Delete whiteboard button (only if the user is an owner)
-      const DeleteWhiteboardButton = (ownPermission === 'own') ?
-        () => (
-          <HeaderButton
-            onClick={openDeleteWhiteboardModal}
-            title="Delete"
-          />
-        )
-        : () => null;
+      const DeleteWhiteboardButton = () => (
+        <HeaderButton
+          onClick={openDeleteWhiteboardModal}
+          title="Delete"
+          disabled={ownPermission !== 'own'}
+        />
+      );
       
       const pageTitle = `${title} | ${APP_NAME}`;
 
@@ -668,8 +667,8 @@ const Whiteboard = ({
                 title={title}
                 zIndex={10}
                 toolbarElemsLeft={[
-                  <ShareWhiteboardButton />,
-                  <DeleteWhiteboardButton />,
+                  ((ownPermission === 'own') && <ShareWhiteboardButton />),
+                  ((ownPermission === 'own') && <DeleteWhiteboardButton />),
                   <NotificationsHeaderMenu />,
                 ]}
                 toolbarElemsRight={[
@@ -688,6 +687,9 @@ const Whiteboard = ({
                       title="Home"
                     />
                   ),
+                ]}
+                toolbarElemsRight={[
+                  <ActiveUsersHeaderDropdown />,
                 ]}
                 noMarginTop={true}
               />
