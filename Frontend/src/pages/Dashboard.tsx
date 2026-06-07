@@ -193,14 +193,20 @@ const Dashboard = (): React.JSX.Element => {
       />
 
       <main>
-        <h1 className="text-xl md:text-4xl text-h1-text text-center m-5">
-          Welcome Back, {user.username}!
-        </h1>
-
-        <div className='text-center lg:text-left m-4 lg:ml-60 lg:mb-12'>
-          <CreateWhiteboardModal
-            onSubmit={handleCreateWhiteboard}
-          />
+        <div className="grid grid-flow-col grid-rows-3 sm:grid-rows-2 lg:grid-rows-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mx-12 mb-8">
+          <div className='col-span-1 order-2 lg:order-1 flex justify-center sm:justify-start'>
+            <CreateWhiteboardModal
+              onSubmit={handleCreateWhiteboard}
+            />
+          </div>
+          <h1 className="col-span-2 text-2xl lg:text-4xl text-h1-text order-1 lg:order-2 text-center truncate">
+            Welcome Back, {user.username}!
+          </h1>
+          <div className="col-span-1 flex flex-nowrap order-3 flex justify-center sm:justify-end">
+            <label htmlFor="search" className='hidden'>Search</label>
+            <input name='search' className='text-nowrap' value='' type='text' placeholder='Search me' />
+            <button className='text-nowrap'>Sort me</button>
+          </div>
         </div>
 
         <div className='flex flex-col md:flex-row border-t-1 border-border'>
