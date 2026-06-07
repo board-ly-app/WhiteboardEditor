@@ -42,6 +42,7 @@ import {
 import {
   setNotifications,
   setNotificationsRead,
+  removeNotifications,
 } from './notifications';
 
 export {
@@ -68,4 +69,5 @@ export {
   removeCanvasObjectsBySelector,
   setNotifications,
   setNotificationsRead,
+  removeNotifications,
 };

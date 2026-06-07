@@ -26,6 +26,10 @@ import {
 
 // -- local imports
 import {
+  type UserIdType,
+} from '@/types/WebSocketProtocol';
+
+import {
   type Notification,
   type NotificationRequestCanvasEditPermission,
 } from '@/types/Notification';
@@ -36,6 +40,7 @@ import {
 
 import {
   type RootState,
+  store,
 } from '@/store';
 
 import {
@@ -46,11 +51,27 @@ import {
   selectCanvasById,
 } from '@/store/canvases/canvasesSelectors';
 
+import {
+  selectAllowedUsersByCanvas,
+} from '@/store/allowedUsers/allowedUsersByCanvasSlice';
+
+import {
+  removeNotifications,
+} from '@/controllers';
+
 import UserCacheContext from '@/context/UserCacheContext';
+
+import {
+  ClientMessengerContext,
+} from '@/context/ClientMessengerContext';
 
 import {
   NotificationsHeaderMenu as NotificationsHeaderMenuUI,
 } from '@/components/NotificationsHeaderMenu';
+
+import {
+  Button,
+} from '@/components/ui/button';
 
 interface RequestCanvasEditPermDescriptionProps {
   notification: NotificationRequestCanvasEditPermission;
@@ -60,6 +81,7 @@ const RequestCanvasEditPermDescription = ({
   notification,
 }: RequestCanvasEditPermDescriptionProps): React.ReactNode => {
   const {
+    id: notificationId,
     canvasId,
     grantee: granteeId,
   } = notification;
@@ -83,7 +105,38 @@ const RequestCanvasEditPermDescription = ({
     getUserById,
   } = userCacheContext;
 
+  const clientMessengerContext = useContext(ClientMessengerContext);
+
+  if (! clientMessengerContext) {
+    throw new Error('No ClientMessengerContext provided');
+  }
+
+  const {
+    clientMessenger,
+  } = clientMessengerContext;
+
   const [grantee, setGrantee] = useState<User | null>(null);
+
+  const handleApproveRequest = useCallback(
+    () => {
+      if (clientMessenger) {
+        const state : RootState = store.getState();
+        const currAllowedUsers : Record<UserIdType, unknown> | null = selectAllowedUsersByCanvas(state, canvasId);
+
+        // -- if null, user already has accesss by default
+        if (currAllowedUsers) {
+          clientMessenger.sendUpdateCanvasAllowedUsers({
+            type: 'update_canvas_allowed_users',
+            canvasId,
+            allowedUsers: [...Object.keys(currAllowedUsers), granteeId],
+          });
+
+          removeNotifications([notificationId]);
+        }
+      }
+    },
+    [canvasId, granteeId, notificationId, clientMessenger]
+  );// -- end handleApproveRequest
 
   useEffect(
     () => {
@@ -93,7 +146,7 @@ const RequestCanvasEditPermDescription = ({
 
       fetchGrantee();
     },
-    [granteeId, setGrantee]
+    [granteeId, setGrantee, getUserById]
   );
 
   if (! grantee) {
@@ -102,6 +155,12 @@ const RequestCanvasEditPermDescription = ({
     return (
       <>
         {grantee.username} is requesting permission to edit canvas "{canvasName}"
+        <Button
+          size="sm"
+          onClick={handleApproveRequest}
+        >
+          Approve
+        </Button>
       </>
     );
   }
