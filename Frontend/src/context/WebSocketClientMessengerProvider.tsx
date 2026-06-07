@@ -48,9 +48,11 @@ import {
 
 import {
   type ClientIdType,
+  type UserIdType,
   type ClientMessageLogin,
   type SocketServerMessage,
   type CanvasIdType,
+  type CanvasAttribs,
 } from '@/types/WebSocketProtocol';
 
 import {
@@ -71,6 +73,7 @@ import {
 
 // -- program state
 import {
+  type RootState,
   store,
 } from '@/store';
 
@@ -94,6 +97,14 @@ import {
   setSelectorsByCanvasObject,
   setNotifications,
 } from '@/controllers';
+
+import {
+  selectCanvasById,
+} from '@/store/canvases/canvasesSelectors';
+
+import {
+  selectAllowedUsersByCanvas,
+} from '@/store/allowedUsers/allowedUsersByCanvasSlice';
 
 // -- type declarations
 
@@ -121,6 +132,10 @@ const WebSocketClientMessengerProvider = ({
   const {
     user,
   } = useUser();
+
+  if (! user) {
+    throw new Error('No authenticated user provided.');
+  }
 
   const {
     authToken,
@@ -349,6 +364,18 @@ const WebSocketClientMessengerProvider = ({
               allowedUsers,
             } = msg;
 
+            const state : RootState = store.getState();
+            const canvas : CanvasAttribs | null = selectCanvasById(state, canvasId);
+            const prevAllowedUsers : Record<UserIdType, unknown> | null = selectAllowedUsersByCanvas(state, canvasId);
+
+            if (canvas) {
+              if ((! (user.id in prevAllowedUsers)) && (allowedUsers.indexOf(user.id) >= 0)) {
+                toast.success(`Edit permission granted on canvas "${canvas.name}"`);
+              } else if ((user.id in prevAllowedUsers) && (allowedUsers.indexOf(user.id) < 0)) {
+                toast.warning(`Edit permission revoked on canvas "${canvas.name}"`);
+              }
+            }
+
             dispatch(setAllowedUsersByCanvas({ [canvasId]: allowedUsers }));
           }
           break;
@@ -525,7 +552,7 @@ const WebSocketClientMessengerProvider = ({
         console.error('Failed to parse message:', e);
       }
     },
-    [dispatch, whiteboardId]
+    [dispatch, whiteboardId, user.id]
   );// -- end handleServerMessage
 
   const makeHandleWebSocketOpen = useCallback(
