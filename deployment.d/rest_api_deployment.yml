@@ -39,6 +39,11 @@ spec:
               secretKeyRef:
                 name: whiteboard-editor-config
                 key: WHITEBOARD_EDITOR_JWT_EXPIRATION_SECS
+          - name: RATE_LIMIT
+            valueFrom:
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_RATE_LIMIT
           - name: TEMP_USER_EXPIRATION_SECS
             valueFrom:
               secretKeyRef:
