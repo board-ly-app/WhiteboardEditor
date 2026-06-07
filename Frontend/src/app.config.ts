@@ -38,3 +38,5 @@ export const WHITEBOARD_DELETED_NOTIFICATION_NUM_MILLIS = 5000;
 // header.
 export const ACTIVE_USERS_DISPLAY_LIMIT = 3;
 
+// -- Milliseconds to wait between throttled function execuations
+export const THROTTLE_INTERVAL = 100;

@@ -1,7 +1,6 @@
 // -- std imports
 import {
   useContext,
-  useCallback,
 } from 'react';
 
 import {
@@ -24,6 +23,10 @@ import {
 import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
+  THROTTLE_INTERVAL,
+} from '@/app.config';
+
+import {
   type RootState,
 } from '@/store';
 
@@ -32,6 +35,8 @@ import {
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import AttributeMenuItem from "./AttributeMenuItem";
+
+import { useThrottledCallback } from '@/hooks/useThrottledCallback';
 
 const FillColorComponent = ({
   selectedShapeIds, 
@@ -54,14 +59,10 @@ const FillColorComponent = ({
     lodash.isEqual
   );
 
-  const onChangeFillColor = useCallback(
-    (ev: React.ChangeEvent<HTMLInputElement>) => {
-      ev.preventDefault();
+  const throttledUpdate = useThrottledCallback(
+    (color: string) => {
+      dispatch({ type: 'SET_FILL_COLOR', payload: color});
 
-      const color = ev.target.value;
-    
-      dispatch({ type: 'SET_FILL_COLOR', payload: color });
-    
       if (canvasObjectsById) {
         handleUpdateShapes(
           canvasId,
@@ -70,8 +71,12 @@ const FillColorComponent = ({
         );
       }
     },
-    [dispatch, handleUpdateShapes, canvasId, canvasObjectsById, selectedShapeIds]
+    THROTTLE_INTERVAL
   );
+
+  const onChangeFillColor = (ev: React.ChangeEvent<HTMLInputElement>) => {
+    throttledUpdate(ev.target.value);
+  }
  
   return (
     <AttributeMenuItem title="Fill Color">
