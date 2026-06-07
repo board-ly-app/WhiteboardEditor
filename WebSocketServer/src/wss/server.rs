@@ -597,6 +597,41 @@ pub async fn handle_authenticated_client_message<'a>(
                     allowed_users,
                 } => {
                     let mut whiteboard = client_state.base.whiteboard_ref.lock().await;
+                    let client_user_id : &UserIdType = &client_state.user_summary.user_id;
+                    if ! whiteboard.canvases().contains_key(&canvas_id) {
+                        // -- Return error
+                        return ClientMessageResponse {
+                            messages: vec![ServerSocketMessage::Individual {
+                                target_client_id: client_state.base.client_id.clone(),
+                                msg: ServerSocketIndividualMessage::Error {
+                                    error: ClientError::CanvasNotFound {
+                                        canvas_id: canvas_id.clone(),
+                                    },
+                                },
+                            }],
+                            notifications: vec![],
+                        };
+                    }
+
+                    // -- make sure client is either a whiteboard owner or already has edit access
+                    // to the canvas
+                    if ! matches!(client_state.user_whiteboard_permission, WhiteboardPermissionEnum::Own) {
+                        let canvas : &Canvas = whiteboard.canvases().get(&canvas_id).unwrap();
+
+                        if let Some(curr_allowed_users) = canvas.allowed_users() {
+                            if ! curr_allowed_users.contains(client_user_id) {
+                                return ClientMessageResponse {
+                                    messages: vec![ServerSocketMessage::Individual {
+                                        target_client_id: client_state.base.client_id.clone(),
+                                        msg: ServerSocketIndividualMessage::Error {
+                                            error: ClientError::Unauthorized,
+                                        },
+                                    }],
+                                    notifications: vec![],
+                                };
+                            }
+                        }
+                    }
 
                     // -- ensure all allowed users are valid users who have edit or own permission
                     for user_id in allowed_users.iter() {
@@ -618,7 +653,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                 };
                             }
                             Some(perm) => match perm {
-                                WhiteboardPermissionEnum::Own => {}
+                                WhiteboardPermissionEnum::Own | WhiteboardPermissionEnum::Edit => {}
                                 _ => {
                                     return ClientMessageResponse {
                                         messages: vec![ServerSocketMessage::Individual {
@@ -626,7 +661,7 @@ pub async fn handle_authenticated_client_message<'a>(
                                             msg: ServerSocketIndividualMessage::Error {
                                                 error: ClientError::Other {
                                                     message: String::from(
-                                                        "You cannot change a canvas' allowed users as a non-owner",
+                                                        "Users without edit or owner permission cannot be made canvas editors",
                                                     ),
                                                 },
                                             },
@@ -638,57 +673,42 @@ pub async fn handle_authenticated_client_message<'a>(
                         };
                     } // -- end for user_id in allowed_users.iter()
 
-                    match whiteboard.canvases_mut().get(&canvas_id) {
-                        None => {
-                            // canvas doesn't exist
-                            ClientMessageResponse {
-                                messages: vec![ServerSocketMessage::Individual {
-                                    target_client_id: client_state.base.client_id.clone(),
-                                    msg: ServerSocketIndividualMessage::Error {
-                                        error: ClientError::CanvasNotFound {
-                                            canvas_id: canvas_id.clone(),
-                                        },
-                                    },
-                                }],
-                                notifications: vec![],
-                            }
-                        }
-                        Some(canvas) => {
-                            let old_allowed_users = canvas.allowed_users().map(
-                                |users_set| users_set.clone()
-                            );
+                    let canvas : &mut Canvas = whiteboard.canvases_mut()
+                        .get_mut(&canvas_id).unwrap();
 
-                            // -- Generate and commit edit
-                            let edit = client_state.generate_edit(EditKind::UpdateCanvasAllowedUsers {
-                                canvas_id: canvas.id().clone(),
-                                old_allowed_users,
-                                new_allowed_users: Some(allowed_users.iter().copied().collect()),
-                            });
+                    let old_allowed_users = canvas.allowed_users().map(
+                        |users_set| users_set.clone()
+                    );
 
-                            whiteboard.force_commit_edit(&edit);
+                    // -- Generate and commit edit
+                    let edit = client_state.generate_edit(EditKind::UpdateCanvasAllowedUsers {
+                        canvas_id: canvas.id().clone(),
+                        old_allowed_users,
+                        new_allowed_users: Some(allowed_users.iter().copied().collect()),
+                    });
 
-                            // -- write edits to buffer
-                            {
-                                let mut edits = client_state.base.edits.lock().await;
+                    whiteboard.force_commit_edit(&edit);
 
-                                edits.push(edit);
-                            }
+                    // -- write edits to buffer
+                    {
+                        let mut edits = client_state.base.edits.lock().await;
 
-                            // -- broadcast to all users
-                            ClientMessageResponse {
-                                messages: vec![ServerSocketMessage::Broadcast {
-                                    msg: ServerSocketBroadcastMessage::UpdateCanvasAllowedUsers {
-                                        client_id: client_state.base.client_id.clone(),
-                                        canvas_id: canvas_id.clone(),
-                                        allowed_users: allowed_users
-                                            .iter()
-                                            .map(|oid| oid.clone())
-                                            .collect(),
-                                    },
-                                }],
-                                notifications: vec![],
-                            }
-                        }
+                        edits.push(edit);
+                    }
+
+                    // -- broadcast to all users
+                    ClientMessageResponse {
+                        messages: vec![ServerSocketMessage::Broadcast {
+                            msg: ServerSocketBroadcastMessage::UpdateCanvasAllowedUsers {
+                                client_id: client_state.base.client_id.clone(),
+                                canvas_id: canvas_id.clone(),
+                                allowed_users: allowed_users
+                                    .iter()
+                                    .map(|oid| oid.clone())
+                                    .collect(),
+                            },
+                        }],
+                        notifications: vec![],
                     }
                 }
                 MergeCanvas { canvas_id } => {
