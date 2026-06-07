@@ -453,7 +453,7 @@ const WebSocketClientMessengerProvider = ({
               },
             });
 
-            toast.success("You have one new notification");
+            toast.warning("You have one new notification");
           }
           break;
           case 'error':
