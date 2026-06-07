@@ -5,6 +5,10 @@ import {
 import lodash from 'lodash';
 
 import {
+  THROTTLE_INTERVAL,
+} from '@/app.config';
+
+import {
   type RootState,
 } from '@/store';
 
@@ -15,6 +19,7 @@ import {
 import type { AttributeDefinition, AttributeProps } from "@/types/Attribute";
 import type { CanvasObjectIdType, CanvasObjectModel } from "@/types/CanvasObjectModel";
 import AttributeMenuItem from "./AttributeMenuItem";
+import { useThrottledCallback } from '@/hooks/useThrottledCallback';
 
 const StrokeColorComponent = ({
   selectedShapeIds, 
@@ -28,19 +33,23 @@ const StrokeColorComponent = ({
     lodash.isEqual
   );
 
+  const throttledUpdate = useThrottledCallback(
+    (color: string) => {
+      dispatch({ type: 'SET_STROKE_COLOR', payload: color});
+
+      if (canvasObjectsById) {
+        handleUpdateShapes(
+          canvasId,
+          canvasObjectsById,
+          Object.fromEntries(selectedShapeIds.map(id => [id, { strokeColor: color }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
+        );
+      }
+    },
+    THROTTLE_INTERVAL
+  );
+
   const onChangeStrokeColor = (ev: React.ChangeEvent<HTMLInputElement>) => {
-    ev.preventDefault();
-    const color = ev.target.value;
-  
-    dispatch({ type: 'SET_STROKE_COLOR', payload: color });
-  
-    if (canvasObjectsById) {
-      handleUpdateShapes(
-        canvasId,
-        canvasObjectsById,
-        Object.fromEntries(selectedShapeIds.map(id => [id, { strokeColor: color }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
-      );
-    }
+    throttledUpdate(ev.target.value);
   };
  
   return (
