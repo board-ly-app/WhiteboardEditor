@@ -59,6 +59,10 @@ import {
   type ErrorResponse as APIErrorResponse,
 } from '@/types/APIProtocol';
 
+import {
+  type Notification,
+} from '@/types/Notification';
+
 // -- program state
 import {
   store,
@@ -151,6 +155,7 @@ import { useUser } from '@/hooks/useUser';
 import {
   removeSelectorsByCanvasObject,
   updateWhiteboard,
+  setNotifications,
 } from '@/controllers';
 
 type ComponentStatus = 
@@ -228,6 +233,24 @@ const Whiteboard = ({
     isFetching: isWhiteboardFetching,
     error: whiteboardError,
   } = query;
+
+  // -- fetch unread notifications
+  useEffect(
+    () => {
+      api.get('/notifications')
+        .then((res) => {
+          const notifications : Notification[] = res.data.notifications;
+
+          setNotifications(dispatch, Object.fromEntries(
+            notifications.map(notif => [notif.id, notif])
+          ));
+        })
+        .catch((e: unknown) => {
+          console.error('Could not fetch notifications:', e);
+        });
+    },
+    [dispatch]
+  );
 
   // alert user of any errors fetching whiteboard
   useEffect(

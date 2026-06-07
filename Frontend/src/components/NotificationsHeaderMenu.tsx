@@ -31,6 +31,8 @@ import {
 } from 'lucide-react';
 
 // -- local imports
+import api from '@/api/axios';
+
 import {
   type NotificationIdType,
   type Notification,
@@ -124,6 +126,11 @@ const NotificationListItem = ({
 
   const handleSelect = useCallback(
     () => {
+      api.delete('/notifications', {
+        data: {
+          notificationId,
+        },
+      });
       setNotificationsRead(store.dispatch, [notificationId]);
     },
     [notificationId]

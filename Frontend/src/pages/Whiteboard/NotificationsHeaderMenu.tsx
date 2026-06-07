@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 
 // -- local imports
+import api from '@/api/axios';
+
 import {
   type UserIdType,
 } from '@/types/WebSocketProtocol';
@@ -140,6 +142,11 @@ const RequestCanvasEditPermDescription = ({
             allowedUsers: [...Object.keys(currAllowedUsers), granteeId],
           });
 
+          api.delete('/notifications', {
+            data: {
+              notificationId,
+            },
+          });
           removeNotifications([notificationId]);
         }
       }
