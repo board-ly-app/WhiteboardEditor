@@ -88,7 +88,7 @@ const Header = ({
       </div>
       {/** Dummy static element to ensure header doesn't overlap top of page **/}
       {(!noMarginTop &&
-        <div className="h-30">
+        <div className="h-25">
         </div>
       )}
     </>

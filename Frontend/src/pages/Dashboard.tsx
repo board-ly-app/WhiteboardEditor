@@ -203,61 +203,66 @@ const Dashboard = (): React.JSX.Element => {
             Welcome Back, {user.username}!
           </h1>
           <div className="col-span-1 flex flex-nowrap order-3 flex justify-center sm:justify-end">
+            {/* TODO: This is just a placeholder for now, need to implement search and sort features */}
             <label htmlFor="search" className='hidden'>Search</label>
-            <input name='search' className='text-nowrap' value='' type='text' placeholder='Search me' />
-            <button className='text-nowrap'>Sort me</button>
+            <input name='search' className='text-nowrap hidden' value='' type='text' placeholder='Search me' />
+            <button className='text-nowrap hidden'>Sort me</button>
           </div>
         </div>
 
-        <div className='flex flex-col md:flex-row border-t-1 border-border'>
-          <div className="flex-1 flex-col md:border-r-1 border-border px-4">
-            <h1 className="pt-2 mb-4 text-center text-2xl text-h2-text font-bold">
+        <div className='grid grid-cols-2 flex flex-col md:flex-row'>
+          <div className="flex flex-col">
+            <h1 className="flex items-center gap-4 pt-2 mb-4 mx-8 text-center text-2xl text-h2-text font-bold after:flex-1 after:h-px after:bg-border after:content-['']">
               Your Whiteboards
             </h1>
-            {(() => {
-              if (ownWhiteboardsError) {
-                return (
-                  <WhiteboardList
-                    status="error"
-                    message={`${ownWhiteboardsError}`}
-                  />
-                );
-              } else if (isOwnWhiteboardsLoading || isOwnWhiteboardsFetching) {
-                return (<WhiteboardList status="loading" />);
-              } else {
-                return (
-                  <WhiteboardList
-                    status="ready"
-                    whiteboardsAttribs={ownWhiteboards || []}
-                  />
-                );
-              }
-            })()}
+            <div className="flex-1 flex-col md:border-r-1 border-border px-4">
+              {(() => {
+                if (ownWhiteboardsError) {
+                  return (
+                    <WhiteboardList
+                      status="error"
+                      message={`${ownWhiteboardsError}`}
+                    />
+                  );
+                } else if (isOwnWhiteboardsLoading || isOwnWhiteboardsFetching) {
+                  return (<WhiteboardList status="loading" />);
+                } else {
+                  return (
+                    <WhiteboardList
+                      status="ready"
+                      whiteboardsAttribs={ownWhiteboards || []}
+                    />
+                  );
+                }
+              })()}
+            </div>
           </div>
 
-          <div className="flex-1 flex-col px-4">
-            <h1 className="pt-2 mb-4 text-center text-2xl text-h2-text font-bold">
+          <div className="flex flex-col">
+            <h1 className="flex items-center gap-4 pt-2 mb-4 mx-8 text-center text-2xl text-h2-text font-bold after:flex-1 after:h-px after:bg-border after:content-['']">
               Shared Whiteboards
             </h1>
-            {(() => {
-              if (sharedWhiteboardsError) {
-                return (
-                  <WhiteboardList
-                    status="error"
-                    message={`${sharedWhiteboardsError}`}
-                  />
-                );
-              } else if (isSharedWhiteboardsLoading || isSharedWhiteboardsFetching) {
-                return (<WhiteboardList status="loading" />);
-              } else {
-                return (
-                  <WhiteboardList
-                    status="ready"
-                    whiteboardsAttribs={sharedWhiteboards || []}
-                  />
-                );
-              }
-            })()}
+            <div className="flex-1 flex-col px-4">
+              {(() => {
+                if (sharedWhiteboardsError) {
+                  return (
+                    <WhiteboardList
+                      status="error"
+                      message={`${sharedWhiteboardsError}`}
+                    />
+                  );
+                } else if (isSharedWhiteboardsLoading || isSharedWhiteboardsFetching) {
+                  return (<WhiteboardList status="loading" />);
+                } else {
+                  return (
+                    <WhiteboardList
+                      status="ready"
+                      whiteboardsAttribs={sharedWhiteboards || []}
+                    />
+                  );
+                }
+              })()}
+            </div>
           </div>
         </div>
       </main>
