@@ -472,3 +472,127 @@ db.whiteboards.insertMany(whiteboards);
 const insertedWhiteboards = db.whiteboards.find().toArray();
 
 print("Database initialized with test users and whiteboards.");
+
+// === wss_fetch_canvas_with_no_objects ========================================
+//
+// Used to test loading a whiteboard containing a canvas with no objects.
+//
+// =============================================================================
+(() => {
+  const dbName = "wss_fetch_canvas_with_no_objects";
+  const testDb = db.getSiblingDB(dbName);
+
+  // -- Single test user (owner)
+  const userOwner = {
+    _id: new ObjectId(),
+    kind: "permanent",
+    username: "alice",
+    email: "alice@example.com",
+    // password: password123
+    passwordHashed: "$2b$10$lE4PvWzGiI.hKlq98/EFW.9QSKDDkq.O/WHvMjeMvheUiDxE2pzgW",
+  };// -- end const userOwner
+
+  testDb.users.insertOne(userOwner);
+
+  // -- Single whiteboard named containing a root canvas with canvas objects,
+  // plus a child canvas with no canvas objects
+  const rootCanvas = {
+    _id: new ObjectId(),
+    width: 3000,
+    height: 3000,
+    name: "Canvas Alpha",
+    time_created: new Date("2025-08-01T12:10:00.000Z"),
+    time_last_modified: new Date("2025-08-10T12:10:00.000Z"),
+    // null allowed_users = all users allowed
+    // allowed_users: [],
+  };// -- end const rootCanvas
+
+  const childCanvas = {
+    _id: new ObjectId(),
+    width: 600,
+    height: 600,
+    name: "Canvas Beta",
+    time_created: new Date("2025-08-01T12:10:00.000Z"),
+    time_last_modified: new Date("2025-08-10T12:10:00.000Z"),
+    // null allowed_users = all users allowed
+    // allowed_users: [],
+    parent_canvas: {
+      // Canvas Alpha
+      canvas_id: rootCanvas._id,
+      origin_x: 1000,
+      origin_y: 1000,
+    },
+  };// -- end const childCanvas
+
+  const grandchildCanvas = {
+    _id: new ObjectId(),
+    width: 600,
+    height: 600,
+    name: "Canvas Gamma",
+    time_created: new Date("2025-08-01T12:10:00.000Z"),
+    time_last_modified: new Date("2025-08-10T12:10:00.000Z"),
+    // null allowed_users = all users allowed
+    // allowed_users: [],
+    parent_canvas: {
+      // Canvas Alpha
+      canvas_id: childCanvas._id,
+      origin_x: 50,
+      origin_y: 50,
+    },
+  };// -- end const grandchildCanvas
+
+  testDb.canvases.insertMany([rootCanvas, childCanvas, grandchildCanvas]);
+
+  // -- All canvas objects belong to root canvas
+  const canvasObjects = [
+    {
+      _id: new ObjectId(),
+      canvas_id: rootCanvas._id,
+      type: 'rect',
+      width: 10,
+      height: 10,
+      x: 20,
+      y: 20,
+      rotation: 0,
+      fillColor: "red",
+      strokeColor: "black",
+      strokeWidth: 1.0,
+    },
+    {
+      _id: new ObjectId(),
+      canvas_id: rootCanvas._id,
+      type: 'rect',
+      width: 10,
+      height: 10,
+      x: 30,
+      y: 30,
+      rotation: 0,
+      fillColor: "red",
+      strokeColor: "black",
+      strokeWidth: 1.0,
+    },
+  ];// -- end const canvasObjects
+
+  testDb.shapes.insertMany(canvasObjects);
+
+  const whiteboard = {
+    _id: new ObjectId('68d5e8d4829da666aece0400'),
+    name: "Whiteboard Alpha",
+    kind: "permanent_whiteboard",
+    visibility: "private",
+    time_created: new Date("2025-08-01T12:00:00.000Z"),
+    root_canvas: rootCanvas._id,
+    user_permissions: [
+      {
+        type: 'user',
+        user: userOwner._id,  // Alice
+        email: userOwner.email,
+        permission: 'own',
+      }
+    ],
+  };// -- end const whiteboard
+
+  testDb.whiteboards.insertOne(whiteboard);
+})();// -- end wss_fetch_canvas_with_no_objects
+
+
