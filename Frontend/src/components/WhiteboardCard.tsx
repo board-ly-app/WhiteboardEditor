@@ -23,6 +23,8 @@ import {
   toast,
 } from 'react-toastify';
 
+import { Trash2 } from 'lucide-react';
+
 // -- local imports
 import api from '@/api/axios';
 
@@ -253,12 +255,14 @@ function WhiteboardCard({
            * to delete it. **/
           (variant.name === 'own_whiteboard')
             && (
-              <Button
-                variant="destructive"
-                onClick={openDeletionModal}
-              >
-                Delete
-              </Button>
+              <div className='flex justify-end p-1'>
+                <Button
+                  className='bg-transparent text-destructive'
+                  onClick={openDeletionModal}
+                >
+                  <Trash2 />
+                </Button>
+              </div>
             )
             || null
         }
