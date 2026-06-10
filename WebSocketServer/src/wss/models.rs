@@ -330,6 +330,7 @@ pub struct WhiteboardClientView {
     pub visibility: WhiteboardVisibilityEnum,
     #[serde_as(as = "HashMap<DisplayFromStr, _>")]
     pub permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnumClientView>,
+    pub permissions_by_email: HashMap<String, WhiteboardPermissionEnumClientView>,
 } // -- end struct WhiteboardClientView
 
 // === CanvasParentRef ============================================================================
@@ -738,6 +739,11 @@ impl Whiteboard {
             permissions_by_user_id: self.metadata.permissions_by_user_id.iter()
                 .map(|(uid, perm)|
                     (uid.clone(), WhiteboardPermissionEnumClientView::from_permission_enum(&perm))
+                )
+                .collect(),
+            permissions_by_email: self.metadata.permissions_by_email.iter()
+                .map(|(email, perm)|
+                    (email.clone(), WhiteboardPermissionEnumClientView::from_permission_enum(&perm))
                 )
                 .collect(),
         }
@@ -2111,29 +2117,64 @@ mod unit_tests {
     #[test]
     fn deserialize_whiteboard_client_view_basic() {
         use serde_json;
+        use mongodb::bson::{oid::ObjectId};
+
+        const WB_ID_S : &str = "68d5e8d4829da666aece020d";
+        const WB_NAME : &str = "Whiteboard Alpha";
+        const WB_ROOT_CANVAS_ID_S : &str = "68d5e8d4829da666aece020e";
+        const USER_A_ID_S : &str = "68d5e8d4829da666aece020f";
+        const USER_B_ID_S : &str = "68d5e8d4829da666aece0210";
+        const USER_C_ID_S : &str = "68d5e8d4829da666aece0211";
+        const USER_C_EMAIL : &str = "user@example.com";
 
         // -- Values aren't consistent: merely meant to test serde deserialization
-        let serialized_wb_s = r#"{
-            "id": "68d5e8d4829da666aece020d",
-            "name": "Whiteboard Alpha",
+        let serialized_wb_s = format!(r#"{{
+            "id": "{WB_ID_S}",
+            "name": "{WB_NAME}",
             "canvases": [],
-            "rootCanvas": "68d5e8d4829da666aece020e",
+            "rootCanvas": "{WB_ROOT_CANVAS_ID_S}",
             "visibility": "public",
-            "permissionsByUserId": {
-                "68d5e8d4829da666aece020f": "view",
-                "68d5e8d4829da666aece0210": "edit",
-                "68d5e8d4829da666aece0211": "own"
-            }
-        }"#;
+            "permissionsByUserId": {{
+                "{USER_A_ID_S}": "view",
+                "{USER_B_ID_S}": "edit",
+                "{USER_C_ID_S}": "own"
+            }},
+            "permissionsByEmail": {{
+                "{USER_C_EMAIL}": "view"
+            }}
+        }}"#);
         
-        let _ = serde_json::from_str::<WhiteboardClientView>(serialized_wb_s)
+        let wb_view = serde_json::from_str::<WhiteboardClientView>(serialized_wb_s.as_str())
             .expect("Serialized whiteboard string to deserialize into WhiteboardClientView");
+
+        debug_assert_eq!(wb_view.id.unwrap().to_hex(), WB_ID_S);
+        debug_assert_eq!(wb_view.name.as_str(), WB_NAME);
+        debug_assert_eq!(wb_view.root_canvas.to_hex(), WB_ROOT_CANVAS_ID_S);
+        debug_assert_eq!(wb_view.visibility, WhiteboardVisibilityEnum::Public);
+        debug_assert_eq!(wb_view.permissions_by_user_id.len(), 3);
+        debug_assert_eq!(
+            wb_view.permissions_by_user_id.get(&ObjectId::parse_str(USER_A_ID_S).unwrap()).cloned(),
+            Some(WhiteboardPermissionEnumClientView::View)
+        );
+        debug_assert_eq!(
+            wb_view.permissions_by_user_id.get(&ObjectId::parse_str(USER_B_ID_S).unwrap()).cloned(),
+            Some(WhiteboardPermissionEnumClientView::Edit)
+        );
+        debug_assert_eq!(
+            wb_view.permissions_by_user_id.get(&ObjectId::parse_str(USER_C_ID_S).unwrap()).cloned(),
+            Some(WhiteboardPermissionEnumClientView::Own)
+        );
+        debug_assert_eq!(wb_view.permissions_by_email.len(), 1);
+        debug_assert_eq!(
+            wb_view.permissions_by_email.get(USER_C_EMAIL).cloned(),
+            Some(WhiteboardPermissionEnumClientView::View)
+        );
     }// -- end fn deserialize_whiteboard_client_view_basic
 
     #[test]
     fn serialize_whiteboard_client_view_basic() {
         use serde_json;
-        use mongodb::bson::{Bson,oid::ObjectId};
+        use mongodb::bson::{Bson,doc,oid::ObjectId};
 
         // -- Values aren't consistent: merely meant to test serde deserialization
         const WB_ID_S : &str = "68d5e8d4829da666aece020d";
@@ -2142,6 +2183,7 @@ mod unit_tests {
         const USER_A_ID_S : &str = "68d5e8d4829da666aece020f";
         const USER_B_ID_S : &str = "68d5e8d4829da666aece0210";
         const USER_C_ID_S : &str = "68d5e8d4829da666aece0211";
+        const USER_D_EMAIL : &str = "user@example.com";
 
         let wb_view = WhiteboardClientView {
             id: Some(ObjectId::parse_str(WB_ID_S).unwrap()),
@@ -2153,7 +2195,10 @@ mod unit_tests {
                 (ObjectId::parse_str(USER_A_ID_S).unwrap(), WhiteboardPermissionEnumClientView::View),
                 (ObjectId::parse_str(USER_B_ID_S).unwrap(), WhiteboardPermissionEnumClientView::Edit),
                 (ObjectId::parse_str(USER_C_ID_S).unwrap(), WhiteboardPermissionEnumClientView::Own),
-            ])
+            ]),
+            permissions_by_email: HashMap::from([
+                (String::from(USER_D_EMAIL), WhiteboardPermissionEnumClientView::View),
+            ]),
         };
 
         let wb_view_serialized_s = serde_json::to_string(&wb_view)
@@ -2164,33 +2209,22 @@ mod unit_tests {
         let wb_view_unserialized = serde_json::from_str::<Bson>(wb_view_serialized_s.as_str())
             .expect("To deserialize JSON string to Bson object");
 
-        match wb_view_unserialized {
-            Bson::Document(doc) => {
-                debug_assert_eq!(doc.len(), 6);
-
-                // -- check id
-                debug_assert_eq!(doc.get_str("id"), Ok(WB_ID_S));
-
-                // -- check name
-                debug_assert_eq!(doc.get_str("name"), Ok(WB_NAME));
-
-                // -- check root canvas id
-                debug_assert_eq!(doc.get_str("rootCanvas"), Ok(WB_ROOT_CANVAS_ID_S));
-
-                // -- check visibility
-                debug_assert_eq!(doc.get_str("visibility"), Ok("public"));
-
-                // -- check permissions
-                if let Ok(permissions_by_user_id) = doc.get_document("permissionsByUserId") {
-                    debug_assert_eq!(permissions_by_user_id.len(), 3);
-                    debug_assert_eq!(permissions_by_user_id.get_str(USER_A_ID_S), Ok("view"));
-                    debug_assert_eq!(permissions_by_user_id.get_str(USER_B_ID_S), Ok("edit"));
-                    debug_assert_eq!(permissions_by_user_id.get_str(USER_C_ID_S), Ok("own"));
-                } else {
-                    panic!("No permissionsByUserId field present in unserialized whiteboard")
-                }
+        let expected = Bson::Document(doc! {
+            "id": WB_ID_S,
+            "name": WB_NAME,
+            "canvases": [],
+            "rootCanvas": WB_ROOT_CANVAS_ID_S,
+            "visibility": "public",
+            "permissionsByUserId": {
+                USER_A_ID_S : "view",
+                USER_B_ID_S : "edit",
+                USER_C_ID_S : "own",
             },
-            _ => panic!("Expected Bson document, got {:?}", wb_view_unserialized),
-        };// -- end match wb_view_unserialized
+            "permissionsByEmail": {
+                USER_D_EMAIL : "view",
+            },
+        });// -- end let expected
+
+        debug_assert_eq!(wb_view_unserialized, expected);
     }// -- end fn deserialize_whiteboard_client_view_basic
 }// -- end mod unit_tests
