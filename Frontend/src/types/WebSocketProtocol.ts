@@ -16,7 +16,6 @@ import type {
 } from '@/types/CanvasObjectModel';
 
 import {
-  type UserPermission,
   type UserPermissionEnum,
 } from '@/types/UserPermission';
 
@@ -65,10 +64,7 @@ export interface WhiteboardAttribs {
   name: string;
   rootCanvas: CanvasIdType;
   visibility: 'public' | 'private';
-  userPermissions: UserPermission[];
-  permissionsByUserId: Record<UserIdType, {
-    permission: UserPermissionEnum;
-  }>;
+  permissionsByUserId: Record<UserIdType, UserPermissionEnum>;
 }
 
 // Contains nested data

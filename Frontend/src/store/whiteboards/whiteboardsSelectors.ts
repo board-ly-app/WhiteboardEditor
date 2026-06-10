@@ -55,6 +55,19 @@ export const selectWhiteboardStatus = (
   return state.whiteboardStatus.statusesByWhiteboard[whiteboardId];
 };
 
+export const selectPermissionsByWhiteboard = (
+  state: RootState,
+  whiteboardId: WhiteboardIdType,
+): Record<UserIdType, UserPermissionEnum> | null => {
+  if (! (whiteboardId in state.whiteboards)) {
+    return null;
+  }
+
+  const whiteboard = state.whiteboards[whiteboardId];
+
+  return whiteboard.permissionsByUserId;
+};// -- end selectPermissionsByWhiteboard
+
 export const selectWhiteboardPermissionByUser = (
   state: RootState,
   whiteboardId: WhiteboardIdType,
@@ -65,7 +78,7 @@ export const selectWhiteboardPermissionByUser = (
   }
 
   const whiteboard = state.whiteboards[whiteboardId];
-  const explicit = whiteboard.permissionsByUserId[userId]?.permission ?? null;
+  const explicit = whiteboard.permissionsByUserId[userId] || null;
 
   if (explicit !== null) {
     return explicit;

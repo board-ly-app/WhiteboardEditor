@@ -1166,7 +1166,11 @@ mod unit_tests {
         let whiteboard = Whiteboard::new(
             whiteboard_id.clone(),
             true,
-            WhiteboardMetadata::new(String::from("Test"), WhiteboardVisibilityEnum::Private, vec![], HashMap::new()),
+            WhiteboardMetadata::new(
+                String::from("Test"),
+                WhiteboardVisibilityEnum::Private,
+                HashMap::new()
+            ),
             test_canvas_id,
             HashMap::new(),
             // -- Edit history irrelevant
@@ -1313,7 +1317,11 @@ mod unit_tests {
         let whiteboard = Whiteboard::new(
             whiteboard_id.clone(),
             true,
-            WhiteboardMetadata::new(String::from("Test"), WhiteboardVisibilityEnum::Private, vec![], HashMap::new()),
+            WhiteboardMetadata::new(
+                String::from("Test"),
+                WhiteboardVisibilityEnum::Private,
+                HashMap::new()
+            ),
             canvas_a_id,
             HashMap::from([(
                 canvas_a_id.clone(),
@@ -1554,7 +1562,11 @@ mod unit_tests {
         let whiteboard = Whiteboard::new(
             whiteboard_id.clone(),
             true,
-            WhiteboardMetadata::new(String::from("Test"), WhiteboardVisibilityEnum::Private, vec![], HashMap::new()),
+            WhiteboardMetadata::new(
+                String::from("Test"),
+                WhiteboardVisibilityEnum::Private,
+                HashMap::new()
+            ),
             canvas_a_id,
             HashMap::from([(
                 canvas_a_id.clone(),
@@ -1684,7 +1696,7 @@ mod unit_tests {
 
         assert!(*whiteboard.id() == whiteboard_id);
         assert!(whiteboard.metadata().name() == "Project Alpha");
-        assert!(whiteboard.metadata().user_permissions().len() == 1);
+        assert!(whiteboard.metadata().permissions_by_user_id().len() == 1);
         assert!(*whiteboard.root_canvas() == root_canvas_id);
         assert!(whiteboard.canvases().len() == 4);
         assert!(whiteboard.canvases().contains_key(&root_canvas_id));
@@ -1823,13 +1835,6 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                vec![WhiteboardPermission {
-                    permission_type: WhiteboardPermissionType::User {
-                        user: target_uid,
-                        email: Some(String::from("bob@example.com")),
-                    },
-                    permission: WhiteboardPermissionEnum::Edit,
-                }],
                 HashMap::from([(target_uid.clone(), WhiteboardPermissionEnum::Edit)]),
             ),
             ObjectId::new(),
@@ -2062,13 +2067,6 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                vec![WhiteboardPermission {
-                    permission_type: WhiteboardPermissionType::User {
-                        user: test_user_id,
-                        email: None,
-                    },
-                    permission: WhiteboardPermissionEnum::Edit,
-                }],
                 HashMap::from([(test_user_id.clone(), WhiteboardPermissionEnum::Edit)]),
             ),
             // no canvases
@@ -2228,13 +2226,6 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                vec![WhiteboardPermission {
-                    permission_type: WhiteboardPermissionType::User {
-                        user: test_user_id.clone(),
-                        email: None,
-                    },
-                    permission: WhiteboardPermissionEnum::Edit,
-                }],
                 HashMap::from([(test_user_id.clone(), WhiteboardPermissionEnum::Edit)]),
             ),
             // One canvas only
@@ -2426,13 +2417,6 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                vec![WhiteboardPermission {
-                    permission_type: WhiteboardPermissionType::User {
-                        user: test_user_id.clone(),
-                        email: None,
-                    },
-                    permission: WhiteboardPermissionEnum::Edit,
-                }],
                 HashMap::from([(test_user_id.clone(), WhiteboardPermissionEnum::Edit)]),
             ),
             // One canvas only
@@ -2593,20 +2577,6 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                vec![WhiteboardPermission {
-                        permission_type: WhiteboardPermissionType::User {
-                            user: user_a_id.clone(),
-                            email: None,
-                        },
-                        permission: WhiteboardPermissionEnum::Edit,
-                    },
-                    WhiteboardPermission {
-                            permission_type: WhiteboardPermissionType::User {
-                                user: user_b_id.clone(),
-                                email: None,
-                            },
-                            permission: WhiteboardPermissionEnum::Edit,
-                }],
                 HashMap::from([
                     (user_a_id.clone(), WhiteboardPermissionEnum::Own),
                     (user_b_id.clone(), WhiteboardPermissionEnum::Edit),
