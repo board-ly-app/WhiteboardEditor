@@ -52,6 +52,7 @@ import {
 import {
   Button,
 } from '@/components/ui/button';
+import { WB_CARD_COLLABORATORS_DISPLAY_LIMIT } from '@/app.config';
 
 export type WhiteboardProps = Whiteboard;
 
@@ -105,11 +106,10 @@ function WhiteboardCard({
     closeModal: closeDeletionModal,
   } = useModal();
 
-  const MAX_COLLABORATORS = 3;
   const visiblePermissions = expanded
     ? userPermissions
-    : userPermissions.slice(0, MAX_COLLABORATORS);
-  const hiddenCount = Math.max(0, userPermissions.length - MAX_COLLABORATORS);
+    : userPermissions.slice(0, WB_CARD_COLLABORATORS_DISPLAY_LIMIT);
+  const hiddenCount = Math.max(0, userPermissions.length - WB_CARD_COLLABORATORS_DISPLAY_LIMIT);
 
   // -- miscellaneous callback functions
   const handleSubmitDeleteWhiteboard = useCallback(
@@ -171,7 +171,7 @@ function WhiteboardCard({
   return (
     <>
       <div
-        className="flex flex-col m-2 md:m-4 w-75 rounded-xl border-1 border-border shadow-2xl bg-card-background"
+        className="flex flex-col w-69 rounded-xl border-1 border-border shadow-2xl bg-card-background"
       >
         <Link
           key={id}
@@ -179,7 +179,7 @@ function WhiteboardCard({
           className="hover:bg-button-hover rounded-t-xl"
         >
           <img
-            className={`rounded-t-xl w-full h-50 bg-canvas-background ${
+            className={`rounded-t-xl w-full h-46 bg-canvas-background ${
               thumbnail_url ? 'object-contain' : 'object-cover'
             }`}
             src={thumbnail_url || "/images/testThumbnail.png"}

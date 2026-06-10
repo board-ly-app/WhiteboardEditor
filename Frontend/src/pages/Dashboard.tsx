@@ -184,6 +184,20 @@ const Dashboard = (): React.JSX.Element => {
     navigate(`/login?redirect=${locationEncoded}`);
   }
 
+  // -- give owned or shared whiteboards more width based on counts
+  const breakSize = 'lg';
+  let ownColClass = `${breakSize}:col-span-3 `;
+  let shareColClass = `${breakSize}:col-span-3 `;
+  if (ownWhiteboards && sharedWhiteboards) {
+    if (ownWhiteboards.length > 1.5 * sharedWhiteboards.length) {
+      ownColClass = `${breakSize}:col-span-4 `;
+      shareColClass = `${breakSize}:col-span-2 `;
+    } else if (sharedWhiteboards.length > 1.5 * ownWhiteboards.length) {
+      ownColClass = `${breakSize}:col-span-2 `;
+      shareColClass = `${breakSize}:col-span-4 `;
+    }
+  }
+
   return (
     <Page
       title={pageTitle}
@@ -193,65 +207,76 @@ const Dashboard = (): React.JSX.Element => {
       />
 
       <main>
-        <h1 className="text-xl md:text-4xl text-h1-text text-center m-5">
-          Welcome Back, {user.username}!
-        </h1>
-
-        <div className='text-center lg:text-left m-4 lg:ml-60 lg:mb-12'>
-          <CreateWhiteboardModal
-            onSubmit={handleCreateWhiteboard}
-          />
+        <div className="grid grid-flow-col grid-rows-3 sm:grid-rows-2 lg:grid-rows-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mx-12 mb-8">
+          <div className='col-span-1 order-2 lg:order-1 flex justify-center sm:justify-start'>
+            <CreateWhiteboardModal
+              onSubmit={handleCreateWhiteboard}
+            />
+          </div>
+          <h1 className="col-span-2 text-2xl lg:text-4xl text-h1-text order-1 lg:order-2 text-center truncate">
+            Welcome Back, {user.username}!
+          </h1>
+          <div className="col-span-1 flex flex-nowrap order-3 flex justify-center sm:justify-end">
+            {/* TODO: This is just a placeholder for now, need to implement search and sort features */}
+            <label htmlFor="search" className='hidden'>Search</label>
+            <input name='search' className='text-nowrap hidden' value='' type='text' placeholder='Search me' />
+            <button className='text-nowrap hidden'>Sort me</button>
+          </div>
         </div>
 
-        <div className='flex flex-col md:flex-row border-t-1 border-border mx-24'>
-          <div className="flex-1 flex-col md:border-r-1 border-border">
-            <h1 className="pt-12 mb-8 text-center text-2xl text-h2-text font-bold">
+        <div className='grid grid-cols-3 md:grid-cols-6 flex flex-col md:flex-row'>
+          <div className={ownColClass + "col-span-3 flex flex-col"}>
+            <h1 className="flex items-center gap-4 pt-2 mb-1 ml-8 mr-4 text-center text-2xl text-h2-text font-bold after:flex-1 after:h-px after:bg-border after:content-['']">
               Your Whiteboards
             </h1>
-            {(() => {
-              if (ownWhiteboardsError) {
-                return (
-                  <WhiteboardList
-                    status="error"
-                    message={`${ownWhiteboardsError}`}
-                  />
-                );
-              } else if (isOwnWhiteboardsLoading || isOwnWhiteboardsFetching) {
-                return (<WhiteboardList status="loading" />);
-              } else {
-                return (
-                  <WhiteboardList
-                    status="ready"
-                    whiteboardsAttribs={ownWhiteboards || []}
-                  />
-                );
-              }
-            })()}
+            <div className="flex-1 flex-col md:border-r-1 border-border px-4 pt-4 pb-8">
+              {(() => {
+                if (ownWhiteboardsError) {
+                  return (
+                    <WhiteboardList
+                      status="error"
+                      message={`${ownWhiteboardsError}`}
+                    />
+                  );
+                } else if (isOwnWhiteboardsLoading || isOwnWhiteboardsFetching) {
+                  return (<WhiteboardList status="loading" />);
+                } else {
+                  return (
+                    <WhiteboardList
+                      status="ready"
+                      whiteboardsAttribs={ownWhiteboards || []}
+                    />
+                  );
+                }
+              })()}
+            </div>
           </div>
 
-          <div className="flex-1 flex-col">
-            <h1 className="pt-12 mb-8 text-center text-2xl text-h2-text font-bold">
+          <div className={shareColClass + "col-span-3 flex flex-col"}>
+            <h1 className="flex items-center gap-4 pt-2 mb-1 ml-8 mr-4 text-center text-2xl text-h2-text font-bold after:flex-1 after:h-px after:bg-border after:content-['']">
               Shared Whiteboards
             </h1>
-            {(() => {
-              if (sharedWhiteboardsError) {
-                return (
-                  <WhiteboardList
-                    status="error"
-                    message={`${sharedWhiteboardsError}`}
-                  />
-                );
-              } else if (isSharedWhiteboardsLoading || isSharedWhiteboardsFetching) {
-                return (<WhiteboardList status="loading" />);
-              } else {
-                return (
-                  <WhiteboardList
-                    status="ready"
-                    whiteboardsAttribs={sharedWhiteboards || []}
-                  />
-                );
-              }
-            })()}
+            <div className="flex-1 flex-col px-4 pt-4 pb-8">
+              {(() => {
+                if (sharedWhiteboardsError) {
+                  return (
+                    <WhiteboardList
+                      status="error"
+                      message={`${sharedWhiteboardsError}`}
+                    />
+                  );
+                } else if (isSharedWhiteboardsLoading || isSharedWhiteboardsFetching) {
+                  return (<WhiteboardList status="loading" />);
+                } else {
+                  return (
+                    <WhiteboardList
+                      status="ready"
+                      whiteboardsAttribs={sharedWhiteboards || []}
+                    />
+                  );
+                }
+              })()}
+            </div>
           </div>
         </div>
       </main>

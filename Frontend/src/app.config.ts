@@ -40,3 +40,6 @@ export const ACTIVE_USERS_DISPLAY_LIMIT = 3;
 
 // -- Milliseconds to wait between throttled function execuations
 export const THROTTLE_INTERVAL = 100;
+
+// -- Number of collaborators to display on whiteboard card
+export const WB_CARD_COLLABORATORS_DISPLAY_LIMIT = 3;
