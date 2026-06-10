@@ -2794,4 +2794,39 @@ mod unit_tests {
             }
         };// -- end server_msg
     } // -- end test_reverse_edit_after_other_user_edit
+
+    // === fetch_canvas_with_no_objects ============================================================
+    //
+    // Tests loading a whiteboard containing a canvas which has no canvas objects.
+    //
+    // See TestDatabase/init-db.js for the sample data.
+    //
+    // ============================================================================================
+    #[tokio::test]
+    async fn fetch_canvas_with_no_objects() {
+        // -- try fetching Project Alpha and its constituent components (see
+        // TestDatabase/init-db.js for document definitions)
+        use crate::bson::oid::ObjectId;
+        use db::{connect_mongodb, get_whiteboard_by_id};
+
+        // -- initialize database connection
+        let mongo_uri = "mongodb://test_db:27017/wss_fetch_canvas_with_no_objects";
+        let mongo_client = connect_mongodb(&mongo_uri).await.unwrap();
+        let db = mongo_client.default_database().unwrap();
+
+        let whiteboard_id_s = "68d5e8d4829da666aece0400";
+        let whiteboard_id = ObjectId::parse_str(&whiteboard_id_s).unwrap();
+
+        let whiteboard = get_whiteboard_by_id(&db, &whiteboard_id)
+            .await
+            .unwrap()
+            .unwrap();
+
+        println!("Whiteboard Received: {:?}", whiteboard);
+
+        assert!(*whiteboard.id() == whiteboard_id);
+        assert!(whiteboard.metadata().name() == "Whiteboard Alpha");
+        assert!(whiteboard.metadata().user_permissions().len() == 1);
+        assert!(whiteboard.canvases().len() == 3);
+    } // -- end fn fetch_canvas_with_no_objects()
 }
