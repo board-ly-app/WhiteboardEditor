@@ -184,6 +184,20 @@ const Dashboard = (): React.JSX.Element => {
     navigate(`/login?redirect=${locationEncoded}`);
   }
 
+  // -- give owned or shared whiteboards more width based on counts
+  const breakSize = 'lg';
+  let ownColClass = `${breakSize}:col-span-3 `;
+  let shareColClass = `${breakSize}:col-span-3 `;
+  if (ownWhiteboards && sharedWhiteboards) {
+    if (ownWhiteboards.length > 1.5 * sharedWhiteboards.length) {
+      ownColClass = `${breakSize}:col-span-4 `;
+      shareColClass = `${breakSize}:col-span-2 `;
+    } else if (sharedWhiteboards.length > 1.5 * ownWhiteboards.length) {
+      ownColClass = `${breakSize}:col-span-2 `;
+      shareColClass = `${breakSize}:col-span-4 `;
+    }
+  }
+
   return (
     <Page
       title={pageTitle}
@@ -210,12 +224,12 @@ const Dashboard = (): React.JSX.Element => {
           </div>
         </div>
 
-        <div className='grid grid-cols-2 flex flex-col md:flex-row'>
-          <div className="flex flex-col">
-            <h1 className="flex items-center gap-4 pt-2 mb-4 mx-8 text-center text-2xl text-h2-text font-bold after:flex-1 after:h-px after:bg-border after:content-['']">
+        <div className='grid grid-cols-3 md:grid-cols-6 flex flex-col md:flex-row'>
+          <div className={ownColClass + "col-span-3 flex flex-col"}>
+            <h1 className="flex items-center gap-4 pt-2 mb-1 ml-8 mr-4 text-center text-2xl text-h2-text font-bold after:flex-1 after:h-px after:bg-border after:content-['']">
               Your Whiteboards
             </h1>
-            <div className="flex-1 flex-col md:border-r-1 border-border px-4">
+            <div className="flex-1 flex-col md:border-r-1 border-border px-4 pt-4 pb-8">
               {(() => {
                 if (ownWhiteboardsError) {
                   return (
@@ -238,11 +252,11 @@ const Dashboard = (): React.JSX.Element => {
             </div>
           </div>
 
-          <div className="flex flex-col">
-            <h1 className="flex items-center gap-4 pt-2 mb-4 mx-8 text-center text-2xl text-h2-text font-bold after:flex-1 after:h-px after:bg-border after:content-['']">
+          <div className={shareColClass + "col-span-3 flex flex-col"}>
+            <h1 className="flex items-center gap-4 pt-2 mb-1 ml-8 mr-4 text-center text-2xl text-h2-text font-bold after:flex-1 after:h-px after:bg-border after:content-['']">
               Shared Whiteboards
             </h1>
-            <div className="flex-1 flex-col px-4">
+            <div className="flex-1 flex-col px-4 pt-4 pb-8">
               {(() => {
                 if (sharedWhiteboardsError) {
                   return (
