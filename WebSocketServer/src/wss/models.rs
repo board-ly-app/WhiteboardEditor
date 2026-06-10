@@ -622,20 +622,41 @@ pub struct WhiteboardMetadata {
     // For permissions attached to an existing account, index by user id, to enable faster
     // retrieval when users log in.
     permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
+    // -- email address => permission
+    permissions_by_email: HashMap<String, WhiteboardPermissionEnum>,
 } // -- end WhiteboardMetadata
 
 impl WhiteboardMetadata {
     pub fn new(
         name: String,
         visibility: WhiteboardVisibilityEnum,
-        permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
+        permissions: &[WhiteboardPermission],
     ) -> Self {
+        let mut permissions_by_user_id = HashMap::<UserIdType, WhiteboardPermissionEnum>::new();
+        let mut permissions_by_email = HashMap::<String, WhiteboardPermissionEnum>::new();
+
+        for perm in permissions.iter() {
+            match &perm.permission_type {
+                WhiteboardPermissionType::User {
+                    user: user_id, ..
+                } => {
+                    let _ = permissions_by_user_id.insert(user_id.clone(), perm.permission.clone());
+                },
+                WhiteboardPermissionType::Email {
+                    email,
+                } => {
+                    let _ = permissions_by_email.insert(email.clone(), perm.permission.clone());
+                },
+            };// -- end match perm.permission_type
+        }// -- end for perm
+
         Self {
             name,
             visibility,
             permissions_by_user_id,
+            permissions_by_email,
         }
-    }
+    }// -- end fn new
 
     pub fn name(&self) -> &str {
         &self.name
@@ -1187,20 +1208,10 @@ pub struct WhiteboardMetadataMongoDBView {
 
 impl WhiteboardMetadataMongoDBView {
     pub fn to_whiteboard_metadata(&self) -> WhiteboardMetadata {
-        let permissions_by_user_id = self
-            .user_permissions
-            .iter()
-            .filter_map(|wb_perm| match wb_perm.permission_type {
-                WhiteboardPermissionType::User { ref user, .. } => {
-                    Some((user.clone(), wb_perm.permission))
-                }
-                _ => None,
-            })
-            .collect();
         WhiteboardMetadata::new(
             self.name.clone(),
             self.visibility,
-            permissions_by_user_id,
+            self.user_permissions.as_slice(),
         )
     } // -- end fn to_whiteboard_metadata
 }

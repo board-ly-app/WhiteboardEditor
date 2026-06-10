@@ -1169,7 +1169,7 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                HashMap::new()
+                &[],
             ),
             test_canvas_id,
             HashMap::new(),
@@ -1320,7 +1320,7 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                HashMap::new()
+                &[],
             ),
             canvas_a_id,
             HashMap::from([(
@@ -1565,7 +1565,7 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                HashMap::new()
+                &[],
             ),
             canvas_a_id,
             HashMap::from([(
@@ -1797,6 +1797,7 @@ mod unit_tests {
         let jwt_secret = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz";
         let target_uid_s = "68d5e8d4829da666aece5f48";
         let target_uid = ObjectId::parse_str(target_uid_s).expect("UID to be valid");
+        let target_email = "bob@example.com";
 
         // -- pre-generate jwt with desired uid
         let key: Hmac<Sha256> =
@@ -1814,11 +1815,11 @@ mod unit_tests {
         // -- initialize user store
         let user_store = MockStore {
             users_by_id: HashMap::from([(
-                target_uid,
+                target_uid.clone(),
                 User::Permanent {
-                    id: ObjectId::parse_str(target_uid_s).unwrap(),
+                    id: target_uid.clone(),
                     username: String::from("bob"),
-                    email: String::from("bob@example.com"),
+                    email: String::from(target_email),
                 },
             )]),
             whiteboards_by_id: HashMap::new(), // not needed here
@@ -1835,7 +1836,13 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                HashMap::from([(target_uid.clone(), WhiteboardPermissionEnum::Edit)]),
+                &[WhiteboardPermission {
+                    permission_type: WhiteboardPermissionType::User {
+                        user: target_uid.clone(),
+                        email: Some(String::from(target_email)),
+                    },
+                    permission: WhiteboardPermissionEnum::Edit,
+                }],
             ),
             ObjectId::new(),
             HashMap::new(),
@@ -2067,7 +2074,13 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                HashMap::from([(test_user_id.clone(), WhiteboardPermissionEnum::Edit)]),
+                &[WhiteboardPermission {
+                    permission_type: WhiteboardPermissionType::User {
+                        user: test_user_id.clone(),
+                        email: None,
+                    },
+                    permission: WhiteboardPermissionEnum::Edit,
+                }],
             ),
             // no canvases
             ObjectId::new(),
@@ -2226,7 +2239,13 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                HashMap::from([(test_user_id.clone(), WhiteboardPermissionEnum::Edit)]),
+                &[WhiteboardPermission {
+                    permission_type: WhiteboardPermissionType::User {
+                        user: test_user_id.clone(),
+                        email: None,
+                    },
+                    permission: WhiteboardPermissionEnum::Edit,
+                }],
             ),
             // One canvas only
             canvas_a_id.clone(),
@@ -2417,7 +2436,13 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                HashMap::from([(test_user_id.clone(), WhiteboardPermissionEnum::Edit)]),
+                &[WhiteboardPermission {
+                    permission_type: WhiteboardPermissionType::User {
+                        user: test_user_id.clone(),
+                        email: None,
+                    },
+                    permission: WhiteboardPermissionEnum::Edit,
+                }],
             ),
             // One canvas only
             canvas_a_id.clone(),
@@ -2577,10 +2602,22 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                HashMap::from([
-                    (user_a_id.clone(), WhiteboardPermissionEnum::Own),
-                    (user_b_id.clone(), WhiteboardPermissionEnum::Edit),
-                ]),
+                &[
+                    WhiteboardPermission {
+                        permission_type: WhiteboardPermissionType::User {
+                            user: user_a_id.clone(),
+                            email: None,
+                        },
+                        permission: WhiteboardPermissionEnum::Own,
+                    },
+                    WhiteboardPermission {
+                        permission_type: WhiteboardPermissionType::User {
+                            user: user_b_id.clone(),
+                            email: None,
+                        },
+                        permission: WhiteboardPermissionEnum::Edit,
+                    }
+                ],
             ),
             // One canvas only
             canvas_a_id.clone(),
@@ -2796,7 +2833,7 @@ mod unit_tests {
 
         assert!(*whiteboard.id() == whiteboard_id);
         assert!(whiteboard.metadata().name() == "Whiteboard Alpha");
-        assert!(whiteboard.metadata().user_permissions().len() == 1);
+        assert!(whiteboard.metadata().permissions_by_user_id().len() == 1);
         assert!(whiteboard.canvases().len() == 3);
     } // -- end fn fetch_canvas_with_no_objects()
 }
