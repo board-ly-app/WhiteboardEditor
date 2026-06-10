@@ -1075,7 +1075,7 @@ pub struct CanvasMongoDBView {
     #[serde(skip_serializing)]
     pub canvas_hierarchy: Option<Vec<CanvasMongoDBView>>,
     // virtual field - don't serialize
-    #[serde(skip_serializing)]
+    #[serde(default,skip_serializing)]
     pub canvas_objects: Vec<CanvasObjectMongoDBView>,
     pub allowed_users: Option<Vec<ObjectId>>,
 }
