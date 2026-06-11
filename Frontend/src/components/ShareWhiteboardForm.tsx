@@ -184,7 +184,7 @@ const ShareWhiteboardForm = ({
   );
 
   // -- derived state
-  const permissionsSorted : UserPermission[] = useMemo(
+  const userIdPermissionsSorted : UserPermission[] = useMemo(
     () => {
       const userIdPermissions = Object.values(permissionsByUserId);
 
@@ -198,6 +198,13 @@ const ShareWhiteboardForm = ({
         }
       });
 
+      return userIdPermissions;
+    },
+    [permissionsByUserId]
+  );// -- end const userIdPermissionsSorted
+  
+  const emailPermissionsSorted : UserPermission[] = useMemo(
+    () => {
       const emailPermissions = Object.values(permissionsByEmail);
 
       emailPermissions.sort((a, b) => {
@@ -210,10 +217,10 @@ const ShareWhiteboardForm = ({
         }
       });
 
-      return [...userIdPermissions, ...emailPermissions];
+      return emailPermissions;
     },
-    [permissionsByUserId, permissionsByEmail]
-  );// -- end const permissionsSorted
+    [permissionsByEmail]
+  );// -- end emailPermissionsSorted
 
   const handleChangeNewEmail = useCallback(
     (ev: React.ChangeEvent<HTMLInputElement>) => {
@@ -221,14 +228,14 @@ const ShareWhiteboardForm = ({
       setNewEmail(ev.target.value);
     },
     [setNewEmail]
-  );
+  );// -- end handleChangeNewEmail
 
   const handleChangePermType = useCallback(
     (value: UserPermissionEnum) => {
       setNewUserPermType(value);
     },
     [setNewUserPermType]
-  );
+  );// -- end handleChangePermType
 
   const handleAddNewEmail = useCallback(
     (ev: React.MouseEvent<HTMLButtonElement>) => {
@@ -252,7 +259,7 @@ const ShareWhiteboardForm = ({
       });
     },
     [setNewEmail, setPermissionsByEmail, newUserPermType]
-  );
+  );// -- end handleAddNewEmail
 
   const removePermission = useCallback(
     (perm: UserPermission) => {
@@ -285,7 +292,7 @@ const ShareWhiteboardForm = ({
   const handleSubmit = useCallback(
     () => {
       const data: ShareWhiteboardFormData = ({
-        userPermissions: permissionsSorted,
+        userPermissions: [...userIdPermissionsSorted, ...emailPermissionsSorted],
       });
 
       setButtonStatus('pending');
@@ -294,7 +301,7 @@ const ShareWhiteboardForm = ({
           setButtonStatus('enabled');
         });
     },
-    [onSubmit, setButtonStatus, permissionsSorted]
+    [onSubmit, setButtonStatus, userIdPermissionsSorted, emailPermissionsSorted]
   );// -- end handleSubmit
 
   return (
@@ -367,7 +374,16 @@ const ShareWhiteboardForm = ({
             </thead>
             <tbody>
               {
-                permissionsSorted.map(perm => (
+                userIdPermissionsSorted.map(perm => (
+                  <RemovablePermission
+                    key={getKeyForPermission(perm)}
+                    perm={perm}
+                    onRemove={removePermission}
+                  />
+                ))
+              }
+              {
+                emailPermissionsSorted.map(perm => (
                   <RemovablePermission
                     key={getKeyForPermission(perm)}
                     perm={perm}
@@ -378,7 +394,7 @@ const ShareWhiteboardForm = ({
             </tbody>
           </table>
           {
-            permissionsSorted.length < 1 && (
+            (userIdPermissionsSorted.length + emailPermissionsSorted.length) < 1 && (
               <span>No user permissions created</span>
             )
           }
