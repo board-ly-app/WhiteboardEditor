@@ -55,7 +55,7 @@ export const selectWhiteboardStatus = (
   return state.whiteboardStatus.statusesByWhiteboard[whiteboardId];
 };
 
-export const selectPermissionsByWhiteboard = (
+export const selectPermissionsByUserByWhiteboard = (
   state: RootState,
   whiteboardId: WhiteboardIdType,
 ): Record<UserIdType, UserPermissionEnum> | null => {
@@ -66,7 +66,20 @@ export const selectPermissionsByWhiteboard = (
   const whiteboard = state.whiteboards[whiteboardId];
 
   return whiteboard.permissionsByUserId;
-};// -- end selectPermissionsByWhiteboard
+};// -- end selectPermissionsByUserByWhiteboard
+
+export const selectPermissionsByEmailByWhiteboard = (
+  state: RootState,
+  whiteboardId: WhiteboardIdType,
+): Record<string, UserPermissionEnum> | null => {
+  if (! (whiteboardId in state.whiteboards)) {
+    return null;
+  }
+
+  const whiteboard = state.whiteboards[whiteboardId];
+
+  return whiteboard.permissionsByEmail;
+};// -- end selectPermissionsByEmailByWhiteboard
 
 export const selectWhiteboardPermissionByUser = (
   state: RootState,

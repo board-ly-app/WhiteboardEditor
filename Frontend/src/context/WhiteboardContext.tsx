@@ -20,10 +20,8 @@ import type {
 } from '@/types/WebSocketProtocol';
 
 import {
-  type UserPermission,
-} from '@/types/UserPermission'
-
-import type { OperationDispatcher } from '@/types/OperationDispatcher';
+  type OperationDispatcher,
+} from '@/types/OperationDispatcher';
 
 export interface WhiteboardContextType {
   handleUpdateShapes: (
@@ -32,8 +30,6 @@ export interface WhiteboardContextType {
       updates: Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
   ) => unknown;
   whiteboardId: WhiteboardIdType;
-  userPermissions: UserPermission[];
-  setSharedUsers: React.Dispatch<React.SetStateAction<UserPermission[]>>;
   // -- view/edit/own permission - determines which actions to enable/disable
   currentDispatcherRef: RefObject<OperationDispatcher | null>;
   // -- tracks refs to Canvas groups (Konva Groups serve as frames for each Canvas)
@@ -48,8 +44,6 @@ const WhiteboardProvider = ({
   handleUpdateShapes,
   whiteboardId,
   children,
-  userPermissions,
-  setSharedUsers,
   currentDispatcherRef,
   canvasGroupRefsByIdRef,
 }: PropsWithChildren<WhiteboardProvidersProps>): React.JSX.Element => {
@@ -57,8 +51,6 @@ const WhiteboardProvider = ({
     <WhiteboardContext.Provider value={{
       handleUpdateShapes,
       whiteboardId,
-      userPermissions,
-      setSharedUsers,
       currentDispatcherRef,
       canvasGroupRefsByIdRef,
     }}>

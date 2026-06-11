@@ -65,6 +65,7 @@ export interface WhiteboardAttribs {
   rootCanvas: CanvasIdType;
   visibility: 'public' | 'private';
   permissionsByUserId: Record<UserIdType, UserPermissionEnum>;
+  permissionsByEmail: Record<string, UserPermissionEnum>;
 }
 
 // Contains nested data

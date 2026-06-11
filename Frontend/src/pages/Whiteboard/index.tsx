@@ -30,7 +30,6 @@ import {
 
 import {
   useQuery,
-  useQueryClient
 } from '@tanstack/react-query';
 
 import {
@@ -109,7 +108,11 @@ import {
   NotificationsHeaderMenu,
 } from '@/pages/Whiteboard/NotificationsHeaderMenu';
 
-// -- ui components
+import {
+  ShareWhiteboardForm,
+} from '@/pages/Whiteboard/ShareWhiteboardForm'
+
+// -- headless components
 import {
   ActiveUsersHeaderDropdown,
 } from '@/components/ActiveUsersHeaderDropdown';
@@ -118,10 +121,6 @@ import type {
   CanvasObjectIdType,
   CanvasObjectModel,
 } from '@/types/CanvasObjectModel';
-
-import ShareWhiteboardForm, {
-  type ShareWhiteboardFormData
-} from '@/components/ShareWhiteboardForm';
 
 import CreateCanvasMenu, {
   type NewCanvas,
@@ -196,7 +195,6 @@ const Whiteboard = ({
   const whiteboardContext = useContext(WhiteboardContext);
   const authContext = useContext(AuthContext);
   const clientMessengerContext = useContext(ClientMessengerContext);
-  const queryClient = useQueryClient();
 
   if (! whiteboardContext) {
     throw new Error('No WhiteboardContext provided to Whiteboard');
@@ -212,7 +210,6 @@ const Whiteboard = ({
 
   const {
     whiteboardId,
-    userPermissions,
   } = whiteboardContext;
 
   const {
@@ -223,9 +220,6 @@ const Whiteboard = ({
     (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id),
     lodash.isEqual
   );
-
-  // -- prop-derived state
-  const whiteboardKey = ['whiteboard', whiteboardId];
 
   // -- managed state
   const {
@@ -339,6 +333,24 @@ const Whiteboard = ({
     openModal: openShareModal,
     closeModal: closeShareModal
   } = useModal();
+
+  const [isShareFormActive, setIsShareFormActive] = useState<boolean>(false);
+
+  const handleOpenShareModal = useCallback(
+    () => {
+      setIsShareFormActive(true);
+      openShareModal();
+    },
+    [openShareModal, setIsShareFormActive]
+  );// -- end handleOpenShareModal
+
+  const handleCloseShareModal = useCallback(
+    () => {
+      setIsShareFormActive(false);
+      closeShareModal();
+    },
+    [closeShareModal, setIsShareFormActive]
+  );// -- end handleCloseShareModal
 
   const {
     Modal: CreateCanvasModal,
@@ -638,7 +650,7 @@ const Whiteboard = ({
       const ShareWhiteboardButton = () => (
         <HeaderButton 
           onClick={() => {
-            openShareModal();
+            handleOpenShareModal();
           }}
           title="Share"
           disabled={ownPermission !== 'own'}
@@ -759,7 +771,7 @@ const Whiteboard = ({
                   className="flex flex-row justify-end"
                 >
                   <button
-                    onClick={closeShareModal}
+                    onClick={handleCloseShareModal}
                     className="hover:cursor-pointer"
                   >
                     <X />
@@ -767,92 +779,8 @@ const Whiteboard = ({
                 </div>
       
                 <ShareWhiteboardForm
-                  initUserPermissions={userPermissions || []}
-                  onSubmit={async (data: ShareWhiteboardFormData) => {
-                    try {
-                      const {
-                        userPermissions
-                      } = data;
-      
-                      const userPermissionsFinal = userPermissions.map(perm => {
-                        if (perm.type === 'user') {
-                          if ((typeof perm.user) === 'object') {
-                            // extract object id
-                            return ({
-                              ...perm,
-                              user: perm.user.id
-                            });
-                          } else {
-                            // already object id
-                            return perm;
-                          }
-                        } else {
-                          return perm;
-                        }
-                      });
-
-                      // -- make sure we have at least one owner
-                      if (! userPermissionsFinal.find(perm => perm.permission === 'own')) {
-                        // -- display popup alert
-                        toast.error('Whiteboard must have at least one owner.', {
-                          position: "bottom-center",
-                          hideProgressBar: true,
-                          closeOnClick: true,
-                          pauseOnHover: true,
-                          draggable: true,
-                          progress: undefined,
-                          theme: "colored",
-                          transition: Bounce,
-                        });
-
-                        return;
-                      }
-      
-                      // No need for AxiosResp<..> type check, as response body
-                      // isn't used.
-                      await api.post(`/whiteboards/${whiteboardId}/user_permissions`, ({
-                        userPermissions: userPermissionsFinal
-                      }));
-
-                      // -- display popup alert
-                      toast.success('User permissions updated successfully', {
-                        position: "bottom-center",
-                        autoClose: 5000,
-                        hideProgressBar: false,
-                        closeOnClick: true,
-                        pauseOnHover: true,
-                        draggable: true,
-                        progress: undefined,
-                        theme: "colored",
-                        transition: Bounce,
-                      });
-
-                      queryClient.invalidateQueries({
-                        queryKey: whiteboardKey
-                      });
-
-                      closeShareModal();
-                    } catch (err: unknown) {
-                        const axiosErr = err as AxiosError<{ error: string; }>;
-
-                        console.error('POST /whiteboards/:id/user_permissions failed:', axiosErr);
-
-                        // -- display popup alert
-                        toast.error(`Share request failed: ${axiosErr.response?.data.error}`, {
-                          position: "bottom-center",
-                          hideProgressBar: true,
-                          closeOnClick: true,
-                          pauseOnHover: true,
-                          draggable: true,
-                          progress: undefined,
-                          theme: "colored",
-                          transition: Bounce,
-                        });
-
-                        // -- propagate error to caller
-                        throw err;
-                    }
-                  }}
+                  isActive={isShareFormActive}
+                  onClose={handleCloseShareModal}
                 />
               </div>
             </ShareModal>
@@ -1053,9 +981,6 @@ const WrappedWhiteboard = () => {
     },
   });
 
-  // update the state of userPermissions whenever whiteboardData changes
-  const [userPermissions, setSharedUsers] = useState<APIWhiteboard['user_permissions']>([]);
-
   // -- track refs to canvas groups (frames)
   const canvasGroupRefsByIdRef: RefObject<Record<CanvasIdType, RefObject<Konva.Group | null>>> = useRef({});
 
@@ -1102,8 +1027,6 @@ const WrappedWhiteboard = () => {
     <WhiteboardProvider
       handleUpdateShapes={handleUpdateShapes}
       whiteboardId={whiteboardId}
-      userPermissions={userPermissions}
-      setSharedUsers={setSharedUsers}
       currentDispatcherRef={currentDispatcherRef}
       canvasGroupRefsByIdRef={canvasGroupRefsByIdRef}
     >
