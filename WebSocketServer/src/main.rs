@@ -22,7 +22,12 @@ use mongodb::{
 async fn main() -> process::ExitCode {
     use wss::{
         db::connect_mongodb,
-        models::{WhiteboardIdType, WhiteboardMongoDBView, WhiteboardPermissionEnumClientView},
+        models::{
+            WhiteboardIdType,
+            WhiteboardMongoDBView,
+            WhiteboardPermissionEnumClientView,
+            WhiteboardVisibilityEnum,
+        },
         protocol::{ServerSocketMessage,ServerSocketBroadcastMessage},
         server::{ConnectionState, ProgramState},
     };
@@ -142,7 +147,23 @@ async fn main() -> process::ExitCode {
 
                                 let wb_meta = wb.metadata();
 
-                                // -- TODO: iter through key => value pairs: wb_entry.clients_by_user_id.
+                                // -- evict users whose permissions have been revoked if the
+                                // whiteboard is private
+                                if wb_meta.visibility() == WhiteboardVisibilityEnum::Private {
+                                    let clients_by_user_id = wb_entry.clients_by_user_id.lock().await;
+
+                                    // -- evict users whose permissions have been completely removed
+                                    for (user_id, client_id) in clients_by_user_id.iter() {
+                                        if ! wb_meta.permissions_by_user_id().contains_key(user_id) {
+                                            let _ = wb_entry
+                                                .broadcaster
+                                                .send(ServerSocketMessage::Evict {
+                                                    evicted_client_id: client_id.clone(),
+                                                    reason: String::from("Access revoked"),
+                                                });
+                                        }
+                                    }// -- end for
+                                }
 
                                 // -- broadcast updated permissions to clients
                                 let _ = wb_entry
@@ -157,10 +178,6 @@ async fn main() -> process::ExitCode {
                                                 .collect(),
                                         },
                                     });
-
-                                // -- TODO: update permissions in client state
-                                // -- TODO: evict clients whose permissions have been completely
-                                // revoked
                             }
                         }
                     },
