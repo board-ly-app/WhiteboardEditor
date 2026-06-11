@@ -22,7 +22,7 @@ use mongodb::{
 async fn main() -> process::ExitCode {
     use wss::{
         db::connect_mongodb,
-        models::{WhiteboardIdType, WhiteboardMongoDBView},
+        models::{WhiteboardIdType, WhiteboardMongoDBView, WhiteboardPermissionEnumClientView},
         protocol::{ServerSocketMessage,ServerSocketBroadcastMessage},
         server::{ConnectionState, ProgramState},
     };
@@ -61,7 +61,7 @@ async fn main() -> process::ExitCode {
     });
 
     // -- spawn thread to watch for changes to whiteboards collection
-    let whiteboard_deletion_checker_thread = {
+    let whiteboard_watcher_thread = {
         let connection_state_ref = Arc::clone(&connection_state_ref);
         let db = match mongo_client.default_database() {
             None => {
@@ -76,7 +76,9 @@ async fn main() -> process::ExitCode {
 
         tokio::spawn(async move {
             let whiteboard_coll = db.collection::<WhiteboardMongoDBView>("whiteboards");
-            let mut wb_change_stream = match whiteboard_coll.watch().await {
+            let mut wb_change_stream = match whiteboard_coll.watch()
+                    .full_document(mongodb::options::FullDocumentType::UpdateLookup)
+                    .await {
                 Err(e) => panic!(
                     "Could not subscribe to change stream on whiteboards collection: {}",
                     e
@@ -85,8 +87,84 @@ async fn main() -> process::ExitCode {
             };
 
             // TODO: replace while-let with loop that includes error logging
-            while let Ok(Some(event)) = wb_change_stream.next().await.transpose() {
+            'next_event: while let Ok(Some(event)) = wb_change_stream.next().await.transpose() {
                 match event.operation_type {
+                    // -- check for permission updates
+                    mongodb::change_stream::event::OperationType::Update => {
+                        if let Some(curr_doc) = event.full_document {
+                            let mut whiteboards =
+                                connection_state_ref.program_state.whiteboards.lock().await;
+
+                            if let Some(wb_entry) = whiteboards.get_mut(&curr_doc.id) {
+                                let mut wb = wb_entry.whiteboard_ref.lock().await;
+
+                                // -- check that permissions have changed
+                                'check_perm_change: {
+                                    let wb_meta = wb.metadata();
+                                    let n_prev_perms = wb_meta.permissions_by_user_id().len()
+                                        + wb_meta.permissions_by_email().len();
+
+                                    if n_prev_perms == curr_doc.metadata.user_permissions.len() {
+                                        for perm in curr_doc.metadata.user_permissions.iter() {
+                                            match &perm.permission_type {
+                                                wss::models::WhiteboardPermissionType::User {
+                                                    user: user_id,
+                                                    ..
+                                                } => {
+                                                    if let Some(prev_perm) = wb_meta.permissions_by_user_id().get(&user_id) {
+                                                        if *prev_perm != perm.permission {
+                                                            break 'check_perm_change;
+                                                        }
+                                                    } else {
+                                                        break 'check_perm_change;
+                                                    }
+                                                },
+                                                wss::models::WhiteboardPermissionType::Email {
+                                                    email,
+                                                } => {
+                                                    if let Some(prev_perm) = wb_meta.permissions_by_email().get(email.as_str()) {
+                                                        if *prev_perm != perm.permission {
+                                                            break 'check_perm_change;
+                                                        }
+                                                    } else {
+                                                        break 'check_perm_change;
+                                                    }
+                                                },
+                                            };// -- end match
+                                        }// -- end for perm
+
+                                        continue 'next_event;
+                                    }
+                                }
+
+                                // -- change metadata
+                                wb.set_permissions(curr_doc.metadata.user_permissions.as_slice());
+
+                                let wb_meta = wb.metadata();
+
+                                // -- TODO: iter through key => value pairs: wb_entry.clients_by_user_id.
+
+                                // -- broadcast updated permissions to clients
+                                let _ = wb_entry
+                                    .broadcaster
+                                    .send(ServerSocketMessage::Broadcast {
+                                        msg: ServerSocketBroadcastMessage::SetPermissions {
+                                            permissions_by_user_id: wb_meta.permissions_by_user_id().iter()
+                                                .map(|(uid, perm)| (uid.clone(), WhiteboardPermissionEnumClientView::from_permission_enum(&perm)))
+                                                .collect(),
+                                            permissions_by_email: wb_meta.permissions_by_email().iter()
+                                                .map(|(email, perm)| (email.clone(), WhiteboardPermissionEnumClientView::from_permission_enum(&perm)))
+                                                .collect(),
+                                        },
+                                    });
+
+                                // -- TODO: update permissions in client state
+                                // -- TODO: evict clients whose permissions have been completely
+                                // revoked
+                            }
+                        }
+                    },
+                    // -- whiteboard deleted
                     mongodb::change_stream::event::OperationType::Delete => {
                         if let Some(doc) = event.document_key
                             && let Some(bson::Bson::ObjectId(wb_id)) = doc.get("_id") {
@@ -106,9 +184,6 @@ async fn main() -> process::ExitCode {
                                                 .send(ServerSocketMessage::Broadcast {
                                                     msg: ServerSocketBroadcastMessage::DeleteWhiteboard,
                                                 });
-
-                                            // TODO: end connections
-                                            // whiteboard_entry.broadcaster.closed
                                         }
 
                                         // delete entry
@@ -122,7 +197,7 @@ async fn main() -> process::ExitCode {
                 };
             } // -- end while event
         })
-    }; // -- end let whiteboard_deletion_checker_thread
+    }; // -- end let whiteboard_watcher_thread
 
     let connection_state_ref_filter = warp::any().map({
         let connection_state_ref = Arc::clone(&connection_state_ref);
@@ -142,9 +217,9 @@ async fn main() -> process::ExitCode {
     println!("Rust WebSocket server running at ws://{}", addr);
     warp::serve(ws_route).run(addr).await;
 
-    // -- abort and reap whiteboard deletion checker thread
-    whiteboard_deletion_checker_thread.abort();
-    let _ = whiteboard_deletion_checker_thread.await;
+    // -- abort and reap whiteboard watcher thread
+    whiteboard_watcher_thread.abort();
+    let _ = whiteboard_watcher_thread.await;
 
     process::ExitCode::SUCCESS
 } // end async fn main()
@@ -316,6 +391,7 @@ async fn handle_connection(
                     },
                     Broadcast { msg } => {
                         let json = serde_json::to_string(&msg).unwrap();
+
                         if user_ws_tx.send(Message::text(json)).await.is_err() {
                             break;
                         }
@@ -328,6 +404,20 @@ async fn handle_connection(
                             }
                         }
                     },
+                    Evict {
+                        evicted_client_id,
+                        reason,
+                    } => {
+                        if matches!(evicted_client_id.cmp(&current_client_id), Ordering::Equal) {
+                            // -- send eviction notification and disconnect
+                            let json = serde_json::to_string(&ServerSocketIndividualMessage::Evict {
+                                reason,
+                            }).unwrap();
+
+                            let _ = user_ws_tx.send(Message::text(json)).await;
+                            break;
+                        }
+                    }
                 };// -- end match msg
             }
         })

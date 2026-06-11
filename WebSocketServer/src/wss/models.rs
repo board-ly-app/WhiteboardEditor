@@ -671,6 +671,10 @@ impl WhiteboardMetadata {
         &self.permissions_by_user_id
     }// -- end pub fn permissions_by_user_id
 
+    pub fn permissions_by_email(&self) -> &HashMap<String, WhiteboardPermissionEnum> {
+        &self.permissions_by_email
+    }// -- end pub fn permissions_by_email
+
     pub fn permission_for_user(&self, user_id: &UserIdType) -> Option<WhiteboardPermissionEnum> {
         if self.visibility == WhiteboardVisibilityEnum::Public {
             return Some(WhiteboardPermissionEnum::Edit);
@@ -776,6 +780,31 @@ impl Whiteboard {
     pub fn root_canvas(&self) -> &CanvasIdType {
         &self.root_canvas
     } // -- end pub fn root_canvas
+
+    pub fn set_permissions(&mut self, permissions: &[WhiteboardPermission]) {
+        self.metadata.permissions_by_user_id.clear();
+        self.metadata.permissions_by_email.clear();
+
+        for perm in permissions.iter() {
+            match &perm.permission_type {
+                WhiteboardPermissionType::User {
+                    user: user_id,
+                    ..
+                } => {
+                    self.metadata.permissions_by_user_id.insert(
+                        user_id.clone(), perm.permission.clone()
+                    );
+                },
+                WhiteboardPermissionType::Email {
+                    email,
+                } => {
+                    self.metadata.permissions_by_email.insert(
+                        email.clone(), perm.permission.clone()
+                    );
+                },
+            };// -- end match perm.permission_type
+        }// -- end for perm
+    }// -- end pub fn set_permissions
 
     pub fn push_edit(&mut self, edit: &Edit) {
         if let Some(author_edit_history) = self.edit_history_by_author.get_mut(&edit.author) {

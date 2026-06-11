@@ -108,6 +108,9 @@ pub enum ServerSocketIndividualMessage {
         #[serde_as(as = "HashMap<DisplayFromStr, DisplayFromStr>")]
         selectors_by_canvas_objects: HashMap<CanvasObjectIdType, ClientIdType>,
     },
+    Evict {
+        reason: String,
+    },
     // -- Generic message for confirming success of some action
     Confirm {
         message: String,
@@ -139,6 +142,11 @@ pub enum ServerSocketBroadcastMessage {
     LogoutUsers {
         #[serde_as(as = "Vec<DisplayFromStr>")]
         clients: Vec<ClientIdType>,
+    },
+    SetPermissions {
+        #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+        permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnumClientView>,
+        permissions_by_email: HashMap<String, WhiteboardPermissionEnumClientView>,
     },
     SelectedCanvasObject {
         #[serde_as(as = "DisplayFromStr")]
@@ -245,6 +253,11 @@ pub enum ServerSocketMessage {
     BroadcastRest {
         src_client_id: ClientIdType,
         msg: ServerSocketBroadcastRestMessage,
+    },
+    // -- Trigger disconnect
+    Evict {
+        evicted_client_id: ClientIdType,
+        reason: String,
     },
 }// -- end pub enum ServerSocketMessage
 
