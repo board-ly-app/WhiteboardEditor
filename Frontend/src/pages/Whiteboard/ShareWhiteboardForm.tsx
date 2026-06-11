@@ -138,13 +138,13 @@ export const ShareWhiteboardForm = ({
   const initPermissionsByEmail : Record<string, UserPermissionByEmail> = useMemo(
     () => {
       return Object.fromEntries(
-        Object.entries(permissionsByEmail).map((email, perm) => [
+        Object.entries(permissionsByEmail).map(([email, perm]) => [
           email,
-          {
+          ({
             type: 'email',
             email,
             permission: perm,
-          }
+          })
         ])
       );
     },

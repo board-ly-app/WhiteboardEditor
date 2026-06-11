@@ -101,8 +101,12 @@ const RemovablePermission = ({
   const FIELD_UNAVAILABLE = '-';
 
   let email : string | null;
+  let username : string | null = null;
+
   switch (perm.type) {
     case 'user':
+      username = perm.user.username;
+
       switch (perm.user.kind) {
         case 'temp':
           email = null;
@@ -120,8 +124,6 @@ const RemovablePermission = ({
     default:
       throw new Error(`Unrecognized permission type: ${perm}`);
   }// -- end switch (perm.type)
-
-  const username: string | null = perm.type === 'user' ? perm.user.username : null;
 
   const {
     permission,
@@ -254,8 +256,6 @@ const ShareWhiteboardForm = ({
 
   const removePermission = useCallback(
     (perm: UserPermission) => {
-      console.log('!! removePermission:', perm);
-
       switch (perm.type) {
         case 'user':
           setPermissionsByUserId((oldPerms) => {
@@ -264,7 +264,6 @@ const ShareWhiteboardForm = ({
               ...nextPerms
             } = oldPerms;
 
-            console.log('!! nextPerms:', nextPerms);
             return nextPerms;
           });
           break;
@@ -275,7 +274,6 @@ const ShareWhiteboardForm = ({
               ...nextPerms
             } = oldPerms;
 
-            console.log('!! nextPerms:', nextPerms);
             return nextPerms;
           });
           break;
