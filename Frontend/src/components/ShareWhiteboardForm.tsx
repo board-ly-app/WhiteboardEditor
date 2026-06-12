@@ -88,20 +88,32 @@ const getKeyForPermission = (perm: UserPermission): string => {
   }
 };// -- end getKeyForPermission
 
-interface RemovablePermissionProps {
+interface EditablePermissionProps {
   perm: UserPermission;
+  onChange: (perm: UserPermission) => unknown;
   onRemove: (perm: UserPermission) => unknown;
-}// -- end interface RemovablePermissionProps
+}// -- end interface EditablePermissionProps
 
-const RemovablePermission = ({
+const EditablePermission = ({
   perm,
+  onChange,
   onRemove,
-}: RemovablePermissionProps): React.JSX.Element => {
+}: EditablePermissionProps): React.JSX.Element => {
   // as an entry in a table
   const FIELD_UNAVAILABLE = '-';
 
   let email : string | null;
   let username : string | null = null;
+
+  const handleChangePermType = useCallback(
+    (newPerm: UserPermissionEnum) => {
+      onChange({
+        ...perm,
+        permission: newPerm,
+      });
+    },
+    [perm, onChange]
+  );// -- end handleChangePermType
 
   switch (perm.type) {
     case 'user':
@@ -133,10 +145,20 @@ const RemovablePermission = ({
     <tr>
       <td className="text-center">{email || FIELD_UNAVAILABLE}</td>
       <td className="text-center">{username || FIELD_UNAVAILABLE}</td>
-      <td className="text-center">{permission}</td>
+      <td className="flex flex-row justify-center">
+        <Select value={permission} onValueChange={handleChangePermType}>
+          <SelectTrigger id="permission-type" className="hover:cursor-pointer mr-2 w-auto">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {USER_PERMISSION_TYPES.map(perm => (
+              <SelectItem key={perm} value={perm}>{perm}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </td>
       <td className="text-center">
         <button
-          disabled={false}
           onClick={() => onRemove(perm)}
           className="hover:cursor-pointer hover:bg-gray-600 p-1 inline-block align-middle rounded-md"
         >
@@ -145,7 +167,7 @@ const RemovablePermission = ({
       </td>
     </tr>
   );
-};// -- end RemovablePermission
+};// -- end EditablePermission
 
 const ShareWhiteboardForm = ({
   isActive,
@@ -289,6 +311,32 @@ const ShareWhiteboardForm = ({
     [setPermissionsByUserId, setPermissionsByEmail]
   );// -- end removePermission
 
+  const handleChangePermission = useCallback(
+    (perm: UserPermission) => {
+      switch (perm.type) {
+        case 'user':
+          setPermissionsByUserId((oldPermissions) => {
+            return {
+              ...oldPermissions,
+              [perm.user.id]: perm,
+            };
+          });
+          break;
+        case 'email':
+          setPermissionsByEmail((oldPermissions) => {
+            return {
+              ...oldPermissions,
+              [perm.email]: perm,
+            };
+          });
+          break;
+        default:
+          throw new Error(`Unrecognized permission: ${perm}`);
+      }// -- end switch (perm.type)
+    },
+    [setPermissionsByUserId, setPermissionsByEmail]
+  );// -- end handleChangePermission
+
   const handleSubmit = useCallback(
     () => {
       const data: ShareWhiteboardFormData = ({
@@ -314,7 +362,7 @@ const ShareWhiteboardForm = ({
         </h3>
 
         <div
-          className="flex flex-row align-text-bottom w-full"
+          className="flex flex-row align-center w-full"
         >
           <Input
             name="new-email"
@@ -331,7 +379,7 @@ const ShareWhiteboardForm = ({
           >
             Permission:
           </label>
-          <Select value={newUserPermType} onValueChange={handleChangePermType}>
+          <Select name="permission-type" value={newUserPermType} onValueChange={handleChangePermType}>
             <SelectTrigger id="permission-type" className="hover:cursor-pointer mr-2 w-auto">
               <SelectValue />
             </SelectTrigger>
@@ -375,18 +423,20 @@ const ShareWhiteboardForm = ({
             <tbody>
               {
                 userIdPermissionsSorted.map(perm => (
-                  <RemovablePermission
+                  <EditablePermission
                     key={getKeyForPermission(perm)}
                     perm={perm}
+                    onChange={handleChangePermission}
                     onRemove={removePermission}
                   />
                 ))
               }
               {
                 emailPermissionsSorted.map(perm => (
-                  <RemovablePermission
+                  <EditablePermission
                     key={getKeyForPermission(perm)}
                     perm={perm}
+                    onChange={handleChangePermission}
                     onRemove={removePermission}
                   />
                 ))
