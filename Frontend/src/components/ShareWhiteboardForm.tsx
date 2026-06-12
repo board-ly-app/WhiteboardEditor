@@ -175,13 +175,31 @@ const ShareWhiteboardForm = ({
   initPermissionsByEmail,
   onSubmit,
 }: ShareWhiteboardFormProps): React.JSX.Element => {
-  // -- managed state
+  // -- Existing (but not committed) permissions
   const [permissionsByUserId, setPermissionsByUserId] = useState<Record<UserIdType, UserPermissionByUser>>(
     initPermissionsByUserId
   );
   const [permissionsByEmail, setPermissionsByEmail] = useState<Record<string, UserPermissionByEmail>>(
     initPermissionsByEmail
   );
+
+  const userIdsByEmail : Record<string, UserIdType> = useMemo(
+    () => {
+      return Object.fromEntries(Object.entries(permissionsByUserId).map(([userId, perm]) => {
+        switch (perm.user.kind) {
+          case 'temp':
+            return null;
+          case 'permanent':
+            return [perm.user.email, userId];
+          default:
+            throw new Error(`Unrecognized user type: ${perm.user}`);
+        }// -- end switch (perm.user.kind)
+      }).filter(entry => !!entry));
+    },
+    [permissionsByUserId]
+  );// -- end const userIdsByEmail
+
+  // -- New permission input state
   const [newEmail, setNewEmail] = useState<string>("");
   const [newUserPermType, setNewUserPermType] = useState<UserPermissionEnum>(
     USER_PERMISSION_TYPES[0] as UserPermissionEnum
@@ -265,22 +283,38 @@ const ShareWhiteboardForm = ({
 
       setNewEmail(newEmail => {
         if (newEmail) {
-          setPermissionsByEmail((oldPerms) => {
-            return {
-              ...oldPerms,
-              [newEmail]: {
-                type: 'email',
-                email: newEmail,
+          if (newEmail in userIdsByEmail) {
+            // -- Simply override existing user id permission
+            setPermissionsByUserId((oldPermissions) => {
+              const userId = userIdsByEmail[newEmail];
+              const newPerm : UserPermissionByUser = {
+                ...oldPermissions[userId],
                 permission: newUserPermType,
-              },
-            };
-          });
+              };
+
+              return {
+                ...oldPermissions,
+                [userId]: newPerm,
+              };
+            });
+          } else {
+            setPermissionsByEmail((oldPerms) => {
+              return {
+                ...oldPerms,
+                [newEmail]: {
+                  type: 'email',
+                  email: newEmail,
+                  permission: newUserPermType,
+                },
+              };
+            });
+          }
         }
 
         return "";
       });
     },
-    [setNewEmail, setPermissionsByEmail, newUserPermType]
+    [setNewEmail, setPermissionsByEmail, newUserPermType, userIdsByEmail]
   );// -- end handleAddNewEmail
 
   const removePermission = useCallback(
