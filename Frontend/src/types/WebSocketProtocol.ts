@@ -220,6 +220,12 @@ export interface ServerMessageLogoutUsers {
   clients: ClientIdType[];
 }
 
+export interface ServerMessageSetPermissions {
+  type: 'set_permissions';
+  permissionsByUserId: Record<UserIdType, UserPermissionEnum>;
+  permissionsByEmail: Record<string, UserPermissionEnum>;
+}
+
 // Used to notify clients when a user has started editing a canvas but hasn't
 // performed any edits yet (i.e. when they click and drag to start drawing a
 // shape).
@@ -302,6 +308,11 @@ export interface ServerMessageSetCursorPos {
   y: number;
 }
 
+export interface ServerMessageEvict {
+  type: 'evict';
+  reason: string;
+}// -- end export interface ServerMessageEvict
+
 export interface ServerMessageConfirm {
   type: 'confirm';
   message: string;
@@ -322,6 +333,7 @@ export type SocketServerMessage =
   | ServerMessageInitClient
   | ServerMessageLoginUsers
   | ServerMessageLogoutUsers
+  | ServerMessageSetPermissions
   | ServerMessageEditingCanvas
   | ServerMessageSelectedCanvasObject
   | ServerMessageUnselectedCanvasObject
@@ -334,6 +346,7 @@ export type SocketServerMessage =
   | ServerMessageMergeCanvas
   | ServerMessageDeleteWhiteboard
   | ServerMessageSetCursorPos
+  | ServerMessageEvict
   | ServerMessageConfirm
   | ServerMessageNotify
   | ServerMessageError
