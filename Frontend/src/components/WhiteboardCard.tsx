@@ -23,7 +23,7 @@ import {
   toast,
 } from 'react-toastify';
 
-import { Trash2 } from 'lucide-react';
+import { FilePen, Share, Trash2 } from 'lucide-react';
 
 // -- local imports
 import api from '@/api/axios';
@@ -101,6 +101,18 @@ function WhiteboardCard({
 
   const [expanded, setExpanded] = useState(false);
 
+  const {
+    Modal: RenameModal,
+    openModal: openRenameModal,
+    closeModal: closeRenameModal,
+  } = useModal();
+
+  const {
+    Modal: ShareModal,
+    openModal: openShareModal,
+    closeModal: closeShareModal
+  } = useModal();
+  
   const {
     Modal: DeletionModal,
     openModal: openDeletionModal,
@@ -187,8 +199,13 @@ function WhiteboardCard({
             src={thumbnail_url || "/images/testThumbnail.png"}
             alt="Whiteboard Thumbnail"
           />
-          <div className="px-2 pt-2 pb-1">
-            <h1 className="text-md text-h2-text font-bold truncate" title={name}>{name}</h1>
+          <div className="px-5 py-3 bg-page-background border-b">
+            <h1 
+              className="text-md text-h2-text font-bold truncate" 
+              title={name}
+            >
+              {name}
+            </h1>
           </div>
         </Link>
 
@@ -250,23 +267,48 @@ function WhiteboardCard({
           </div>
         </div>
 
-        {
-          /** If this is whiteboard is owned by the user, give them the option
-           * to delete it. **/
-          (variant.name === 'own_whiteboard')
-            && (
-              <div className='flex justify-end p-1'>
-                <Button
-                  className='bg-transparent text-destructive'
-                  onClick={openDeletionModal}
-                >
-                  <Trash2 />
-                </Button>
-              </div>
+        
+        <div className='flex justify-center bg-page-background m-2 mt-0 rounded-lg gap-16'>
+          {
+            /** Only owners and editors can edit the whiteboard name **/
+            (variant.name === 'own_whiteboard') && (
+              <Button
+                className='bg-transparent'
+                onClick={openRenameModal}
+                title="Rename whiteboard"
+              >
+                <FilePen />
+              </Button>
+            )
+          }
+          {/* All user permissions can share the whiteboards */}
+          <Button
+            className='bg-transparent'
+            onClick={openShareModal}
+            title="Share whiteboard"
+          >
+            <Share />
+          </Button>
+          {
+            /** Only owners of the whiteboard can delete it **/
+            (variant.name === 'own_whiteboard') && (
+              <Button
+                className='bg-transparent text-destructive'
+                onClick={openDeletionModal}
+                title="Delete whiteboard"
+              >
+                <Trash2 />
+              </Button>
             )
             || null
-        }
+          }
+        </div>
       </div>
+
+      {/** Modal that opens to rename the whiteboard **/}
+      
+      {/** Modal that opens to share the whiteboard **/}
+      
 
       {/** Modal for whiteboard deletion form **/}
       <DeletionModal
