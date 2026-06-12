@@ -61,12 +61,39 @@ pub struct ClientStateBase {
     pub whiteboard_ref: Arc<Mutex<Whiteboard>>,
     pub jwt_secret: String,
     // The permission (view/edit/own) the user has on the current whiteboard
+    // -- TODO: condense into just whiteboard, client, and edit mutexes
+    // -- Replace separate loops with one check for unauthenticated vs authenticated
     pub active_clients: Arc<Mutex<HashMap<ClientIdType, UserSummary>>>,
     pub clients_by_user_id: Arc<Mutex<OneToMany<UserIdType, ClientIdType>>>,
     // -- tracking which client is selecting, thereby currently owns, a given canvas object
     pub selectors_to_canvas_objects: Arc<Mutex<OneToOne<ClientIdType, CanvasObjectIdType>>>,
     pub edits: Arc<Mutex<Vec<Edit>>>,
 } // -- end pub struct ClientStateBase
+
+impl ClientStateBase {
+    // === pub fn authenticated_state ==============================================================
+    //
+    // Determines if the client is currently authenticated. If so, returns the authenticated
+    // extension of the client state, including the client's user permission and user summary.
+    //
+    // =============================================================================================
+    pub async fn authenticated_state<'a>(&'a self) -> Option<ClientStateAuthenticated<'a>> {
+        let wb = self.whiteboard_ref.lock().await;
+        let active_clients = self.active_clients.lock().await;
+
+        if let Some(user_summ) = active_clients.get(&self.client_id) {
+            if let Some(perm) = wb.metadata().permission_for_user(&user_summ.user_id) {
+                return Some(ClientStateAuthenticated {
+                    base: self,
+                    user_summary: user_summ.clone(),
+                    user_whiteboard_permission: perm.clone(),
+                })
+            }
+        }
+
+        None
+    }// -- end pub fn authenticated_state
+}// -- end impl ClientStateBase
 
 // === pub struct ClientStateAuthenticated =========================================================
 //
@@ -89,6 +116,18 @@ impl <'a> ClientStateAuthenticated <'a> {
         )
     }// -- end pub fn generate_edit
 }// -- end impl <'a> ClientStateAuthenticated <'a>
+
+impl <'a> std::cmp::PartialEq for ClientStateAuthenticated <'a> {
+    fn eq(&self, other: &Self) -> bool {
+        return std::ptr::from_ref(self.base) == std::ptr::from_ref(other.base)
+            && self.user_summary == other.user_summary
+            && self.user_whiteboard_permission == other.user_whiteboard_permission;
+    }// -- end fn eq
+
+    fn ne(&self, other: &Self) -> bool {
+        ! self.eq(other)
+    }// -- end fn ne
+}// -- end impl PartialEq for ClientStateAuthenticated
 
 // === Connection State ===========================================================================
 //
@@ -123,9 +162,8 @@ pub struct ClientMessageResponse {
     pub notifications: Vec<Notification>,
 }// -- end pub struct ClientMessageResponse
 
-pub struct ClientMessageUnauthenticatedResponse <'a> {
+pub struct ClientMessageUnauthenticatedResponse {
     pub base: ClientMessageResponse,
-    pub authenticated_state: Option<ClientStateAuthenticated <'a>>,
 }// -- end pub struct ClientMessageUnauthenticatedResponse
 
 // Handle raw messages from clients. Assume client has already authenticated.
@@ -930,12 +968,12 @@ pub async fn handle_authenticated_client_message<'a>(
 // @param client_msg_s          -- Content of client message
 // @return                      -- Messages to send to clients
 pub async fn handle_unauthenticated_client_message<
-    'a, StoreType: UserStore + WhiteboardMetadataStore,
+    StoreType: UserStore + WhiteboardMetadataStore,
 >(
-    client_state: &'a ClientStateBase,
+    client_state: &ClientStateBase,
     store: &StoreType,
     client_msg_s: &str,
-) -> ClientMessageUnauthenticatedResponse <'a> {
+) -> ClientMessageUnauthenticatedResponse {
     use super::jwt::get_user_id_from_jwt;
 
     match serde_json::from_str::<ClientSocketMessage>(client_msg_s) {
@@ -954,7 +992,6 @@ pub async fn handle_unauthenticated_client_message<
                             println!("Error parsing user_id from jwt: {}", e);
 
                             return ClientMessageUnauthenticatedResponse {
-                                authenticated_state: None,
                                 base: ClientMessageResponse {
                                     messages: vec![ServerSocketMessage::Individual {
                                         target_client_id: client_state.client_id.clone(),
@@ -974,7 +1011,6 @@ pub async fn handle_unauthenticated_client_message<
                             println!("Error fetching user by id: {}", e);
 
                             return ClientMessageUnauthenticatedResponse {
-                                authenticated_state: None,
                                 base: ClientMessageResponse {
                                     messages: vec![ServerSocketMessage::Individual {
                                         target_client_id: client_state.client_id.clone(),
@@ -990,7 +1026,6 @@ pub async fn handle_unauthenticated_client_message<
                         }
                         Ok(None) => {
                             return ClientMessageUnauthenticatedResponse {
-                                authenticated_state: None,
                                 base: ClientMessageResponse {
                                     messages: vec![ServerSocketMessage::Individual {
                                         target_client_id: client_state.client_id.clone(),
@@ -1061,24 +1096,26 @@ pub async fn handle_unauthenticated_client_message<
                                 .lock().await;
 
                             ClientMessageUnauthenticatedResponse {
-                                authenticated_state: Some(ClientStateAuthenticated {
-                                    base: &client_state,
-                                    user_summary: user_summary.clone(),
-                                    user_whiteboard_permission: permission,
-                                }),
                                 base: ClientMessageResponse {
-                                    messages: vec![ServerSocketMessage::Individual {
-                                        target_client_id: client_state.client_id.clone(),
-                                        msg: ServerSocketIndividualMessage::InitClient {
-                                            client_id: client_state.client_id.clone(),
-                                            whiteboard: whiteboard.to_client_view(),
-                                            active_clients,
-                                            selectors_by_canvas_objects: selectors_to_canvas_objects
-                                                .iter_key_value()
-                                                .map(|(selector_id, obj_id)| (obj_id.clone(), selector_id.clone()))
-                                                .collect()
+                                    messages: vec![
+                                        ServerSocketMessage::Broadcast {
+                                            msg: ServerSocketBroadcastMessage::LoginUsers {
+                                                users: vec![ user_summary.clone() ],
+                                            },
                                         },
-                                    }],
+                                        ServerSocketMessage::Individual {
+                                            target_client_id: client_state.client_id.clone(),
+                                            msg: ServerSocketIndividualMessage::InitClient {
+                                                client_id: client_state.client_id.clone(),
+                                                whiteboard: whiteboard.to_client_view(),
+                                                active_clients,
+                                                selectors_by_canvas_objects: selectors_to_canvas_objects
+                                                    .iter_key_value()
+                                                    .map(|(selector_id, obj_id)| (obj_id.clone(), selector_id.clone()))
+                                                    .collect()
+                                            },
+                                        }
+                                    ],
                                     notifications: vec![],
                                 },
                             }
@@ -1086,7 +1123,6 @@ pub async fn handle_unauthenticated_client_message<
                     } else {
                         // User has no valid permission; send back an error message
                         return ClientMessageUnauthenticatedResponse {
-                            authenticated_state: None,
                             base: ClientMessageResponse {
                                 messages: vec![ServerSocketMessage::Individual {
                                     target_client_id: client_state.client_id.clone(),
@@ -1101,7 +1137,6 @@ pub async fn handle_unauthenticated_client_message<
                 }
                 // -- All other messages should be responded to with an individual error
                 _ => ClientMessageUnauthenticatedResponse {
-                    authenticated_state: None,
                     base: ClientMessageResponse {
                         messages: vec![ServerSocketMessage::Individual {
                             target_client_id: client_state.client_id.clone(),
@@ -1119,7 +1154,6 @@ pub async fn handle_unauthenticated_client_message<
             println!("Reason: {}", e);
 
             ClientMessageUnauthenticatedResponse {
-                authenticated_state: None,
                 base: ClientMessageResponse {
                     messages: vec![ServerSocketMessage::Individual {
                         target_client_id: client_state.client_id.clone(),
@@ -1787,8 +1821,8 @@ mod unit_tests {
             WhiteboardPermissionEnum, WhiteboardPermissionType, WhiteboardVisibilityEnum,
         };
         use mongodb::bson::oid::ObjectId;
-        use protocol::{ServerSocketMessage,ServerSocketIndividualMessage};
-        use server::{ClientStateBase, handle_unauthenticated_client_message};
+        use protocol::{ServerSocketMessage,ServerSocketIndividualMessage,ServerSocketBroadcastMessage};
+        use server::{ClientStateBase, ClientStateAuthenticated, handle_unauthenticated_client_message};
         use sha2::Sha256;
         use std::sync::Arc;
         use utils::generate_unique_client_id;
@@ -1864,6 +1898,12 @@ mod unit_tests {
         // -- create authentication message (json)
         let client_login_msg_s = format!(r#"{{ "type": "login", "jwt": "{}" }}"#, token_s);
 
+        let expected_user_summary = UserSummary {
+            client_id: test_client_id.clone(),
+            user_id: target_uid.clone(),
+            username: String::from("bob"),
+        };
+
         // -- attempt login
         let resp = handle_unauthenticated_client_message(
             &client_state,
@@ -1872,10 +1912,27 @@ mod unit_tests {
         )
         .await;
 
-        let msg = resp
-            .base
-            .messages
-            .into_iter()
+        // -- check for login broadcast message
+        let mut iter_messages = resp.base.messages.into_iter();
+
+        let msg = iter_messages
+            .next()
+            .expect("Response to client login message");
+
+        match msg {
+            ServerSocketMessage::Broadcast {
+                msg: ServerSocketBroadcastMessage::LoginUsers {
+                    users,
+                },
+            } => {
+                debug_assert_eq!(users, vec![ expected_user_summary.clone() ]);
+            }
+            bad_resp => {
+                panic!("Expected LoginUsers message, got {:?}", bad_resp);
+            }
+        };
+        // -- check for init client message
+        let msg = iter_messages
             .next()
             .expect("Response to client login message");
 
@@ -1889,13 +1946,9 @@ mod unit_tests {
                     selectors_by_canvas_objects,
                 },
             } => {
-                let auth_state = resp.authenticated_state.expect("Authenticated state");
-                let user_perm = auth_state.user_whiteboard_permission;
-
                 assert_eq!(target_client_id, test_client_id);
                 assert_eq!(client_id, test_client_id);
                 assert_eq!(whiteboard_view, whiteboard.to_client_view());
-                assert_eq!(user_perm, WhiteboardPermissionEnum::Edit);
                 assert_eq!(
                     active_clients,
                     HashMap::from([(
@@ -1913,6 +1966,17 @@ mod unit_tests {
                 panic!("Expected InitClient message, got {:?}", bad_resp);
             }
         };
+
+        // -- Ensure that the client state is now considered authenticated
+        debug_assert_eq!(client_state.authenticated_state().await, Some(ClientStateAuthenticated {
+            base: &client_state,
+            user_summary: UserSummary {
+                client_id: test_client_id.clone(),
+                user_id: target_uid.clone(),
+                username: String::from("bob"),
+            },
+            user_whiteboard_permission: WhiteboardPermissionEnum::Edit,
+        }));
     } // -- end fn fetch_permanent_user_from_mongodb_user_store
 
     // === fetch_permanent_user_from_mongodb_user_store ===========================================

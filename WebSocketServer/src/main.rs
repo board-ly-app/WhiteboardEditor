@@ -472,8 +472,8 @@ async fn handle_connection(
             let mongo_interface = MongoDBInterface::new(&db);
 
             async move {
-                // Handle client messages in this loop until user authenticates
-                let client_state_authenticated = 'auth: loop {
+                // Handle client messages in this loop
+                loop {
                     let msg = if let Some(Ok(msg)) = user_ws_rx.next().await {
                         msg
                     } else {
@@ -490,9 +490,13 @@ async fn handle_connection(
                     }
 
                     if let Ok(msg_s) = msg.to_str() {
-                        let resp =
+                        let resp = if let Some(auth_state) = client_state_base.authenticated_state().await {
+                            handle_authenticated_client_message(&auth_state, msg_s).await
+                        } else {
                             handle_unauthenticated_client_message(&client_state_base, &mongo_interface, msg_s)
-                                .await;
+                                .await
+                                .base
+                        };// -- end let resp
 
                         // -- update database, if there are edits
                         {
@@ -509,94 +513,13 @@ async fn handle_connection(
 
 
                         // -- send response to clients, if requested
-                        for r in resp.base.messages.iter() {
+                        for r in resp.messages.iter() {
                            if let Err(e) = tx.send(r.clone()) {
                                eprintln!("ERROR: failed to send message to client: {:?}", e);
                            }
-                        }
-
-                        if let Some(authenticated_state) = resp.authenticated_state {
-                            break 'auth authenticated_state;
-                        }
-                    }
-                };// -- end let client_state_authenticated = 'auth: loop
-
-                // -- Broadcast client login
-               if let Err(e) = tx.send(ServerSocketMessage::Broadcast {
-                    msg: ServerSocketBroadcastMessage::LoginUsers {
-                        users: vec![ client_state_authenticated.user_summary.clone() ],
-                    },
-                }) {
-                    eprintln!("ERROR: failed to send message to client: {:?}", e);
-               }
-
-                // -- Now that client has authenticated, handle client messages in this loop
-                while let Some(Ok(msg)) = user_ws_rx.next().await {
-                    // -- check for whiteboard deletion; if whiteboard deleted, break connection
-                    {
-                        let whiteboard = client_state_base.whiteboard_ref.lock().await;
-
-                        if !whiteboard.is_active() {
-                            return;
-                        }
-                    }
-
-                    if let Ok(msg_s) = msg.to_str() {
-                        let mut resp =
-                            handle_authenticated_client_message(&client_state_authenticated, msg_s).await;
-
-                        // -- send notifications to logged-in users, save notifications to database
-                        // for other users
-                        {
-                            let clients_by_user_ids = client_state_base.clients_by_user_id.lock().await;
-
-                            for nt in resp.notifications.iter_mut() {
-                                // -- If user is currently logged in, send them the notification
-                                // directly
-                                if let Some(client_ids) = clients_by_user_ids
-                                    .get_values_by_key(&nt.recipient) {
-                                        // -- set notification to sent
-                                        // -- TODO: move this logic to individual sender to confirm
-                                        // receipt by client
-                                        nt.is_sent = true;
-
-                                        for client_id in client_ids.iter() {
-                                            resp.messages.push(ServerSocketMessage::Individual {
-                                                target_client_id: client_id.clone(),
-                                                msg: ServerSocketIndividualMessage::Notify {
-                                                    notification: NotificationClientView::from_notification(&nt)
-                                                },
-                                            });
-                                        }// -- end for client_id
-                                }
-
-                                // -- save notification to database
-                                mongo_interface.save_notification(nt).await;
-                            }// -- end for nt
-                        }
-
-                        // -- update database and local edit history, if there are edits
-                        {
-                            let mut edits = client_state_base.edits.lock().await;
-
-                            // -- update local edit history
-                            
-                            for edit in edits.iter() {
-                                // -- don't wait for mongo to finish processing database updates
-                                mongo_interface.process_edit(edit).await;
-                            }// -- end for edit in edits.iter()
-
-                            edits.clear();
-                        }
-
-                        // -- send response to clients, if requested
-                        for r in resp.messages.iter() {
-                            if let Err(e) = tx.send(r.clone()) {
-                                eprintln!("Failed to send message to client: {:?}", e);
-                            }
                         }// -- end for r
                     }
-                } // end while let Some(Ok(msg)) = user_ws_rx.next().await
+                }// -- end loop
             }
         })
     };
