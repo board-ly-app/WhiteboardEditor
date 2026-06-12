@@ -81,6 +81,7 @@ import {
   setClientId,
   setClientCursorPos,
   addWhiteboard,
+  updateWhiteboard,
   deleteWhiteboard,
   setWhiteboardStatus,
   setCanvasObjects,
@@ -234,6 +235,21 @@ const WebSocketClientMessengerProvider = ({
               // -- remove logged out users
               removeActiveUsers(dispatch, clients);
             } 
+            break;
+          case 'set_permissions':
+            {
+              console.log('!! set_permissions:', msg);
+
+              const {
+                permissionsByEmail,
+                permissionsByUserId,
+              } = msg;
+
+              updateWhiteboard(dispatch, whiteboardId, {
+                permissionsByUserId,
+                permissionsByEmail,
+              });
+            }
             break;
           case 'editing_canvas':
             {
@@ -426,6 +442,31 @@ const WebSocketClientMessengerProvider = ({
 
             // -- update cursor in state store
             setClientCursorPos(dispatch, clientId, x, y);
+          }
+          break;
+          case 'evict':
+          {
+            const {
+              reason,
+            } = msg;
+
+            toast.warn(`You have been evicted from this whiteboard: ${reason}`);
+
+            // -- set whiteboard status to "deleting"
+            setWhiteboardStatus(dispatch, whiteboardId, "deleting");
+
+            // -- close connection
+            if (webSocketRef.current) {
+              webSocketRef.current.close();
+            }
+
+            // -- set timeout for changing status from "deleting" to "deleted"
+            window.setTimeout(
+              () => {
+                deleteWhiteboard(dispatch, whiteboardId);
+              },
+              WHITEBOARD_DELETED_NOTIFICATION_NUM_MILLIS
+            );
           }
           break;
           case 'confirm':

@@ -5,6 +5,7 @@
 // =================================================================================================
 
 use std::collections::{
+    hash_map,
     HashMap,
     BTreeSet,
 };
@@ -26,6 +27,20 @@ pub struct OneToMany <K, V> {
     keys_by_value: HashMap<V, K>,
 }// -- end pub struct OneToMany
 
+pub struct OneToManyIter <'a, K, V> {
+    keys_by_value_iter: hash_map::Iter<'a, V, K>,
+}// -- end pub struct OneToManyIter
+
+impl <'a, K, V> std::iter::Iterator for OneToManyIter<'a, K, V> {
+    type Item = (&'a K, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next_vk = self.keys_by_value_iter.next();
+
+        next_vk.map(|(v, k)| (k, v))
+    }// -- end fn next
+}// -- end impl std::iter::Iterator for OneToManyIter
+
 impl <K: Clone + std::hash::Hash + Ord, V: Clone + std::hash::Hash + Ord> OneToMany <K, V> {
     pub fn new() -> Self {
         Self {
@@ -37,6 +52,12 @@ impl <K: Clone + std::hash::Hash + Ord, V: Clone + std::hash::Hash + Ord> OneToM
     pub fn len(&self) -> usize {
         self.keys_by_value.len()
     }// -- end pub fn len
+
+    pub fn iter(&self) -> OneToManyIter<'_, K, V> {
+        OneToManyIter {
+            keys_by_value_iter: self.keys_by_value.iter(),
+        }
+    }// -- end pub fn iter
 
     pub fn insert(&mut self, key: K, value: V) {
         // -- remove old value => key mapping, if present

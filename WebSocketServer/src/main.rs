@@ -22,7 +22,12 @@ use mongodb::{
 async fn main() -> process::ExitCode {
     use wss::{
         db::connect_mongodb,
-        models::{WhiteboardIdType, WhiteboardMongoDBView},
+        models::{
+            WhiteboardIdType,
+            WhiteboardMongoDBView,
+            WhiteboardPermissionEnumClientView,
+            WhiteboardVisibilityEnum,
+        },
         protocol::{ServerSocketMessage,ServerSocketBroadcastMessage},
         server::{ConnectionState, ProgramState},
     };
@@ -61,7 +66,7 @@ async fn main() -> process::ExitCode {
     });
 
     // -- spawn thread to watch for changes to whiteboards collection
-    let whiteboard_deletion_checker_thread = {
+    let whiteboard_watcher_thread = {
         let connection_state_ref = Arc::clone(&connection_state_ref);
         let db = match mongo_client.default_database() {
             None => {
@@ -76,7 +81,9 @@ async fn main() -> process::ExitCode {
 
         tokio::spawn(async move {
             let whiteboard_coll = db.collection::<WhiteboardMongoDBView>("whiteboards");
-            let mut wb_change_stream = match whiteboard_coll.watch().await {
+            let mut wb_change_stream = match whiteboard_coll.watch()
+                    .full_document(mongodb::options::FullDocumentType::UpdateLookup)
+                    .await {
                 Err(e) => panic!(
                     "Could not subscribe to change stream on whiteboards collection: {}",
                     e
@@ -85,8 +92,96 @@ async fn main() -> process::ExitCode {
             };
 
             // TODO: replace while-let with loop that includes error logging
-            while let Ok(Some(event)) = wb_change_stream.next().await.transpose() {
+            'next_event: while let Ok(Some(event)) = wb_change_stream.next().await.transpose() {
                 match event.operation_type {
+                    // -- check for permission updates
+                    mongodb::change_stream::event::OperationType::Update => {
+                        if let Some(curr_doc) = event.full_document {
+                            let mut whiteboards =
+                                connection_state_ref.program_state.whiteboards.lock().await;
+
+                            if let Some(wb_entry) = whiteboards.get_mut(&curr_doc.id) {
+                                let mut wb = wb_entry.whiteboard_ref.lock().await;
+
+                                // -- check that permissions have changed
+                                'check_perm_change: {
+                                    let wb_meta = wb.metadata();
+                                    let n_prev_perms = wb_meta.permissions_by_user_id().len()
+                                        + wb_meta.permissions_by_email().len();
+
+                                    if n_prev_perms == curr_doc.metadata.user_permissions.len() {
+                                        for perm in curr_doc.metadata.user_permissions.iter() {
+                                            match &perm.permission_type {
+                                                wss::models::WhiteboardPermissionType::User {
+                                                    user: user_id,
+                                                    ..
+                                                } => {
+                                                    if let Some(prev_perm) = wb_meta.permissions_by_user_id().get(&user_id) {
+                                                        if *prev_perm != perm.permission {
+                                                            break 'check_perm_change;
+                                                        }
+                                                    } else {
+                                                        break 'check_perm_change;
+                                                    }
+                                                },
+                                                wss::models::WhiteboardPermissionType::Email {
+                                                    email,
+                                                } => {
+                                                    if let Some(prev_perm) = wb_meta.permissions_by_email().get(email.as_str()) {
+                                                        if *prev_perm != perm.permission {
+                                                            break 'check_perm_change;
+                                                        }
+                                                    } else {
+                                                        break 'check_perm_change;
+                                                    }
+                                                },
+                                            };// -- end match
+                                        }// -- end for perm
+
+                                        continue 'next_event;
+                                    }
+                                }
+
+                                // -- change metadata
+                                wb.set_permissions(curr_doc.metadata.user_permissions.as_slice());
+
+                                let wb_meta = wb.metadata();
+
+                                // -- evict users whose permissions have been revoked if the
+                                // whiteboard is private
+                                if wb_meta.visibility() == WhiteboardVisibilityEnum::Private {
+                                    let clients_by_user_id = wb_entry.clients_by_user_id.lock().await;
+
+                                    // -- evict users whose permissions have been completely removed
+                                    for (user_id, client_id) in clients_by_user_id.iter() {
+                                        if ! wb_meta.permissions_by_user_id().contains_key(user_id) {
+                                            let _ = wb_entry
+                                                .broadcaster
+                                                .send(ServerSocketMessage::Evict {
+                                                    evicted_client_id: client_id.clone(),
+                                                    reason: String::from("Access revoked"),
+                                                });
+                                        }
+                                    }// -- end for
+                                }
+
+                                // -- broadcast updated permissions to clients
+                                let _ = wb_entry
+                                    .broadcaster
+                                    .send(ServerSocketMessage::Broadcast {
+                                        msg: ServerSocketBroadcastMessage::SetPermissions {
+                                            permissions_by_user_id: wb_meta.permissions_by_user_id().iter()
+                                                .map(|(uid, perm)| (uid.clone(), WhiteboardPermissionEnumClientView::from_permission_enum(&perm)))
+                                                .collect(),
+                                            permissions_by_email: wb_meta.permissions_by_email().iter()
+                                                .map(|(email, perm)| (email.clone(), WhiteboardPermissionEnumClientView::from_permission_enum(&perm)))
+                                                .collect(),
+                                        },
+                                    });
+                            }
+                        }
+                    },
+                    // -- whiteboard deleted
                     mongodb::change_stream::event::OperationType::Delete => {
                         if let Some(doc) = event.document_key
                             && let Some(bson::Bson::ObjectId(wb_id)) = doc.get("_id") {
@@ -106,9 +201,6 @@ async fn main() -> process::ExitCode {
                                                 .send(ServerSocketMessage::Broadcast {
                                                     msg: ServerSocketBroadcastMessage::DeleteWhiteboard,
                                                 });
-
-                                            // TODO: end connections
-                                            // whiteboard_entry.broadcaster.closed
                                         }
 
                                         // delete entry
@@ -122,7 +214,7 @@ async fn main() -> process::ExitCode {
                 };
             } // -- end while event
         })
-    }; // -- end let whiteboard_deletion_checker_thread
+    }; // -- end let whiteboard_watcher_thread
 
     let connection_state_ref_filter = warp::any().map({
         let connection_state_ref = Arc::clone(&connection_state_ref);
@@ -142,9 +234,9 @@ async fn main() -> process::ExitCode {
     println!("Rust WebSocket server running at ws://{}", addr);
     warp::serve(ws_route).run(addr).await;
 
-    // -- abort and reap whiteboard deletion checker thread
-    whiteboard_deletion_checker_thread.abort();
-    let _ = whiteboard_deletion_checker_thread.await;
+    // -- abort and reap whiteboard watcher thread
+    whiteboard_watcher_thread.abort();
+    let _ = whiteboard_watcher_thread.await;
 
     process::ExitCode::SUCCESS
 } // end async fn main()
@@ -316,6 +408,7 @@ async fn handle_connection(
                     },
                     Broadcast { msg } => {
                         let json = serde_json::to_string(&msg).unwrap();
+
                         if user_ws_tx.send(Message::text(json)).await.is_err() {
                             break;
                         }
@@ -328,6 +421,20 @@ async fn handle_connection(
                             }
                         }
                     },
+                    Evict {
+                        evicted_client_id,
+                        reason,
+                    } => {
+                        if matches!(evicted_client_id.cmp(&current_client_id), Ordering::Equal) {
+                            // -- send eviction notification and disconnect
+                            let json = serde_json::to_string(&ServerSocketIndividualMessage::Evict {
+                                reason,
+                            }).unwrap();
+
+                            let _ = user_ws_tx.send(Message::text(json)).await;
+                            break;
+                        }
+                    }
                 };// -- end match msg
             }
         })
@@ -365,8 +472,8 @@ async fn handle_connection(
             let mongo_interface = MongoDBInterface::new(&db);
 
             async move {
-                // Handle client messages in this loop until user authenticates
-                let client_state_authenticated = 'auth: loop {
+                // Handle client messages in this loop
+                loop {
                     let msg = if let Some(Ok(msg)) = user_ws_rx.next().await {
                         msg
                     } else {
@@ -383,9 +490,13 @@ async fn handle_connection(
                     }
 
                     if let Ok(msg_s) = msg.to_str() {
-                        let resp =
+                        let resp = if let Some(auth_state) = client_state_base.authenticated_state().await {
+                            handle_authenticated_client_message(&auth_state, msg_s).await
+                        } else {
                             handle_unauthenticated_client_message(&client_state_base, &mongo_interface, msg_s)
-                                .await;
+                                .await
+                                .base
+                        };// -- end let resp
 
                         // -- update database, if there are edits
                         {
@@ -402,94 +513,13 @@ async fn handle_connection(
 
 
                         // -- send response to clients, if requested
-                        for r in resp.base.messages.iter() {
+                        for r in resp.messages.iter() {
                            if let Err(e) = tx.send(r.clone()) {
                                eprintln!("ERROR: failed to send message to client: {:?}", e);
                            }
-                        }
-
-                        if let Some(authenticated_state) = resp.authenticated_state {
-                            break 'auth authenticated_state;
-                        }
-                    }
-                };// -- end let client_state_authenticated = 'auth: loop
-
-                // -- Broadcast client login
-               if let Err(e) = tx.send(ServerSocketMessage::Broadcast {
-                    msg: ServerSocketBroadcastMessage::LoginUsers {
-                        users: vec![ client_state_authenticated.user_summary.clone() ],
-                    },
-                }) {
-                    eprintln!("ERROR: failed to send message to client: {:?}", e);
-               }
-
-                // -- Now that client has authenticated, handle client messages in this loop
-                while let Some(Ok(msg)) = user_ws_rx.next().await {
-                    // -- check for whiteboard deletion; if whiteboard deleted, break connection
-                    {
-                        let whiteboard = client_state_base.whiteboard_ref.lock().await;
-
-                        if !whiteboard.is_active() {
-                            return;
-                        }
-                    }
-
-                    if let Ok(msg_s) = msg.to_str() {
-                        let mut resp =
-                            handle_authenticated_client_message(&client_state_authenticated, msg_s).await;
-
-                        // -- send notifications to logged-in users, save notifications to database
-                        // for other users
-                        {
-                            let clients_by_user_ids = client_state_base.clients_by_user_id.lock().await;
-
-                            for nt in resp.notifications.iter_mut() {
-                                // -- If user is currently logged in, send them the notification
-                                // directly
-                                if let Some(client_ids) = clients_by_user_ids
-                                    .get_values_by_key(&nt.recipient) {
-                                        // -- set notification to sent
-                                        // -- TODO: move this logic to individual sender to confirm
-                                        // receipt by client
-                                        nt.is_sent = true;
-
-                                        for client_id in client_ids.iter() {
-                                            resp.messages.push(ServerSocketMessage::Individual {
-                                                target_client_id: client_id.clone(),
-                                                msg: ServerSocketIndividualMessage::Notify {
-                                                    notification: NotificationClientView::from_notification(&nt)
-                                                },
-                                            });
-                                        }// -- end for client_id
-                                }
-
-                                // -- save notification to database
-                                mongo_interface.save_notification(nt).await;
-                            }// -- end for nt
-                        }
-
-                        // -- update database and local edit history, if there are edits
-                        {
-                            let mut edits = client_state_base.edits.lock().await;
-
-                            // -- update local edit history
-                            
-                            for edit in edits.iter() {
-                                // -- don't wait for mongo to finish processing database updates
-                                mongo_interface.process_edit(edit).await;
-                            }// -- end for edit in edits.iter()
-
-                            edits.clear();
-                        }
-
-                        // -- send response to clients, if requested
-                        for r in resp.messages.iter() {
-                            if let Err(e) = tx.send(r.clone()) {
-                                eprintln!("Failed to send message to client: {:?}", e);
-                            }
                         }// -- end for r
                     }
-                } // end while let Some(Ok(msg)) = user_ws_rx.next().await
+                }// -- end loop
             }
         })
     };

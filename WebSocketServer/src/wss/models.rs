@@ -329,7 +329,8 @@ pub struct WhiteboardClientView {
     pub root_canvas: CanvasIdType,
     pub visibility: WhiteboardVisibilityEnum,
     #[serde_as(as = "HashMap<DisplayFromStr, _>")]
-    pub permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
+    pub permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnumClientView>,
+    pub permissions_by_email: HashMap<String, WhiteboardPermissionEnumClientView>,
 } // -- end struct WhiteboardClientView
 
 // === CanvasParentRef ============================================================================
@@ -550,6 +551,36 @@ pub enum WhiteboardPermissionEnum {
     Own,
 }
 
+#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum WhiteboardPermissionEnumClientView {
+    View,
+    Edit,
+    Own,
+}
+
+impl WhiteboardPermissionEnumClientView {
+    pub fn from_permission_enum(perm: &WhiteboardPermissionEnum) -> Self {
+        use WhiteboardPermissionEnum::*;
+
+        match perm {
+            View => Self::View,
+            Edit => Self::Edit,
+            Own => Self::Own,
+        }// -- end match perm
+    }// -- end pub fn from_permission_enum
+
+    pub fn to_permission_enum(&self) -> WhiteboardPermissionEnum {
+        use WhiteboardPermissionEnum::*;
+
+        match self {
+            Self::View => View,
+            Self::Edit => Edit,
+            Self::Own => Own,
+        }// -- end match self
+    }// -- end pub fn to_permission_enum
+}// -- end impl WhiteboardPermissionEnumClientView
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(
     tag = "type",
@@ -589,26 +620,44 @@ pub type WhiteboardPermissionClientView = WhiteboardPermission;
 pub struct WhiteboardMetadata {
     name: String,
     visibility: WhiteboardVisibilityEnum,
-    user_permissions: Vec<WhiteboardPermission>,
     // For permissions attached to an existing account, index by user id, to enable faster
     // retrieval when users log in.
     permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
+    // -- email address => permission
+    permissions_by_email: HashMap<String, WhiteboardPermissionEnum>,
 } // -- end WhiteboardMetadata
 
 impl WhiteboardMetadata {
     pub fn new(
         name: String,
         visibility: WhiteboardVisibilityEnum,
-        user_permissions: Vec<WhiteboardPermission>,
-        permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnum>,
+        permissions: &[WhiteboardPermission],
     ) -> Self {
+        let mut permissions_by_user_id = HashMap::<UserIdType, WhiteboardPermissionEnum>::new();
+        let mut permissions_by_email = HashMap::<String, WhiteboardPermissionEnum>::new();
+
+        for perm in permissions.iter() {
+            match &perm.permission_type {
+                WhiteboardPermissionType::User {
+                    user: user_id, ..
+                } => {
+                    let _ = permissions_by_user_id.insert(user_id.clone(), perm.permission.clone());
+                },
+                WhiteboardPermissionType::Email {
+                    email,
+                } => {
+                    let _ = permissions_by_email.insert(email.clone(), perm.permission.clone());
+                },
+            };// -- end match perm.permission_type
+        }// -- end for perm
+
         Self {
             name,
             visibility,
-            user_permissions,
             permissions_by_user_id,
+            permissions_by_email,
         }
-    }
+    }// -- end fn new
 
     pub fn name(&self) -> &str {
         &self.name
@@ -618,9 +667,13 @@ impl WhiteboardMetadata {
         self.visibility
     }
 
-    pub fn user_permissions(&self) -> &[WhiteboardPermission] {
-        &self.user_permissions
-    }
+    pub fn permissions_by_user_id(&self) -> &HashMap<UserIdType, WhiteboardPermissionEnum> {
+        &self.permissions_by_user_id
+    }// -- end pub fn permissions_by_user_id
+
+    pub fn permissions_by_email(&self) -> &HashMap<String, WhiteboardPermissionEnum> {
+        &self.permissions_by_email
+    }// -- end pub fn permissions_by_email
 
     pub fn permission_for_user(&self, user_id: &UserIdType) -> Option<WhiteboardPermissionEnum> {
         if self.visibility == WhiteboardVisibilityEnum::Public {
@@ -687,7 +740,16 @@ impl Whiteboard {
                 .collect(),
             root_canvas: self.root_canvas,
             visibility: self.metadata.visibility(),
-            permissions_by_user_id: self.metadata.permissions_by_user_id.clone(),
+            permissions_by_user_id: self.metadata.permissions_by_user_id.iter()
+                .map(|(uid, perm)|
+                    (uid.clone(), WhiteboardPermissionEnumClientView::from_permission_enum(&perm))
+                )
+                .collect(),
+            permissions_by_email: self.metadata.permissions_by_email.iter()
+                .map(|(email, perm)|
+                    (email.clone(), WhiteboardPermissionEnumClientView::from_permission_enum(&perm))
+                )
+                .collect(),
         }
     } // end pub fn to_client_view(&self) -> CanvasClientView
 
@@ -718,6 +780,31 @@ impl Whiteboard {
     pub fn root_canvas(&self) -> &CanvasIdType {
         &self.root_canvas
     } // -- end pub fn root_canvas
+
+    pub fn set_permissions(&mut self, permissions: &[WhiteboardPermission]) {
+        self.metadata.permissions_by_user_id.clear();
+        self.metadata.permissions_by_email.clear();
+
+        for perm in permissions.iter() {
+            match &perm.permission_type {
+                WhiteboardPermissionType::User {
+                    user: user_id,
+                    ..
+                } => {
+                    self.metadata.permissions_by_user_id.insert(
+                        user_id.clone(), perm.permission.clone()
+                    );
+                },
+                WhiteboardPermissionType::Email {
+                    email,
+                } => {
+                    self.metadata.permissions_by_email.insert(
+                        email.clone(), perm.permission.clone()
+                    );
+                },
+            };// -- end match perm.permission_type
+        }// -- end for perm
+    }// -- end pub fn set_permissions
 
     pub fn push_edit(&mut self, edit: &Edit) {
         if let Some(author_edit_history) = self.edit_history_by_author.get_mut(&edit.author) {
@@ -1156,21 +1243,10 @@ pub struct WhiteboardMetadataMongoDBView {
 
 impl WhiteboardMetadataMongoDBView {
     pub fn to_whiteboard_metadata(&self) -> WhiteboardMetadata {
-        let permissions_by_user_id = self
-            .user_permissions
-            .iter()
-            .filter_map(|wb_perm| match wb_perm.permission_type {
-                WhiteboardPermissionType::User { ref user, .. } => {
-                    Some((user.clone(), wb_perm.permission))
-                }
-                _ => None,
-            })
-            .collect();
         WhiteboardMetadata::new(
             self.name.clone(),
             self.visibility,
-            self.user_permissions.clone(),
-            permissions_by_user_id,
+            self.user_permissions.as_slice(),
         )
     } // -- end fn to_whiteboard_metadata
 }
@@ -2052,3 +2128,132 @@ impl NotificationClientView {
         }
     }// -- end pub fn from_notification
 }// -- end impl NotificationClientView
+
+// === Tests =======================================================================================
+//
+// =================================================================================================
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    // === deserialize_whiteboard_client_view_basic ================================================
+    //
+    // Simple example of deserializing a serialized whiteboard client view from a JSON string into a
+    // WhiteboardClientView struct.
+    //
+    // =============================================================================================
+    #[test]
+    fn deserialize_whiteboard_client_view_basic() {
+        use serde_json;
+        use mongodb::bson::{oid::ObjectId};
+
+        const WB_ID_S : &str = "68d5e8d4829da666aece020d";
+        const WB_NAME : &str = "Whiteboard Alpha";
+        const WB_ROOT_CANVAS_ID_S : &str = "68d5e8d4829da666aece020e";
+        const USER_A_ID_S : &str = "68d5e8d4829da666aece020f";
+        const USER_B_ID_S : &str = "68d5e8d4829da666aece0210";
+        const USER_C_ID_S : &str = "68d5e8d4829da666aece0211";
+        const USER_C_EMAIL : &str = "user@example.com";
+
+        // -- Values aren't consistent: merely meant to test serde deserialization
+        let serialized_wb_s = format!(r#"{{
+            "id": "{WB_ID_S}",
+            "name": "{WB_NAME}",
+            "canvases": [],
+            "rootCanvas": "{WB_ROOT_CANVAS_ID_S}",
+            "visibility": "public",
+            "permissionsByUserId": {{
+                "{USER_A_ID_S}": "view",
+                "{USER_B_ID_S}": "edit",
+                "{USER_C_ID_S}": "own"
+            }},
+            "permissionsByEmail": {{
+                "{USER_C_EMAIL}": "view"
+            }}
+        }}"#);
+        
+        let wb_view = serde_json::from_str::<WhiteboardClientView>(serialized_wb_s.as_str())
+            .expect("Serialized whiteboard string to deserialize into WhiteboardClientView");
+
+        debug_assert_eq!(wb_view.id.unwrap().to_hex(), WB_ID_S);
+        debug_assert_eq!(wb_view.name.as_str(), WB_NAME);
+        debug_assert_eq!(wb_view.root_canvas.to_hex(), WB_ROOT_CANVAS_ID_S);
+        debug_assert_eq!(wb_view.visibility, WhiteboardVisibilityEnum::Public);
+        debug_assert_eq!(wb_view.permissions_by_user_id.len(), 3);
+        debug_assert_eq!(
+            wb_view.permissions_by_user_id.get(&ObjectId::parse_str(USER_A_ID_S).unwrap()).cloned(),
+            Some(WhiteboardPermissionEnumClientView::View)
+        );
+        debug_assert_eq!(
+            wb_view.permissions_by_user_id.get(&ObjectId::parse_str(USER_B_ID_S).unwrap()).cloned(),
+            Some(WhiteboardPermissionEnumClientView::Edit)
+        );
+        debug_assert_eq!(
+            wb_view.permissions_by_user_id.get(&ObjectId::parse_str(USER_C_ID_S).unwrap()).cloned(),
+            Some(WhiteboardPermissionEnumClientView::Own)
+        );
+        debug_assert_eq!(wb_view.permissions_by_email.len(), 1);
+        debug_assert_eq!(
+            wb_view.permissions_by_email.get(USER_C_EMAIL).cloned(),
+            Some(WhiteboardPermissionEnumClientView::View)
+        );
+    }// -- end fn deserialize_whiteboard_client_view_basic
+
+    #[test]
+    fn serialize_whiteboard_client_view_basic() {
+        use serde_json;
+        use mongodb::bson::{Bson,doc,oid::ObjectId};
+
+        // -- Values aren't consistent: merely meant to test serde deserialization
+        const WB_ID_S : &str = "68d5e8d4829da666aece020d";
+        const WB_NAME : &str = "Whiteboard Alpha";
+        const WB_ROOT_CANVAS_ID_S : &str = "68d5e8d4829da666aece020e";
+        const USER_A_ID_S : &str = "68d5e8d4829da666aece020f";
+        const USER_B_ID_S : &str = "68d5e8d4829da666aece0210";
+        const USER_C_ID_S : &str = "68d5e8d4829da666aece0211";
+        const USER_D_EMAIL : &str = "user@example.com";
+
+        let wb_view = WhiteboardClientView {
+            id: Some(ObjectId::parse_str(WB_ID_S).unwrap()),
+            name: String::from(WB_NAME),
+            canvases: vec![],
+            root_canvas: ObjectId::parse_str(WB_ROOT_CANVAS_ID_S).unwrap(),
+            visibility: WhiteboardVisibilityEnum::Public,
+            permissions_by_user_id: HashMap::from([
+                (ObjectId::parse_str(USER_A_ID_S).unwrap(), WhiteboardPermissionEnumClientView::View),
+                (ObjectId::parse_str(USER_B_ID_S).unwrap(), WhiteboardPermissionEnumClientView::Edit),
+                (ObjectId::parse_str(USER_C_ID_S).unwrap(), WhiteboardPermissionEnumClientView::Own),
+            ]),
+            permissions_by_email: HashMap::from([
+                (String::from(USER_D_EMAIL), WhiteboardPermissionEnumClientView::View),
+            ]),
+        };
+
+        let wb_view_serialized_s = serde_json::to_string(&wb_view)
+            .expect("To serialize WhiteboardClientView to JSON string");
+        
+        // -- unserialize to a Bson object to inspect how the object will be presented to other
+        // clients
+        let wb_view_unserialized = serde_json::from_str::<Bson>(wb_view_serialized_s.as_str())
+            .expect("To deserialize JSON string to Bson object");
+
+        let expected = Bson::Document(doc! {
+            "id": WB_ID_S,
+            "name": WB_NAME,
+            "canvases": [],
+            "rootCanvas": WB_ROOT_CANVAS_ID_S,
+            "visibility": "public",
+            "permissionsByUserId": {
+                USER_A_ID_S : "view",
+                USER_B_ID_S : "edit",
+                USER_C_ID_S : "own",
+            },
+            "permissionsByEmail": {
+                USER_D_EMAIL : "view",
+            },
+        });// -- end let expected
+
+        debug_assert_eq!(wb_view_unserialized, expected);
+    }// -- end fn deserialize_whiteboard_client_view_basic
+}// -- end mod unit_tests
