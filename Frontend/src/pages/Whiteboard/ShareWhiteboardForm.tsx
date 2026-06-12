@@ -119,7 +119,7 @@ export const ShareWhiteboardForm = ({
     () => {
       return Object.fromEntries(Object.entries(usersById).map(([userId, user]) => {
         if (! (userId in permissionsByUserId)) {
-          throw new Error(`User id ${userId} not found in permissionsByUserId`);
+          return null;
         }
 
         return [
@@ -130,7 +130,7 @@ export const ShareWhiteboardForm = ({
             permission: permissionsByUserId[userId],
           }
         ];
-      }));
+      }).filter(entry => !!entry));
     },
     [usersById, permissionsByUserId]
   );// -- end const initPermissionsByUserId
