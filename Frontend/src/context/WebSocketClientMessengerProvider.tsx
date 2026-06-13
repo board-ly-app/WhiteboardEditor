@@ -517,7 +517,7 @@ const WebSocketClientMessengerProvider = ({
                   // need to submit an error report.
                   popupErrorMsg = 'ERROR: app sent an invalid message to the server. See console logs for details';
                   break;
-                case 'unauthorized':
+                case 'unauthorized_whiteboard':
                   console.error('Socket error: not authorized to view this whiteboard');
                   popupErrorMsg = 'You are not authorized to view this whiteboard';
                   break;
@@ -548,6 +548,10 @@ const WebSocketClientMessengerProvider = ({
                 case 'canvas_not_found':
                   console.error(`Socket error: canvas ${error.canvasId} not found`);
                   popupErrorMsg = `Canvas ${error.canvasId} not found`;
+                  break;
+                case 'unauthorized_canvas':
+                  console.error('Socket error: not authorized to edit this canvas');
+                  popupErrorMsg = 'You are not authorized to edit this canvas';
                   break;
                 case 'canvas_object_not_found':
                   console.error(`Socket error: canvas object ${error.canvasObjectId} not found`);
