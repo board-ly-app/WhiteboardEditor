@@ -34,6 +34,10 @@ import {
   selectSelectorByCanvasObject,
 } from '@/store/activeUsers/activeUsersSelectors';
 
+import {
+  selectUserHasAccessToCanvas,
+} from '@/store/canvases/canvasesSelectors';
+
 import type { 
   EditableObjectProps 
 } from "@/dispatchers/editableObjectProps";
@@ -54,6 +58,10 @@ import {
 } from '@/context/ClientMessengerContext';
 
 import {
+  useUser,
+} from '@/hooks/useUser';
+
+import {
   SnappingMonitor,
   useSnapping,
 } from "@/hooks/useSnapping";
@@ -70,6 +78,7 @@ interface EditableShapeProps<ShapeType extends ShapeModel> extends EditableObjec
 
 const EditableShape = <ShapeType extends ShapeModel> ({
   id,
+  canvasId,
   shapeModel,
   draggable,
   onUpdateObject,
@@ -90,6 +99,14 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     clientMessenger,
   } = clientMessengerContext;
 
+  const {
+    user,
+  } = useUser();
+
+  if (! user) {
+    throw new Error('No authenticated user provided');
+  }
+
   const clientId = useSelector(
     (state: RootState) => selectClientId(state),
     lodash.isEqual
@@ -100,14 +117,19 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     lodash.isEqual
   );
 
+  const userHasCanvasAccess = useSelector(
+    (state: RootState) => selectUserHasAccessToCanvas(state, canvasId, user.id),
+    lodash.isEqual
+  );// -- end const userHasCanvasAccess
+
   const isDraggable = draggable && ((! editor) || editor.clientId === clientId);
 
   useSnapping(shapeRef, snappingMonitor);
 
   const isSelected : boolean = useMemo(
-    () => editor?.clientId === clientId,
-    [editor, clientId]
-  );
+    () => userHasCanvasAccess && (editor?.clientId === clientId),
+    [userHasCanvasAccess, editor, clientId]
+  );// -- end const isSelected
 
   // Transformer attach/detach
   useEffect(() => {

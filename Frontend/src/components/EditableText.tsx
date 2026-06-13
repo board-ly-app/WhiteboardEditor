@@ -34,20 +34,41 @@ import {
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import {
+  selectUserHasAccessToCanvas,
+} from '@/store/canvases/canvasesSelectors';
+
+import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
 
 import TextEditor from "./TextEditor";
 
-import { type EditableObjectProps } from "@/dispatchers/editableObjectProps";
-import type { ShapeModel, TextRecord } from "@/types/CanvasObjectModel";
+import {
+  type EditableObjectProps,
+} from "@/dispatchers/editableObjectProps";
+
+import {
+  type CanvasObjectIdType,
+  type ShapeModel,
+  type TextRecord,
+} from "@/types/CanvasObjectModel";
+
+import {
+  type CanvasIdType,
+} from '@/types/WebSocketProtocol';
+
+import {
+  useUser,
+} from '@/hooks/useUser';
+
 import {
   SnappingMonitor,
   useSnapping,
 } from "@/hooks/useSnapping";
 
 export interface EditableTextProps extends EditableObjectProps {
-  id: string;
+  id: CanvasObjectIdType;
+  canvasId: CanvasIdType,
   fontSize: number;
   text: string;
   color: string;
@@ -63,6 +84,7 @@ export interface EditableTextProps extends EditableObjectProps {
 
 const EditableText = ({
   id,
+  canvasId,
   fontSize,
   text,
   color,
@@ -97,6 +119,19 @@ const EditableText = ({
     clientMessenger,
   } = clientMessengerContext;
 
+  const {
+    user,
+  } = useUser();
+
+  if (! user) {
+    throw new Error('No authenticated user provided');
+  }
+
+  const userHasCanvasAccess = useSelector(
+    (state: RootState) => selectUserHasAccessToCanvas(state, canvasId, user.id),
+    lodash.isEqual
+  );// -- end const userHasCanvasAccess
+
   useSnapping(textRef, snappingMonitor);
 
   const clientId = useSelector(
@@ -110,9 +145,9 @@ const EditableText = ({
   );
 
   const isSelected : boolean = useMemo(
-    () => editor?.clientId === clientId,
-    [editor, clientId]
-  );
+    () => userHasCanvasAccess && (editor?.clientId === clientId),
+    [userHasCanvasAccess, editor, clientId]
+  );// -- end const isSelected
 
   // attach Transformer for editing when selected
   useEffect(() => {
