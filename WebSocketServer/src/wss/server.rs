@@ -1172,7 +1172,7 @@ pub async fn handle_unauthenticated_client_message<
 
 #[cfg(test)]
 mod unit_tests {
-    use crate::wss::{self, db, models, protocol, server, store, collections, utils};
+    use crate::{db, models, protocol, server, store, collections, utils};
     use models::*;
     use std::collections::HashMap;
 
@@ -1698,7 +1698,7 @@ mod unit_tests {
     async fn fetch_whiteboard_from_mongodb() {
         // -- try fetching Project Alpha and its constituent components (see
         // TestDatabase/init-db.js for document definitions)
-        use crate::bson::oid::ObjectId;
+        use mongodb::bson::oid::ObjectId;
         use chrono::{MappedLocalTime, TimeZone, Utc};
         use db::{connect_mongodb, get_whiteboard_by_id};
 
@@ -1826,7 +1826,7 @@ mod unit_tests {
         use sha2::Sha256;
         use std::sync::Arc;
         use utils::generate_unique_client_id;
-        use wss::jwt::JWTClaims;
+        use crate::jwt::JWTClaims;
 
         let jwt_secret = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz";
         let target_uid_s = "68d5e8d4829da666aece5f48";
@@ -2877,7 +2877,7 @@ mod unit_tests {
     async fn fetch_canvas_with_no_objects() {
         // -- try fetching Project Alpha and its constituent components (see
         // TestDatabase/init-db.js for document definitions)
-        use crate::bson::oid::ObjectId;
+        use mongodb::bson::oid::ObjectId;
         use db::{connect_mongodb, get_whiteboard_by_id};
 
         // -- initialize database connection

@@ -250,7 +250,6 @@ async fn handle_connection(
         db::{MongoDBInterface, get_whiteboard_by_id},
         models::{
             ClientIdType,
-            NotificationClientView,
         },
         protocol::{
             ClientError,

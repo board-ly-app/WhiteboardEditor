@@ -16,8 +16,13 @@ sha2 = "0.10.9"
 hmac = "0.12.1"
 serde_with = "3.15.0"
 
+[lib]
+name = "wss"
+path = "src/wss/mod.rs"
+crate-type = ["lib"]
+
 [[bin]]
-# Dummy build target to make Cargo happy when installing dependencies.
-# Avoids needing to re-install dependencies every time the service is rebuilt.
-name = "dummy"
-path = "src/dummy.rs"
+name = "web_socket_server"
+path = "src/main.rs"
+test = false
+bench = false
