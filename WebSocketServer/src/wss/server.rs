@@ -907,19 +907,12 @@ pub async fn handle_authenticated_client_message<'a>(
                     } else {
                         // -- all whiteboard users with edit or owner permission, minus the new
                         // allowed users
-                        whiteboard.user_permissions().iter()
-                            .filter_map(|perm| {
-                                if let &WhiteboardPermissionType::User {
-                                    user: user_id,
-                                    ..
-                                } = &perm.permission_type {
-                                    if allowed_users.contains(&user_id) {
-                                        None
-                                    } else {
-                                        Some(user_id.clone())
-                                    }
-                                } else {
+                        whiteboard.metadata().permissions_by_user_id().keys()
+                            .filter_map(|user_id| {
+                                if allowed_users.contains(&user_id) {
                                     None
+                                } else {
+                                    Some(user_id.clone())
                                 }
                             })
                             .collect()
