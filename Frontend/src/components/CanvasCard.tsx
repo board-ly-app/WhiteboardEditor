@@ -368,6 +368,21 @@ const CanvasCard = ({
         container.addEventListener('pointerdown', handlePointerEvent);
         container.addEventListener('pointerup', handlePointerEvent);
 
+        const handleCopyObject = () => {
+          if (selectedCanvasObjects.length > 0) {
+            // -- copy only first shape to localStorage
+            const currState = store.getState();
+            const targetObjectId = selectedCanvasObjects[0];
+            const targetObject = selectCanvasObjectById(currState, targetObjectId);
+
+            if (targetObject) {
+              const targetObjectData = JSON.stringify(targetObject);
+
+              localStorage.setItem(LS_KEY_COPIED_CANVAS_OBJECT, targetObjectData);
+            }
+          }
+        };// -- end handleCopyObject
+
         // handle keypresses within container
         const handleKeyDown = (ev: KeyboardEvent) => {
           switch (ev.key) {
@@ -393,25 +408,29 @@ const CanvasCard = ({
                 });
               }
               break;
-            // -- Handle copying shapes
+            // -- Copy currently selected object
             case 'c':
               if (ev.ctrlKey || ev.metaKey) {
-                if (selectedCanvasObjects.length > 0) {
-                  // -- copy only first shape to localStorage
-                  const currState = store.getState();
-                  const targetObjectId = selectedCanvasObjects[0];
-                  const targetObject = selectCanvasObjectById(currState, targetObjectId);
-
-                  if (targetObject) {
-                    const targetObjectData = JSON.stringify(targetObject);
-
-                    localStorage.setItem(LS_KEY_COPIED_CANVAS_OBJECT, targetObjectData);
-                    toast.success('Object copied to clipboard');
-                  }
+                handleCopyObject();
+                toast.success('Object copied to clipboard');
+              }
+              break;
+            // -- Cut currently selected object
+            case 'x':
+              if (ev.ctrlKey || ev.metaKey) {
+                if (clientMessenger && selectedCanvasId && selectedCanvasObjects.length > 0) {
+                  handleCopyObject();
+                  clientMessenger.sendDeleteCanvasObjects({
+                    type: 'delete_canvas_objects',
+                    canvasId: selectedCanvasId,
+                    canvasObjectIds: [selectedCanvasObjects[0]],
+                  });
+                  toast.success('Object cut to clipboard');
                 }
               }
               break;
             case 'v':
+              // -- pasting objects
               if (ev.ctrlKey || ev.metaKey) {
                 if (! clientMessenger) break;
                 if (! selectedCanvasId) break;
@@ -441,9 +460,26 @@ const CanvasCard = ({
                     createdObjectAttribs.y = selectedCanvasPointerPos.y;
                     break;
                   case 'vector':
-                    console.error('!! TODO');
-                    throw new Error('!! TODO');
-                    // break;
+                    {
+                      if (createdObjectAttribs.points.length !== 4) break;
+                      const [xA, yA, xB, yB] = createdObjectAttribs.points;
+                      // -- C = leftmost point
+                      const xC : number = selectedCanvasPointerPos.x;
+                      const yC : number = selectedCanvasPointerPos.y;
+                      let xD : number;
+                      let yD : number;
+
+                      if (xA < xB) {
+                        xD = xC + (xB - xA);
+                        yD = yC + (yB - yA);
+                      } else {
+                        xD = xC + (xA - xB);
+                        yD = yC + (yA - yB);
+                      }
+
+                      createdObjectAttribs.points = [xC, yC, xD, yD];
+                    }
+                    break;
                   default:
                     throw new Error(`Unrecognized canvas object data: ${JSON.stringify(createdObjectAttribs)}`);
                 }// -- end switch (createdObjectAttribs.type)
