@@ -13,6 +13,8 @@ import {
 import {
   Input,
 } from '@/components/ui/input';
+import ErrorTextNotification from './ui/error-text-notification';
+import { MAX_TITLE_LENGTH } from '@/app.config';
 
 export interface RenameWhiteboardFormProps {
   currentName: string;
@@ -60,14 +62,21 @@ export const RenameWhiteboardForm = ({
       <form onSubmit={handleSubmit}>
         <h1 className="text-lg font-semibold">Rename "{currentName}"</h1>
         <div className="flex flex-row justify-center pt-2 gap-2">
-          <Input
-            type="text"
-            name="newName"
-            placeholder="New whiteboard name"
-            value={newName}
-            onChange={handleNewNameChange}
-            autoFocus
-          />
+          <div className="flex flex-col">
+            <Input
+              type="text"
+              name="newName"
+              placeholder="New whiteboard name"
+              value={newName}
+              onChange={handleNewNameChange}
+              autoFocus
+              maxLength={MAX_TITLE_LENGTH}
+            />
+            <ErrorTextNotification
+              show={newName.length >= MAX_TITLE_LENGTH}
+              message={`You've reached the maximum title length of ${MAX_TITLE_LENGTH} characters.`}
+            />
+        </div>
           <Button
             disabled={!canSubmit}
             status={renameButtonStatus}

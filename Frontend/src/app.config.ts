@@ -43,3 +43,6 @@ export const THROTTLE_INTERVAL = 100;
 
 // -- Number of collaborators to display on whiteboard card
 export const WB_CARD_COLLABORATORS_DISPLAY_LIMIT = 3;
+
+// -- Max title character lenght
+export const MAX_TITLE_LENGTH = 64;

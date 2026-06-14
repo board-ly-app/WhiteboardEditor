@@ -52,6 +52,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { MAX_TITLE_LENGTH } from '@/app.config';
+import ErrorTextNotification from './ui/error-text-notification';
 
 interface CreateWhiteboardFormAttribs {
   name: string;
@@ -280,6 +282,11 @@ const CreateWhiteboardModal = ({
                   value={formInputs.name}
                   required
                   placeholder="Whiteboard Name"
+                  maxLength={MAX_TITLE_LENGTH}
+                />
+                <ErrorTextNotification 
+                  show={formInputs.name.length >= MAX_TITLE_LENGTH}
+                  message={`You've reached the maximum title length of ${MAX_TITLE_LENGTH} characters.`}
                 />
               </div>
 
