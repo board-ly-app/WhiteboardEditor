@@ -802,6 +802,10 @@ impl Whiteboard {
         &mut self.canvases_to_canvas_objects
     }// -- end pub fn canvases_to_canvas_objects
 
+    pub fn user_permissions(&self) -> &[WhiteboardPermission] {
+        self.metadata.user_permissions.as_slice()
+    }// -- end pub fn user_permissions
+
     pub fn metadata(&self) -> &WhiteboardMetadata {
         &self.metadata
     } // -- end pub fn metadata

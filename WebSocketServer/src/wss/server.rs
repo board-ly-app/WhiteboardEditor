@@ -803,7 +803,13 @@ pub async fn handle_authenticated_client_message<'a>(
                     allowed_users,
                 } => {
                     let mut whiteboard = client_state.base.whiteboard_ref.lock().await;
+                    let clients_by_user_id = client_state.base.clients_by_user_id.lock().await;
+                    let mut selectors_to_canvas_objects = client_state.base.selectors_to_canvas_objects
+                        .lock().await;
                     let client_user_id : &UserIdType = &client_state.user_summary.user_id;
+
+                    let mut response_msgs = Vec::<ServerSocketMessage>::new();
+
                     if ! whiteboard.canvases().contains_key(&canvas_id) {
                         // -- Return error
                         return ClientMessageResponse {
@@ -879,12 +885,75 @@ pub async fn handle_authenticated_client_message<'a>(
                         };
                     } // -- end for user_id in allowed_users.iter()
 
-                    let canvas : &mut Canvas = whiteboard.canvases_mut()
-                        .get_mut(&canvas_id).unwrap();
+                    let canvas : &Canvas = whiteboard.canvases()
+                        .get(&canvas_id).unwrap();
 
                     let old_allowed_users = canvas.allowed_users().map(
                         |users_set| users_set.clone()
                     );
+
+                    let users_removed : Vec<UserIdType>
+                        = if let Some(old_allowed_users_set) = old_allowed_users.as_ref() {
+                        // -- any old allowed users who aren't in the new allowed users
+                        old_allowed_users_set.iter()
+                            .filter_map(|uid| {
+                                if allowed_users.contains(&uid) {
+                                    None
+                                } else {
+                                    Some(uid.clone())
+                                }
+                            })
+                            .collect()
+                    } else {
+                        // -- all whiteboard users with edit or owner permission, minus the new
+                        // allowed users
+                        whiteboard.user_permissions().iter()
+                            .filter_map(|perm| {
+                                if let &WhiteboardPermissionType::User {
+                                    user: user_id,
+                                    ..
+                                } = &perm.permission_type {
+                                    if allowed_users.contains(&user_id) {
+                                        None
+                                    } else {
+                                        Some(user_id.clone())
+                                    }
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect()
+                    };// -- end let users_removed
+
+                    // -- Remove removed users from selectors
+                    {
+                        for removed_user_id in users_removed.iter() {
+                            if let Some(removed_client_ids) = clients_by_user_id.get_values_by_key(&removed_user_id) {
+                                for client_id in removed_client_ids.iter() {
+                                    if let Some(obj_id) = selectors_to_canvas_objects.get_value_by_key(&client_id).cloned() {
+                                        match whiteboard.canvases_to_canvas_objects().get_key_by_value(&obj_id) {
+                                            Some(canv_id) if *canv_id == canvas_id => {
+                                                // -- found an object to deselect
+                                                selectors_to_canvas_objects.remove_key(&client_id);
+
+                                                // -- notify clients of forced deselect
+                                                response_msgs.push(ServerSocketMessage::Broadcast {
+                                                    msg: ServerSocketBroadcastMessage::UnselectedCanvasObject {
+                                                        client_id: client_id.clone(),
+                                                        canvas_object_id: obj_id.clone(),
+                                                    },
+                                                });
+                                            },
+                                            _ => {},
+                                        };// -- end match
+                                    }
+                                }// -- end for client_id
+                            }
+                        }// -- end for removed_user_id
+                    }
+
+                    let canvas : &mut Canvas = whiteboard.canvases_mut()
+                        .get_mut(&canvas_id).unwrap();
 
                     // -- Generate and commit edit
                     let edit = client_state.generate_edit(EditKind::UpdateCanvasAllowedUsers {
@@ -903,17 +972,19 @@ pub async fn handle_authenticated_client_message<'a>(
                     }
 
                     // -- broadcast to all users
+                    response_msgs.push(ServerSocketMessage::Broadcast {
+                        msg: ServerSocketBroadcastMessage::UpdateCanvasAllowedUsers {
+                            client_id: client_state.base.client_id.clone(),
+                            canvas_id: canvas_id.clone(),
+                            allowed_users: allowed_users
+                                .iter()
+                                .map(|oid| oid.clone())
+                                .collect(),
+                        },
+                    });
+
                     ClientMessageResponse {
-                        messages: vec![ServerSocketMessage::Broadcast {
-                            msg: ServerSocketBroadcastMessage::UpdateCanvasAllowedUsers {
-                                client_id: client_state.base.client_id.clone(),
-                                canvas_id: canvas_id.clone(),
-                                allowed_users: allowed_users
-                                    .iter()
-                                    .map(|oid| oid.clone())
-                                    .collect(),
-                            },
-                        }],
+                        messages: response_msgs,
                         notifications: vec![],
                     }
                 }
