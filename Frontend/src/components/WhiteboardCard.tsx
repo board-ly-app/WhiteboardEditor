@@ -3,6 +3,7 @@ import {
   useContext,
   useCallback,
   useState,
+  useMemo,
 } from 'react';
 
 import {
@@ -23,6 +24,8 @@ import {
   toast,
 } from 'react-toastify';
 
+import { FilePen, Share, Trash2, X } from 'lucide-react';
+
 // -- local imports
 import api from '@/api/axios';
 
@@ -32,7 +35,13 @@ import {
 
 import {
   type UserPermissionEnum,
+  type UserPermissionByUser,
+  type UserPermissionByEmail,
 } from '@/types/UserPermission';
+
+import {
+  type UserIdType,
+} from '@/types/WebSocketProtocol';
 
 import AuthContext from '@/context/AuthContext';
 
@@ -48,6 +57,14 @@ import {
 import {
   DeleteWhiteboardForm,
 } from '@/components/DeleteWhiteboardForm';
+
+import {
+  RenameWhiteboardForm,
+} from '@/components/RenameWhiteboardForm';
+
+import ShareWhiteboardForm, {
+  type ShareWhiteboardFormData,
+} from '@/components/ShareWhiteboardForm';
 
 import {
   Button,
@@ -101,6 +118,18 @@ function WhiteboardCard({
   const [expanded, setExpanded] = useState(false);
 
   const {
+    Modal: RenameModal,
+    openModal: openRenameModal,
+    closeModal: closeRenameModal,
+  } = useModal();
+
+  const {
+    Modal: ShareModal,
+    openModal: openShareModal,
+    closeModal: closeShareModal
+  } = useModal();
+  
+  const {
     Modal: DeletionModal,
     openModal: openDeletionModal,
     closeModal: closeDeletionModal,
@@ -110,6 +139,25 @@ function WhiteboardCard({
     ? userPermissions
     : userPermissions.slice(0, WB_CARD_COLLABORATORS_DISPLAY_LIMIT);
   const hiddenCount = Math.max(0, userPermissions.length - WB_CARD_COLLABORATORS_DISPLAY_LIMIT);
+
+  // -- split permissions into the by-user-id / by-email structure the share form expects
+  const initPermissionsByUserId = useMemo<Record<UserIdType, UserPermissionByUser>>(
+    () => Object.fromEntries(
+      userPermissions
+        .filter((perm): perm is UserPermissionByUser => perm.type === 'user')
+        .map(perm => [perm.user.id, perm])
+    ),
+    [userPermissions]
+  );
+
+  const initPermissionsByEmail = useMemo<Record<string, UserPermissionByEmail>>(
+    () => Object.fromEntries(
+      userPermissions
+        .filter((perm): perm is UserPermissionByEmail => perm.type === 'email')
+        .map(perm => [perm.email, perm])
+    ),
+    [userPermissions]
+  );
 
   // -- miscellaneous callback functions
   const handleSubmitDeleteWhiteboard = useCallback(
@@ -153,6 +201,128 @@ function WhiteboardCard({
     [id, queryClient, user.id]
   );// -- end handleSubmitDeleteWhiteboard
 
+  const handleSubmitRenameWhiteboard = useCallback(
+    async (newName: string) => {
+      try {
+        await api.put(`/whiteboards/${id}/newName`, ({
+          newName,
+        }));
+
+        // make sure list of own whiteboards is refreshed
+        queryClient.invalidateQueries({
+          queryKey: [user.id, 'dashboard', 'whiteboards', 'own'],
+        });
+
+        toast.success('Whiteboard renamed successfully', {
+          position: "bottom-center",
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Bounce,
+        });
+
+        closeRenameModal();
+      } catch (err: unknown) {
+        const e = err as AxiosError<{ message?: string; }>;
+
+        console.error(`FAILED TO RENAME WHITEBOARD (${e.code}): ${JSON.stringify(e.response, null, 2)}`);
+        toast.error(`Error renaming whiteboard: ${e.response?.data?.message ?? e.message}`, {
+          position: "bottom-center",
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Bounce,
+        });
+      }
+    },
+    [id, queryClient, user.id, closeRenameModal]
+  );// -- end handleSubmitRenameWhiteboard
+
+  const handleSubmitShareWhiteboard = useCallback(
+    async (data: ShareWhiteboardFormData) => {
+      try {
+        const {
+          userPermissions: updatedPermissions,
+        } = data;
+
+        const userPermissionsFinal = updatedPermissions.map(perm => {
+          if (perm.type === 'user' && (typeof perm.user) === 'object') {
+            // extract object id
+            return ({
+              ...perm,
+              user: perm.user.id,
+            });
+          }
+
+          return perm;
+        });
+
+        // -- make sure we have at least one owner
+        if (! userPermissionsFinal.find(perm => perm.permission === 'own')) {
+          toast.error('Whiteboard must have at least one owner.', {
+            position: "bottom-center",
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+
+          return;
+        }
+
+        await api.post(`/whiteboards/${id}/user_permissions`, ({
+          userPermissions: userPermissionsFinal,
+        }));
+
+        toast.success('User permissions updated successfully', {
+          position: "bottom-center",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Bounce,
+        });
+
+        // make sure list of own whiteboards is refreshed
+        queryClient.invalidateQueries({
+          queryKey: [user.id, 'dashboard', 'whiteboards', 'own'],
+        });
+
+        closeShareModal();
+      } catch (err: unknown) {
+        const e = err as AxiosError<{ error?: string; }>;
+
+        console.error('POST /whiteboards/:id/user_permissions failed:', e);
+        toast.error(`Share request failed: ${e.response?.data?.error ?? e.message}`, {
+          position: "bottom-center",
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Bounce,
+        });
+
+        // -- propagate error to caller so the form can reset its button state
+        throw err;
+      }
+    },
+    [id, queryClient, user.id, closeShareModal]
+  );// -- end handleSubmitShareWhiteboard
+
   const isOwnWhiteboard = userPermissions.find(
     perm => (
       perm.type === 'user'
@@ -185,8 +355,13 @@ function WhiteboardCard({
             src={thumbnail_url || "/images/testThumbnail.png"}
             alt="Whiteboard Thumbnail"
           />
-          <div className="px-2 pt-2 pb-1">
-            <h1 className="text-md text-h2-text font-bold truncate" title={name}>{name}</h1>
+          <div className="px-5 py-3 bg-page-background border-b">
+            <h1 
+              className="text-md text-h2-text font-bold truncate" 
+              title={name}
+            >
+              {name}
+            </h1>
           </div>
         </Link>
 
@@ -248,21 +423,76 @@ function WhiteboardCard({
           </div>
         </div>
 
-        {
-          /** If this is whiteboard is owned by the user, give them the option
-           * to delete it. **/
-          (variant.name === 'own_whiteboard')
-            && (
+        
+        <div className='flex justify-center bg-page-background m-2 mt-0 rounded-lg gap-16'>
+          {
+            /** Only owners and editors can edit the whiteboard name **/
+            (variant.name === 'own_whiteboard') && (
               <Button
-                variant="destructive"
-                onClick={openDeletionModal}
+                className='bg-transparent'
+                onClick={openRenameModal}
+                title="Rename whiteboard"
               >
-                Delete
+                <FilePen />
+              </Button>
+            )
+          }
+          {/* All user permissions can share the whiteboards */}
+          <Button
+            className='bg-transparent'
+            onClick={openShareModal}
+            title="Share whiteboard"
+          >
+            <Share />
+          </Button>
+          {
+            /** Only owners of the whiteboard can delete it **/
+            (variant.name === 'own_whiteboard') && (
+              <Button
+                className='bg-transparent text-destructive'
+                onClick={openDeletionModal}
+                title="Delete whiteboard"
+              >
+                <Trash2 />
               </Button>
             )
             || null
-        }
+          }
+        </div>
       </div>
+
+      {/** Modal that opens to rename the whiteboard **/}
+      <RenameModal
+        zIndex={20}
+        className="p-8 rounded-sm"
+      >
+        <RenameWhiteboardForm
+          currentName={name}
+          onCancel={closeRenameModal}
+          onSubmit={handleSubmitRenameWhiteboard}
+        />
+      </RenameModal>
+
+      {/** Modal that opens to share the whiteboard **/}
+      <ShareModal zIndex={20}>
+        <div className="flex flex-col">
+          <div className="flex flex-row justify-end">
+            <button
+              onClick={closeShareModal}
+              className="hover:cursor-pointer"
+            >
+              <X />
+            </button>
+          </div>
+
+          <ShareWhiteboardForm
+            isActive={true}
+            initPermissionsByUserId={initPermissionsByUserId}
+            initPermissionsByEmail={initPermissionsByEmail}
+            onSubmit={handleSubmitShareWhiteboard}
+          />
+        </div>
+      </ShareModal>
 
       {/** Modal for whiteboard deletion form **/}
       <DeletionModal
