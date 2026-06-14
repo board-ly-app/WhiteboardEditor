@@ -85,23 +85,23 @@ impl <K: Clone + std::hash::Hash + Ord, V: Clone + std::hash::Hash + Ord> OneToM
         self.keys_by_value.insert(value.clone(), key.clone());
     }// -- end pub fn insert
 
-    // pub fn get_values_by_key(&self, key: &K) -> Option<&BTreeSet<V>> {
-    //     self.values_by_key.get(key)
-    // }// -- end pub fn get_values_by_key
+    pub fn get_values_by_key(&self, key: &K) -> Option<&BTreeSet<V>> {
+        self.values_by_key.get(key)
+    }// -- end pub fn get_values_by_key
 
-    // pub fn get_key_by_value(&self, value: &V) -> Option<&K> {
-    //     self.keys_by_value.get(value)
-    // }// -- end pub fn get_key_by_value
+    pub fn get_key_by_value(&self, value: &V) -> Option<&K> {
+        self.keys_by_value.get(value)
+    }// -- end pub fn get_key_by_value
 
-    // pub fn remove_key(&mut self, key: &K) {
-    //     if let Some(values_set) = self.values_by_key.get(key) {
-    //         for value in values_set.iter() {
-    //             self.keys_by_value.remove(value);
-    //         }// -- end for value in values_set.iter()
-    //     }
+    pub fn remove_key(&mut self, key: &K) {
+        if let Some(values_set) = self.values_by_key.get(key) {
+            for value in values_set.iter() {
+                self.keys_by_value.remove(value);
+            }// -- end for value in values_set.iter()
+        }
 
-    //     self.values_by_key.remove(key);
-    // }// -- end pub fn remove_key
+        self.values_by_key.remove(key);
+    }// -- end pub fn remove_key
 
     pub fn remove_value(&mut self, value: &V) {
         if let Some(key) = self.keys_by_value.get(value) {
