@@ -43,7 +43,7 @@ const Header = ({
         className="fixed top-1 left-0 right-0 max-h-15 backdrop-blur-md shadow-2xl rounded-lg border-border border-1 mx-5 lg:mx-30 m-1 px-3 py-2 bg-bar-background/80"
         style={{ zIndex }}
       > 
-        <div className="relative flex items-center justify-between"> 
+        <div className="grid grid-flow-col"> 
 
           {/* Hamburger Menu */}
           <NavigationMenu className="flex md:hidden">
@@ -71,17 +71,17 @@ const Header = ({
           </NavigationMenu>
 
           {/* Left Side Items */}
-          <div className="text-h2-text mx-4 gap-4 hidden md:flex items-center">
+          <div className="col-span-1 text-h2-text mx-4 gap-4 hidden md:flex items-center">
             {toolbarElemsLeft}
           </div>
 
           {/* Title */}
-          <h1 className="absolute left-1/2 transform -translate-x-1/2 md:flex-1 min-w-0 text-lg md:text-2xl text-header-title-text font-bold truncate text-center">
+          <h1 className="col-span-1 md:flex-1 min-w-0 text-lg md:text-2xl text-header-title-text font-bold truncate text-center">
             {title}
           </h1>
           
           {/* Right Side Items */}
-          <div className="text-h2-text mx-4 gap-4 hidden md:flex items-center justify-end">
+          <div className="col-span-1 text-h2-text mx-4 gap-4 hidden md:flex items-center justify-end">
             {toolbarElemsRight}
           </div>
         </div>
