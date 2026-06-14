@@ -199,17 +199,17 @@ const Dashboard = (): React.JSX.Element => {
     navigate(`/login?redirect=${locationEncoded}`);
   }
 
-  // -- give owned or shared whiteboards more width based on counts
-  const breakSize = 'lg';
-  let ownColClass = `${breakSize}:col-span-3 `;
-  let shareColClass = `${breakSize}:col-span-3 `;
+  // -- give owned or shared whiteboards more width based on counts.
+  // NOTE: these must be full, static class strings so Tailwind's source scanner can find and generate them.
+  let ownColClass = 'lg:col-span-3';
+  let shareColClass = 'lg:col-span-3';
   if (ownWhiteboards && sharedWhiteboards) {
     if (ownWhiteboards.length > 1.5 * sharedWhiteboards.length) {
-      ownColClass = `${breakSize}:col-span-4 `;
-      shareColClass = `${breakSize}:col-span-2 `;
+      ownColClass = 'lg:col-span-4';
+      shareColClass = 'lg:col-span-2';
     } else if (sharedWhiteboards.length > 1.5 * ownWhiteboards.length) {
-      ownColClass = `${breakSize}:col-span-2 `;
-      shareColClass = `${breakSize}:col-span-4 `;
+      ownColClass = 'lg:col-span-2';
+      shareColClass = 'lg:col-span-4';
     }
   }
 
@@ -247,7 +247,7 @@ const Dashboard = (): React.JSX.Element => {
         </div>
 
         <div className='grid grid-cols-3 md:grid-cols-6 flex flex-col md:flex-row'>
-          <div className={ownColClass + "col-span-3 flex flex-col"}>
+          <div className={"flex flex-col col-span-3 " + ownColClass}>
             <h1 className="flex items-center gap-4 pt-2 mb-1 ml-8 mr-4 text-center text-2xl text-h2-text font-bold after:flex-1 after:h-px after:bg-border after:content-['']">
               Your Whiteboards
             </h1>
@@ -274,7 +274,7 @@ const Dashboard = (): React.JSX.Element => {
             </div>
           </div>
 
-          <div className={shareColClass + "col-span-3 flex flex-col"}>
+          <div className={"flex flex-col col-span-3 " + shareColClass}>
             <h1 className="flex items-center gap-4 pt-2 mb-1 ml-8 mr-4 text-center text-2xl text-h2-text font-bold after:flex-1 after:h-px after:bg-border after:content-['']">
               Shared Whiteboards
             </h1>
