@@ -29,6 +29,15 @@ import {
   Circle,
 } from 'react-konva';
 
+import {
+  toast,
+} from 'react-toastify';
+
+// -- local imports
+import {
+  LS_KEY_COPIED_CANVAS_OBJECT,
+} from '@/app.config';
+
 import Canvas from "./Canvas";
 import CanvasMenu from "./CanvasMenu";
 
@@ -38,6 +47,10 @@ import {
   type CanvasIdType,
   type CanvasAttribs,
 } from "@/types/WebSocketProtocol";
+
+import {
+  type CanvasObjectModel,
+} from '@/types/CanvasObjectModel';
 
 import {
   type ClientSummary,
@@ -60,6 +73,7 @@ import {
 
 import {
   type RootState,
+  store,
 } from '@/store';
 
 import {
@@ -87,6 +101,7 @@ import {
 
 import {
   selectSelectedCanvasObjectsByWhiteboard,
+  selectCanvasObjectById,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
@@ -353,6 +368,21 @@ const CanvasCard = ({
         container.addEventListener('pointerdown', handlePointerEvent);
         container.addEventListener('pointerup', handlePointerEvent);
 
+        const handleCopyObject = () => {
+          if (selectedCanvasObjects.length > 0) {
+            // -- copy only first shape to localStorage
+            const currState = store.getState();
+            const targetObjectId = selectedCanvasObjects[0];
+            const targetObject = selectCanvasObjectById(currState, targetObjectId);
+
+            if (targetObject) {
+              const targetObjectData = JSON.stringify(targetObject);
+
+              localStorage.setItem(LS_KEY_COPIED_CANVAS_OBJECT, targetObjectData);
+            }
+          }
+        };// -- end handleCopyObject
+
         // handle keypresses within container
         const handleKeyDown = (ev: KeyboardEvent) => {
           switch (ev.key) {
@@ -378,6 +408,89 @@ const CanvasCard = ({
                 });
               }
               break;
+            // -- Copy currently selected object
+            case 'c':
+              if (ev.ctrlKey || ev.metaKey) {
+                handleCopyObject();
+                toast.success('Object copied to clipboard');
+              }
+              break;
+            // -- Cut currently selected object
+            case 'x':
+              if (ev.ctrlKey || ev.metaKey) {
+                if (clientMessenger && selectedCanvasId && selectedCanvasObjects.length > 0) {
+                  handleCopyObject();
+                  clientMessenger.sendDeleteCanvasObjects({
+                    type: 'delete_canvas_objects',
+                    canvasId: selectedCanvasId,
+                    canvasObjectIds: [selectedCanvasObjects[0]],
+                  });
+                  toast.success('Object cut to clipboard');
+                }
+              }
+              break;
+            case 'v':
+              // -- pasting objects
+              if (ev.ctrlKey || ev.metaKey) {
+                if (! clientMessenger) break;
+                if (! selectedCanvasId) break;
+
+                const currentObjectData = localStorage.getItem(LS_KEY_COPIED_CANVAS_OBJECT);
+                if (! currentObjectData) break;
+
+                const selectedCanvasRef = canvasGroupRefsByIdRef.current[selectedCanvasId];
+                if (! selectedCanvasRef?.current) break;
+
+                const selectedCanvasPointerPos = selectedCanvasRef.current.getRelativePointerPosition();
+                if (! selectedCanvasPointerPos) break;
+
+                const currState = store.getState();
+
+                const selectedCanvasAttribs = selectCanvasById(currState, selectedCanvasId);
+                if (! selectedCanvasAttribs) break;
+
+                const createdObjectAttribs : CanvasObjectModel = JSON.parse(currentObjectData);
+
+                // -- set created object position
+                switch (createdObjectAttribs.type) {
+                  case 'rect':
+                  case 'text':
+                  case 'ellipse':
+                    createdObjectAttribs.x = selectedCanvasPointerPos.x;
+                    createdObjectAttribs.y = selectedCanvasPointerPos.y;
+                    break;
+                  case 'vector':
+                    {
+                      if (createdObjectAttribs.points.length !== 4) break;
+                      const [xA, yA, xB, yB] = createdObjectAttribs.points;
+                      // -- C = leftmost point
+                      const xC : number = selectedCanvasPointerPos.x;
+                      const yC : number = selectedCanvasPointerPos.y;
+                      let xD : number;
+                      let yD : number;
+
+                      if (xA < xB) {
+                        xD = xC + (xB - xA);
+                        yD = yC + (yB - yA);
+                      } else {
+                        xD = xC + (xA - xB);
+                        yD = yC + (yA - yB);
+                      }
+
+                      createdObjectAttribs.points = [xC, yC, xD, yD];
+                    }
+                    break;
+                  default:
+                    throw new Error(`Unrecognized canvas object data: ${JSON.stringify(createdObjectAttribs)}`);
+                }// -- end switch (createdObjectAttribs.type)
+
+                clientMessenger.sendCreateCanvasObjects({
+                  type: 'create_canvas_objects',
+                  canvasId: selectedCanvasId,
+                  canvasObjects: [createdObjectAttribs],
+                });
+              }
+              break;
           }
         };// -- end handleKeyDown
 
@@ -390,7 +503,14 @@ const CanvasCard = ({
         };
       }
     },
-    [containerRef, clientMessenger, selectedCanvasId, selectedCanvasObjects, currentDispatcherRef]
+    [
+      containerRef,
+      clientMessenger,
+      selectedCanvasId,
+      selectedCanvasObjects,
+      currentDispatcherRef,
+      canvasGroupRefsByIdRef,
+    ]
   );
 
   return (
