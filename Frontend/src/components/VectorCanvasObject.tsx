@@ -18,10 +18,15 @@ import {
   type VectorModel,
 } from '@/types/CanvasObjectModel';
 
+import {
+  type CanvasIdType,
+} from '@/types/WebSocketProtocol';
+
 import EditableVector from '@/components/EditableVector';
 
 export interface VectorCanvasObjectProps {
   id: CanvasObjectIdType;
+  canvasId: CanvasIdType;
   model: VectorModel;
   isDraggable: boolean;
   onUpdateObject: (updatedObject: CanvasObjectModel) => unknown;
@@ -29,6 +34,7 @@ export interface VectorCanvasObjectProps {
 
 export const VectorCanvasObject = ({
   id,
+  canvasId,
   model,
   isDraggable,
   onUpdateObject,
@@ -38,6 +44,7 @@ export const VectorCanvasObject = ({
   return (
     <EditableVector<VectorModel>
       id={id}
+      canvasId={canvasId}
       draggable={isDraggable}
       model={model}
       onUpdateObject={onUpdateObject}

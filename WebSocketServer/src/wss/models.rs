@@ -4,7 +4,14 @@
 //
 // =================================================================================================
 
-use super::{db::WhiteboardDiff,protocol::{ServerSocketMessage,ServerSocketBroadcastMessage}};
+use super::{
+    collections,
+    db::WhiteboardDiff,
+    protocol::{
+        ServerSocketMessage,
+        ServerSocketBroadcastMessage,
+    },
+};
 
 use chrono::{self, Utc};
 use mongodb::bson::{self, oid::ObjectId, serde_helpers::bson_datetime_as_rfc3339_string};
@@ -534,6 +541,15 @@ impl Canvas {
             self.allowed_users = None;
         }
     } // -- end pub fn set_allowed_users
+
+    pub fn user_can_edit(&self, user_id: &UserIdType) -> bool {
+        if let Some(ref allowed_users_set) = self.allowed_users {
+            allowed_users_set.is_empty() || allowed_users_set.contains(user_id)
+        } else {
+            // -- None => true for all
+            true
+        }
+    }// -- end pub fn user_can_edit
 } // -- end impl Canvas
 
 #[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -694,6 +710,7 @@ pub struct Whiteboard {
     is_active: bool,
     metadata: WhiteboardMetadata,
     canvases: HashMap<CanvasIdType, Canvas>,
+    canvases_to_canvas_objects: collections::OneToMany<CanvasIdType, CanvasObjectIdType>,
     root_canvas: CanvasIdType,
     // -- A series of contiguous, chronologically-ordered edits applied to this edit by each author
     edit_history_by_author: HashMap<UserIdType, Vec<Edit>>,
@@ -710,6 +727,7 @@ impl Whiteboard {
     ) -> Self {
         let mut edit_history_by_author = HashMap::<UserIdType, Vec<Edit>>::new();
 
+        // -- create edit history
         for edit in edit_history.iter() {
             if let Some(edits) = edit_history_by_author.get_mut(&edit.author) {
                 edits.push(edit.clone());
@@ -718,12 +736,23 @@ impl Whiteboard {
             }
         }// -- end for edit
 
+        // -- initialize canvas => canvas objects mapping
+        let mut canvases_to_canvas_objects
+            = collections::OneToMany::<CanvasIdType, CanvasObjectIdType>::new();
+
+        for (canvas_id, canvas) in canvases.iter() {
+            for obj_id in canvas.canvas_objects().keys() {
+                canvases_to_canvas_objects.insert(canvas_id.clone(), obj_id.clone());
+            }// -- end for obj_id
+        }// -- end for canvas_id, canvas
+
         Self {
             id,
             is_active,
             metadata,
             canvases,
             root_canvas,
+            canvases_to_canvas_objects,
             edit_history_by_author,
         }
     } // -- end pub fn new
@@ -764,6 +793,14 @@ impl Whiteboard {
     pub fn canvases_mut(&mut self) -> &mut HashMap<CanvasIdType, Canvas> {
         &mut self.canvases
     } // -- end pub fn canvases
+
+    pub fn canvases_to_canvas_objects(&self) -> &collections::OneToMany<CanvasIdType, CanvasObjectIdType> {
+        &self.canvases_to_canvas_objects
+    }// -- end pub fn canvases_to_canvas_objects
+
+    pub fn canvases_to_canvas_objects_mut(&mut self) -> &mut collections::OneToMany<CanvasIdType, CanvasObjectIdType> {
+        &mut self.canvases_to_canvas_objects
+    }// -- end pub fn canvases_to_canvas_objects
 
     pub fn metadata(&self) -> &WhiteboardMetadata {
         &self.metadata
@@ -1001,7 +1038,13 @@ impl Whiteboard {
                     for (obj_id, canvas_object) in canvas_objects.iter() {
                         canvas.canvas_objects.insert(obj_id.clone(), canvas_object.clone());
                     }// -- end for canvas_object in canvas_objects.values()
+                } else {
+                    return;
                 }
+
+                for obj_id in canvas_objects.keys() {
+                    self.canvases_to_canvas_objects.insert(canvas_id.clone(), obj_id.clone());
+                }// -- end for obj
             },
             UpdateCanvasObjects {
                 canvas_id,
@@ -1023,20 +1066,31 @@ impl Whiteboard {
                     for obj_id in canvas_objects.keys() {
                         canvas.canvas_objects_mut().remove(obj_id);
                     }// -- end for (obj_id, update) in updates.iter()
+                } else {
+                    return;
                 }
+
+                for obj_id in canvas_objects.keys() {
+                    self.canvases_to_canvas_objects.remove_value(obj_id);
+                }// -- end for obj_id
             },
             CreateCanvases {
                 canvases,
             } => {
-                for (canvas_id, canvas)  in canvases.iter() {
+                for (canvas_id, canvas) in canvases.iter() {
                     self.canvases_mut().insert(canvas_id.clone(), canvas.clone());
+
+                    for obj_id in canvas.canvas_objects().keys() {
+                        self.canvases_to_canvas_objects.insert(canvas_id.clone(), obj_id.clone());
+                    }// -- end for obj_id
                 }// -- end for (canvas_id, canvas)  in canvases.iter()
             },
             DeleteCanvases {
                 canvases,
             } => {
-                for canvas_id  in canvases.keys() {
+                for canvas_id in canvases.keys() {
                     let _ = self.canvases_mut().remove(canvas_id);
+                    self.canvases_to_canvas_objects.remove_key(&canvas_id);
                 }// -- end for (canvas_id, canvas)  in canvases.iter()
             },
             MergeCanvas {
@@ -1082,6 +1136,20 @@ impl Whiteboard {
 
                     // -- Delete old child canvas
                     let _ = self.canvases_mut().remove(child_canvas.id());
+
+                    // -- Transfer references to canvas objects
+                    let transferred_obj_ids = self.canvases_to_canvas_objects
+                        .get_values_by_key(child_canvas.id())
+                        .map(|obj_id_set| obj_id_set.iter().cloned().collect::<Vec<CanvasObjectIdType>>())
+                        .unwrap_or(vec![]);
+
+                    for obj_id in transferred_obj_ids.iter() {
+                        self.canvases_to_canvas_objects.insert(
+                            parent_ref.canvas_id.clone(), obj_id.clone()
+                        );
+                    }// -- end for obj_id
+
+                    self.canvases_to_canvas_objects.remove_key(&parent_ref.canvas_id);
                 }
             },
             SplitCanvas {
@@ -1127,6 +1195,13 @@ impl Whiteboard {
 
                     for obj_id in restored_canvas.canvas_objects().keys() {
                         parent_canvas_objects.remove(obj_id);
+                    }// -- end for obj_id
+
+                    for obj_id in restored_canvas.canvas_objects().keys() {
+                        self.canvases_to_canvas_objects.insert(
+                            restored_canvas.id().clone(),
+                            obj_id.clone()
+                        );
                     }// -- end for obj_id
                 }
             },
@@ -1262,27 +1337,17 @@ pub struct WhiteboardMongoDBView {
 
 impl WhiteboardMongoDBView {
     pub fn to_whiteboard(&self, canvases: &[Canvas], edits: &[Edit]) -> Whiteboard {
-        let mut edit_history_by_author = HashMap::<UserIdType, Vec<Edit>>::new();
-
-        for edit in edits.iter() {
-            if let Some(edits) = edit_history_by_author.get_mut(&edit.author) {
-                edits.push(edit.clone());
-            } else {
-                edit_history_by_author.insert(edit.author.clone(), vec![ edit.clone() ]);
-            }
-        }// -- end for edit
-         //
-        Whiteboard {
-            id: self.id,
-            is_active: true,
-            metadata: self.metadata.to_whiteboard_metadata(),
-            canvases: canvases
+        Whiteboard::new(
+            self.id.clone(),
+            true,
+            self.metadata.to_whiteboard_metadata(),
+            self.root_canvas.clone(),
+            canvases
                 .iter()
-                .map(|canvas| (canvas.id, canvas.clone()))
+                .map(|canvas| (canvas.id.clone(), canvas.clone()))
                 .collect(),
-            root_canvas: self.root_canvas,
-            edit_history_by_author,
-        }
+            Vec::from(edits),
+        )
     }
 }
 
