@@ -49,6 +49,10 @@ import {
 } from "@/types/WebSocketProtocol";
 
 import {
+  type CanvasObjectModel,
+} from '@/types/CanvasObjectModel';
+
+import {
   type ClientSummary,
   type CursorPosition,
 } from '@/types/ClientSummary';
@@ -407,6 +411,50 @@ const CanvasCard = ({
                 }
               }
               break;
+            case 'v':
+              if (ev.ctrlKey || ev.metaKey) {
+                if (! clientMessenger) break;
+                if (! selectedCanvasId) break;
+
+                const currentObjectData = localStorage.getItem(LS_KEY_COPIED_CANVAS_OBJECT);
+                if (! currentObjectData) break;
+
+                const selectedCanvasRef = canvasGroupRefsByIdRef.current[selectedCanvasId];
+                if (! selectedCanvasRef?.current) break;
+
+                const selectedCanvasPointerPos = selectedCanvasRef.current.getRelativePointerPosition();
+                if (! selectedCanvasPointerPos) break;
+
+                const currState = store.getState();
+
+                const selectedCanvasAttribs = selectCanvasById(currState, selectedCanvasId);
+                if (! selectedCanvasAttribs) break;
+
+                const createdObjectAttribs : CanvasObjectModel = JSON.parse(currentObjectData);
+
+                // -- set created object position
+                switch (createdObjectAttribs.type) {
+                  case 'rect':
+                  case 'text':
+                  case 'ellipse':
+                    createdObjectAttribs.x = selectedCanvasPointerPos.x;
+                    createdObjectAttribs.y = selectedCanvasPointerPos.y;
+                    break;
+                  case 'vector':
+                    console.error('!! TODO');
+                    throw new Error('!! TODO');
+                    // break;
+                  default:
+                    throw new Error(`Unrecognized canvas object data: ${JSON.stringify(createdObjectAttribs)}`);
+                }// -- end switch (createdObjectAttribs.type)
+
+                clientMessenger.sendCreateCanvasObjects({
+                  type: 'create_canvas_objects',
+                  canvasId: selectedCanvasId,
+                  canvasObjects: [createdObjectAttribs],
+                });
+              }
+              break;
           }
         };// -- end handleKeyDown
 
@@ -419,7 +467,14 @@ const CanvasCard = ({
         };
       }
     },
-    [containerRef, clientMessenger, selectedCanvasId, selectedCanvasObjects, currentDispatcherRef]
+    [
+      containerRef,
+      clientMessenger,
+      selectedCanvasId,
+      selectedCanvasObjects,
+      currentDispatcherRef,
+      canvasGroupRefsByIdRef,
+    ]
   );
 
   return (
