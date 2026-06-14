@@ -297,11 +297,16 @@ const CanvasMenu = ({
                   </>
                 ))
               }
-              {allowedUsernames.map((u) => (
+              {(allowedUsernames.length > 0) && allowedUsernames.map((u) => (
                 <DropdownMenuLabel key={u}>
                   {u}
                 </DropdownMenuLabel>
-              ))}
+              ))
+              || (
+                <DropdownMenuLabel>
+                  All users can edit
+                </DropdownMenuLabel>
+              )}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 

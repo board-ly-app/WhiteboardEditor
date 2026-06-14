@@ -33,7 +33,7 @@ pub enum ClientError {
     // -- client did not send an auth token
     NotAuthenticated,
     // -- client not authorized to view this whiteboard at all
-    Unauthorized,
+    UnauthorizedWhiteboard,
     // -- client already authorized (cannot re-authenticate within the same connection)
     AlreadyAuthorized,
     // -- client's auth token is somehow malformed
@@ -52,6 +52,11 @@ pub enum ClientError {
     },
     // -- Client attempted to access canvas that doesn't exist
     CanvasNotFound {
+        #[serde_as(as = "DisplayFromStr")]
+        canvas_id: CanvasIdType,
+    },
+    // -- Client not authorized to edit this canvas
+    UnauthorizedCanvas {
         #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
     },

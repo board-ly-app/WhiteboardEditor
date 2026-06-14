@@ -110,9 +110,12 @@ export interface ClientErrorInvalidMessage {
   clientMessageRaw: string;
 }
 
-// -- client did not send an auth token
-export interface ClientErrorUnauthorized {
-  type: 'unauthorized';
+export interface ClientErrorUnauthorizedWhiteboard {
+  type: 'unauthorized_whiteboard';
+}
+
+export interface ClientErrorUnauthorizedCanvas {
+  type: 'unauthorized_canvas';
 }
 
 // -- client not authorized to view this whiteboard at all
@@ -186,7 +189,7 @@ export interface ClientErrorOther {
 
 export type ClientError =
   | ClientErrorInvalidMessage
-  | ClientErrorUnauthorized
+  | ClientErrorUnauthorizedWhiteboard
   | ClientErrorNotAuthenticated
   | ClientErrorAlreadyAuthorized
   | ClientErrorInvalidAuth
@@ -194,6 +197,7 @@ export type ClientError =
   | ClientErrorUserNotFound
   | ClientErrorWhiteboardNotFound
   | ClientErrorCanvasNotFound
+  | ClientErrorUnauthorizedCanvas
   | ClientErrorCanvasObjectNotFound
   | ClientErrorActionForbidden
   | ClientErrorCanvasObjectAlreadySelected

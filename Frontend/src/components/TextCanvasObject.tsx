@@ -14,12 +14,17 @@ import {
   type TextRecord,
 } from '@/types/CanvasObjectModel';
 
+import {
+  type CanvasIdType,
+} from '@/types/WebSocketProtocol';
+
 import EditableText from '@/components/EditableText';
 
 import editableObjectProps from '@/dispatchers/editableObjectProps';
 
 export interface TextCanvasObjectProps {
   id: CanvasObjectIdType;
+  canvasId: CanvasIdType;
   record: TextRecord;
   isDraggable: boolean;
   onUpdateObject: (updatedObject: CanvasObjectModel) => unknown;
@@ -27,6 +32,7 @@ export interface TextCanvasObjectProps {
 
 export const TextCanvasObject = ({
   id,
+  canvasId,
   record,
   isDraggable,
   onUpdateObject,
@@ -45,6 +51,7 @@ export const TextCanvasObject = ({
   return (
     <EditableText
       id={id}
+      canvasId={canvasId}
       fontSize={fontSize}
       text={text}
       color={color}

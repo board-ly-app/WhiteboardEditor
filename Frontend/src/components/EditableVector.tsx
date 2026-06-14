@@ -30,14 +30,29 @@ import {
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import {
+  selectUserHasAccessToCanvas,
+} from '@/store/canvases/canvasesSelectors';
+
+import {
+  useUser,
+} from '@/hooks/useUser';
+
+import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
 
-import type { CanvasObjectIdType, CanvasObjectModel, VectorModel } from "@/types/CanvasObjectModel";
-import type { EditableObjectProps } from "@/dispatchers/editableObjectProps";
+import {
+  type CanvasObjectIdType,
+  type CanvasObjectModel,
+  type VectorModel,
+} from "@/types/CanvasObjectModel";
+import {
+  type EditableObjectProps,
+} from "@/dispatchers/editableObjectProps";
 import editableObjectProps from "@/dispatchers/editableObjectProps";
 import {
   type ClientIdType,
+  type CanvasIdType,
 } from '@/types/WebSocketProtocol';
 import {
   SnappingMonitor,
@@ -46,6 +61,7 @@ import {
 
 export interface EditableVectorProps<VectorType extends VectorModel> extends EditableObjectProps {
   id: CanvasObjectIdType;
+  canvasId: CanvasIdType;
   model: VectorType;
   draggable: boolean;
   onUpdateObject: (updatedObject: CanvasObjectModel) => unknown;
@@ -54,6 +70,7 @@ export interface EditableVectorProps<VectorType extends VectorModel> extends Edi
 
 const EditableVector = <VectorType extends VectorModel>({
   id,
+  canvasId,
   model,
   draggable,
   onUpdateObject,
@@ -73,6 +90,19 @@ const EditableVector = <VectorType extends VectorModel>({
     clientMessenger,
   } = clientMessengerContext;
 
+  const {
+    user,
+  } = useUser();
+
+  if (! user) {
+    throw new Error('No authenticated user provided');
+  }
+
+  const userHasCanvasAccess = useSelector(
+    (state: RootState) => selectUserHasAccessToCanvas(state, canvasId, user.id),
+    lodash.isEqual
+  );// -- end const userHasCanvasAccess
+
   useSnapping(vectorRef, snappingMonitor);
 
   const clientId : ClientIdType | null = useSelector(
@@ -85,10 +115,10 @@ const EditableVector = <VectorType extends VectorModel>({
     lodash.isEqual
   );
 
-  const isSelected = useMemo(
-    () => editor?.clientId === clientId,
-    [editor, clientId]
-  );
+  const isSelected : boolean = useMemo(
+    () => userHasCanvasAccess && (editor?.clientId === clientId),
+    [userHasCanvasAccess, editor, clientId]
+  );// -- end const isSelected
 
   const isDraggable : boolean = useMemo(
     () => draggable && (isSelected || (! editor)),

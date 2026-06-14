@@ -123,6 +123,7 @@ export const CanvasObject = ({
         return (
           <VectorCanvasObject
             id={id}
+            canvasId={canvasId}
             model={canvasObject}
             isDraggable={isDraggable}
             onUpdateObject={handleUpdateObject}
@@ -132,6 +133,7 @@ export const CanvasObject = ({
         return (
           <TextCanvasObject
             id={id}
+            canvasId={canvasId}
             record={canvasObject}
             isDraggable={isDraggable}
             onUpdateObject={handleUpdateObject}
