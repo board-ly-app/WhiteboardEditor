@@ -23,7 +23,7 @@ import {
   toast,
 } from 'react-toastify';
 
-import { FilePen, Share, Trash2 } from 'lucide-react';
+import { FilePen, Share, Trash2, X } from 'lucide-react';
 
 // -- local imports
 import api from '@/api/axios';
@@ -50,6 +50,14 @@ import {
 import {
   DeleteWhiteboardForm,
 } from '@/components/DeleteWhiteboardForm';
+
+import {
+  RenameWhiteboardForm,
+} from '@/components/RenameWhiteboardForm';
+
+import ShareWhiteboardForm, {
+  type ShareWhiteboardFormData,
+} from '@/components/ShareWhiteboardForm';
 
 import {
   Button,
@@ -166,6 +174,128 @@ function WhiteboardCard({
     },
     [id, queryClient, user.id]
   );// -- end handleSubmitDeleteWhiteboard
+
+  const handleSubmitRenameWhiteboard = useCallback(
+    async (newName: string) => {
+      try {
+        await api.put(`/whiteboards/${id}/newName`, ({
+          newName,
+        }));
+
+        // make sure list of own whiteboards is refreshed
+        queryClient.invalidateQueries({
+          queryKey: [user.id, 'dashboard', 'whiteboards', 'own'],
+        });
+
+        toast.success('Whiteboard renamed successfully', {
+          position: "bottom-center",
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Bounce,
+        });
+
+        closeRenameModal();
+      } catch (err: unknown) {
+        const e = err as AxiosError<{ message?: string; }>;
+
+        console.error(`FAILED TO RENAME WHITEBOARD (${e.code}): ${JSON.stringify(e.response, null, 2)}`);
+        toast.error(`Error renaming whiteboard: ${e.response?.data?.message ?? e.message}`, {
+          position: "bottom-center",
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Bounce,
+        });
+      }
+    },
+    [id, queryClient, user.id, closeRenameModal]
+  );// -- end handleSubmitRenameWhiteboard
+
+  const handleSubmitShareWhiteboard = useCallback(
+    async (data: ShareWhiteboardFormData) => {
+      try {
+        const {
+          userPermissions: updatedPermissions,
+        } = data;
+
+        const userPermissionsFinal = updatedPermissions.map(perm => {
+          if (perm.type === 'user' && (typeof perm.user) === 'object') {
+            // extract object id
+            return ({
+              ...perm,
+              user: perm.user.id,
+            });
+          }
+
+          return perm;
+        });
+
+        // -- make sure we have at least one owner
+        if (! userPermissionsFinal.find(perm => perm.permission === 'own')) {
+          toast.error('Whiteboard must have at least one owner.', {
+            position: "bottom-center",
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+            transition: Bounce,
+          });
+
+          return;
+        }
+
+        await api.post(`/whiteboards/${id}/user_permissions`, ({
+          userPermissions: userPermissionsFinal,
+        }));
+
+        toast.success('User permissions updated successfully', {
+          position: "bottom-center",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Bounce,
+        });
+
+        // make sure list of own whiteboards is refreshed
+        queryClient.invalidateQueries({
+          queryKey: [user.id, 'dashboard', 'whiteboards', 'own'],
+        });
+
+        closeShareModal();
+      } catch (err: unknown) {
+        const e = err as AxiosError<{ error?: string; }>;
+
+        console.error('POST /whiteboards/:id/user_permissions failed:', e);
+        toast.error(`Share request failed: ${e.response?.data?.error ?? e.message}`, {
+          position: "bottom-center",
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Bounce,
+        });
+
+        // -- propagate error to caller so the form can reset its button state
+        throw err;
+      }
+    },
+    [id, queryClient, user.id, closeShareModal]
+  );// -- end handleSubmitShareWhiteboard
 
   const isOwnWhiteboard = userPermissions.find(
     perm => (
@@ -306,9 +436,35 @@ function WhiteboardCard({
       </div>
 
       {/** Modal that opens to rename the whiteboard **/}
-      
+      <RenameModal
+        zIndex={20}
+        className="p-8 rounded-sm"
+      >
+        <RenameWhiteboardForm
+          currentName={name}
+          onCancel={closeRenameModal}
+          onSubmit={handleSubmitRenameWhiteboard}
+        />
+      </RenameModal>
+
       {/** Modal that opens to share the whiteboard **/}
-      
+      <ShareModal zIndex={20}>
+        <div className="flex flex-col">
+          <div className="flex flex-row justify-end">
+            <button
+              onClick={closeShareModal}
+              className="hover:cursor-pointer"
+            >
+              <X />
+            </button>
+          </div>
+
+          <ShareWhiteboardForm
+            initUserPermissions={userPermissions}
+            onSubmit={handleSubmitShareWhiteboard}
+          />
+        </div>
+      </ShareModal>
 
       {/** Modal for whiteboard deletion form **/}
       <DeletionModal
