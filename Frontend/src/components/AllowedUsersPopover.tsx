@@ -180,7 +180,10 @@ const AllowedUsersPopover = ({ selected, onChange }: AllowedUsersPopoverProps) =
               ),
               'ready': () => (
                 userPermissions
-                  .filter((u): u is Extract<UserPermission, { type: "user" }> => u.type === "user")
+                  .filter((perm): perm is Extract<UserPermission, { type: "user" }> => {
+                    // -- only users with edit or owner permission
+                    return (perm.type === "user") && (perm.permission !== 'view');
+                  })
                   .map((userPerm) => (
                     <CommandItem
                       key={userPerm.user.id}
