@@ -1,6 +1,7 @@
 // -- std imports
 import {
   useCallback,
+  useState,
 } from 'react';
 
 import {
@@ -65,6 +66,8 @@ const Dashboard = (): React.JSX.Element => {
   if (! user) {
     throw new Error('Dashboard page needs authenticated user');
   }
+
+  const [searchQuery, setSearchQuery] = useState('');
 
   const {
     error: ownWhiteboardsError,
@@ -175,6 +178,18 @@ const Dashboard = (): React.JSX.Element => {
     [navigate, location]
   );// -- end handleCreateWhiteboard
 
+  const handleSearchChange = (ev: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(ev.target.value);
+  };
+
+  // -- case-insensitive match of the search query against a whiteboard's name
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const matchesSearch = (whiteboard: Whiteboard): boolean =>
+    whiteboard.name.toLowerCase().includes(normalizedQuery);
+
+  const filteredOwnWhiteboards = ownWhiteboards?.filter(matchesSearch);
+  const filteredSharedWhiteboards = sharedWhiteboards?.filter(matchesSearch);
+
   // -- redirect to login on 403 (forbidden)
   const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
 
@@ -217,9 +232,16 @@ const Dashboard = (): React.JSX.Element => {
             Welcome Back, {user.username}!
           </h1>
           <div className="col-span-1 flex flex-nowrap order-3 flex justify-center sm:justify-end">
-            {/* TODO: This is just a placeholder for now, need to implement search and sort features */}
             <label htmlFor="search" className='hidden'>Search</label>
-            <input name='search' className='text-nowrap hidden' value='' type='text' placeholder='Search me' />
+            <input
+              name='search'
+              className='text-nowrap px-4 border rounded-lg'
+              value={searchQuery}
+              type='text'
+              placeholder='Search for whiteboard'
+              onChange={handleSearchChange}
+            />
+            {/* TODO: This is just a placeholder for now, need to implement sort features */}
             <button className='text-nowrap hidden'>Sort me</button>
           </div>
         </div>
@@ -244,7 +266,7 @@ const Dashboard = (): React.JSX.Element => {
                   return (
                     <WhiteboardList
                       status="ready"
-                      whiteboardsAttribs={ownWhiteboards || []}
+                      whiteboardsAttribs={filteredOwnWhiteboards || []}
                     />
                   );
                 }
@@ -271,7 +293,7 @@ const Dashboard = (): React.JSX.Element => {
                   return (
                     <WhiteboardList
                       status="ready"
-                      whiteboardsAttribs={sharedWhiteboards || []}
+                      whiteboardsAttribs={filteredSharedWhiteboards || []}
                     />
                   );
                 }
