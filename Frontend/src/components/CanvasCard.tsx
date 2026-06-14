@@ -29,6 +29,15 @@ import {
   Circle,
 } from 'react-konva';
 
+import {
+  toast,
+} from 'react-toastify';
+
+// -- local imports
+import {
+  LS_KEY_COPIED_CANVAS_OBJECT,
+} from '@/app.config';
+
 import Canvas from "./Canvas";
 import CanvasMenu from "./CanvasMenu";
 
@@ -60,6 +69,7 @@ import {
 
 import {
   type RootState,
+  store,
 } from '@/store';
 
 import {
@@ -87,6 +97,7 @@ import {
 
 import {
   selectSelectedCanvasObjectsByWhiteboard,
+  selectCanvasObjectById,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
@@ -376,6 +387,24 @@ const CanvasCard = ({
                 clientMessenger?.sendUndoHistory({
                   type: 'undo_history',
                 });
+              }
+              break;
+            // -- Handle copying shapes
+            case 'c':
+              if (ev.ctrlKey || ev.metaKey) {
+                if (selectedCanvasObjects.length > 0) {
+                  // -- copy only first shape to localStorage
+                  const currState = store.getState();
+                  const targetObjectId = selectedCanvasObjects[0];
+                  const targetObject = selectCanvasObjectById(currState, targetObjectId);
+
+                  if (targetObject) {
+                    const targetObjectData = JSON.stringify(targetObject);
+
+                    localStorage.setItem(LS_KEY_COPIED_CANVAS_OBJECT, targetObjectData);
+                    toast.success('Object copied to clipboard');
+                  }
+                }
               }
               break;
           }

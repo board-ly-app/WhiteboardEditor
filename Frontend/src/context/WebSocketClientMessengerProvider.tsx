@@ -238,8 +238,6 @@ const WebSocketClientMessengerProvider = ({
             break;
           case 'set_permissions':
             {
-              console.log('!! set_permissions:', msg);
-
               const {
                 permissionsByEmail,
                 permissionsByUserId,
