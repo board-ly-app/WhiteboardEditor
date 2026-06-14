@@ -39,6 +39,7 @@ pub enum ClientError {
     // -- client's auth token is somehow malformed
     InvalidAuth,
     // -- client's auth token has expired
+    #[allow(unused)]
     AuthTokenExpired,
     // -- Client attempted to sign in as or access user that doesn't exist
     UserNotFound {
@@ -115,6 +116,7 @@ pub enum ServerSocketIndividualMessage {
     Confirm {
         message: String,
     },
+    #[allow(unused)]
     Notify {
         notification: NotificationClientView,
     },
@@ -214,6 +216,7 @@ pub enum ServerSocketBroadcastMessage {
         canvas_id: CanvasIdType,
     },
     DeleteWhiteboard,
+    #[allow(unused)]
     Error {
         error: ClientError,
     },

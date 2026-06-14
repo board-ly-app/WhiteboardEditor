@@ -45,6 +45,7 @@ pub async fn connect_mongodb(uri: &str) -> mongodb::error::Result<mongodb::Clien
 // Interface for fetching objects from the MongoDB database, by id.
 //
 // ================================================================================================
+#[allow(unused)]
 #[derive(Debug)]
 pub struct MongoDBStore {
     user_collection: Collection<UserMongoDBView>,
@@ -52,6 +53,7 @@ pub struct MongoDBStore {
 } // -- end MongoDBStore
 
 impl MongoDBStore {
+    #[allow(unused)]
     pub fn new(
         user_coll: &Collection<UserMongoDBView>,
         whiteboard_metadata_coll: &Collection<WhiteboardMetadataMongoDBView>,
@@ -143,10 +145,12 @@ pub enum WhiteboardDiff {
         target_edit_id: EditIdType,
     },
     RedoEdit {
+        #[allow(unused)]
         target_edit_id: EditIdType,
     },
 } // -- end enum WhiteboardDiff
 
+#[allow(unused)]
 pub async fn get_whiteboard_metadata_by_id(
     db: &Database,
     wid: &WhiteboardIdType,
@@ -302,6 +306,7 @@ pub struct MongoDBInterface {
     canvas_object_coll: Collection<CanvasObjectMongoDBView>,
     user_coll: Collection<UserMongoDBView>,
     edit_coll: Collection<EditMongoDBView>,
+    #[allow(unused)]
     notification_coll: Collection<NotificationMongoDBView>,
 }// -- end pub struct MongoDBInterface
 
@@ -724,10 +729,10 @@ impl MongoDBInterface {
         }
     }// -- end pub async fn process_edit
 
-    pub async fn save_notification(&self, notif: &Notification) {
-        let notif_view = NotificationMongoDBView::from_notification(&notif);
-        let _ = self.notification_coll.insert_one(notif_view).await;
-    }// -- end save_notification
+    // pub async fn save_notification(&self, notif: &Notification) {
+    //     let notif_view = NotificationMongoDBView::from_notification(&notif);
+    //     let _ = self.notification_coll.insert_one(notif_view).await;
+    // }// -- end save_notification
 }// -- end impl MongoDBInterface
 
 impl UserStore for MongoDBInterface {

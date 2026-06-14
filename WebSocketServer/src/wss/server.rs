@@ -159,6 +159,7 @@ struct ClientMessageInspector {
 pub struct ClientMessageResponse {
     // -- Messages to send back to the client(s)
     pub messages: Vec<ServerSocketMessage>,
+    #[allow(unused)]
     pub notifications: Vec<Notification>,
 }// -- end pub struct ClientMessageResponse
 
@@ -1064,7 +1065,7 @@ pub async fn handle_unauthenticated_client_message<
                             .permission_for_user(&user_id.clone())
                     };
 
-                    if let Some(permission) = permission {
+                    if let Some(_) = permission {
                         // User has a valid permission
                         let user_summary = UserSummary {
                             client_id: client_state.client_id.clone(),
