@@ -627,12 +627,18 @@ const WebSocketClientMessengerProvider = ({
 
   useEffect(
     () => {
-      const wsUriScheme : 'ws' | 'wss' = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const wsUri = `${wsUriScheme}://${window.location.host}/ws/${whiteboardId}`;
-      const ws : WebSocket = new WebSocket(wsUri);
+      // -- should not create a new web socket connection when one already
+      // exists
+      // -- if a new connection needs to be created, the ref should be reset to
+      // null first
+      if (! webSocketRef.current) {
+        const wsUriScheme : 'ws' | 'wss' = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const wsUri = `${wsUriScheme}://${window.location.host}/ws/${whiteboardId}`;
+        const ws : WebSocket = new WebSocket(wsUri);
 
-      ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
-      webSocketRef.current = ws;
+        ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
+        webSocketRef.current = ws;
+      }
     },
     [makeHandleWebSocketOpen, whiteboardId]
   );
