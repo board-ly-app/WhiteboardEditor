@@ -77,6 +77,7 @@ pub struct CanvasObject {
     pub canvas_object: CanvasObjectModel,
 }
 
+#[allow(unused)]
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,21 +91,21 @@ pub struct CanvasObjectClientView {
 }
 
 impl CanvasObjectClientView {
-    pub fn from_canvas_object(src: &CanvasObject) -> Self {
-        Self {
-            id: src.id.clone(),
-            canvas_id: src.canvas_id.clone(),
-            canvas_object: src.canvas_object.clone(),
-        }
-    }// -- end pub fn from_canvas_object
+    // pub fn from_canvas_object(src: &CanvasObject) -> Self {
+    //     Self {
+    //         id: src.id.clone(),
+    //         canvas_id: src.canvas_id.clone(),
+    //         canvas_object: src.canvas_object.clone(),
+    //     }
+    // }// -- end pub fn from_canvas_object
 
-    pub fn to_canvas_object(&self) -> CanvasObject {
-        CanvasObject {
-            id: self.id.clone(),
-            canvas_id: self.canvas_id.clone(),
-            canvas_object: self.canvas_object.clone(),
-        }
-    }// -- end pub fn to_canvas_object
+    // pub fn to_canvas_object(&self) -> CanvasObject {
+    //     CanvasObject {
+    //         id: self.id.clone(),
+    //         canvas_id: self.canvas_id.clone(),
+    //         canvas_object: self.canvas_object.clone(),
+    //     }
+    // }// -- end pub fn to_canvas_object
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -157,72 +158,72 @@ pub enum UserMongoDBView {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(
-    tag = "kind",
-    rename_all = "camelCase",
-    rename_all_fields = "camelCase"
-)]
-pub enum UserClientView {
-    Permanent {
-        id: String,
-        username: String,
-        email: String,
-    },
-    Temp {
-        id: String,
-        username: String,
-        // temp_expires_at: String,
-    },
-}
+// #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+// #[serde(
+//     tag = "kind",
+//     rename_all = "camelCase",
+//     rename_all_fields = "camelCase"
+// )]
+// pub enum UserClientView {
+//     Permanent {
+//         id: String,
+//         username: String,
+//         email: String,
+//     },
+//     Temp {
+//         id: String,
+//         username: String,
+//         // temp_expires_at: String,
+//     },
+// }
 
-impl UserClientView {
-    pub fn from_user(user: &User) -> Self {
-        match user {
-            User::Permanent {
-                id,
-                username,
-                email,
-            } => Self::Permanent {
-                id: id.to_hex(),
-                username: username.clone(),
-                email: email.clone(),
-            },
-            User::Temp {
-                id,
-                username,
-                // temp_expires_at,
-            } => Self::Temp {
-                id: id.to_hex(),
-                username: username.clone(),
-                // temp_expires_at: temp_expires_at.clone(),
-            },
-        }
-    } // end from_user
-
-    pub fn to_user(&self) -> Result<User, mongodb::bson::oid::Error> {
-        match self {
-            Self::Permanent {
-                id,
-                username,
-                email,
-            } => Ok(User::Permanent {
-                id: ObjectId::parse_str(id)?,
-                username: username.clone(),
-                email: email.clone(),
-            }),
-            Self::Temp {
-                id,
-                username,
-                // temp_expires_at,
-            } => Ok(User::Temp {
-                id: ObjectId::parse_str(id)?,
-                username: username.clone(),
-                // temp_expires_at: temp_expires_at.clone(),
-            }),
-        }
-    } // end to_user
-}
+// impl UserClientView {
+//     pub fn from_user(user: &User) -> Self {
+//         match user {
+//             User::Permanent {
+//                 id,
+//                 username,
+//                 email,
+//             } => Self::Permanent {
+//                 id: id.to_hex(),
+//                 username: username.clone(),
+//                 email: email.clone(),
+//             },
+//             User::Temp {
+//                 id,
+//                 username,
+//                 // temp_expires_at,
+//             } => Self::Temp {
+//                 id: id.to_hex(),
+//                 username: username.clone(),
+//                 // temp_expires_at: temp_expires_at.clone(),
+//             },
+//         }
+//     } // end from_user
+// 
+//     pub fn to_user(&self) -> Result<User, mongodb::bson::oid::Error> {
+//         match self {
+//             Self::Permanent {
+//                 id,
+//                 username,
+//                 email,
+//             } => Ok(User::Permanent {
+//                 id: ObjectId::parse_str(id)?,
+//                 username: username.clone(),
+//                 email: email.clone(),
+//             }),
+//             Self::Temp {
+//                 id,
+//                 username,
+//                 // temp_expires_at,
+//             } => Ok(User::Temp {
+//                 id: ObjectId::parse_str(id)?,
+//                 username: username.clone(),
+//                 // temp_expires_at: temp_expires_at.clone(),
+//             }),
+//         }
+//     } // end to_user
+// }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(
@@ -244,6 +245,7 @@ pub enum User {
 }
 
 impl UserMongoDBView {
+    #[allow(unused)]
     pub fn from_user(user: &User) -> Self {
         match user {
             User::Permanent {
@@ -506,6 +508,7 @@ impl Canvas {
         self.height
     } // -- end pub fn height
 
+    #[allow(unused)]
     pub fn time_created(&self) -> &chrono::DateTime<Utc> {
         &self.time_created
     } // -- end pub fn time_created
@@ -586,15 +589,15 @@ impl WhiteboardPermissionEnumClientView {
         }// -- end match perm
     }// -- end pub fn from_permission_enum
 
-    pub fn to_permission_enum(&self) -> WhiteboardPermissionEnum {
-        use WhiteboardPermissionEnum::*;
+    // pub fn to_permission_enum(&self) -> WhiteboardPermissionEnum {
+    //     use WhiteboardPermissionEnum::*;
 
-        match self {
-            Self::View => View,
-            Self::Edit => Edit,
-            Self::Own => Own,
-        }// -- end match self
-    }// -- end pub fn to_permission_enum
+    //     match self {
+    //         Self::View => View,
+    //         Self::Edit => Edit,
+    //         Self::Own => Own,
+    //     }// -- end match self
+    // }// -- end pub fn to_permission_enum
 }// -- end impl WhiteboardPermissionEnumClientView
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -623,7 +626,7 @@ pub struct WhiteboardPermission {
 }
 
 pub type WhiteboardPermissionMongoDBView = WhiteboardPermission;
-pub type WhiteboardPermissionClientView = WhiteboardPermission;
+// pub type WhiteboardPermissionClientView = WhiteboardPermission;
 
 // === WhiteboardMetadata =========================================================================
 //
@@ -717,6 +720,7 @@ pub struct Whiteboard {
 } // -- end struct Whiteboard
 
 impl Whiteboard {
+    #[allow(unused)]
     pub fn new(
         id: WhiteboardIdType,
         is_active: bool,
@@ -814,6 +818,7 @@ impl Whiteboard {
         self.is_active
     } // -- end pub fn is_active
 
+    #[allow(unused)]
     pub fn root_canvas(&self) -> &CanvasIdType {
         &self.root_canvas
     } // -- end pub fn root_canvas
@@ -903,16 +908,13 @@ impl Whiteboard {
         }
     }// -- end pub fn pop_edit_by_author
 
+    #[allow(unused)]
     pub fn clear_edits_by_author(&mut self, author_id: &UserIdType) {
         self.edit_history_by_author.remove(author_id);
     }// -- end pub fn clear_edits_by_author
 
     pub fn can_apply_edit(&self, edit: &Edit) -> bool {
         use EditKind::*;
-
-        // -- Tolerance for difference between two f64 values, below which they will be treated as
-        // equal
-        const F64_MIN_DIFF : f64 = 1.0e-4;
 
         match &edit.edit {
             CreateCanvasObjects{ .. } => true, // -- always vacuously true
@@ -1285,6 +1287,7 @@ impl CanvasMongoDBView {
     } // -- end pub fn from_canvas
 }
 
+#[allow(unused)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum UserPermissionEnum {
@@ -1293,6 +1296,7 @@ pub enum UserPermissionEnum {
     View,
 }
 
+#[allow(unused)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum UserPermission {
@@ -1764,6 +1768,7 @@ impl Edit {
 // socket server to apply/reverse each edit.
 //
 // =================================================================================================
+#[allow(unused)]
 #[serde_as]
 #[derive(Debug,Clone,Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1776,6 +1781,7 @@ pub struct EditClientView {
 }// -- end pub struct Edit
 
 impl EditClientView {
+    #[allow(unused)]
     pub fn from_edit(edit: &Edit) -> Self {
         use super::utils::dt_chrono_utc_to_bson;
 
@@ -2002,6 +2008,7 @@ impl EditMongoDBView {
 // ================================================================================================
 pub type NotificationIdType = ObjectId;
 
+#[allow(unused)]
 #[derive(Clone, Debug)]
 pub enum NotificationKind {
     RequestCanvasEditPermission {
@@ -2011,6 +2018,7 @@ pub enum NotificationKind {
     },
 }// -- end pub enum NotificationKind
 
+#[allow(unused)]
 #[derive(Clone, Debug)]
 pub struct Notification {
     pub id: NotificationIdType,
@@ -2047,6 +2055,7 @@ pub enum NotificationKindMongoDBView {
 }// -- end pub struct NotificationKindMongoDBView
 
 impl NotificationKindMongoDBView {
+    #[allow(unused)]
     pub fn from_notification_kind(nk: &NotificationKind) -> Self {
         use NotificationKind::*;
 
@@ -2063,6 +2072,7 @@ impl NotificationKindMongoDBView {
         }// -- end match nk
     }// -- end fn from_notification_kind
 
+    #[allow(unused)]
     pub fn to_notification_kind(&self) -> NotificationKind {
         use NotificationKind::*;
 
@@ -2093,6 +2103,7 @@ pub struct NotificationMongoDBView {
 }// -- end pub struct NotificationMongoDBView
 
 impl NotificationMongoDBView {
+    #[allow(unused)]
     pub fn from_notification(nt: &Notification) -> Self {
         use super::utils::dt_chrono_utc_to_bson;
 
@@ -2105,6 +2116,7 @@ impl NotificationMongoDBView {
         }
     }// -- end pub fn from_notification
 
+    #[allow(unused)]
     pub fn to_notification(&self) -> Notification {
         use super::utils::dt_bson_to_chrono_utc;
 
@@ -2137,6 +2149,7 @@ pub enum NotificationKindClientView {
 }// -- end pub struct NotificationKindClientView
 
 impl NotificationKindClientView {
+    #[allow(unused)]
     pub fn from_notification_kind(nk: &NotificationKind) -> Self {
         use NotificationKind::*;
 
@@ -2153,6 +2166,7 @@ impl NotificationKindClientView {
         }// -- end match nk
     }// -- end fn from_notification_kind
 
+    #[allow(unused)]
     pub fn to_notification_kind(&self) -> NotificationKind {
         use NotificationKind::*;
 
@@ -2183,6 +2197,7 @@ pub struct NotificationClientView {
 }// -- end pub struct NotificationClientView
 
 impl NotificationClientView {
+    #[allow(unused)]
     pub fn from_notification(nt: &Notification) -> Self {
         use super::utils::dt_chrono_utc_to_bson;
 

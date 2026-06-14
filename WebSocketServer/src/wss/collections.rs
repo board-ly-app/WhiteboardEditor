@@ -49,9 +49,9 @@ impl <K: Clone + std::hash::Hash + Ord, V: Clone + std::hash::Hash + Ord> OneToM
         }
     }// -- end pub fn new
 
-    pub fn len(&self) -> usize {
-        self.keys_by_value.len()
-    }// -- end pub fn len
+    // pub fn len(&self) -> usize {
+    //     self.keys_by_value.len()
+    // }// -- end pub fn len
 
     pub fn iter(&self) -> OneToManyIter<'_, K, V> {
         OneToManyIter {
@@ -145,6 +145,7 @@ impl <K: Clone + std::hash::Hash + Ord, V: Clone + std::hash::Hash + Ord> OneToO
         }
     }// -- end pub fn new
 
+    #[allow(unused)]
     pub fn len(&self) -> usize {
         self.values_by_key.len()
     }// -- end pub fn len
@@ -162,6 +163,7 @@ impl <K: Clone + std::hash::Hash + Ord, V: Clone + std::hash::Hash + Ord> OneToO
         self.keys_by_value.insert(value.clone(), key.clone());
     }// -- end pub fn insert
 
+    #[allow(unused)]
     pub fn get_value_by_key(&self, key: &K) -> Option<&V> {
         self.values_by_key.get(key)
     }// -- end pub fn get_values_by_key
