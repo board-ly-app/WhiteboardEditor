@@ -125,7 +125,7 @@ const CreateWhiteboardModal = ({
   const handleChangeInput = (ev: React.ChangeEvent<HTMLInputElement>) => {
     ev.preventDefault();
 
-    const name = ev.target.name
+    const name = ev.target.name;
     const value = ev.target.value;
 
     setFormInputs(prev => ({
