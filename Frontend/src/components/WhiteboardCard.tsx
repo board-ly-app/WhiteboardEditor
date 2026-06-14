@@ -3,6 +3,7 @@ import {
   useContext,
   useCallback,
   useState,
+  useMemo,
 } from 'react';
 
 import {
@@ -34,7 +35,13 @@ import {
 
 import {
   type UserPermissionEnum,
+  type UserPermissionByUser,
+  type UserPermissionByEmail,
 } from '@/types/UserPermission';
+
+import {
+  type UserIdType,
+} from '@/types/WebSocketProtocol';
 
 import AuthContext from '@/context/AuthContext';
 
@@ -132,6 +139,25 @@ function WhiteboardCard({
     ? userPermissions
     : userPermissions.slice(0, WB_CARD_COLLABORATORS_DISPLAY_LIMIT);
   const hiddenCount = Math.max(0, userPermissions.length - WB_CARD_COLLABORATORS_DISPLAY_LIMIT);
+
+  // -- split permissions into the by-user-id / by-email structure the share form expects
+  const initPermissionsByUserId = useMemo<Record<UserIdType, UserPermissionByUser>>(
+    () => Object.fromEntries(
+      userPermissions
+        .filter((perm): perm is UserPermissionByUser => perm.type === 'user')
+        .map(perm => [perm.user.id, perm])
+    ),
+    [userPermissions]
+  );
+
+  const initPermissionsByEmail = useMemo<Record<string, UserPermissionByEmail>>(
+    () => Object.fromEntries(
+      userPermissions
+        .filter((perm): perm is UserPermissionByEmail => perm.type === 'email')
+        .map(perm => [perm.email, perm])
+    ),
+    [userPermissions]
+  );
 
   // -- miscellaneous callback functions
   const handleSubmitDeleteWhiteboard = useCallback(
@@ -460,7 +486,9 @@ function WhiteboardCard({
           </div>
 
           <ShareWhiteboardForm
-            initUserPermissions={userPermissions}
+            isActive={true}
+            initPermissionsByUserId={initPermissionsByUserId}
+            initPermissionsByEmail={initPermissionsByEmail}
             onSubmit={handleSubmitShareWhiteboard}
           />
         </div>
