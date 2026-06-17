@@ -56,18 +56,23 @@ import CreateWhiteboardModal, {
 } from '@/components/CreateWhiteboardModal';
 import WhiteboardList from '@/components/WhiteboardList';
 import Footer from '@/components/Footer';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { ArrowUpDown } from 'lucide-react';
 
 const Dashboard = (): React.JSX.Element => {
   const navigate = useNavigate();
   const location = useLocation();
   const pageTitle = `Your Dashboard | ${APP_NAME}`;
   const user: User | null = useUser().user;
+  const DEFAULT_SORT: SortOption = 'date-new';
 
   if (! user) {
     throw new Error('Dashboard page needs authenticated user');
   }
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>(DEFAULT_SORT);
 
   const {
     error: ownWhiteboardsError,
@@ -187,9 +192,6 @@ const Dashboard = (): React.JSX.Element => {
   const matchesSearch = (whiteboard: Whiteboard): boolean =>
     whiteboard.name.toLowerCase().includes(normalizedQuery);
 
-  const filteredOwnWhiteboards = ownWhiteboards?.filter(matchesSearch);
-  const filteredSharedWhiteboards = sharedWhiteboards?.filter(matchesSearch);
-
   // -- redirect to login on 403 (forbidden)
   const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
 
@@ -213,6 +215,36 @@ const Dashboard = (): React.JSX.Element => {
     }
   }
 
+  type SortOption = 
+    | 'name-a-z'
+    | 'name-z-a'
+    | 'date-new'
+    | 'date-old'
+  ;
+
+  const getCreatedAt = (wb: Whiteboard): number => {
+    const raw = wb.kind === 'temp_whiteboard' ? wb.createdAt : wb.time_created;
+    return new Date(raw).getTime();
+  };
+
+  const sortWhiteboards = (
+    whiteboards: Whiteboard[],
+    sortBy: SortOption,
+  ): Whiteboard[] => {
+    const sorted = [...whiteboards];
+    switch (sortBy) {
+      case 'name-a-z': return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case 'name-z-a': return sorted.sort((a, b) => b.name.localeCompare(a.name));
+      case 'date-new': return sorted.sort((a, b) => getCreatedAt(b) - getCreatedAt(a));
+      case 'date-old': return sorted.sort((a, b) => getCreatedAt(a) - getCreatedAt(b));
+    }
+  };
+
+  const filteredOwnWhiteboards = 
+    ownWhiteboards && sortWhiteboards(ownWhiteboards.filter(matchesSearch), sortBy);
+  const filteredSharedWhiteboards = 
+    sharedWhiteboards && sortWhiteboards(sharedWhiteboards.filter(matchesSearch), sortBy);
+
   return (
     <Page
       title={pageTitle}
@@ -231,18 +263,43 @@ const Dashboard = (): React.JSX.Element => {
           <h1 className="col-span-2 text-2xl lg:text-4xl text-h1-text order-1 lg:order-2 text-center truncate">
             Welcome Back, {user.username}!
           </h1>
-          <div className="col-span-1 flex flex-nowrap order-3 flex justify-center sm:justify-end">
+          <div className="col-span-1 flex flex-nowrap order-3 flex justify-center items-center sm:justify-end gap-4">
             <label htmlFor="search" className='hidden'>Search</label>
             <input
               name='search'
-              className='text-nowrap px-4 border rounded-lg'
+              className='text-nowrap px-4 py-2 border rounded-lg'
               value={searchQuery}
               type='text'
               placeholder='Search for whiteboard'
               onChange={handleSearchChange}
             />
-            {/* TODO: This is just a placeholder for now, need to implement sort features */}
-            <button className='text-nowrap hidden'>Sort me</button>
+            
+            <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Sort whiteboards"
+                title="Sort whiteboards"
+                className="size-10"
+              >
+                <ArrowUpDown className="size-6" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Sort by:</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={sortBy}
+                onValueChange={(value) => setSortBy(value as SortOption)}
+              >
+                <DropdownMenuRadioItem value="name-a-z">Name (A to Z)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="name-z-a">Name (Z to A)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="date-new">Date (newest first)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="date-old">Date (oldest first)</DropdownMenuRadioItem>
+                {/* TODO: need to implement modified times for whiteboards */}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
           </div>
         </div>
 
