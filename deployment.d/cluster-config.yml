@@ -9,3 +9,15 @@ nodes:
       - containerPort: 30443
         hostPort: ${WHITEBOARD_EDITOR_HTTPS_PORT}
         protocol: TCP
+      - containerPort: 30025
+        hostPort: ${WHITEBOARD_EDITOR_SMTP_PORT}
+        protocol: TCP
+      - containerPort: 30465
+        hostPort: 465
+        protocol: TCP
+      - containerPort: 30587
+        hostPort: 587
+        protocol: TCP
+      - containerPort: 30993
+        hostPort: 993
+        protocol: TCP

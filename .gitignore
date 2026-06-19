@@ -4,7 +4,10 @@ node_modules
 .env
 
 # secret files
-.secrets
+/.secrets
+
+# application data
+/.data
 
 # Signing certificate and key files
 *.pem

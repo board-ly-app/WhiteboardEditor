@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailserver-service
+  namespace: whiteboard-editor
+  labels:
+    app: whiteboard-editor.mailserver
+spec:
+  selector:
+    app: whiteboard-editor.mailserver
+  ports:
+  - name: smtp
+    protocol: TCP
+    appProtocol: smtp
+    port: 25
+    targetPort: 25
+  - name: esmtp-implicit-tls
+    protocol: TCP
+    appProtocol: submissions
+    port: 465
+    targetPort: 465
+  - name: esmtp-explicit-tls
+    protocol: TCP
+    appProtocol: submission
+    port: 587
+    targetPort: 587
+  - name: imaps
+    protocol: TCP
+    appProtocol: submissions
+    port: 993
+    targetPort: 993

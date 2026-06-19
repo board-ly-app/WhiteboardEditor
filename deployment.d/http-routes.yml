@@ -7,6 +7,12 @@ spec:
   parentRefs:
   - name: gateway
     namespace: whiteboard-editor
+    kind: Gateway
+    sectionName: http
+  - name: gateway
+    namespace: whiteboard-editor
+    kind: Gateway
+    sectionName: https
   rules:
   - matches:
     - path:
@@ -26,6 +32,12 @@ spec:
   parentRefs:
   - name: gateway
     namespace: whiteboard-editor
+    kind: Gateway
+    sectionName: http
+  - name: gateway
+    namespace: whiteboard-editor
+    kind: Gateway
+    sectionName: https
   rules:
   - matches:
     - path:
@@ -49,6 +61,12 @@ spec:
   parentRefs:
   - name: gateway
     namespace: whiteboard-editor
+    kind: Gateway
+    sectionName: http
+  - name: gateway
+    namespace: whiteboard-editor
+    kind: Gateway
+    sectionName: https
   rules:
   - matches:
     - path:

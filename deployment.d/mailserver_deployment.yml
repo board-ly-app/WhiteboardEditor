@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whiteboard-editor-mailserver
+  namespace: whiteboard-editor
+  labels:
+    app: whiteboard-editor.mailserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: whiteboard-editor-mailserver
+  template:
+    metadata:
+      labels:
+        app: whiteboard-editor-mailserver
+    spec:
+      hostnameOverride: "mail.${WHITEBOARD_EDITOR_DOMAIN}"
+      volumes:
+        - name: ssl-cert
+          secret:
+            secretName: ssl-cert
+            optional: false
+        - name: ssl-key
+          secret:
+            secretName: ssl-key
+            optional: false
+      containers:
+      - name: whiteboard-editor-mailserver
+        image: ghcr.io/docker-mailserver/docker-mailserver:15.1
+        imagePullPolicy: IfNotPresent
+        ports:
+          - name: smtp
+            protocol: TCP
+            containerPort: 25
+            hostPort: 25
+          - name: esmtp-implicit
+            protocol: TCP
+            containerPort: 465
+            hostPort: 465
+          - name: esmtp-explicit
+            protocol: TCP
+            containerPort: 587
+            hostPort: 587
+          - name: imaps
+            protocol: TCP
+            containerPort: 993
+            hostPort: 993
+        envFrom:
+          - secretRef:
+              name: mailserver-config
+              optional: false
+        volumeMounts:
+          - name: ssl-cert
+            mountPath: /tmp/cert.pem
+            subPath: cert.pem
+            readOnly: true
+          - name: ssl-key
+            mountPath: /tmp/key.pem
+            subPath: key.pem
+            readOnly: true
