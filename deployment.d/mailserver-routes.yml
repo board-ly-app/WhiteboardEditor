@@ -1,7 +1,7 @@
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TCPRoute
 metadata:
-  name: whiteboard-editor-mailserver-smtp
+  name: whiteboard-editor-mailserver-smtp-route
   namespace: whiteboard-editor
 spec:
   parentRefs:
@@ -13,51 +13,73 @@ spec:
     - name: smtp
       backendRefs:
         - name: mailserver-service
+          kind: Service
           namespace: whiteboard-editor
           port: 25
 ---
-apiVersion: gateway.networking.k8s.io/v1
-kind: TLSRoute
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
 metadata:
-  name: whiteboard-editor-mailserver-esmtp-implicit-tls
+  name: whiteboard-editor-mailserver-imap-route
   namespace: whiteboard-editor
 spec:
   parentRefs:
     - name: gateway
       namespace: whiteboard-editor
       kind: Gateway
-      sectionName: esmtp-implicit-tls
+      sectionName: imap
+  rules:
+    - name: imap
+      backendRefs:
+        - name: mailserver-service
+          kind: Service
+          namespace: whiteboard-editor
+          port: 143
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: TLSRoute
+metadata:
+  name: whiteboard-editor-mailserver-submissions-route
+  namespace: whiteboard-editor
+spec:
+  parentRefs:
+    - name: gateway
+      namespace: whiteboard-editor
+      kind: Gateway
+      sectionName: submissions
   hostnames:
     - "mail.${WHITEBOARD_EDITOR_DOMAIN}"
   rules:
-    - name: esmtp
+    - name: submissions
       backendRefs:
         - name: mailserver-service
+          kind: Service
           namespace: whiteboard-editor
           port: 465
 ---
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TCPRoute
 metadata:
-  name: whiteboard-editor-mailserver-esmtp-explicit-tls
+  name: whiteboard-editor-mailserver-submission-route
   namespace: whiteboard-editor
 spec:
   parentRefs:
     - name: gateway
       namespace: whiteboard-editor
       kind: Gateway
-      sectionName: esmtp-explicit-tls
+      sectionName: submission
   rules:
     - name: esmtp
       backendRefs:
         - name: mailserver-service
+          kind: Service
           namespace: whiteboard-editor
           port: 587
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: TLSRoute
 metadata:
-  name: whiteboard-editor-mailserver-imaps
+  name: whiteboard-editor-mailserver-imaps-route
   namespace: whiteboard-editor
 spec:
   parentRefs:
@@ -71,5 +93,6 @@ spec:
     - name: imaps
       backendRefs:
         - name: mailserver-service
+          kind: Service
           namespace: whiteboard-editor
           port: 993

@@ -31,7 +31,17 @@ spec:
     allowedRoutes:
       namespaces:
         from: Same
-  - name: esmtp-implicit-tls
+      kinds:
+        - kind: TCPRoute
+  - name: imap
+    protocol: TCP
+    port: 143
+    allowedRoutes:
+      namespaces:
+        from: Same
+      kinds:
+        - kind: TCPRoute
+  - name: submissions
     protocol: TLS
     port: 465
     tls:
@@ -41,12 +51,14 @@ spec:
         from: Same
       kinds:
         - kind: TLSRoute
-  - name: esmtp-explicit-tls
+  - name: submission
     protocol: TCP
     port: 587
     allowedRoutes:
       namespaces:
         from: Same
+      kinds:
+        - kind: TCPRoute
   - name: imaps
     protocol: TLS
     port: 993

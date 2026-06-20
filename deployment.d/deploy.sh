@@ -50,12 +50,14 @@ then
   helm install ngf oci://ghcr.io/nginx/charts/nginx-gateway-fabric \
     --create-namespace \
     -n nginx-gateway \
+    --set nginxGateway.externalTrafficPolicy=Local \
     --set nginxGateway.gwAPIExperimentalFeatures.enable=true \
     --set nginx.service.type=NodePort \
     --set-json 'nginx.service.nodePorts=[
       {"port":30080,"listenerPort":80},
       {"port":30443,"listenerPort":443},
       {"port":30025,"listenerPort":25},
+      {"port":30143,"listenerPort":143},
       {"port":30465,"listenerPort":465},
       {"port":30587,"listenerPort":587},
       {"port":30993,"listenerPort":993}
