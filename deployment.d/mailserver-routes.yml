@@ -17,25 +17,6 @@ spec:
           namespace: whiteboard-editor
           port: 25
 ---
-apiVersion: gateway.networking.k8s.io/v1alpha2
-kind: TCPRoute
-metadata:
-  name: whiteboard-editor-mailserver-imap-route
-  namespace: whiteboard-editor
-spec:
-  parentRefs:
-    - name: gateway
-      namespace: whiteboard-editor
-      kind: Gateway
-      sectionName: imap
-  rules:
-    - name: imap
-      backendRefs:
-        - name: mailserver-service
-          kind: Service
-          namespace: whiteboard-editor
-          port: 143
----
 apiVersion: gateway.networking.k8s.io/v1
 kind: TLSRoute
 metadata:

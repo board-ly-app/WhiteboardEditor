@@ -34,10 +34,6 @@ spec:
             protocol: TCP
             containerPort: 25
             hostPort: 25
-          - name: imap
-            protocol: TCP
-            containerPort: 143
-            hostPort: 143
           - name: submissions
             protocol: TCP
             containerPort: 465

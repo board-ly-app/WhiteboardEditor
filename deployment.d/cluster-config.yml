@@ -12,9 +12,6 @@ nodes:
       - containerPort: 30025
         hostPort: ${WHITEBOARD_EDITOR_SMTP_PORT}
         protocol: TCP
-      - containerPort: 30143
-        hostPort: 143
-        protocol: TCP
       - containerPort: 30465
         hostPort: 465
         protocol: TCP

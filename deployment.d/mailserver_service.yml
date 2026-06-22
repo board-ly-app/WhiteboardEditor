@@ -12,11 +12,6 @@ spec:
     appProtocol: smtp
     port: 25
     targetPort: smtp
-  - name: imap
-    protocol: TCP
-    appProtocol: imap
-    port: 143
-    targetPort: imap
   - name: submissions
     protocol: TCP
     appProtocol: submissions

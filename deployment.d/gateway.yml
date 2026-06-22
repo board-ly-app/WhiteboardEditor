@@ -33,14 +33,6 @@ spec:
         from: Same
       kinds:
         - kind: TCPRoute
-  - name: imap
-    protocol: TCP
-    port: 143
-    allowedRoutes:
-      namespaces:
-        from: Same
-      kinds:
-        - kind: TCPRoute
   - name: submissions
     protocol: TLS
     port: 465

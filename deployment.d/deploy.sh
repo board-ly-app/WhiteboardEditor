@@ -57,7 +57,6 @@ then
       {"port":30080,"listenerPort":80},
       {"port":30443,"listenerPort":443},
       {"port":30025,"listenerPort":25},
-      {"port":30143,"listenerPort":143},
       {"port":30465,"listenerPort":465},
       {"port":30587,"listenerPort":587},
       {"port":30993,"listenerPort":993}
