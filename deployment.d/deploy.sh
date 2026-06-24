@@ -44,6 +44,7 @@ if [[ $(kind get clusters | wc -l) -lt 1 ]]
 then
   kind create cluster --config <(envsubst < cluster-config.yml)
 
+  # -- Install gateway provider
   kubectl apply --server-side \
     -f <(kubectl kustomize "https://github.com/nginx/nginx-gateway-fabric/config/crd/gateway-api/experimental?ref=v2.6.5")
 
@@ -61,6 +62,10 @@ then
       {"port":30587,"listenerPort":587},
       {"port":30993,"listenerPort":993}
     ]'
+
+  # -- Install smb csi driver
+  helm repo add csi-driver-smb https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/master/charts
+  helm install csi-driver-smb csi-driver-smb/csi-driver-smb --namespace kube-system --version 1.20.1
 fi
 
 # -- Load images
@@ -90,6 +95,9 @@ kubectl -n whiteboard-editor create secret generic ssl-key \
 kubectl -n whiteboard-editor create secret generic mailserver-config \
   --from-env-file ../.secrets/mailserver.env
 
+kubectl -n whiteboard-editor create secret generic samba-credentials \
+  --from-env-file ../.secrets/sambacredentials
+
 # -- Deploy frontend pods
 kubectl apply -f <(envsubst < frontend_deployment.yml)
 
@@ -107,6 +115,10 @@ kubectl apply -f <(envsubst < web_socket_server_deployment.yml)
 
 # -- Deploy web_socket_server service
 kubectl apply -f <(envsubst < web_socket_server_service.yml)
+
+# -- Provision mailserver storage
+kubectl apply -f <(envsubst < mailserver_storage.yml)
+kubectl apply -f <(envsubst < mailserver_pvcs.yml)
 
 # -- Deploy mailserver pod
 kubectl apply -f <(envsubst < mailserver_deployment.yml)

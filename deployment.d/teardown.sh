@@ -55,9 +55,13 @@ kubectl delete -f <(envsubst < mailserver_deployment.yml)
 
 # -- Delete mailserver service
 kubectl delete -f <(envsubst < mailserver_service.yml)
+kubectl delete -f <(envsubst < mailserver_pvcs.yml)
+kubectl delete -f <(envsubst < mailserver_storage.yml)
 
 # -- Remove secrets
 kubectl -n whiteboard-editor delete secret whiteboard-editor-config
+kubectl -n whiteboard-editor delete secret mailserver-config
+kubectl -n whiteboard-editor delete secret samba-credentials
 
 # -- Remove namespaces
 kubectl delete -f <(envsubst < namespaces.yml)

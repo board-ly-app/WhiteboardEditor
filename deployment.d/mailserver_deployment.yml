@@ -17,6 +17,7 @@ spec:
     spec:
       hostnameOverride: "mail.${WHITEBOARD_EDITOR_DOMAIN}"
       volumes:
+        # -- SSL
         - name: ssl-cert
           secret:
             secretName: ssl-cert
@@ -25,6 +26,10 @@ spec:
           secret:
             secretName: ssl-key
             optional: false
+        # -- PVCs
+        - name: data
+          persistentVolumeClaim:
+            claimName: data
       containers:
       - name: whiteboard-editor-mailserver
         image: ghcr.io/docker-mailserver/docker-mailserver:15.1
@@ -51,6 +56,7 @@ spec:
               name: mailserver-config
               optional: false
         volumeMounts:
+          # -- ssl
           - name: ssl-cert
             mountPath: /tmp/cert.pem
             subPath: cert.pem
@@ -59,6 +65,19 @@ spec:
             mountPath: /tmp/key.pem
             subPath: key.pem
             readOnly: true
+          # -- PVCs
+          - name: data
+            mountPath: /tmp/docker-mailserver
+            subPath: config
+            readOnly: false
+          - name: data
+            mountPath: /var/mail
+            subPath: mail-data
+            readOnly: false
+          - name: data
+            mountPath: /var/log/mail
+            subPath: mail-logs
+            readOnly: false
         securityContext:
           allowPrivilegeEscalation: true
           readOnlyRootFilesystem: false
@@ -83,3 +102,4 @@ spec:
           seccompProfile:
             type: RuntimeDefault
 
+      restartPolicy: Always
