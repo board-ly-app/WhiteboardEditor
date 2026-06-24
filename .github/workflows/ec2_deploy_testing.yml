@@ -245,8 +245,11 @@ jobs:
             docker compose pull
 
             # === Restart kubernetes deployment ================================
-            ./deployment.d/teardown.sh
-            ./deployment.d/deploy.sh
+            if ! ./deployment.d/update.sh
+            then
+              # restart from scratch
+              ./deployment.d/deploy.sh
+            fi
         run: |
           # Write script to a tempfile
           printenv SSH_SCRIPT > "${{ runner.temp }}/script.sh"
