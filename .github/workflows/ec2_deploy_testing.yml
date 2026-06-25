@@ -191,7 +191,7 @@ jobs:
         id: write-ssh-key
         run: |
           eval `ssh-agent -s`
-          cat > "${{ runner.temp }}/github-ec2.pem" << _EOF_
+          cat > "${{ runner.temp }}/github-ec2.pem" << '_EOF_'
           ${{ secrets.EC2_TEST_PRIVATE_KEY }}
           _EOF_
           chmod 400 "${{ runner.temp }}/github-ec2.pem"
@@ -228,25 +228,25 @@ jobs:
             cd ${{ secrets.EC2_TEST_DEPLOYMENT_DIR }}
 
             # === deploy secret files ==========================================
-            cat > .env << _EOF_
+            cat > .env << '_EOF_'
             ${{ secrets.EC2_TEST_ENV_FILE }}
             _EOF_
 
             mkdir -p .secrets
 
-            cat > .secrets/key.pem << _EOF_
+            cat > .secrets/key.pem << '_EOF_'
             ${{ secrets.EC2_TEST_SSL_KEY }}
             _EOF_
 
-            cat > .secrets/cert.pem << _EOF_
+            cat > .secrets/cert.pem << '_EOF_'
             ${{ secrets.EC2_TEST_SSL_CERT }}
             _EOF_
 
-            cat > .secrets/mailserver.env << _EOF_
+            cat > .secrets/mailserver.env << '_EOF_'
             ${{ secrets.EC2_TEST_MAILSERVER_ENV }}
             _EOF_
 
-            cat > .secrets/sambacredentials << _EOF_
+            cat > .secrets/sambacredentials << '_EOF_'
             ${{ secrets.EC2_TEST_SAMBA_CREDENTIALS }}
             _EOF_
 
@@ -256,7 +256,7 @@ jobs:
             export WHITEBOARD_EDITOR_CR_URI="ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}"
             export WHITEBOARD_EDITOR_TAG="${{ env.CURRENT_VERSION_TAG }}"
 
-            docker login --username ${{ github.actor }} --password-stdin ghcr.io << _EOF_
+            docker login --username ${{ github.actor }} --password-stdin ghcr.io << '_EOF_'
             ${{ secrets.GITHUB_TOKEN }}
             _EOF_
             docker compose pull
