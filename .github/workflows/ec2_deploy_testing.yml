@@ -31,6 +31,12 @@ on:
       EC2_TEST_SSL_CERT:
         description: "Certificate to be placed in ReverseProxy/cert.pem"
         required: true
+      EC2_TEST_MAILSERVER_ENV:
+        description: "Contents of mailserver.env file to be placed in deployment.d/mailserver.env"
+        required: true
+      EC2_TEST_SAMBA_CREDENTIALS:
+        description: "Contents of samba credentials file for mail server; must contain username and password"
+        required: true
 
 env:
   CURRENT_VERSION_TAG: 0.1.0
@@ -234,6 +240,16 @@ jobs:
             cat > .secrets/cert.pem << _EOF_
             ${{ secrets.EC2_TEST_SSL_CERT }}
             _EOF_
+
+            cat > .secrets/mailserver.env << _EOF_
+            ${{ secrets.EC2_TEST_MAILSERVER_ENV }}
+            _EOF_
+
+            cat > .secrets/sambacredentials << _EOF_
+            ${{ secrets.EC2_TEST_SAMBA_CREDENTIALS }}
+            _EOF_
+
+            chmod 600 .secrets/sambacredentials
 
             # === Pull images from container registry ==========================
             export WHITEBOARD_EDITOR_CR_URI="ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}"
