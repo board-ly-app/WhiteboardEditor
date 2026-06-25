@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ve
 
 # -- Redeploy with updates, without needing to tear down running deployment.
 
