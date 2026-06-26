@@ -802,6 +802,7 @@ impl Whiteboard {
         &self.canvases_to_canvas_objects
     }// -- end pub fn canvases_to_canvas_objects
 
+    #[allow(unused)]
     pub fn canvases_to_canvas_objects_mut(&mut self) -> &mut collections::OneToMany<CanvasIdType, CanvasObjectIdType> {
         &mut self.canvases_to_canvas_objects
     }// -- end pub fn canvases_to_canvas_objects
