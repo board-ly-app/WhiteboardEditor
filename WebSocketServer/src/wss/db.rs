@@ -727,6 +727,25 @@ impl MongoDBInterface {
         if let Some(edit_view) = EditMongoDBView::from_edit(edit) {
             let _ = self.edit_coll.insert_one(edit_view).await;
         }
+
+        // -- Bump the whiteboard's last-modified time. One write per edit (not
+        // per diff), stamped with the edit's commit time.
+        let bump_modified_res = self.whiteboard_metadata_coll
+            .update_one(
+                doc! { "_id": *edit.whiteboard() },
+                doc! {
+                    "$set": {
+                        "time_last_modified": mongodb::bson::DateTime::from_millis(
+                            edit.committed_at().timestamp_millis()
+                        )
+                    }
+                },
+            )
+            .await;
+
+        if let Err(e) = bump_modified_res {
+            eprintln!("Failed to bump whiteboard time_last_modified: {}", e);
+        }
     }// -- end pub async fn process_edit
 
     // pub async fn save_notification(&self, notif: &Notification) {

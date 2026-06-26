@@ -802,6 +802,7 @@ impl Whiteboard {
         &self.canvases_to_canvas_objects
     }// -- end pub fn canvases_to_canvas_objects
 
+    #[allow(unused)]
     pub fn canvases_to_canvas_objects_mut(&mut self) -> &mut collections::OneToMany<CanvasIdType, CanvasObjectIdType> {
         &mut self.canvases_to_canvas_objects
     }// -- end pub fn canvases_to_canvas_objects
@@ -1524,6 +1525,14 @@ impl Edit {
     pub fn id(&self) -> &EditIdType {
         &self.id
     }// -- end pub fn id
+
+    pub fn whiteboard(&self) -> &WhiteboardIdType {
+        &self.whiteboard
+    }// -- end pub fn whiteboard
+
+    pub fn committed_at(&self) -> &chrono::DateTime<Utc> {
+        &self.committed_at
+    }// -- end pub fn committed_at
 
     pub fn generate_server_messages(&self, author_client_id: &ClientIdType) -> Vec<ServerSocketMessage> {
         use EditKind::*;

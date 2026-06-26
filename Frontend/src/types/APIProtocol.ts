@@ -63,6 +63,7 @@ interface WhiteboardBase {
   thumbnail_url: string;
   user_permissions: UserPermission[];
   visibility: 'public' | 'private';
+  time_last_modified?: Date;
   canvases?: Canvas[];
 }
 
