@@ -386,6 +386,7 @@ export interface IWhiteboardModel <UserType, CanvasType> {
   thumbnail_url: string;
   kind: WhiteboardTypeEnum;
   visibility: IWhiteboardVisibilityEnum;
+  time_last_modified: Date;
 
   // -- vector fields: exclude from attribute view
   user_permissions: IWhiteboardUserPermission<UserType>[];
@@ -513,7 +514,8 @@ const whiteboardSchema = new Schema<IWhiteboard<Types.ObjectId, Types.ObjectId>,
     root_canvas: { type: Schema.Types.ObjectId, ref: "Canvas", required: true },
     thumbnail_url: { type: String, required: false, default: null },
     user_permissions: [whiteboardUserPermissionSchema],
-    visibility: { type: String, required: true, default: 'private' }
+    visibility: { type: String, required: true, default: 'private' },
+    time_last_modified: { type: Date, default: Date.now },
   },
   {
     // -- options
