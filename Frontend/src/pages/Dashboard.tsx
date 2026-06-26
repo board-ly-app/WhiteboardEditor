@@ -332,32 +332,32 @@ const Dashboard = (): React.JSX.Element => {
             />
             
             <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Sort whiteboards"
-                title="Sort whiteboards"
-                className="size-10"
-              >
-                <ArrowUpDown className="size-6" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Sort by:</DropdownMenuLabel>
-              <DropdownMenuRadioGroup
-                value={sortBy}
-                onValueChange={(value) => setSortBy(value as SortOption)}
-              >
-                <DropdownMenuRadioItem value="modified-new">Modified (recent first)</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="modified-old">Modified (oldest first)</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="date-new">Created (newest first)</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="date-old">Created (oldest first)</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="name-a-z">Name (A to Z)</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="name-z-a">Name (Z to A)</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Sort whiteboards"
+                  title="Sort whiteboards"
+                  className="size-10"
+                >
+                  <ArrowUpDown className="size-6" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Sort by:</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={sortBy}
+                  onValueChange={(value) => setSortBy(value as SortOption)}
+                >
+                  <DropdownMenuRadioItem value="modified-new">Modified (recent first)</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="modified-old">Modified (oldest first)</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="date-new">Created (newest first)</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="date-old">Created (oldest first)</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="name-a-z">Name (A to Z)</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="name-z-a">Name (Z to A)</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
