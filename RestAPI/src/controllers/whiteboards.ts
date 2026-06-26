@@ -294,6 +294,7 @@ export const handleConvertTempToPerm = async (
           name: 'Trial Whiteboard',
           kind: 'permanent_whiteboard',
           time_created: new Date(),
+          time_last_modified: new Date(),
           user_permissions: updatedPermissions,
         },
         $unset: {
@@ -338,6 +339,7 @@ export const handleChangeWhiteboardName = async (
       {
         $set: {
           name: newName,
+          time_last_modified: new Date(),
         }
       }
     );
