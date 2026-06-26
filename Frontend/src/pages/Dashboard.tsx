@@ -2,6 +2,7 @@
 import {
   useCallback,
   useState,
+  useMemo,
 } from 'react';
 
 import {
@@ -183,17 +184,24 @@ const Dashboard = (): React.JSX.Element => {
     [navigate, location]
   );// -- end handleCreateWhiteboard
 
-  const handleSearchChange = (ev: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(ev.target.value);
-  };
+  const handleSearchChange = useCallback(
+    (ev: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchQuery(ev.target.value);
+    },
+    []
+  );// -- end handleSearchChange
 
   // -- case-insensitive match of the search query against a whiteboard's name
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-  const matchesSearch = (whiteboard: Whiteboard): boolean =>
-    whiteboard.name.toLowerCase().includes(normalizedQuery);
+  const normalizedQuery = useMemo(
+    () => searchQuery.trim().toLowerCase(),
+    [searchQuery]
+  );
 
   // -- redirect to login on 403 (forbidden)
-  const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
+  const locationEncoded : string = useMemo(
+    () => encodeURIComponent(`${location.pathname}${location.search}`),
+    [location.pathname, location.search]
+  );
 
   if (ownWhiteboardsError && ownWhiteboardsError.status === 403) {
     navigate(`/login?redirect=${locationEncoded}`);
@@ -224,37 +232,68 @@ const Dashboard = (): React.JSX.Element => {
   | 'name-z-a'
   ;
 
-  const getCreatedAt = (wb: Whiteboard): number => {
-    const raw = wb.kind === 'temp_whiteboard' ? wb.createdAt : wb.time_created;
-    return new Date(raw).getTime();
-  };
+  const sortWhiteboards = useCallback(
+    (whiteboards: Whiteboard[], sortBy: SortOption,): Whiteboard[] => {
+      const getCreatedAt = (wb: Whiteboard): number => {
+        const raw = wb.kind === 'temp_whiteboard' ? wb.createdAt : wb.time_created;
+        return new Date(raw).getTime();
+      };
 
-  // -- last-modified time, falling back to creation date for whiteboards that
-  // predate the time_last_modified field.
-  const getLastModified = (wb: Whiteboard): number =>
-    wb.time_last_modified
-      ? new Date(wb.time_last_modified).getTime()
-      : getCreatedAt(wb);
+      // -- last-modified time, falling back to creation date for whiteboards that
+      // predate the time_last_modified field.
+      const getLastModified = (wb: Whiteboard): number =>
+          wb.time_last_modified
+            ? new Date(wb.time_last_modified).getTime()
+            : getCreatedAt(wb);
+      const sorted = [...whiteboards];
 
-  const sortWhiteboards = (
-    whiteboards: Whiteboard[],
-    sortBy: SortOption,
-  ): Whiteboard[] => {
-    const sorted = [...whiteboards];
-    switch (sortBy) {
-      case 'modified-new': return sorted.sort((a, b) => getLastModified(b) - getLastModified(a));
-      case 'modified-old': return sorted.sort((a, b) => getLastModified(a) - getLastModified(b));
-      case 'date-new': return sorted.sort((a, b) => getCreatedAt(b) - getCreatedAt(a));
-      case 'date-old': return sorted.sort((a, b) => getCreatedAt(a) - getCreatedAt(b));
-      case 'name-a-z': return sorted.sort((a, b) => a.name.localeCompare(b.name));
-      case 'name-z-a': return sorted.sort((a, b) => b.name.localeCompare(a.name));
-    }
-  };
+      switch (sortBy) {
+        case 'modified-new': return sorted.sort((a, b) => getLastModified(b) - getLastModified(a));
+        case 'modified-old': return sorted.sort((a, b) => getLastModified(a) - getLastModified(b));
+        case 'date-new': return sorted.sort((a, b) => getCreatedAt(b) - getCreatedAt(a));
+        case 'date-old': return sorted.sort((a, b) => getCreatedAt(a) - getCreatedAt(b));
+        case 'name-a-z': return sorted.sort((a, b) => a.name.localeCompare(b.name));
+        case 'name-z-a': return sorted.sort((a, b) => b.name.localeCompare(a.name));
+      }
+    },
+    []
+  );// -- end sortWhiteboards
 
-  const filteredOwnWhiteboards = 
-    ownWhiteboards && sortWhiteboards(ownWhiteboards.filter(matchesSearch), sortBy);
-  const filteredSharedWhiteboards = 
-    sharedWhiteboards && sortWhiteboards(sharedWhiteboards.filter(matchesSearch), sortBy);
+  const matchesSearch = useCallback(
+    (whiteboard: Whiteboard, normalizedQuery: string): boolean =>
+      whiteboard.name.toLowerCase().includes(normalizedQuery),
+    []
+  );// -- end matchesSearch
+
+  const filteredOwnWhiteboards = useMemo(
+    () => {
+      if (! ownWhiteboards) {
+        return [];
+      } else {
+        const filteredWhiteboards = ownWhiteboards.filter(
+          (wb) => matchesSearch(wb, normalizedQuery)
+        );
+
+        return sortWhiteboards(filteredWhiteboards, sortBy);
+      }
+    },
+    [ownWhiteboards, normalizedQuery, sortBy, matchesSearch, sortWhiteboards]
+  );
+
+  const filteredSharedWhiteboards = useMemo(
+    () => {
+      if (! sharedWhiteboards) {
+        return [];
+      } else {
+        const filteredWhiteboards = sharedWhiteboards.filter(
+          (wb) => matchesSearch(wb, normalizedQuery)
+        );
+
+        return sortWhiteboards(filteredWhiteboards, sortBy);
+      }
+    },
+    [sharedWhiteboards, normalizedQuery, sortBy, matchesSearch, sortWhiteboards]
+  );
 
   return (
     <Page
@@ -335,7 +374,7 @@ const Dashboard = (): React.JSX.Element => {
                   return (
                     <WhiteboardList
                       status="ready"
-                      whiteboardsAttribs={filteredOwnWhiteboards || []}
+                      whiteboardsAttribs={filteredOwnWhiteboards}
                     />
                   );
                 }
@@ -362,7 +401,7 @@ const Dashboard = (): React.JSX.Element => {
                   return (
                     <WhiteboardList
                       status="ready"
-                      whiteboardsAttribs={filteredSharedWhiteboards || []}
+                      whiteboardsAttribs={filteredSharedWhiteboards}
                     />
                   );
                 }
