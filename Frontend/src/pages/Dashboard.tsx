@@ -57,7 +57,14 @@ import CreateWhiteboardModal, {
 } from '@/components/CreateWhiteboardModal';
 import WhiteboardList from '@/components/WhiteboardList';
 import Footer from '@/components/Footer';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown } from 'lucide-react';
 
