@@ -1529,8 +1529,8 @@ impl Edit {
         &self.whiteboard
     }// -- end pub fn whiteboard
 
-    pub fn committed_at(&self) -> chrono::DateTime<Utc> {
-        self.committed_at
+    pub fn committed_at(&self) -> &chrono::DateTime<Utc> {
+        &self.committed_at
     }// -- end pub fn committed_at
 
     pub fn generate_server_messages(&self, author_client_id: &ClientIdType) -> Vec<ServerSocketMessage> {
