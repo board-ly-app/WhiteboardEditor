@@ -65,7 +65,7 @@ const Dashboard = (): React.JSX.Element => {
   const location = useLocation();
   const pageTitle = `Your Dashboard | ${APP_NAME}`;
   const user: User | null = useUser().user;
-  const DEFAULT_SORT: SortOption = 'date-new';
+  const DEFAULT_SORT: SortOption = 'modified-new';
 
   if (! user) {
     throw new Error('Dashboard page needs authenticated user');
@@ -215,11 +215,13 @@ const Dashboard = (): React.JSX.Element => {
     }
   }
 
-  type SortOption = 
-    | 'name-a-z'
-    | 'name-z-a'
-    | 'date-new'
-    | 'date-old'
+  type SortOption =
+  | 'modified-new'
+  | 'modified-old'
+  | 'date-new'
+  | 'date-old'
+  | 'name-a-z'
+  | 'name-z-a'
   ;
 
   const getCreatedAt = (wb: Whiteboard): number => {
@@ -227,16 +229,25 @@ const Dashboard = (): React.JSX.Element => {
     return new Date(raw).getTime();
   };
 
+  // -- last-modified time, falling back to creation date for whiteboards that
+  // predate the time_last_modified field.
+  const getLastModified = (wb: Whiteboard): number =>
+    wb.time_last_modified
+      ? new Date(wb.time_last_modified).getTime()
+      : getCreatedAt(wb);
+
   const sortWhiteboards = (
     whiteboards: Whiteboard[],
     sortBy: SortOption,
   ): Whiteboard[] => {
     const sorted = [...whiteboards];
     switch (sortBy) {
-      case 'name-a-z': return sorted.sort((a, b) => a.name.localeCompare(b.name));
-      case 'name-z-a': return sorted.sort((a, b) => b.name.localeCompare(a.name));
+      case 'modified-new': return sorted.sort((a, b) => getLastModified(b) - getLastModified(a));
+      case 'modified-old': return sorted.sort((a, b) => getLastModified(a) - getLastModified(b));
       case 'date-new': return sorted.sort((a, b) => getCreatedAt(b) - getCreatedAt(a));
       case 'date-old': return sorted.sort((a, b) => getCreatedAt(a) - getCreatedAt(b));
+      case 'name-a-z': return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case 'name-z-a': return sorted.sort((a, b) => b.name.localeCompare(a.name));
     }
   };
 
@@ -292,11 +303,12 @@ const Dashboard = (): React.JSX.Element => {
                 value={sortBy}
                 onValueChange={(value) => setSortBy(value as SortOption)}
               >
+                <DropdownMenuRadioItem value="modified-new">Modified (recent first)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="modified-old">Modified (oldest first)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="date-new">Created (newest first)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="date-old">Created (oldest first)</DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="name-a-z">Name (A to Z)</DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="name-z-a">Name (Z to A)</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="date-new">Date (newest first)</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="date-old">Date (oldest first)</DropdownMenuRadioItem>
-                {/* TODO: need to implement modified times for whiteboards */}
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
