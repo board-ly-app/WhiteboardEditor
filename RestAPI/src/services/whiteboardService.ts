@@ -306,6 +306,7 @@ export const setSharedUsers = async (
     } else {
       // fully replace old permissions
       whiteboard.set('user_permissions', finalPermissions);
+      whiteboard.set('time_last_modified', new Date());
 
       await whiteboard.save()
         .then(wb => wb.populateAttribs());
