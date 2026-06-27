@@ -57,7 +57,7 @@ kubectl -n whiteboard-editor exec -it whiteboard-editor-maileserver-* -- setup e
 
 You will be prompted to enter a password.
 
-To ensure that the mailserver's ports are accessible, you can test them using
+To ensure that the mailserver's ports are accessible, you can scan them using
 netcat (ncat):
 
 ```bash
