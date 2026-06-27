@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - master
-      - feat/docker_mail_server
   workflow_dispatch:
   workflow_call:
     secrets:
