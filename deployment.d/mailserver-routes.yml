@@ -1,0 +1,79 @@
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: whiteboard-editor-mailserver-smtp-route
+  namespace: whiteboard-editor
+spec:
+  parentRefs:
+    - name: gateway
+      namespace: whiteboard-editor
+      kind: Gateway
+      sectionName: smtp
+  rules:
+    - name: smtp
+      backendRefs:
+        - name: mailserver-service
+          kind: Service
+          namespace: whiteboard-editor
+          port: 25
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: TLSRoute
+metadata:
+  name: whiteboard-editor-mailserver-submissions-route
+  namespace: whiteboard-editor
+spec:
+  parentRefs:
+    - name: gateway
+      namespace: whiteboard-editor
+      kind: Gateway
+      sectionName: submissions
+  hostnames:
+    - "mail.${WHITEBOARD_EDITOR_DOMAIN}"
+  rules:
+    - name: submissions
+      backendRefs:
+        - name: mailserver-service
+          kind: Service
+          namespace: whiteboard-editor
+          port: 465
+---
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: whiteboard-editor-mailserver-submission-route
+  namespace: whiteboard-editor
+spec:
+  parentRefs:
+    - name: gateway
+      namespace: whiteboard-editor
+      kind: Gateway
+      sectionName: submission
+  rules:
+    - name: esmtp
+      backendRefs:
+        - name: mailserver-service
+          kind: Service
+          namespace: whiteboard-editor
+          port: 587
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: TLSRoute
+metadata:
+  name: whiteboard-editor-mailserver-imaps-route
+  namespace: whiteboard-editor
+spec:
+  parentRefs:
+    - name: gateway
+      namespace: whiteboard-editor
+      kind: Gateway
+      sectionName: imaps
+  hostnames:
+    - "mail.${WHITEBOARD_EDITOR_DOMAIN}"
+  rules:
+    - name: imaps
+      backendRefs:
+        - name: mailserver-service
+          kind: Service
+          namespace: whiteboard-editor
+          port: 993

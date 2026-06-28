@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whiteboard-editor-mailserver
+  namespace: whiteboard-editor
+  labels:
+    app: whiteboard-editor.mailserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: whiteboard-editor.mailserver
+  template:
+    metadata:
+      labels:
+        app: whiteboard-editor.mailserver
+    spec:
+      hostnameOverride: "mail.${WHITEBOARD_EDITOR_DOMAIN}"
+      volumes:
+        # -- SSL
+        - name: ssl-cert
+          secret:
+            secretName: ssl-cert
+            optional: false
+        - name: ssl-key
+          secret:
+            secretName: ssl-key
+            optional: false
+        # -- PVCs
+        - name: data
+          persistentVolumeClaim:
+            claimName: data
+      containers:
+      - name: whiteboard-editor-mailserver
+        image: ghcr.io/docker-mailserver/docker-mailserver:15.1
+        imagePullPolicy: IfNotPresent
+        ports:
+          - name: smtp
+            protocol: TCP
+            containerPort: 25
+            hostPort: 25
+          - name: submissions
+            protocol: TCP
+            containerPort: 465
+            hostPort: 465
+          - name: submission
+            protocol: TCP
+            containerPort: 587
+            hostPort: 587
+          - name: imaps
+            protocol: TCP
+            containerPort: 993
+            hostPort: 993
+        envFrom:
+          - secretRef:
+              name: mailserver-config
+              optional: false
+        volumeMounts:
+          # -- ssl
+          - name: ssl-cert
+            mountPath: /tmp/cert.pem
+            subPath: cert.pem
+            readOnly: true
+          - name: ssl-key
+            mountPath: /tmp/key.pem
+            subPath: key.pem
+            readOnly: true
+          # -- PVCs
+          - name: data
+            mountPath: /tmp/docker-mailserver
+            subPath: config
+            readOnly: false
+          - name: data
+            mountPath: /var/mail
+            subPath: mail-data
+            readOnly: false
+          - name: data
+            mountPath: /var/log/mail
+            subPath: mail-logs
+            readOnly: false
+        securityContext:
+          allowPrivilegeEscalation: true
+          readOnlyRootFilesystem: false
+          runAsUser: 0
+          runAsGroup: 0
+          runAsNonRoot: false
+          privileged: false
+          capabilities:
+            add:
+              - CHOWN
+              - FOWNER
+              - MKNOD
+              - SETGID
+              - SETUID
+              - DAC_OVERRIDE
+              - NET_ADMIN
+              - NET_RAM
+              - NET_BIND_SERVICE
+              - SYS_CHROOT
+              - KILL
+            drop: [ALL]
+          seccompProfile:
+            type: RuntimeDefault
+
+      restartPolicy: Always

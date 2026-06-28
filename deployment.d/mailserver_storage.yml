@@ -1,0 +1,20 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  namespace: whiteboard-editor
+  name: samba-storage
+provisioner: smb.csi.k8s.io
+parameters:
+  source: "${WHITEBOARD_EDITOR_MAILSERVER_SAMBA_URI}"
+  subDir: /
+  onDelete: retain
+  csi.storage.k8s.io/provisioner-secret-name: "samba-credentials"
+  csi.storage.k8s.io/provisioner-secret-namespace: "whiteboard-editor"
+  csi.storage.k8s.io/node-stage-secret-name: "samba-credentials"
+  csi.storage.k8s.io/node-stage-secret-namespace: "whiteboard-editor"
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+mountOptions:
+  - rw
+  - noperm
+  - setuids

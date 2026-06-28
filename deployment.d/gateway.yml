@@ -25,3 +25,39 @@ spec:
     allowedRoutes:
       namespaces:
         from: Same
+  - name: smtp
+    protocol: TCP
+    port: 25
+    allowedRoutes:
+      namespaces:
+        from: Same
+      kinds:
+        - kind: TCPRoute
+  - name: submissions
+    protocol: TLS
+    port: 465
+    tls:
+      mode: Passthrough
+    allowedRoutes:
+      namespaces:
+        from: Same
+      kinds:
+        - kind: TLSRoute
+  - name: submission
+    protocol: TCP
+    port: 587
+    allowedRoutes:
+      namespaces:
+        from: Same
+      kinds:
+        - kind: TCPRoute
+  - name: imaps
+    protocol: TLS
+    port: 993
+    allowedRoutes:
+      namespaces:
+        from: Same
+      kinds:
+        - kind: TLSRoute
+    tls:
+      mode: Passthrough

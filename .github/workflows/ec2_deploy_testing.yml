@@ -31,6 +31,12 @@ on:
       EC2_TEST_SSL_CERT:
         description: "Certificate to be placed in ReverseProxy/cert.pem"
         required: true
+      EC2_TEST_MAILSERVER_ENV:
+        description: "Contents of mailserver.env file to be placed in deployment.d/mailserver.env"
+        required: true
+      EC2_TEST_SAMBA_CREDENTIALS:
+        description: "Contents of samba credentials file for mail server; must contain username and password"
+        required: true
 
 env:
   CURRENT_VERSION_TAG: 0.1.0
@@ -184,7 +190,7 @@ jobs:
         id: write-ssh-key
         run: |
           eval `ssh-agent -s`
-          cat > "${{ runner.temp }}/github-ec2.pem" << _EOF_
+          cat > "${{ runner.temp }}/github-ec2.pem" << '_EOF_'
           ${{ secrets.EC2_TEST_PRIVATE_KEY }}
           _EOF_
           chmod 400 "${{ runner.temp }}/github-ec2.pem"
@@ -221,32 +227,45 @@ jobs:
             cd ${{ secrets.EC2_TEST_DEPLOYMENT_DIR }}
 
             # === deploy secret files ==========================================
-            cat > .env << _EOF_
+            cat > .env << '_EOF_'
             ${{ secrets.EC2_TEST_ENV_FILE }}
             _EOF_
 
             mkdir -p .secrets
 
-            cat > .secrets/key.pem << _EOF_
+            cat > .secrets/key.pem << '_EOF_'
             ${{ secrets.EC2_TEST_SSL_KEY }}
             _EOF_
 
-            cat > .secrets/cert.pem << _EOF_
+            cat > .secrets/cert.pem << '_EOF_'
             ${{ secrets.EC2_TEST_SSL_CERT }}
             _EOF_
+
+            cat > .secrets/mailserver.env << '_EOF_'
+            ${{ secrets.EC2_TEST_MAILSERVER_ENV }}
+            _EOF_
+
+            cat > .secrets/sambacredentials << '_EOF_'
+            ${{ secrets.EC2_TEST_SAMBA_CREDENTIALS }}
+            _EOF_
+
+            chmod 600 .secrets/sambacredentials
 
             # === Pull images from container registry ==========================
             export WHITEBOARD_EDITOR_CR_URI="ghcr.io/${{ github.repository_owner }}/${{ github.repository_id }}"
             export WHITEBOARD_EDITOR_TAG="${{ env.CURRENT_VERSION_TAG }}"
 
-            docker login --username ${{ github.actor }} --password-stdin ghcr.io << _EOF_
+            docker login --username ${{ github.actor }} --password-stdin ghcr.io << '_EOF_'
             ${{ secrets.GITHUB_TOKEN }}
             _EOF_
             docker compose pull
 
             # === Restart kubernetes deployment ================================
-            ./deployment.d/teardown.sh
-            ./deployment.d/deploy.sh
+            if ! ./deployment.d/update.sh
+            then
+              # restart from scratch
+              ./deployment.d/deploy.sh
+            fi
         run: |
           # Write script to a tempfile
           printenv SSH_SCRIPT > "${{ runner.temp }}/script.sh"

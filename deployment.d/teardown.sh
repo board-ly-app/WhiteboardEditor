@@ -29,6 +29,7 @@ shred -u "${OLD_ENV_FILE}"
 
 # -- Delete gateway
 kubectl delete -f <(envsubst < http-routes.yml)
+kubectl delete -f <(envsubst < mailserver-routes.yml)
 kubectl delete -f <(envsubst < gateway.yml)
 
 # -- Delete frontend pods
@@ -49,8 +50,21 @@ kubectl delete -f <(envsubst < web_socket_server_deployment.yml)
 # -- Delete web_socket_server service
 kubectl delete -f <(envsubst < web_socket_server_service.yml)
 
+# -- Delete mailserver pods
+kubectl delete -f <(envsubst < mailserver_deployment.yml)
+
+# -- Delete mailserver service
+kubectl delete -f <(envsubst < mailserver_service.yml)
+kubectl delete -f <(envsubst < mailserver_pvcs.yml)
+kubectl delete -f <(envsubst < mailserver_storage.yml)
+
 # -- Remove secrets
 kubectl -n whiteboard-editor delete secret whiteboard-editor-config
+kubectl -n whiteboard-editor delete secret cert-default
+kubectl -n whiteboard-editor delete secret ssl-cert
+kubectl -n whiteboard-editor delete secret ssl-key
+kubectl -n whiteboard-editor delete secret mailserver-config
+kubectl -n whiteboard-editor delete secret samba-credentials
 
 # -- Remove namespaces
 kubectl delete -f <(envsubst < namespaces.yml)
