@@ -230,6 +230,11 @@ export interface ServerMessageSetPermissions {
   permissionsByEmail: Record<string, UserPermissionEnum>;
 }
 
+export interface ServerMessageUpdateWhiteboardMetadata {
+  type: 'update_whiteboard_metadata';
+  name?: string;
+}
+
 // Used to notify clients when a user has started editing a canvas but hasn't
 // performed any edits yet (i.e. when they click and drag to start drawing a
 // shape).
@@ -338,6 +343,7 @@ export type SocketServerMessage =
   | ServerMessageLoginUsers
   | ServerMessageLogoutUsers
   | ServerMessageSetPermissions
+  | ServerMessageUpdateWhiteboardMetadata
   | ServerMessageEditingCanvas
   | ServerMessageSelectedCanvasObject
   | ServerMessageUnselectedCanvasObject

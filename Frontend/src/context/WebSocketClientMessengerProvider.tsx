@@ -249,6 +249,19 @@ const WebSocketClientMessengerProvider = ({
               });
             }
             break;
+          case 'update_whiteboard_metadata':
+            {
+              const {
+                name,
+              } = msg;
+
+              if (name) {
+                updateWhiteboard(dispatch, whiteboardId, {
+                  name,
+                });
+              }
+            }
+            break;
           case 'editing_canvas':
             {
               const {
