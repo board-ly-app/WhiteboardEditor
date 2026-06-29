@@ -102,14 +102,22 @@ async fn main() -> process::ExitCode {
 
                             if let Some(wb_entry) = whiteboards.get_mut(&curr_doc.id) {
                                 let mut wb = wb_entry.whiteboard_ref.lock().await;
+                                let mut messages_to_clients = Vec::<ServerSocketMessage>::new();
 
                                 // -- check that permissions have changed
-                                'check_perm_change: {
+                                'check_relevant_change: {
                                     let wb_meta = wb.metadata();
                                     let n_prev_perms = wb_meta.permissions_by_user_id().len()
                                         + wb_meta.permissions_by_email().len();
 
-                                    if n_prev_perms == curr_doc.metadata.user_permissions.len() {
+                                    if wb_meta.name() != curr_doc.metadata.name {
+                                        messages_to_clients.push(ServerSocketMessage::Broadcast {
+                                            msg: ServerSocketBroadcastMessage::UpdateWhiteboardMetadata {
+                                                name: Some(curr_doc.metadata.name.clone()),
+                                            },
+                                        });
+                                        // -- Proceed to metadata update
+                                    } else if n_prev_perms == curr_doc.metadata.user_permissions.len() {
                                         for perm in curr_doc.metadata.user_permissions.iter() {
                                             match &perm.permission_type {
                                                 wss::models::WhiteboardPermissionType::User {
@@ -118,10 +126,10 @@ async fn main() -> process::ExitCode {
                                                 } => {
                                                     if let Some(prev_perm) = wb_meta.permissions_by_user_id().get(&user_id) {
                                                         if *prev_perm != perm.permission {
-                                                            break 'check_perm_change;
+                                                            break 'check_relevant_change;
                                                         }
                                                     } else {
-                                                        break 'check_perm_change;
+                                                        break 'check_relevant_change;
                                                     }
                                                 },
                                                 wss::models::WhiteboardPermissionType::Email {
@@ -129,10 +137,10 @@ async fn main() -> process::ExitCode {
                                                 } => {
                                                     if let Some(prev_perm) = wb_meta.permissions_by_email().get(email.as_str()) {
                                                         if *prev_perm != perm.permission {
-                                                            break 'check_perm_change;
+                                                            break 'check_relevant_change;
                                                         }
                                                     } else {
-                                                        break 'check_perm_change;
+                                                        break 'check_relevant_change;
                                                     }
                                                 },
                                             };// -- end match
@@ -140,12 +148,23 @@ async fn main() -> process::ExitCode {
 
                                         continue 'next_event;
                                     }
-                                }
+                                }// -- end 'check_relevant_change
 
-                                // -- change metadata
+                                // -- change permissions in metadata
                                 wb.set_permissions(curr_doc.metadata.user_permissions.as_slice());
 
                                 let wb_meta = wb.metadata();
+
+                                messages_to_clients.push(ServerSocketMessage::Broadcast {
+                                    msg: ServerSocketBroadcastMessage::SetPermissions {
+                                        permissions_by_user_id: wb_meta.permissions_by_user_id().iter()
+                                            .map(|(uid, perm)| (uid.clone(), WhiteboardPermissionEnumClientView::from_permission_enum(&perm)))
+                                            .collect(),
+                                        permissions_by_email: wb_meta.permissions_by_email().iter()
+                                            .map(|(email, perm)| (email.clone(), WhiteboardPermissionEnumClientView::from_permission_enum(&perm)))
+                                            .collect(),
+                                    },
+                                });
 
                                 // -- evict users whose permissions have been revoked if the
                                 // whiteboard is private
@@ -155,29 +174,18 @@ async fn main() -> process::ExitCode {
                                     // -- evict users whose permissions have been completely removed
                                     for (user_id, client_id) in clients_by_user_id.iter() {
                                         if ! wb_meta.permissions_by_user_id().contains_key(user_id) {
-                                            let _ = wb_entry
-                                                .broadcaster
-                                                .send(ServerSocketMessage::Evict {
-                                                    evicted_client_id: client_id.clone(),
-                                                    reason: String::from("Access revoked"),
-                                                });
+                                            messages_to_clients.push(ServerSocketMessage::Evict {
+                                                evicted_client_id: client_id.clone(),
+                                                reason: String::from("Access revoked"),
+                                            });
                                         }
-                                    }// -- end for
+                                    }// -- end for user_id, client_id
                                 }
 
                                 // -- broadcast updated permissions to clients
-                                let _ = wb_entry
-                                    .broadcaster
-                                    .send(ServerSocketMessage::Broadcast {
-                                        msg: ServerSocketBroadcastMessage::SetPermissions {
-                                            permissions_by_user_id: wb_meta.permissions_by_user_id().iter()
-                                                .map(|(uid, perm)| (uid.clone(), WhiteboardPermissionEnumClientView::from_permission_enum(&perm)))
-                                                .collect(),
-                                            permissions_by_email: wb_meta.permissions_by_email().iter()
-                                                .map(|(email, perm)| (email.clone(), WhiteboardPermissionEnumClientView::from_permission_enum(&perm)))
-                                                .collect(),
-                                        },
-                                    });
+                                while let Some(msg) = messages_to_clients.pop() {
+                                    let _ = wb_entry.broadcaster.send(msg);
+                                }// -- end for msg
                             }
                         }
                     },

@@ -249,6 +249,19 @@ const WebSocketClientMessengerProvider = ({
               });
             }
             break;
+          case 'update_whiteboard_metadata':
+            {
+              const {
+                name,
+              } = msg;
+
+              if (name) {
+                updateWhiteboard(dispatch, whiteboardId, {
+                  name,
+                });
+              }
+            }
+            break;
           case 'editing_canvas':
             {
               const {
@@ -637,6 +650,14 @@ const WebSocketClientMessengerProvider = ({
         ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
         webSocketRef.current = ws;
       }
+
+      // -- Close web socket connection when page closed
+      return () => {
+        if (webSocketRef.current) {
+          webSocketRef.current.close();
+          webSocketRef.current = null;
+        }
+      };
     },
     [makeHandleWebSocketOpen, whiteboardId]
   );

@@ -155,6 +155,10 @@ pub enum ServerSocketBroadcastMessage {
         permissions_by_user_id: HashMap<UserIdType, WhiteboardPermissionEnumClientView>,
         permissions_by_email: HashMap<String, WhiteboardPermissionEnumClientView>,
     },
+    // -- Update one or more fields in the whiteboard metadata
+    UpdateWhiteboardMetadata {
+        name: Option<String>,
+    },
     SelectedCanvasObject {
         #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
