@@ -496,6 +496,43 @@ const CanvasCard = ({
 
         container.addEventListener('keydown', handleKeyDown);
 
+        // -- Handle scrolling in and out
+        const handleWheel = (e: WheelEvent) => {
+          // -- only zoom if meta key down
+          if (! e.metaKey) return;
+
+          if (stageRef.current && stageRef.current.getPointerPosition()) {
+            e.preventDefault();
+
+            const stage = stageRef.current;
+            const pointer = stage.getPointerPosition();
+
+            if (! pointer) return;
+
+            const oldScale = stage.scaleX();
+
+            const mousePointTo = {
+              x: (pointer.x - stage.x()) / oldScale,
+              y: (pointer.y - stage.y()) / oldScale,
+            };
+
+            // how to scale? Zoom in? Or zoom out?
+            const direction = e.deltaY > 0 ? 1 : -1;
+            const scaleBy = 1.01;
+            const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
+
+            stage.scale({ x: newScale, y: newScale });
+
+            const newPos = {
+              x: pointer.x - mousePointTo.x * newScale,
+              y: pointer.y - mousePointTo.y * newScale,
+            };
+            stage.position(newPos);
+          }
+        };// -- end handleWheel
+
+        container.addEventListener('wheel', handleWheel);
+
         return () => {
           container.removeEventListener('pointerdown', handlePointerEvent);
           container.removeEventListener('pointerup', handlePointerEvent);
