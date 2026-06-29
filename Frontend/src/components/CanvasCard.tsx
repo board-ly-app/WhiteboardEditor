@@ -518,7 +518,7 @@ const CanvasCard = ({
 
             // how to scale? Zoom in? Or zoom out?
             const direction = e.deltaY > 0 ? 1 : -1;
-            const scaleBy = 1.01;
+            const scaleBy = 1.013;
             const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
 
             stage.scale({ x: newScale, y: newScale });
