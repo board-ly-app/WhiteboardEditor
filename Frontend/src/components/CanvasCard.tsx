@@ -537,6 +537,7 @@ const CanvasCard = ({
           container.removeEventListener('pointerdown', handlePointerEvent);
           container.removeEventListener('pointerup', handlePointerEvent);
           container.removeEventListener('keydown', handleKeyDown);
+          container.removeEventListener('wheel', handleWheel);
         };
       }
     },
