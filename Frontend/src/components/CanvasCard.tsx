@@ -35,6 +35,8 @@ import {
 
 // -- local imports
 import {
+  MIN_WB_ZOOM,
+  MAX_WB_ZOOM,
   LS_KEY_COPIED_CANVAS_OBJECT,
 } from '@/app.config';
 
@@ -499,7 +501,7 @@ const CanvasCard = ({
         // -- Handle scrolling in and out
         const handleWheel = (e: WheelEvent) => {
           // -- only zoom if meta key down
-          if (! e.metaKey) return;
+          if ((! e.altKey) && (! e.metaKey)) return;
 
           if (stageRef.current && stageRef.current.getPointerPosition()) {
             e.preventDefault();
@@ -519,7 +521,13 @@ const CanvasCard = ({
             // how to scale? Zoom in? Or zoom out?
             const direction = e.deltaY > 0 ? 1 : -1;
             const scaleBy = 1.013;
-            const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
+            let newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
+
+            if (newScale < MIN_WB_ZOOM) {
+              newScale = MIN_WB_ZOOM;
+            } else if (newScale > MAX_WB_ZOOM) {
+              newScale = MAX_WB_ZOOM;
+            }
 
             stage.scale({ x: newScale, y: newScale });
 
