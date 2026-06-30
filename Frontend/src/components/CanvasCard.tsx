@@ -35,6 +35,7 @@ import {
 
 // -- local imports
 import {
+  DEFAULT_WB_ZOOM,
   MIN_WB_ZOOM,
   MAX_WB_ZOOM,
   LS_KEY_COPIED_CANVAS_OBJECT,
@@ -333,9 +334,15 @@ const CanvasCard = ({
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const container = containerRef.current;
+    const stage = stageRef.current;
+
     if (container) {
       container.scrollLeft = (width - container.clientWidth) / 2;
       container.scrollTop = (height - container.clientHeight) / 2;
+    }
+
+    if (stage) {
+      stage.scale({ x: DEFAULT_WB_ZOOM, y: DEFAULT_WB_ZOOM });
     }
   }, [width, height])
 
