@@ -23,7 +23,7 @@ import {
 } from '@/store/whiteboards/whiteboardsSelectors';
 
 import type { LucideIcon } from 'lucide-react';
-import TooltipHover from './TooltipHover';
+import TooltipHover from '@/components/TooltipHover';
 
 interface ToolbarProps {
   onToolChange: (choice: ToolChoice) => void;

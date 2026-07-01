@@ -41,8 +41,8 @@ import {
   LS_KEY_COPIED_CANVAS_OBJECT,
 } from '@/app.config';
 
-import Canvas from "./Canvas";
-import CanvasMenu from "./CanvasMenu";
+import Canvas from "@/pages/Whiteboard/Canvas";
+import CanvasMenu from "@/pages/Whiteboard/CanvasMenu";
 
 import {
   type ClientIdType,

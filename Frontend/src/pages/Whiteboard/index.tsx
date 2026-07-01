@@ -93,17 +93,18 @@ import api from '@/api/axios';
 import { useModal } from '@/components/Modal';
 
 import Page from '@/components/Page';
-import CanvasCard from "@/components/CanvasCard";
 import Sidebar from "@/components/Sidebar";
-import Toolbar from "@/components/Toolbar";
-import ShapeAttributesMenu from "@/components/ShapeAttributesMenu";
-import DeleteShapesButton from '@/components/DeleteShapeButton';
 import HeaderButton from '@/components/HeaderButton';
 import HeaderAuthed from '@/components/HeaderAuthed';
 import shapeAttributesReducer from '@/reducers/shapeAttributesReducer';
 import type { ToolChoice } from '@/components/Tool';
 
 // -- page-specific components
+import CanvasCard from "@/pages/Whiteboard/CanvasCard";
+import Toolbar from "@/pages/Whiteboard/Toolbar";
+import ShapeAttributesMenu from "@/pages/Whiteboard/ShapeAttributesMenu";
+import DeleteShapesButton from '@/pages/Whiteboard/DeleteShapeButton';
+
 import {
   NotificationsHeaderMenu,
 } from '@/pages/Whiteboard/NotificationsHeaderMenu';
