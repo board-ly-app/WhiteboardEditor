@@ -30,18 +30,20 @@ const buttonVariants = cva(
 
 export interface HeaderButtonProps {
   // If to is present renders a link, if onClick is present renders a button
+  title: ReactNode;
+  tooltip?: string;
   to?: string;
   onClick?: () => void;
-  title: ReactNode;
   disabled?: boolean;
 }
 
-function HeaderButton({
+const HeaderButton = ({
   to,
   onClick,
   title,
+  tooltip,
   disabled = false,
-}: HeaderButtonProps) {
+}: HeaderButtonProps) => {
   const className = cn(buttonVariants({
     variant: disabled ? 'disabled' : 'default'
   }));
@@ -63,10 +65,11 @@ function HeaderButton({
       onClick={onClick}
       disabled={disabled}
       className={className}
+      title={tooltip}
     >
       {title}
     </button>
   );
-}
+};// -- end HeaderButton
 
 export default HeaderButton;
