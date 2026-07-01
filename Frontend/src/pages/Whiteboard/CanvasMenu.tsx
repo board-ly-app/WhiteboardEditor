@@ -28,7 +28,9 @@ import {
 
 import { AppModal } from "@/components/ui/app-modal";
 
-import { Button } from "./ui/button";
+import {
+  Button,
+} from "@/components/ui/button";
 
 import { 
   type RootState,
@@ -75,8 +77,11 @@ import {
   ChevronUp,
   SquarePen,
 } from 'lucide-react';
-import HeaderButton from "./HeaderButton";
-import { captureImage, type ImageTypeEnum } from "@/lib/captureImage";
+import HeaderButton from "@/components/HeaderButton";
+import {
+  captureImage,
+  type ImageTypeEnum,
+} from "@/lib/captureImage";
 
 interface CanvasMenuProps {
   name: string;
