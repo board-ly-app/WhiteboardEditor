@@ -34,6 +34,8 @@ import {
 
 import {
   X,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 
 import Konva from 'konva';
@@ -50,6 +52,7 @@ import {
 // -- local types
 import {
   APP_NAME,
+  WB_ZOOM_FACTOR,
 } from '@/app.config';
 
 import {
@@ -156,6 +159,7 @@ import {
   removeSelectorsByCanvasObject,
   updateWhiteboard,
   setNotifications,
+  scaleWhiteboardZoom,
 } from '@/controllers';
 
 type ComponentStatus = 
@@ -666,6 +670,24 @@ const Whiteboard = ({
           disabled={ownPermission !== 'own'}
         />
       );
+
+      const zoomFactor = WB_ZOOM_FACTOR * 1.2;
+
+      // -- Zoom out
+      const ZoomOutButton = () => (
+        <HeaderButton
+          onClick={() => scaleWhiteboardZoom(whiteboardId, 1.0 / zoomFactor)}
+          title={<ZoomOut />}
+        />
+      );
+
+      // -- Zoom in
+      const ZoomInButton = () => (
+        <HeaderButton
+          onClick={() => scaleWhiteboardZoom(whiteboardId, zoomFactor)}
+          title={<ZoomIn />}
+        />
+      );
       
       const pageTitle = `${title} | ${APP_NAME}`;
 
@@ -682,6 +704,8 @@ const Whiteboard = ({
                 toolbarElemsLeft={[
                   ((ownPermission === 'own') && <ShareWhiteboardButton />),
                   ((ownPermission === 'own') && <DeleteWhiteboardButton />),
+                  <ZoomOutButton />,
+                  <ZoomInButton />,
                   <NotificationsHeaderMenu />,
                 ]}
                 toolbarElemsRight={[
