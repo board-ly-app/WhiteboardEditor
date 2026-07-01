@@ -1,5 +1,13 @@
 import {
+  DEFAULT_WB_ZOOM,
+  MIN_WB_ZOOM,
+  MAX_WB_ZOOM,
+} from '@/app.config';
+
+import {
   type AppDispatch,
+  type RootState,
+  store,
 } from '@/store';
 
 import type {
@@ -73,6 +81,7 @@ export const addWhiteboard = (
       wid, {
         ...attribs,
         currentTool: "hand",
+        currentZoom: DEFAULT_WB_ZOOM,
         tooltipText: "",
         editingText: "",
       }
@@ -126,3 +135,28 @@ export const updateWhiteboard = (
 ) => {
   dispatch(updateWhiteboardsById({ [whiteboardId]: update }));
 };// -- end updateWhiteboard
+
+export const scaleWhiteboardZoom = (
+  whiteboardId: WhiteboardIdType,
+  zoomMultiplier: number,
+) => {
+  const currState : RootState = store.getState();
+
+  if (! (whiteboardId in currState.whiteboards)) return;
+
+  const currentZoom = currState.whiteboards[whiteboardId].currentZoom;
+
+  let nextZoom = currentZoom * zoomMultiplier;
+
+  if (nextZoom < MIN_WB_ZOOM) {
+    nextZoom = MIN_WB_ZOOM;
+  } else if (nextZoom > MAX_WB_ZOOM) {
+    nextZoom = MAX_WB_ZOOM;
+  }
+
+  store.dispatch(updateWhiteboardsById({
+    [whiteboardId]: {
+      currentZoom: nextZoom,
+    },
+  }));
+};// -- end scaleWhiteboardZoom

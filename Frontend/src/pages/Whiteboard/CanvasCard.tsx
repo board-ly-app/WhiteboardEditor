@@ -35,9 +35,7 @@ import {
 
 // -- local imports
 import {
-  DEFAULT_WB_ZOOM,
-  MIN_WB_ZOOM,
-  MAX_WB_ZOOM,
+  WB_ZOOM_FACTOR,
   LS_KEY_COPIED_CANVAS_OBJECT,
 } from '@/app.config';
 
@@ -108,6 +106,10 @@ import {
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
+  scaleWhiteboardZoom,
+} from '@/controllers';
+
+import {
   type NewCanvasDimensions,
 } from '@/types/CreateCanvas';
 import WhiteboardContext from '@/context/WhiteboardContext';
@@ -162,6 +164,11 @@ const CanvasCard = ({
 
   const editingText : string | null = useSelector(
     (state: RootState) => selectWhiteboardById(state, whiteboardId)?.editingText ?? null,
+    lodash.isEqual
+  );
+
+  const currentZoom : number | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentZoom ?? null,
     lodash.isEqual
   );
 
@@ -238,10 +245,45 @@ const CanvasCard = ({
     lodash.isEqual
   );
 
-  // -- set up interval to broadcast cursor position
   const stageRef = useRef<Konva.Stage | null>(null);
   const cursorPosRef = useRef<{ x: number; y: number; } | null>(null);
 
+  // -- Set current zoom level
+  useEffect(
+    () => {
+      if (currentZoom === null) return;
+
+      const stage = stageRef.current;
+
+      if (! stage) return;
+
+      const pointer = stage.getPointerPosition();
+
+      if (! pointer) return;
+
+      const oldScale = stage.scaleX();
+
+      const mousePointTo = {
+        x: (pointer.x - stage.x()) / oldScale,
+        y: (pointer.y - stage.y()) / oldScale,
+      };
+
+      stage.scale({
+        x: currentZoom,
+        y: currentZoom,
+      });
+
+      const newPos = {
+        x: pointer.x - mousePointTo.x * currentZoom,
+        y: pointer.y - mousePointTo.y * currentZoom,
+      };
+
+      stage.position(newPos);
+    },
+    [currentZoom]
+  );
+
+  // -- set up interval to broadcast cursor position
   useEffect(
     () => {
       const timeoutId = window.setInterval(
@@ -334,15 +376,10 @@ const CanvasCard = ({
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const container = containerRef.current;
-    const stage = stageRef.current;
 
     if (container) {
       container.scrollLeft = (width - container.clientWidth) / 2;
       container.scrollTop = (height - container.clientHeight) / 2;
-    }
-
-    if (stage) {
-      stage.scale({ x: DEFAULT_WB_ZOOM, y: DEFAULT_WB_ZOOM });
     }
   }, [width, height])
 
@@ -513,40 +550,12 @@ const CanvasCard = ({
           // -- only zoom if meta key down
           if ((! e.altKey) && (! e.metaKey)) return;
 
-          if (stageRef.current && stageRef.current.getPointerPosition()) {
-            e.preventDefault();
+          e.preventDefault();
 
-            const stage = stageRef.current;
-            const pointer = stage.getPointerPosition();
+          // how to scale? Zoom in? Or zoom out?
+          const scaleBy = (e.deltaY > 0) ? WB_ZOOM_FACTOR : (1 / WB_ZOOM_FACTOR);
 
-            if (! pointer) return;
-
-            const oldScale = stage.scaleX();
-
-            const mousePointTo = {
-              x: (pointer.x - stage.x()) / oldScale,
-              y: (pointer.y - stage.y()) / oldScale,
-            };
-
-            // how to scale? Zoom in? Or zoom out?
-            const direction = e.deltaY > 0 ? 1 : -1;
-            const scaleBy = 1.013;
-            let newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
-
-            if (newScale < MIN_WB_ZOOM) {
-              newScale = MIN_WB_ZOOM;
-            } else if (newScale > MAX_WB_ZOOM) {
-              newScale = MAX_WB_ZOOM;
-            }
-
-            stage.scale({ x: newScale, y: newScale });
-
-            const newPos = {
-              x: pointer.x - mousePointTo.x * newScale,
-              y: pointer.y - mousePointTo.y * newScale,
-            };
-            stage.position(newPos);
-          }
+          scaleWhiteboardZoom(whiteboardId, scaleBy);
         };// -- end handleWheel
 
         container.addEventListener('wheel', handleWheel);
@@ -563,6 +572,7 @@ const CanvasCard = ({
       }
     },
     [
+      whiteboardId,
       containerRef,
       clientMessenger,
       selectedCanvasId,
