@@ -678,6 +678,7 @@ const Whiteboard = ({
         <HeaderButton
           onClick={() => scaleWhiteboardZoom(whiteboardId, 1.0 / zoomFactor)}
           title={<ZoomOut />}
+          tooltip='Zoom Out (Alt + Scroll Down)'
         />
       );
 
@@ -686,6 +687,7 @@ const Whiteboard = ({
         <HeaderButton
           onClick={() => scaleWhiteboardZoom(whiteboardId, zoomFactor)}
           title={<ZoomIn />}
+          tooltip='Zoom In (Alt + Scroll Up)'
         />
       );
       
