@@ -642,7 +642,7 @@ const Whiteboard = ({
       // -- Zoom out
       const ZoomOutButton = () => (
         <HeaderButton
-          onClick={() => scaleWhiteboardZoom(whiteboardId, 1.0 / zoomFactor)}
+          onClick={() => scaleWhiteboardZoom(whiteboardId, 1.0 / zoomFactor, 'center')}
           title={<ZoomOut />}
           tooltip='Zoom Out (Alt + Scroll Down)'
         />
@@ -651,7 +651,7 @@ const Whiteboard = ({
       // -- Zoom in
       const ZoomInButton = () => (
         <HeaderButton
-          onClick={() => scaleWhiteboardZoom(whiteboardId, zoomFactor)}
+          onClick={() => scaleWhiteboardZoom(whiteboardId, zoomFactor, 'center')}
           title={<ZoomIn />}
           tooltip='Zoom In (Alt + Scroll Up)'
         />
@@ -701,7 +701,7 @@ const Whiteboard = ({
             </>}
       
             {/* Content */}
-            <div className="">
+            <div>
               {/**
                 Left-hand sidebar for toolbar and menus
                 Not displayed in view-only mode.
