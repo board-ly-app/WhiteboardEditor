@@ -50,6 +50,10 @@ import {
 } from "@/types/WebSocketProtocol";
 
 import {
+  type ZoomFocusEnum,
+} from '@/types/Store';
+
+import {
   type CanvasObjectModel,
 } from '@/types/CanvasObjectModel';
 
@@ -172,6 +176,11 @@ const CanvasCard = ({
     lodash.isEqual
   );
 
+  const currentZoomFocus : ZoomFocusEnum | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentZoomFocus ?? null,
+    lodash.isEqual
+  );
+
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
     (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId),
     lodash.isEqual
@@ -257,30 +266,63 @@ const CanvasCard = ({
 
       if (! stage) return;
 
-      const pointer = stage.getPointerPosition();
-
-      if (! pointer) return;
-
       const oldScale = stage.scaleX();
 
-      const mousePointTo = {
-        x: (pointer.x - stage.x()) / oldScale,
-        y: (pointer.y - stage.y()) / oldScale,
-      };
+      switch (currentZoomFocus) {
+        case 'pointer':
+          {
+            const pointer = stage.getPointerPosition();
+
+            if (! pointer) return;
+
+            const mousePointTo = {
+              x: (pointer.x - stage.x()) / oldScale,
+              y: (pointer.y - stage.y()) / oldScale,
+            };
+
+            const newPos = {
+              x: pointer.x - (mousePointTo.x * currentZoom),
+              y: pointer.y - (mousePointTo.y * currentZoom),
+            };
+
+            stage.position(newPos);
+          }
+          break;
+        case 'center':
+          {
+            console.log('!! ZOOM CENTER');
+            // -- Shift stage in amount proportionate with the difference in
+            // scales
+            const viewport = window.visualViewport;
+
+            if (! viewport) return;
+
+            const centerX = viewport.offsetLeft + (viewport.width * 1.25);
+            const centerY = viewport.offsetTop + (viewport.height * 1.25);
+
+            const centerPointTo = {
+              x: (centerX - stage.x()) / oldScale,
+              y: (centerY - stage.y()) / oldScale,
+            };
+
+            const newPos = {
+              x: centerX - (centerPointTo.x * currentZoom),
+              y: centerY - (centerPointTo.y * currentZoom),
+            };
+
+            stage.position(newPos);
+          }
+          break;
+        default:
+          throw new Error(`Unhandled ZoomFocus: ${currentZoomFocus}`);
+      }
 
       stage.scale({
         x: currentZoom,
         y: currentZoom,
       });
-
-      const newPos = {
-        x: pointer.x - mousePointTo.x * currentZoom,
-        y: pointer.y - mousePointTo.y * currentZoom,
-      };
-
-      stage.position(newPos);
     },
-    [currentZoom]
+    [currentZoom, currentZoomFocus]
   );
 
   // -- set up interval to broadcast cursor position
@@ -555,7 +597,7 @@ const CanvasCard = ({
           // how to scale? Zoom in? Or zoom out?
           const scaleBy = (e.deltaY > 0) ? WB_ZOOM_FACTOR : (1 / WB_ZOOM_FACTOR);
 
-          scaleWhiteboardZoom(whiteboardId, scaleBy);
+          scaleWhiteboardZoom(whiteboardId, scaleBy, 'pointer');
         };// -- end handleWheel
 
         container.addEventListener('wheel', handleWheel);

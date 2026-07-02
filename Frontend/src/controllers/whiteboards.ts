@@ -17,6 +17,7 @@ import type {
 
 import {
   type WhiteboardState,
+  type ZoomFocusEnum,
 } from '@/types/Store';
 
 import {
@@ -80,8 +81,9 @@ export const addWhiteboard = (
     ([wid, attribs]) => [
       wid, {
         ...attribs,
-        currentTool: "hand",
         currentZoom: DEFAULT_WB_ZOOM,
+        currentZoomFocus: 'center',
+        currentTool: "hand",
         tooltipText: "",
         editingText: "",
       }
@@ -139,6 +141,7 @@ export const updateWhiteboard = (
 export const scaleWhiteboardZoom = (
   whiteboardId: WhiteboardIdType,
   zoomMultiplier: number,
+  focus: ZoomFocusEnum,
 ) => {
   const currState : RootState = store.getState();
 
@@ -157,6 +160,7 @@ export const scaleWhiteboardZoom = (
   store.dispatch(updateWhiteboardsById({
     [whiteboardId]: {
       currentZoom: nextZoom,
+      currentZoomFocus: focus,
     },
   }));
 };// -- end scaleWhiteboardZoom
