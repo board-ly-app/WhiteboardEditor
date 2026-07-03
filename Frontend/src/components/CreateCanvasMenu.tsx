@@ -3,11 +3,13 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AppModal } from "@/components/ui/app-modal";
 import AllowedUsersPopover from '@/components/AllowedUsersPopover';
 
 interface CreateCanvasMenuProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onCreate: (canvas: NewCanvas) => void;
-  onCancel: () => void;
 }
 
 // Add more fields later (height, width, etc.)
@@ -17,8 +19,9 @@ export interface  NewCanvas {
 }
 
 function CreateCanvasMenu({
+  open,
+  onOpenChange,
   onCreate,
-  onCancel,
 }: CreateCanvasMenuProps) {
   const [canvasName, setCanvasName] = useState("");
   const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);
@@ -33,42 +36,45 @@ function CreateCanvasMenu({
       canvasName,
       allowedUsers: newCanvasAllowedUsers,
     });
-    
+
     setCanvasName("");
     setNewCanvasAllowedUsers([]);
+    onOpenChange(false);
   }
 
   return (
-    <div className="grid gap-2">
-      <h1 className='text-center font-bold'>Create New Canvas</h1>
+    <AppModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Create New Canvas"
+      footer={
+        <>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit}>
+            Create
+          </Button>
+        </>
+      }
+    >
+      <div className="grid gap-2">
+        <Label htmlFor="name">Canvas Name</Label>
+        <Input
+          id="name"
+          value={canvasName}
+          onChange={(e) => setCanvasName(e.target.value)}
+          placeholder="Enter name"
+        />
 
-      <Label htmlFor="name">Canvas Name</Label>
-      <Input
-        id="name"
-        value={canvasName}
-        onChange={(e) => setCanvasName(e.target.value)}
-        placeholder="Enter name"
-      />
+        <Label htmlFor="users">Allowed Users</Label>
 
-      <Label htmlFor="users">Allowed Users</Label>
-      
-      <AllowedUsersPopover 
-        selected={newCanvasAllowedUsers}
-        onChange={setNewCanvasAllowedUsers}
-      />
-
-      <Button className="mt-2" onClick={handleSubmit}>
-        Create
-      </Button>
-
-      <Button
-        className="mt-2"
-        variant="secondary"
-        onClick={onCancel}
-      >
-        Cancel
-      </Button>
-    </div>
+        <AllowedUsersPopover
+          selected={newCanvasAllowedUsers}
+          onChange={setNewCanvasAllowedUsers}
+        />
+      </div>
+    </AppModal>
   );
 }
 

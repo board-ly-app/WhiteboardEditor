@@ -25,6 +25,8 @@ import {
   Button,
 } from '@/components/ui/button';
 
+import { AppModal } from '@/components/ui/app-modal';
+
 import {
   type RootState,
 } from '@/store';
@@ -33,13 +35,16 @@ import {
   selectWhiteboardById,
 } from '@/store/whiteboards/whiteboardsSelectors';
 
+const FORM_ID = 'delete-whiteboard-form';
+
 export interface DeleteWhiteboardFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   whiteboardId: WhiteboardIdType;
   onSubmit: () => Promise<unknown>;
-  onCancel: () => unknown;
 }
 
-type ComponentStatus = 
+type ComponentStatus =
   | { name: 'default'; }
   | { name: 'deletion_unconfirmed'; }
   | { name: 'deletion_confirmation_pending'; progress: number; }
@@ -47,9 +52,10 @@ type ComponentStatus =
 ;
 
 export const DeleteWhiteboardForm = ({
+  open,
+  onOpenChange,
   whiteboardId,
   onSubmit,
-  onCancel,
 }: DeleteWhiteboardFormProps) => {
   // The confirmation key is a user input that confirms that the user really
   // intends to carry out the intended action
@@ -154,21 +160,17 @@ export const DeleteWhiteboardForm = ({
   }// -- end status.name
 
   return (
-    <div>
-      <form
-        onSubmit={handleSubmit}
-      >
-        <h1>If you want to delete "{whiteboardAttribs.name}", please type "{CONFIRMATION_KEY}" below.</h1>
-        <div className="flex flex-row justify-center pt-2 gap-2">
-          <input
-            type="text"
-            name="confirmationKeyEntry"
-            placeholder={CONFIRMATION_KEY}
-            value={confirmationKeyEntry}
-            onChange={handleConfirmationKeyEntryChange}
-            className={confirmationKeyEntryClassname}
-          />
+    <AppModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Delete "${whiteboardAttribs.name}"?`}
+      footer={
+        <>
+          <Button type="button" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button
+            form={FORM_ID}
             disabled={status.name !== 'deletion_confirmed'}
             status={deleteButtonStatus}
             type="submit"
@@ -176,9 +178,23 @@ export const DeleteWhiteboardForm = ({
           >
             Delete
           </Button>
-          <Button onClick={onCancel}>Cancel</Button>
-        </div>
+        </>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit} className="flex flex-col gap-2">
+        <p>
+          This action cannot be undone. Please type "{CONFIRMATION_KEY}" below to
+          confirm.
+        </p>
+        <input
+          type="text"
+          name="confirmationKeyEntry"
+          placeholder={CONFIRMATION_KEY}
+          value={confirmationKeyEntry}
+          onChange={handleConfirmationKeyEntryChange}
+          className={confirmationKeyEntryClassname}
+        />
       </form>
-    </div>
+    </AppModal>
   );
 };// -- end DeleteWhiteboardForm

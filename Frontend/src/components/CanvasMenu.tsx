@@ -26,12 +26,7 @@ import {
   DropdownMenuSeparator, 
 } from "@/components/ui/dropdown-menu";
 
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-} from "@/components/ui/dialog";
+import { AppModal } from "@/components/ui/app-modal";
 
 import { Button } from "./ui/button";
 
@@ -345,18 +340,12 @@ const CanvasMenu = ({
       </DropdownMenu>
 
       {/* Edit Users Modal */}
-      <Dialog open={allowedUsersMenuOpen} onOpenChange={setAllowedUsersMenuOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Allowed Users</DialogTitle>
-          </DialogHeader>
-
-          <AllowedUsersPopover 
-            selected={selectedAllowedUsers}
-            onChange={setSelectedAllowedUsers}
-          />
-
-          <div className="flex justify-end gap-2 pt-4">
+      <AppModal
+        open={allowedUsersMenuOpen}
+        onOpenChange={setAllowedUsersMenuOpen}
+        title="Edit Allowed Users"
+        footer={
+          <>
             <Button variant="secondary" onClick={() => {
               setSelectedAllowedUsers(Object.keys(allowedUserIdSet)); // Reset to original selection
               setAllowedUsersMenuOpen(false);
@@ -369,9 +358,14 @@ const CanvasMenu = ({
             }}>
               Save
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+        <AllowedUsersPopover
+          selected={selectedAllowedUsers}
+          onChange={setSelectedAllowedUsers}
+        />
+      </AppModal>
     </div>
   );
 };// -- end CanvasMenu

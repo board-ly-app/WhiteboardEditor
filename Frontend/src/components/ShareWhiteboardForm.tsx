@@ -41,12 +41,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+import { AppModal } from '@/components/ui/app-modal';
+
 export interface ShareWhiteboardFormData {
   userPermissions: UserPermission[];
 }
 
 export interface ShareWhiteboardFormProps {
-  isActive: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   initPermissionsByUserId: Record<UserIdType, UserPermissionByUser>;
   initPermissionsByEmail: Record<string, UserPermissionByEmail>;
   onSubmit: (data: ShareWhiteboardFormData) => Promise<unknown>;
@@ -170,7 +173,8 @@ const EditablePermission = ({
 };// -- end EditablePermission
 
 const ShareWhiteboardForm = ({
-  isActive,
+  open,
+  onOpenChange,
   initPermissionsByUserId,
   initPermissionsByEmail,
   onSubmit,
@@ -206,16 +210,16 @@ const ShareWhiteboardForm = ({
   );
   const [buttonStatus, setButtonStatus] = useState<ButtonStatus>('enabled');
 
-  // -- reset permissions to init permissions when set from inactive to active
+  // -- reset permissions to init permissions when the modal is opened
   useEffect(
     () => {
-      if (isActive) {
+      if (open) {
         setPermissionsByUserId(initPermissionsByUserId);
         setPermissionsByEmail(initPermissionsByEmail);
       }
     },
     [
-      isActive,
+      open,
       setPermissionsByUserId,
       setPermissionsByEmail,
       initPermissionsByUserId,
@@ -387,10 +391,21 @@ const ShareWhiteboardForm = ({
   );// -- end handleSubmit
 
   return (
-    <div className="w-200 p-0 m-4 mt-0 flex flex-col flex-shrink">
-      <h2 className="text-center text-2xl font-bold m-2">Update User Permissions</h2>
-
-      <div className="flex flex-col flex-shrink p-4">
+    <AppModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Update User Permissions"
+      className="sm:max-w-3xl"
+      footer={
+        <Button
+          status={buttonStatus}
+          onClick={handleSubmit}
+        >
+          Update User Permissions
+        </Button>
+      }
+    >
+      <div className="flex flex-col flex-shrink">
         <h3 className="text-lg font-semibold">
           Invite collaborators by email
         </h3>
@@ -484,17 +499,7 @@ const ShareWhiteboardForm = ({
           }
         </div>
       </div>
-
-      <div className="flex flex-row justify-center">
-        <Button
-          status={buttonStatus}
-          className="w-1/2"
-          onClick={handleSubmit}
-        >
-          Update User Permissions
-        </Button>
-      </div>
-    </div>
+    </AppModal>
   );
 };
 

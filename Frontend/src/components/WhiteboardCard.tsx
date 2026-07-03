@@ -24,7 +24,7 @@ import {
   toast,
 } from 'react-toastify';
 
-import { FilePen, Share, Trash2, X } from 'lucide-react';
+import { FilePen, Share, Trash2 } from 'lucide-react';
 
 // -- local imports
 import api from '@/api/axios';
@@ -49,10 +49,6 @@ import {
   UserTagBrief,
   UserTagEmail,
 } from '@/components/UserTag';
-
-import {
-  useModal,
-} from '@/components/Modal';
 
 import {
   DeleteWhiteboardForm,
@@ -117,23 +113,9 @@ function WhiteboardCard({
 
   const [expanded, setExpanded] = useState(false);
 
-  const {
-    Modal: RenameModal,
-    openModal: openRenameModal,
-    closeModal: closeRenameModal,
-  } = useModal();
-
-  const {
-    Modal: ShareModal,
-    openModal: openShareModal,
-    closeModal: closeShareModal
-  } = useModal();
-  
-  const {
-    Modal: DeletionModal,
-    openModal: openDeletionModal,
-    closeModal: closeDeletionModal,
-  } = useModal();
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const visiblePermissions = expanded
     ? userPermissions
@@ -224,7 +206,7 @@ function WhiteboardCard({
           transition: Bounce,
         });
 
-        closeRenameModal();
+        setRenameOpen(false);
       } catch (err: unknown) {
         const e = err as AxiosError<{ message?: string; }>;
 
@@ -241,7 +223,7 @@ function WhiteboardCard({
         });
       }
     },
-    [id, queryClient, user.id, closeRenameModal]
+    [id, queryClient, user.id, setRenameOpen]
   );// -- end handleSubmitRenameWhiteboard
 
   const handleSubmitShareWhiteboard = useCallback(
@@ -300,7 +282,7 @@ function WhiteboardCard({
           queryKey: [user.id, 'dashboard', 'whiteboards', 'own'],
         });
 
-        closeShareModal();
+        setShareOpen(false);
       } catch (err: unknown) {
         const e = err as AxiosError<{ error?: string; }>;
 
@@ -320,7 +302,7 @@ function WhiteboardCard({
         throw err;
       }
     },
-    [id, queryClient, user.id, closeShareModal]
+    [id, queryClient, user.id, setShareOpen]
   );// -- end handleSubmitShareWhiteboard
 
   const isOwnWhiteboard = userPermissions.find(
@@ -430,7 +412,7 @@ function WhiteboardCard({
             (variant.name === 'own_whiteboard') && (
               <Button
                 className='bg-transparent'
-                onClick={openRenameModal}
+                onClick={() => setRenameOpen(true)}
                 title="Rename whiteboard"
               >
                 <FilePen />
@@ -440,7 +422,7 @@ function WhiteboardCard({
           {/* All user permissions can share the whiteboards */}
           <Button
             className='bg-transparent'
-            onClick={openShareModal}
+            onClick={() => setShareOpen(true)}
             title="Share whiteboard"
           >
             <Share />
@@ -450,7 +432,7 @@ function WhiteboardCard({
             (variant.name === 'own_whiteboard') && (
               <Button
                 className='bg-transparent text-destructive'
-                onClick={openDeletionModal}
+                onClick={() => setDeleteOpen(true)}
                 title="Delete whiteboard"
               >
                 <Trash2 />
@@ -462,49 +444,29 @@ function WhiteboardCard({
       </div>
 
       {/** Modal that opens to rename the whiteboard **/}
-      <RenameModal
-        zIndex={20}
-        className="p-8 rounded-sm"
-      >
-        <RenameWhiteboardForm
-          currentName={name}
-          onCancel={closeRenameModal}
-          onSubmit={handleSubmitRenameWhiteboard}
-        />
-      </RenameModal>
+      <RenameWhiteboardForm
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
+        currentName={name}
+        onSubmit={handleSubmitRenameWhiteboard}
+      />
 
       {/** Modal that opens to share the whiteboard **/}
-      <ShareModal zIndex={20}>
-        <div className="flex flex-col">
-          <div className="flex flex-row justify-end">
-            <button
-              onClick={closeShareModal}
-              className="hover:cursor-pointer"
-            >
-              <X />
-            </button>
-          </div>
-
-          <ShareWhiteboardForm
-            isActive={true}
-            initPermissionsByUserId={initPermissionsByUserId}
-            initPermissionsByEmail={initPermissionsByEmail}
-            onSubmit={handleSubmitShareWhiteboard}
-          />
-        </div>
-      </ShareModal>
+      <ShareWhiteboardForm
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        initPermissionsByUserId={initPermissionsByUserId}
+        initPermissionsByEmail={initPermissionsByEmail}
+        onSubmit={handleSubmitShareWhiteboard}
+      />
 
       {/** Modal for whiteboard deletion form **/}
-      <DeletionModal
-        zIndex={20}
-        className="p-8 rounded-sm"
-      >
-        <DeleteWhiteboardForm
-          whiteboardId={id}
-          onCancel={closeDeletionModal}
-          onSubmit={handleSubmitDeleteWhiteboard}
-        />
-      </DeletionModal>
+      <DeleteWhiteboardForm
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        whiteboardId={id}
+        onSubmit={handleSubmitDeleteWhiteboard}
+      />
     </>
   );
 }

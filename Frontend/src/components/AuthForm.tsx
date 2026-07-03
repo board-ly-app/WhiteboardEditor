@@ -41,9 +41,6 @@ import {
   type AuthLoginSuccessResponse,
 } from '@/types/APIProtocol';
 
-import { 
-  useModal 
-} from "./Modal";
 import ChangeNameTrialWhiteboard from "./ChangeNameTrialWhiteboard";
 
 interface AuthFormProps {
@@ -69,11 +66,7 @@ const AuthForm = ({
   const tempUser = user?.kind === 'temp' ? user : null;
   const action = initialAction;
   const authContext = useContext(AuthContext);
-  const {
-    Modal: ChangeNameModal,
-    openModal: openChangeNameModal,
-    closeModal: closeChangeNameModal,
-  } = useModal();
+  const [changeNameOpen, setChangeNameOpen] = useState(false);
 
   if (! authContext) {
     throw new Error('AuthContext not provided');
@@ -145,7 +138,7 @@ const AuthForm = ({
           setTransferringWhiteboardId(tempWhiteboardId);
 
           // -- Prompt user to change name of whiteboard from default "Trial Whiteboard"
-          openChangeNameModal();
+          setChangeNameOpen(true);
           isTransferring = true;
 
           toast.success("Whiteboard added to your whiteboards!");
@@ -229,7 +222,7 @@ const AuthForm = ({
       setUser,
       username,
       setSubmitButtonStatus,
-      openChangeNameModal,
+      setChangeNameOpen,
       tempUser,
       location.search,
     ]
@@ -267,10 +260,10 @@ const AuthForm = ({
         }
       }
 
-      closeChangeNameModal();
+      setChangeNameOpen(false);
       navigate(redirectUrl);
     },
-    [location.search, closeChangeNameModal, navigate, transferringWhiteboardId]
+    [location.search, setChangeNameOpen, navigate, transferringWhiteboardId]
   );// -- end handleConfirmNameChange
   
   const handleSkipNameChange = useCallback(
@@ -280,10 +273,10 @@ const AuthForm = ({
         decodeURIComponent(searchParams.get('redirect') || '')
         : '/dashboard';
 
-      closeChangeNameModal();
+      setChangeNameOpen(false);
       navigate(redirectUrl);
     },
-    [location.search, closeChangeNameModal, navigate]
+    [location.search, setChangeNameOpen, navigate]
   );// -- end handleSkipNameChange
 
   return (
@@ -356,14 +349,11 @@ const AuthForm = ({
       </div>
 
       {/* Modal for changing the name of converted temp to permanent whiteboard */}
-      <ChangeNameModal
-        zIndex={20}
-        className='p-8 rounded-sm'>
-          <ChangeNameTrialWhiteboard
-            onConfirm={handleConfirmNameChange}
-            onSkip={handleSkipNameChange}
-          />
-      </ChangeNameModal>
+      <ChangeNameTrialWhiteboard
+        open={changeNameOpen}
+        onConfirm={handleConfirmNameChange}
+        onSkip={handleSkipNameChange}
+      />
     </div>
   );
 };// -- end AuthForm

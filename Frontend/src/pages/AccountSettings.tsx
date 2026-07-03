@@ -23,9 +23,7 @@ import {
   Button,
 } from '@/components/ui/button';
 
-import {
-  useModal,
-} from "@/components/Modal";
+import { AppModal } from "@/components/ui/app-modal";
 
 import AuthContext from "@/context/AuthContext";
 import HeaderAuthed from "@/components/HeaderAuthed";
@@ -65,7 +63,7 @@ export default function AccountSettings() {
   const navigate = useNavigate();
 
   const { user, setUser } = useContext(AuthContext)!;
-  const { Modal, openModal, closeModal } = useModal();
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // -- button statuses
   const [updateProfileStatus, setUpdateProfileStatus] = useState<ButtonStatus>('enabled');
@@ -382,7 +380,7 @@ export default function AccountSettings() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                openModal();
+                setDeleteConfirmOpen(true);
               }}
             >
               <deleteForm.Field name="password">
@@ -405,31 +403,31 @@ export default function AccountSettings() {
               </Button>
             </form>
 
-            <Modal>
-              <div className="p-6 flex flex-col justify-between h-full">
-                <h3 className="text-lg font-semibold">Are you sure?</h3>
-                <p className="text-sm text-gray-600">
-                  This action is irreversible. All your data will be lost.
-                </p>
-                <div className="flex justify-end space-x-2 mt-4">
-                  <button
-                    className="px-4 py-2 bg-gray-200 rounded"
-                    onClick={closeModal}
+            <AppModal
+              open={deleteConfirmOpen}
+              onOpenChange={setDeleteConfirmOpen}
+              title="Are you sure?"
+              description="This action is irreversible. All your data will be lost."
+              footer={
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setDeleteConfirmOpen(false)}
                   >
                     Cancel
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-red-600 text-white rounded"
+                  </Button>
+                  <Button
+                    variant="destructive"
                     onClick={() => {
                       deleteForm.handleSubmit();
-                      closeModal();
+                      setDeleteConfirmOpen(false);
                     }}
                   >
                     Confirm
-                  </button>
-                </div>
-              </div>
-            </Modal>
+                  </Button>
+                </>
+              }
+            />
           </div>
         </div>
       </div>

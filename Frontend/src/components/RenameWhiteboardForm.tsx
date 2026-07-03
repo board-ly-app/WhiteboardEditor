@@ -13,19 +13,24 @@ import {
 import {
   Input,
 } from '@/components/ui/input';
+import { AppModal } from '@/components/ui/app-modal';
 import ErrorTextNotification from './ui/error-text-notification';
 import { MAX_TITLE_LENGTH } from '@/app.config';
 
+const FORM_ID = 'rename-whiteboard-form';
+
 export interface RenameWhiteboardFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   currentName: string;
   onSubmit: (newName: string) => Promise<unknown>;
-  onCancel: () => unknown;
 }
 
 export const RenameWhiteboardForm = ({
+  open,
+  onOpenChange,
   currentName,
   onSubmit,
-  onCancel,
 }: RenameWhiteboardFormProps): React.JSX.Element => {
   const [newName, setNewName] = useState<string>(currentName);
   const [renameButtonStatus, setRenameButtonStatus] = useState<ButtonStatus>('enabled');
@@ -58,41 +63,45 @@ export const RenameWhiteboardForm = ({
   const canSubmit = trimmedName.length > 0 && trimmedName !== currentName;
 
   return (
-    <div>
-      <form onSubmit={handleSubmit}>
-        <h1 className="text-lg font-semibold">Rename "{currentName}"</h1>
-        <div className="flex flex-row justify-center pt-2 gap-2">
-          <div className="flex flex-col">
-            <Input
-              type="text"
-              name="newName"
-              placeholder="New whiteboard name"
-              value={newName}
-              onChange={handleNewNameChange}
-              autoFocus
-              maxLength={MAX_TITLE_LENGTH}
-            />
-            <ErrorTextNotification
-              show={newName.length >= MAX_TITLE_LENGTH}
-              message={`You've reached the maximum title length of ${MAX_TITLE_LENGTH} characters.`}
-            />
-        </div>
-          <Button
-            disabled={!canSubmit}
-            status={renameButtonStatus}
-            type="submit"
-          >
-            Rename
-          </Button>
+    <AppModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Rename "${currentName}"`}
+      footer={
+        <>
           <Button
             type="button"
             variant="secondary"
-            onClick={onCancel}
+            onClick={() => onOpenChange(false)}
           >
             Cancel
           </Button>
-        </div>
+          <Button
+            form={FORM_ID}
+            type="submit"
+            disabled={!canSubmit}
+            status={renameButtonStatus}
+          >
+            Rename
+          </Button>
+        </>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit} className="flex flex-col">
+        <Input
+          type="text"
+          name="newName"
+          placeholder="New whiteboard name"
+          value={newName}
+          onChange={handleNewNameChange}
+          autoFocus
+          maxLength={MAX_TITLE_LENGTH}
+        />
+        <ErrorTextNotification
+          show={newName.length >= MAX_TITLE_LENGTH}
+          message={`You've reached the maximum title length of ${MAX_TITLE_LENGTH} characters.`}
+        />
       </form>
-    </div>
+    </AppModal>
   );
 };// -- end RenameWhiteboardForm
