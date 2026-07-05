@@ -696,9 +696,14 @@ impl WhiteboardMetadata {
 
     pub fn permission_for_user(&self, user_id: &UserIdType) -> Option<WhiteboardPermissionEnum> {
         if self.visibility == WhiteboardVisibilityEnum::Public {
-            return Some(WhiteboardPermissionEnum::Edit);
+            // -- Owners have owner permission, all others have edit permission
+            match self.permissions_by_user_id.get(user_id) {
+                Some(WhiteboardPermissionEnum::Own) => Some(WhiteboardPermissionEnum::Own),
+                _ => Some(WhiteboardPermissionEnum::Edit),
+            }// -- end match self.permissions_by_user_id.get(user_id)
+        } else {
+            self.permissions_by_user_id.get(user_id).copied()
         }
-        self.permissions_by_user_id.get(user_id).copied()
     }
 }
 
