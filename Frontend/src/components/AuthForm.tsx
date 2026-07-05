@@ -161,7 +161,7 @@ const AuthForm = ({
             toast.warn("Could not transfer whiteboard.");
           }
 
-          console.error('Error transferring temp whiteboard:', err);
+          console.error('Error transferring temp whiteboard');
         }
       }
 
