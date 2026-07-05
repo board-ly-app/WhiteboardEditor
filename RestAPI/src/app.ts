@@ -1,4 +1,3 @@
-import cors from 'cors';
 import express from 'express';
 
 // === Routers =================================================================
@@ -14,7 +13,6 @@ const API_VERSION = 'v1';
 
 const app = express();
 
-app.use(cors());
 app.use(express.json());
 
 // Mount routers

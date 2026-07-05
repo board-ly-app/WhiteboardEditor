@@ -50,7 +50,9 @@ export const authenticateJWT = async (
 
     next();
   } catch (err) {
-    console.log('Authorization error:', err);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Authorization error:', err);
+    }
     res.status(403).json({ error: "Invalid or expired token" });
   }
 };
