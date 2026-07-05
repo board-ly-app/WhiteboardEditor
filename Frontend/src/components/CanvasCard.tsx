@@ -7,19 +7,10 @@ import {
 } from 'react';
 
 import {
-  useLocation,
-  useNavigate,
-} from 'react-router-dom';
-
-import {
   useSelector,
 } from 'react-redux';
 
 import lodash from 'lodash';
-
-import {
-  type AxiosError,
-} from 'axios';
 
 import Konva from 'konva';
 
@@ -88,6 +79,7 @@ import {
 import {
   selectWhiteboardById,
   selectWhiteboardPermissionByUser,
+  selectPermissionsByUserByWhiteboard,
 } from '@/store/whiteboards/whiteboardsSelectors';
 
 import {
@@ -128,9 +120,6 @@ const CanvasCard = ({
   shapeAttributes,
   onSelectCanvasDimensions,
 }: CanvasCardProps) => {
-  const location = useLocation();
-  const navigate = useNavigate();
-
   const userCacheContext = useContext(UserCacheContext);
 
   if (! userCacheContext) {
@@ -235,6 +224,13 @@ const CanvasCard = ({
     lodash.isEqual
   );
 
+  // -- explicit permission only (no effective 'edit' fallback on public whiteboards); 
+  // gates operations restricted to explicit owners/editors, like thumbnail updates
+  const explicitPermission = useSelector(
+    (state: RootState) => selectPermissionsByUserByWhiteboard(state, whiteboardId)?.[user.id] ?? null,
+    lodash.isEqual
+  );
+
   // -- set up interval to broadcast cursor position
   const stageRef = useRef<Konva.Stage | null>(null);
   const cursorPosRef = useRef<{ x: number; y: number; } | null>(null);
@@ -295,6 +291,9 @@ const CanvasCard = ({
   // Set the whiteboard thumbnail
   useEffect(() => {
     const interval = setInterval(async () => {
+      // -- only explicit owners/editors may update the thumbnail
+      if (explicitPermission !== 'own' && explicitPermission !== 'edit') return;
+
       if (!canvasGroupRefsByIdRef.current) return;
 
       const dataUrl = captureImage(
@@ -303,7 +302,7 @@ const CanvasCard = ({
         thumbnailType,
         thumbnailQuality,
       );
-      
+
       if (!dataUrl) return;
 
       try {
@@ -312,20 +311,13 @@ const CanvasCard = ({
         });
         console.log("Thumbnail captured");
       } catch (err: unknown) {
+        // best-effort background update; failure must not interrupt the session
         console.error("Error updating thumbnail:", err);
-
-        const apiErr = err as AxiosError;
-
-        if (apiErr.status === 403) {
-          const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
-
-          navigate(`/login?redirect=${locationEncoded}`);
-        }
       }
     }, waitTime);
 
     return () => clearInterval(interval);
-  }, [whiteboardId, canvasGroupRefsByIdRef, location.pathname, location.search, navigate, rootCanvas.id, waitTime]);
+  }, [whiteboardId, canvasGroupRefsByIdRef, explicitPermission, rootCanvas.id, waitTime]);
 
   // Handle initial scroll to the center of the stage
   const containerRef = useRef<HTMLDivElement>(null);
