@@ -69,7 +69,10 @@ const UserAuth = ({
         setTempWhiteboardButtonStatus('pending');
 
         const userResp = await api.post('/users/temp');
-        console.log("userResp: ", userResp);
+
+        if (process.env.NODE_ENV !== 'production') {
+          console.log("userResp: ", userResp);
+        }
 
         const {
           user,
@@ -101,8 +104,8 @@ const UserAuth = ({
         const redirectUrl = `/whiteboard/${id}`;
 
         navigate(redirectUrl);
-      } catch (err) {
-        console.log("Error creating trial whiteboard: ", err);
+      } catch {
+        console.error('Error creating trial whiteboard');
       } finally {
         setTempWhiteboardButtonStatus('enabled');
       }

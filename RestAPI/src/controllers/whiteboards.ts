@@ -184,8 +184,13 @@ export const handleCreateWhiteboard = async (
       .then(wb => wb.populateFull());
     
     res.status(201).json(whiteboardOut.toPublicView());
-  } catch (err: any) {
-    console.log('Server Error:', err);
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Server Error:', err);
+    } else {
+      console.error('Server Error');
+    }
+
     res.status(500).json({ message: "Unexpected server error" });
   }
 };// -- end handleCreateWhiteboard
@@ -232,8 +237,13 @@ export const handleCreateTempWhiteboard = async (
       .then(wb => wb.populateFull());
     
     res.status(201).json(whiteboardOut.toPublicView());
-  } catch (err: any) {
-    console.log('Server Error:', err);
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Server Error:', err);
+    } else {
+      console.log('Server Error');
+    }
+
     res.status(500).json({ message: "Unexpected server error" });
   }
 };// -- end handleCreateTempWhiteboard
@@ -304,7 +314,13 @@ export const handleConvertTempToPerm = async (
     );
 
     return res.status(200).json({ message: "Whiteboard converted to permanent successfully" });
-  } catch (err) {
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Server error:', err);
+    } else {
+      console.error('Server error');
+    }
+
     return res.status(500).json({ message: "Server error", err });
   }
 };
@@ -345,7 +361,13 @@ export const handleChangeWhiteboardName = async (
     );
 
     return res.status(200).json({ message: "Whiteboard name updated successfully" });
-  } catch (err) {
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Server error:', err);
+    } else {
+      console.error('Server error');
+    }
+
     return res.status(500).json({ message: "Server error" });
   }
 }
@@ -425,8 +447,13 @@ export const handleShareWhiteboard = async (
         console.error('Unexpected error:', result);
         return res.status(500).json({ error: "Unexpected error" });
     }
-  } catch (err: any) {
-    console.error("Error sharing whiteboard:", err);
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Error sharing whiteboard:', err);
+    } else {
+      console.error('Error sharing whiteboard');
+    }
+
     return res.status(500).json({ error: "Server error" });
   }
 };// -- end handleShareWhiteboard
@@ -465,8 +492,13 @@ export const handlePutThumbnail = async (
       ...wbAttribView,
       user_permissions: removeDanglingUserPermissions(wbAttribView.user_permissions)
     });
-  } catch (err) {
-    console.error("Error updating thumbnail", err);
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Error updating thumbnail:', err);
+    } else {
+      console.error('Error updating thumbnail');
+    }
+
     return res.status(500).json({ message: "Unexpected server error" });
   }
 };// -- end handlePutThumbnail
@@ -510,8 +542,13 @@ export const handleDeleteWhiteboard = async (
       default:
         throw new Error(`Unrecognized response type: ${resp}`);
     }// -- end switch resp.status
-  } catch (e: unknown) {
-    console.error("Unexpected error in handleDeleteWhiteboard:", e);
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Unexpected error in handleDeleteWhiteboard:', err);
+    } else {
+      console.error('Unexpected error in handleDeleteWhiteboard');
+    }
+
     return res.status(500).json({ message: 'Unexpected server error' });
   }
 };// -- end handleDeleteWhiteboard

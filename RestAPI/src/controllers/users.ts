@@ -89,12 +89,21 @@ export const handleCreateUser = async (
         token: loginResult.token
       });
     } catch (err: any) {
-      console.error("Login after signup failed: ", err);   
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Login after signup failed:", err);   
+      } else {
+        console.error("Login after signup failed");   
+      }
+
       return res.status(500).json({ message: 'Unexpected login failure' })   
     }
     
   } catch (err: any) {
-    console.error("Create user failed: ", err);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error("Create user failed: ", err);
+    } else {
+      console.error("Create user failed");
+    }
     return res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -155,7 +164,11 @@ export const handleConvertTempUser = async (
         token: loginResult.token
       });
     } catch (err: any) {
-      console.error("Login after signup failed: ", err);   
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Login after signup failed: ", err);   
+      } else {
+        console.error("Login after signup failed");   
+      }
       return res.status(500).json({ message: 'Unexpected login failure' })   
     }
     
