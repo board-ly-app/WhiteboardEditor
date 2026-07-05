@@ -11,6 +11,10 @@ export const login = async (req: Request<{}, {}, AuthRequest>, res: Response) =>
 
     res.status(200).json(result);
   } catch (err: any) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Login error:', err);
+    }
+
     res.status(401).json({ error: err.message });
   }
 };
