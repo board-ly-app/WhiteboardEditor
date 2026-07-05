@@ -830,7 +830,6 @@ pub async fn handle_authenticated_client_message<'a>(
                     // to the canvas
                     eprintln!("!! CHECKING WHITEBOARD PERMISSIONS");
                     if ! matches!(whiteboard.metadata().permission_for_user(&client_state.user_summary.user_id), Some(WhiteboardPermissionEnum::Own)) {
-                        eprintln!("!! YOUR WHITEBOARD PERMISSION: {:?}", whiteboard.metadata().permission_for_user(&client_state.user_summary.user_id));
                         eprintln!("!! NO OWNER PERMISSION; CHECKING CANVAS PERMISSIONS");
                         let canvas : &Canvas = whiteboard.canvases().get(&canvas_id).unwrap();
 
