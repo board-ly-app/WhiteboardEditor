@@ -465,7 +465,7 @@ export const handlePutThumbnail = async (
 ) => {
   try {
     const { whiteboardId } = req.params;
-    const { thumbnailUrl } = req.body;
+    const { thumbnailUrl, authUser } = req.body;
 
     if (!thumbnailUrl || typeof thumbnailUrl != "string") {
       return res.status(400).json({ message: "thumbnailUrl string is required" })
@@ -483,6 +483,17 @@ export const handlePutThumbnail = async (
     }
 
     const { whiteboard } = resp;
+
+    const hasPermission = whiteboard.user_permissions.some(perm =>
+      perm.type === 'user' &&
+      perm.user &&
+      perm.user._id.toString() === authUser.id.toString() &&
+      (perm.permission === 'own' || perm.permission === 'edit')
+    );
+
+    if (!hasPermission) {
+      return res.status(403).json({ message: "You do not have permission to update the thumbnail of this whiteboard." });
+    }
 
     whiteboard.thumbnail_url = thumbnailUrl;
 

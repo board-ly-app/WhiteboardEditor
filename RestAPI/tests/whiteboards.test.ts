@@ -1213,5 +1213,235 @@ describe("Whiteboards API", () => {
       .send()
       .expect(403);
   });
+
+  it('should allow a user with "own" permission to update a whiteboard thumbnail', async () => {
+    const userCollection = mongoose.connection.collection('users');
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Gamma" });
+    const owner = await userCollection.findOne({ username: 'carol' });
+
+    expect(owner).not.toBeNull();
+    expect(whiteboard).not.toBeNull();
+
+    // to please TypeScript
+    if ((! owner) || (! whiteboard)) {
+      return;
+    }
+
+    const thumbnailUrl = 'data:image/jpeg;base64,b3duZXI=';
+
+    // Generate signed JWT
+    const authToken = jwt.sign(
+      { sub: owner._id.toString() },   // sub = subject claim
+      JWT_SECRET,
+      { expiresIn: 999999999 }
+    );
+
+    // -- Update thumbnail
+    const wbRes = await request(app)
+      .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ thumbnailUrl })
+      .expect(200);
+
+    expect(wbRes.body.thumbnail_url).toBe(thumbnailUrl);
+
+    // Ensure the update propagated to the database
+    const whiteboardUpdated = await whiteboardCollection.findOne({ _id: whiteboard._id });
+    expect(whiteboardUpdated?.thumbnail_url).toBe(thumbnailUrl);
+  });// -- end test case
+
+  it('should allow a user with explicit "edit" permission to update a whiteboard thumbnail', async () => {
+    const userCollection = mongoose.connection.collection('users');
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Gamma" });
+    const editor = await userCollection.findOne({ username: 'alice' });
+
+    expect(editor).not.toBeNull();
+    expect(whiteboard).not.toBeNull();
+
+    // to please TypeScript
+    if ((! editor) || (! whiteboard)) {
+      return;
+    }
+
+    const thumbnailUrl = 'data:image/jpeg;base64,ZWRpdG9y';
+
+    // Generate signed JWT
+    const authToken = jwt.sign(
+      { sub: editor._id.toString() },   // sub = subject claim
+      JWT_SECRET,
+      { expiresIn: 999999999 }
+    );
+
+    // -- Update thumbnail
+    const wbRes = await request(app)
+      .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ thumbnailUrl })
+      .expect(200);
+
+    expect(wbRes.body.thumbnail_url).toBe(thumbnailUrl);
+  });// -- end test case
+
+  it('should not allow a user without permissions to update a whiteboard thumbnail', async () => {
+    const userCollection = mongoose.connection.collection('users');
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+    // Project Gamma is owned by Carol with Alice as editor; Bob has no permissions
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Gamma" });
+    const nonMember = await userCollection.findOne({ username: 'bob' });
+
+    expect(nonMember).not.toBeNull();
+    expect(whiteboard).not.toBeNull();
+
+    // to please TypeScript
+    if ((! nonMember) || (! whiteboard)) {
+      return;
+    }
+
+    // Generate signed JWT
+    const authToken = jwt.sign(
+      { sub: nonMember._id.toString() },   // sub = subject claim
+      JWT_SECRET,
+      { expiresIn: 999999999 }
+    );
+
+    // -- Try to update thumbnail
+    await request(app)
+      .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ thumbnailUrl: 'data:image/jpeg;base64,YXR0YWNrZXI=' })
+      .expect(403);
+
+    // Ensure the thumbnail was not changed in the database
+    const whiteboardUpdated = await whiteboardCollection.findOne({ _id: whiteboard._id });
+    expect(whiteboardUpdated?.thumbnail_url).not.toBe('data:image/jpeg;base64,YXR0YWNrZXI=');
+  });// -- end test case
+
+  it('should not allow a user without explicit permissions to update the thumbnail of a public whiteboard', async () => {
+    const userCollection = mongoose.connection.collection('users');
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+    // Project Public is owned by Bob; Alice has no explicit permissions on it
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Public" });
+    const nonMember = await userCollection.findOne({ username: 'alice' });
+
+    expect(nonMember).not.toBeNull();
+    expect(whiteboard).not.toBeNull();
+
+    // to please TypeScript
+    if ((! nonMember) || (! whiteboard)) {
+      return;
+    }
+
+    // Generate signed JWT
+    const authToken = jwt.sign(
+      { sub: nonMember._id.toString() },   // sub = subject claim
+      JWT_SECRET,
+      { expiresIn: 999999999 }
+    );
+
+    // -- Try to update thumbnail
+    await request(app)
+      .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ thumbnailUrl: 'data:image/jpeg;base64,YXR0YWNrZXI=' })
+      .expect(403);
+
+    // Ensure the thumbnail was not changed in the database
+    const whiteboardUpdated = await whiteboardCollection.findOne({ _id: whiteboard._id });
+    expect(whiteboardUpdated?.thumbnail_url).not.toBe('data:image/jpeg;base64,YXR0YWNrZXI=');
+  });// -- end test case
+
+  it('should not allow a user with "view" permission to update a whiteboard thumbnail', async () => {
+    const userCollection = mongoose.connection.collection('users');
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+    // Project Eta is owned by Eve with Frank as viewer
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Eta" });
+    const viewer = await userCollection.findOne({ username: 'frank' });
+
+    expect(viewer).not.toBeNull();
+    expect(whiteboard).not.toBeNull();
+
+    // to please TypeScript
+    if ((! viewer) || (! whiteboard)) {
+      return;
+    }
+
+    // Generate signed JWT
+    const authToken = jwt.sign(
+      { sub: viewer._id.toString() },   // sub = subject claim
+      JWT_SECRET,
+      { expiresIn: 999999999 }
+    );
+
+    // -- Try to update thumbnail
+    await request(app)
+      .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ thumbnailUrl: 'data:image/jpeg;base64,dmlld2Vy' })
+      .expect(403);
+  });// -- end test case
+
+  it('should reject a thumbnail update without a thumbnailUrl', async () => {
+    const userCollection = mongoose.connection.collection('users');
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+
+    const whiteboard = await whiteboardCollection.findOne({ name: "Project Gamma" });
+    const owner = await userCollection.findOne({ username: 'carol' });
+
+    expect(owner).not.toBeNull();
+    expect(whiteboard).not.toBeNull();
+
+    // to please TypeScript
+    if ((! owner) || (! whiteboard)) {
+      return;
+    }
+
+    // Generate signed JWT
+    const authToken = jwt.sign(
+      { sub: owner._id.toString() },   // sub = subject claim
+      JWT_SECRET,
+      { expiresIn: 999999999 }
+    );
+
+    // -- Try to update thumbnail with no thumbnailUrl
+    await request(app)
+      .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({})
+      .expect(400);
+  });// -- end test case
+
+  it('should reject a thumbnail update for a malformed whiteboard id', async () => {
+    const userCollection = mongoose.connection.collection('users');
+
+    const owner = await userCollection.findOne({ username: 'carol' });
+
+    expect(owner).not.toBeNull();
+
+    // to please TypeScript
+    if (! owner) {
+      return;
+    }
+
+    // Generate signed JWT
+    const authToken = jwt.sign(
+      { sub: owner._id.toString() },   // sub = subject claim
+      JWT_SECRET,
+      { expiresIn: 999999999 }
+    );
+
+    // -- Try to update thumbnail on a malformed whiteboard id
+    await request(app)
+      .put(`/api/v1/whiteboards/zzzzzzz/thumbnail`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ thumbnailUrl: 'data:image/jpeg;base64,dGVzdA==' })
+      .expect(400);
+  });// -- end test case
 });
 
