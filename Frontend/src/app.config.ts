@@ -58,7 +58,7 @@ export const DEFAULT_WB_ZOOM = 1.0;
 export const WB_ZOOM_FACTOR = 1.013;
 
 // -- Minimum zoom level of the whiteboard editor
-export const MIN_WB_ZOOM = 0.25;
+export const MIN_WB_ZOOM = 0.5;
 
 // -- Maximum zoom level of the whiteboard editor
-export const MAX_WB_ZOOM = 2.0;
+export const MAX_WB_ZOOM = 4.0;

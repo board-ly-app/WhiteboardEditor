@@ -165,6 +165,10 @@ const CanvasCard = ({
     lodash.isEqual
   );
 
+  if (currentZoom === null) {
+    throw new Error('No currentZoom provided');
+  }
+
   const currentZoomFocus : ZoomFocusEnum | null = useSelector(
     (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentZoomFocus ?? null,
     lodash.isEqual
@@ -254,72 +258,64 @@ const CanvasCard = ({
   const stageRef = useRef<Konva.Stage | null>(null);
   const cursorPosRef = useRef<{ x: number; y: number; } | null>(null);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   // -- Set current zoom level
   useEffect(
     () => {
+      console.log('!! currentZoom:', currentZoom);
+
       if (currentZoom === null) return;
 
       const stage = stageRef.current;
-
       if (! stage) return;
 
-      const oldScale = stage.scaleX();
+      const container = containerRef.current;
+      if (! container) return;
 
-      switch (currentZoomFocus) {
-        case 'pointer':
-          {
-            const pointer = stage.getPointerPosition();
-
-            if (! pointer) return;
-
-            const mousePointTo = {
-              x: (pointer.x - stage.x()) / oldScale,
-              y: (pointer.y - stage.y()) / oldScale,
-            };
-
-            const newPos = {
-              x: pointer.x - (mousePointTo.x * currentZoom),
-              y: pointer.y - (mousePointTo.y * currentZoom),
-            };
-
-            stage.position(newPos);
-          }
-          break;
-        case 'center':
-          {
-            console.log('!! ZOOM CENTER');
-            // -- Shift stage in amount proportionate with the difference in
-            // scales
-            const viewport = window.visualViewport;
-
-            if (! viewport) return;
-
-            const centerX = viewport.offsetLeft + (viewport.width * 1.25);
-            const centerY = viewport.offsetTop + (viewport.height * 1.25);
-
-            const centerPointTo = {
-              x: (centerX - stage.x()) / oldScale,
-              y: (centerY - stage.y()) / oldScale,
-            };
-
-            const newPos = {
-              x: centerX - (centerPointTo.x * currentZoom),
-              y: centerY - (centerPointTo.y * currentZoom),
-            };
-
-            stage.position(newPos);
-          }
-          break;
-        default:
-          throw new Error(`Unhandled ZoomFocus: ${currentZoomFocus}`);
-      }
+      const oldZoom = stage.scaleX();
+      const zoomDiff = currentZoom / oldZoom;
+      const pointerPos = stage.getPointerPosition();
 
       stage.scale({
         x: currentZoom,
         y: currentZoom,
       });
+      stage.width(width * currentZoom);
+      stage.height(height * currentZoom);
+
+      switch (currentZoomFocus) {
+        case 'pointer':
+          {
+            // -- Maintain the pointer position relative to the root canvas
+            if (! pointerPos) return;
+
+            console.log(`!! pointerPos.x = ${pointerPos.x}; pointerPos.y = ${pointerPos.y}`);
+          }
+          break;
+        case 'center':
+          {
+            console.log('!! ZOOM CENTER');
+            console.log('!! zoomDiff:', zoomDiff);
+            const viewport = window.visualViewport;
+
+            if (! viewport) return;
+
+            const initOffsetX = viewport.width / 2;
+            const initOffsetY = viewport.height / 2;
+            const adjustedOffsetX = initOffsetX * zoomDiff;
+            const adjustedOffsetY = initOffsetY * zoomDiff;
+
+            container.scrollLeft = Math.max(container.scrollLeft - initOffsetX + adjustedOffsetX, 0);
+            container.scrollTop = Math.max(container.scrollTop - initOffsetY + adjustedOffsetY, 0);
+            // -- No need to change scroll position
+          }
+          break;
+        default:
+          throw new Error(`Unhandled ZoomFocus: ${currentZoomFocus}`);
+      }// -- end switch (currentZoomFocus)
     },
-    [currentZoom, currentZoomFocus]
+    [currentZoom, currentZoomFocus, width, height]
   );
 
   // -- set up interval to broadcast cursor position
@@ -407,14 +403,21 @@ const CanvasCard = ({
     return () => clearInterval(interval);
   }, [whiteboardId, canvasGroupRefsByIdRef, explicitPermission, rootCanvas.id, waitTime]);
 
-  // Handle initial scroll to the center of the stage
-  const containerRef = useRef<HTMLDivElement>(null);
+  // -- Handle initial scroll to the center of the stage
   useEffect(() => {
     const container = containerRef.current;
 
     if (container) {
-      container.scrollLeft = (width - container.clientWidth) / 2;
-      container.scrollTop = (height - container.clientHeight) / 2;
+      container.scrollLeft = Math.max((width - container.clientWidth) / 2, 0);
+      container.scrollTop = Math.max((height - container.clientHeight) / 2, 0);
+    }
+
+    // -- Set initial stage width and height
+    const stage = stageRef.current;
+
+    if (stage) {
+      stage.width(width);
+      stage.height(height);
     }
   }, [width, height])
 
@@ -634,8 +637,6 @@ const CanvasCard = ({
       >
         <Stage
           ref={stageRef}
-          width={width}
-          height={height}
           onClick={handleUnselect}
         >
           <Layer

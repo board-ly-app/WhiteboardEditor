@@ -145,11 +145,29 @@ export const scaleWhiteboardZoom = (
 ) => {
   const currState : RootState = store.getState();
 
+  const viewport = window.visualViewport;
+
+  if (! viewport) return;
+
   if (! (whiteboardId in currState.whiteboards)) return;
+
+  const rootCanvasId = currState.whiteboards[whiteboardId].rootCanvas;
+
+  if (! (rootCanvasId in currState.canvases)) return;
+
+  const rootCanvas = currState.canvases[rootCanvasId];
+
+  const {
+    width,
+    height,
+  } = rootCanvas;
 
   const currentZoom = currState.whiteboards[whiteboardId].currentZoom;
 
   let nextZoom = currentZoom * zoomMultiplier;
+
+  if (width * nextZoom < viewport.width) return;
+  if (height * nextZoom < viewport.height) return;
 
   if (nextZoom < MIN_WB_ZOOM) {
     nextZoom = MIN_WB_ZOOM;
