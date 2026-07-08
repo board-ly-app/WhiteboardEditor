@@ -53,6 +53,10 @@ export const LS_KEY_COPIED_CANVAS_OBJECT = 'copied_canvas_object';
 // -- Default (starting) zoom level of the whiteboard editor
 export const DEFAULT_WB_ZOOM = 1.0;
 
+// -- Factor by which to multiply or divide the stage's scale to accomplish
+// zooming in and out.
+export const WB_ZOOM_FACTOR = 1.013;
+
 // -- Minimum zoom level of the whiteboard editor
 export const MIN_WB_ZOOM = 0.5;
 

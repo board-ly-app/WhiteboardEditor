@@ -22,6 +22,7 @@ import {
   deleteWhiteboard,
   setWhiteboardStatus,
   updateWhiteboard,
+  scaleWhiteboardZoom,
 } from './whiteboards';
 
 import {
@@ -61,6 +62,7 @@ export {
   deleteWhiteboard,
   setWhiteboardStatus,
   updateWhiteboard,
+  scaleWhiteboardZoom,
   addActiveUsersByWhiteboard,
   setActiveUsersByWhiteboard,
   removeActiveUsers,
