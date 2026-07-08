@@ -269,11 +269,11 @@ const Whiteboard = ({
     x: 0,
     y: 0,
     rotation: 0,
-    fillColor: '#ec8e41',
-    strokeColor: '#000000',
+    fillColor: '#ebf7ff',
+    strokeColor: '#2782b0',
     strokeWidth: 1,
     fontSize: 20,
-    color: '#000000',
+    color: '#003652',
   });
 
   const name : string | null = useSelector(
