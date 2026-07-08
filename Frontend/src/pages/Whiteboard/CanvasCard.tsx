@@ -191,11 +191,13 @@ const CanvasCard = ({
   );
 
   const activeUsers : Record<ClientIdType, ClientSummary> = useSelector(
-    (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId)
+    (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId),
+    lodash.isEqual
   );
 
   const cursorPositionsByClient : Record<ClientIdType, CursorPosition> = useSelector(
-    (state: RootState) => selectCursorPositionsByClients(state, Object.keys(activeUsers))
+    (state: RootState) => selectCursorPositionsByClients(state, Object.keys(activeUsers)),
+    lodash.isEqual
   );
 
   const clientMessengerContext = useContext(ClientMessengerContext);
@@ -424,7 +426,6 @@ const CanvasCard = ({
 
   useEffect(
     () => {
-      console.log('!! HANDLERS RESET');
       if (containerRef.current) {
         const container = containerRef.current;
 
@@ -650,8 +651,6 @@ const CanvasCard = ({
       canvasGroupRefsByIdRef,
     ]
   );
-
-  console.log('!! RENDER');
 
   return (
     <div
