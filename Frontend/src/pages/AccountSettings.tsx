@@ -252,7 +252,7 @@ export default function AccountSettings() {
       <div className="flex flex-row justify-center">
         <div className="p-6 space-y-6 min-w-3xl w-1/2">
           {/* Basic Info */}
-          <div className="border rounded-lg p-6">
+          <div className="border bg-card-background rounded-lg p-6">
             <form onSubmit={(ev: React.FormEvent<HTMLFormElement>) => {
               ev.preventDefault();
               profileForm.handleSubmit(ev);
@@ -277,7 +277,7 @@ export default function AccountSettings() {
               <Button
                 type="submit"
                 status={updateProfileStatus}
-                className="px-4 py-2 bg-black text-white rounded"
+                className="px-4 py-2 bg-page-background border text-white rounded"
               >
                 Update Profile
               </Button>
@@ -285,7 +285,7 @@ export default function AccountSettings() {
           </div>
 
           {/* Security Settings */}
-          <div className="border rounded-lg p-6">
+          <div className="border bg-card-background rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-4">Security Settings</h2>
             <form onSubmit={(ev: React.FormEvent<HTMLFormElement>) => {
               ev.preventDefault();
@@ -367,7 +367,7 @@ export default function AccountSettings() {
               <Button
                 type="submit"
                 status={updateSecuritySettingsStatus}
-                className="px-4 py-2 bg-black text-white rounded"
+                className="px-4 py-2 bg-page-background border text-white rounded"
               >
                 Update Security Settings
               </Button>
@@ -375,7 +375,7 @@ export default function AccountSettings() {
           </div>
 
           {/* Danger Zone */}
-          <div className="border border-red-300 rounded-lg p-6">
+          <div className="border border-red-300 bg-card-background rounded-lg p-6">
             <h2 className="text-lg font-semibold text-red-600 mb-4">Danger Zone</h2>
             <form
               onSubmit={(e) => {
