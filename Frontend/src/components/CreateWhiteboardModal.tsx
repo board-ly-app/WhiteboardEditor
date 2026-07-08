@@ -9,6 +9,10 @@ import {
   X,
 } from 'lucide-react';
 
+import {
+  toast,
+} from 'react-toastify';
+
 // -- local imports
 
 import {
@@ -154,7 +158,7 @@ const CreateWhiteboardModal = ({
       };
 
       if (! data.name) {
-        alert('Name required');
+        toast.error('Name required');
         return;
       }
 

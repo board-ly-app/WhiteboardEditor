@@ -1,5 +1,9 @@
 import { useState } from 'react';
 
+import {
+  toast,
+} from 'react-toastify';
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +32,7 @@ function CreateCanvasMenu({
 
   const handleSubmit = () => {
     if (!canvasName.trim()) {
-      alert("Canvas name cannot be empty");
+      toast.error("Canvas name cannot be empty");
       return;
     }
 

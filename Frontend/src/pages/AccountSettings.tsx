@@ -86,7 +86,7 @@ export default function AccountSettings() {
         if (res.status === 201) {
           const updated = res.data;
           setUser(updated);
-          alert("Profile updated successfully!");
+          toast.success("Profile updated successfully!");
         }
       } catch (err: unknown) {
         const apiErr = err as AxiosError;
@@ -129,7 +129,7 @@ export default function AccountSettings() {
         if (res.status === 201) {
           const updated = res.data;
           setUser(updated);
-          alert("Security settings updated successfully!");
+          toast.success("Security settings updated successfully!");
         }
       } catch (err: unknown) {
         const apiErr = err as AxiosError;

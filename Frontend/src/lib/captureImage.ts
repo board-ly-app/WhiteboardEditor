@@ -5,6 +5,10 @@ import {
 } from "react";
 
 import {
+  toast,
+} from 'react-toastify';
+
+import {
   KONVA_NODE_UI_ONLY_KEY,
 } from '@/app.config';
 
@@ -25,7 +29,7 @@ export const captureImage = (
   
   if (! canvasGroupRef?.current) {
     console.error('Could not find ref to Canvas with id', canvasId);
-    alert('Error exporting Canvas');
+    toast.error('Error exporting Canvas');
 
     return "";
   } else {
