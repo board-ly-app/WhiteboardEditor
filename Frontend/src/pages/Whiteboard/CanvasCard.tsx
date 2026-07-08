@@ -691,6 +691,7 @@ const CanvasCard = ({
           <Layer>
             {Object.entries(cursorPositionsByClient).map(([clientId, cursorPos]) => (
               <Circle
+                key={clientId}
                 x={cursorPos.x}
                 y={cursorPos.y}
                 width={10}
