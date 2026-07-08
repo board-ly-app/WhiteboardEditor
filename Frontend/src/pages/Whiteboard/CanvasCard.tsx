@@ -100,6 +100,7 @@ import {
 
 import {
   scaleWhiteboardZoom,
+  updateWhiteboard,
 } from '@/controllers';
 
 import {
@@ -166,10 +167,23 @@ const CanvasCard = ({
     throw new Error('No currentZoom provided');
   }
 
-  // const currentZoomFocus : ZoomFocusEnum | null = useSelector(
-  //   (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentZoomFocus ?? null,
-  //   lodash.isEqual
-  // );
+  const currentFocusX : number | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentFocusX ?? null,
+    lodash.isEqual
+  );
+
+  if (currentFocusX === null) {
+    throw new Error('No currentFocusX provided');
+  }
+
+  const currentFocusY : number | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentFocusY ?? null,
+    lodash.isEqual
+  );
+
+  if (currentFocusY === null) {
+    throw new Error('No currentFocusY provided');
+  }
 
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
     (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId),
@@ -264,9 +278,41 @@ const CanvasCard = ({
   );// -- end scaledWidth
 
   const scaledHeight = useMemo(
-    () => width * currentZoom,
-    [width, currentZoom]
+    () => height * currentZoom,
+    [height, currentZoom]
   );// -- end scaledHeight
+  
+  const scrollLeft : number = useMemo(
+    () => {
+      const viewport = window.visualViewport;
+
+      if (! viewport) {
+        throw new Error('No visualViewport provided');
+      }
+
+      return Math.max(
+        (currentFocusX * currentZoom) - (viewport.width / 2),
+        0
+      );
+    },
+    [currentZoom, currentFocusX]
+  );// -- end scrollLeft
+  
+  const scrollTop : number = useMemo(
+    () => {
+      const viewport = window.visualViewport;
+
+      if (! viewport) {
+        throw new Error('No visualViewport provided');
+      }
+
+      return Math.max(
+        (currentFocusY * currentZoom) - (viewport.height / 2),
+        0
+      );
+    },
+    [currentZoom, currentFocusY]
+  );// -- end scrollTop
 
   // -- set up interval to broadcast cursor position
   useEffect(
@@ -353,23 +399,15 @@ const CanvasCard = ({
     return () => clearInterval(interval);
   }, [whiteboardId, canvasGroupRefsByIdRef, explicitPermission, rootCanvas.id, waitTime]);
 
-  // -- Handle initial scroll to the center of the stage
+  // -- Handle resetting container scroll
   useEffect(() => {
     const container = containerRef.current;
 
     if (container) {
-      container.scrollLeft = Math.max((width - container.clientWidth) / 2, 0);
-      container.scrollTop = Math.max((height - container.clientHeight) / 2, 0);
+      container.scrollLeft = scrollLeft;
+      container.scrollTop = scrollTop;
     }
-
-    // -- Set initial stage width and height
-    const stage = stageRef.current;
-
-    if (stage) {
-      stage.width(width);
-      stage.height(height);
-    }
-  }, [width, height])
+  }, [scrollLeft, scrollTop])
 
   const handleUnselect = useCallback(
     () => {
@@ -548,6 +586,32 @@ const CanvasCard = ({
 
         container.addEventListener('wheel', handleWheel);
 
+        const handleScrollEnd = (e: Event) => {
+          // -- only non-wheel scroll events
+          e.preventDefault();
+
+          const container = containerRef.current;
+
+          if (! container) return;
+
+          const viewport = window.visualViewport;
+
+          if (! viewport) return;
+
+          const currState : RootState = store.getState();
+
+          if (! (whiteboardId in currState.whiteboards)) return;
+
+          const currentZoom = currState.whiteboards[whiteboardId].currentZoom;
+
+          updateWhiteboard(store.dispatch, whiteboardId, {
+            currentFocusX: (container.scrollLeft + (viewport.width * 0.5)) / currentZoom,
+            currentFocusY: (container.scrollTop + (viewport.height * 0.5)) / currentZoom,
+          });
+        };// -- end handleScrollEnd
+
+        container.addEventListener('scrollend', handleScrollEnd);
+
         return () => {
           container.removeEventListener('pointerdown', handlePointerEvent);
           container.removeEventListener('pointerup', handlePointerEvent);
@@ -556,6 +620,7 @@ const CanvasCard = ({
           container.removeEventListener('cut', handleCut);
           container.removeEventListener('paste', handlePaste);
           container.removeEventListener('wheel', handleWheel);
+          container.removeEventListener('scrollend', handleScrollEnd);
         };
       }
     },
@@ -569,6 +634,8 @@ const CanvasCard = ({
       canvasGroupRefsByIdRef,
     ]
   );
+
+  console.log('!! RENDER');
 
   return (
     <div

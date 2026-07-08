@@ -75,13 +75,20 @@ export const addWhiteboard = (
     allowedUsersByCanvas,
   } = normalizeWhiteboard(whiteboard);
 
+  const rootCanvas = canvases[whiteboard.rootCanvas];
+
+  if (! rootCanvas) {
+    throw new Error('Whiteboard root canvas not found');
+  }
+
   // -- add default whiteboard settings
   dispatch(setWhiteboards(Object.fromEntries(Object.entries(whiteboards).map(
     ([wid, attribs]) => [
       wid, {
         ...attribs,
+        currentFocusX: rootCanvas.width / 2,
+        currentFocusY: rootCanvas.height / 2,
         currentZoom: DEFAULT_WB_ZOOM,
-        currentZoomFocus: 'center',
         currentTool: "hand",
         tooltipText: "",
         editingText: "",
