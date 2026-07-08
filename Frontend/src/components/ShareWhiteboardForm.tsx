@@ -475,6 +475,16 @@ const ShareWhiteboardForm = ({
                 />
               ))
             }
+            {
+              emailPermissionsSorted.map(perm => (
+                <EditablePermission
+                  key={getKeyForPermission(perm)}
+                  perm={perm}
+                  onChange={handleChangePermission}
+                  onRemove={removePermission}
+                />
+              ))
+            }
           </div>
           {
             (userIdPermissionsSorted.length + emailPermissionsSorted.length) < 1 && (
