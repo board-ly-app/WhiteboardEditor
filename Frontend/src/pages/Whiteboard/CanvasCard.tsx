@@ -424,6 +424,7 @@ const CanvasCard = ({
 
   useEffect(
     () => {
+      console.log('!! HANDLERS RESET');
       if (containerRef.current) {
         const container = containerRef.current;
 
@@ -441,9 +442,13 @@ const CanvasCard = ({
         container.addEventListener('pointerup', handlePointerEvent);
 
         const handleCopyObject = () => {
+          const currState = store.getState();
+          const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+            currState, whiteboardId, clientId
+          );
+
           if (selectedCanvasObjects.length > 0) {
             // -- copy only first shape to localStorage
-            const currState = store.getState();
             const targetObjectId = selectedCanvasObjects[0];
             const targetObject = selectCanvasObjectById(currState, targetObjectId);
 
@@ -457,6 +462,12 @@ const CanvasCard = ({
 
         // handle keypresses within container
         const handleKeyDown = (ev: KeyboardEvent) => {
+          const currState = store.getState();
+          const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+            currState, whiteboardId, clientId
+          );
+          const selectedCanvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+
           switch (ev.key) {
             case 'Delete':
             case 'Backspace':
@@ -495,6 +506,12 @@ const CanvasCard = ({
 
         // -- Handle cutting objects
         const handleCut = () => {
+          const currState = store.getState();
+          const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+            currState, whiteboardId, clientId
+          );
+          const selectedCanvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+
           if (clientMessenger && selectedCanvasId && selectedCanvasObjects.length > 0) {
             handleCopyObject();
             clientMessenger.sendDeleteCanvasObjects({
@@ -510,6 +527,9 @@ const CanvasCard = ({
 
         // -- Handle pasting objects
         const handlePaste = () => {
+          const currState = store.getState();
+          const selectedCanvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+
           if (! clientMessenger) return;
           if (! selectedCanvasId) return;
 
@@ -521,8 +541,6 @@ const CanvasCard = ({
 
           const selectedCanvasPointerPos = selectedCanvasRef.current.getRelativePointerPosition();
           if (! selectedCanvasPointerPos) return;
-
-          const currState = store.getState();
 
           const selectedCanvasAttribs = selectCanvasById(currState, selectedCanvasId);
           if (! selectedCanvasAttribs) return;
@@ -625,11 +643,9 @@ const CanvasCard = ({
       }
     },
     [
+      clientId,
       whiteboardId,
-      containerRef,
       clientMessenger,
-      selectedCanvasId,
-      selectedCanvasObjects,
       currentDispatcherRef,
       canvasGroupRefsByIdRef,
     ]
