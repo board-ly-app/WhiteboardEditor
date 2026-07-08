@@ -352,10 +352,13 @@ const CanvasMenu = ({
             }}>
               Cancel
             </Button>
-            <Button onClick={() => {
-              handleUpdateAllowedUsers(selectedAllowedUsers);
-              setAllowedUsersMenuOpen(false);
-            }}>
+            <Button 
+              className="border bg-card-background"
+              onClick={() => {
+                handleUpdateAllowedUsers(selectedAllowedUsers);
+                setAllowedUsersMenuOpen(false);
+              }}
+            >
               Save
             </Button>
           </>

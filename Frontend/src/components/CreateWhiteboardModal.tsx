@@ -300,7 +300,7 @@ const CreateWhiteboardModal = ({
 
           <Command className="flex flex-col flex-shrink bg-page-background rounded-md">
             <div className='flex flex-col p-4 gap-2'>
-              <h3 className="row-span-1 text-md text-start font-semibold">
+              <h3 className="text-md text-start font-semibold">
                 Invite collaborators by email
               </h3>
               <div className="grid grid-flow-cols grid-cols-2 gap-2">
@@ -336,7 +336,7 @@ const CreateWhiteboardModal = ({
                   <div className='text-center'>
                     <Button
                       type="button"
-                      className='border'
+                      className='border bg-card-background'
                       variant="secondary"
                       onClick={handleAddNewEmail}
                     >
@@ -350,7 +350,7 @@ const CreateWhiteboardModal = ({
             <div className='pb-4'>
               {/** Display user emails to add, with option to remove **/}
               <h4 className="text-md font-semibold text-center mb-2">
-                Collaborators to be invited:
+                Collaborators to invite:
               </h4>
               <div className="flex flex-col gap-1">
                 {permissions.map(perm => RemovablePermission(perm)) }

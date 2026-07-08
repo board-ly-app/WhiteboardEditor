@@ -79,6 +79,7 @@ export const RenameWhiteboardForm = ({
           <Button
             form={FORM_ID}
             type="submit"
+            className='border bg-card-background text-white'
             disabled={!canSubmit}
             status={renameButtonStatus}
           >

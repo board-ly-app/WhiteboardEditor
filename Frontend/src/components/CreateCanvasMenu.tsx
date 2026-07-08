@@ -52,27 +52,33 @@ function CreateCanvasMenu({
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>
+          <Button 
+            className='border bg-card-background'
+            onClick={handleSubmit}
+          >
             Create
           </Button>
         </>
       }
     >
-      <div className="grid gap-2">
-        <Label htmlFor="name">Canvas Name</Label>
-        <Input
-          id="name"
-          value={canvasName}
-          onChange={(e) => setCanvasName(e.target.value)}
-          placeholder="Enter name"
-        />
+      <div className="grid gap-4">
+        <div className='flex flex-col gap-2'>
+          <Label htmlFor="name">Canvas Name</Label>
+          <Input
+            id="name"
+            value={canvasName}
+            onChange={(e) => setCanvasName(e.target.value)}
+            placeholder="Enter name"
+          />
+        </div>
 
-        <Label htmlFor="users">Allowed Users</Label>
-
-        <AllowedUsersPopover
-          selected={newCanvasAllowedUsers}
-          onChange={setNewCanvasAllowedUsers}
-        />
+        <div className='flex flex-col gap-2'>
+          <Label htmlFor="users">Allowed Users</Label>
+          <AllowedUsersPopover
+            selected={newCanvasAllowedUsers}
+            onChange={setNewCanvasAllowedUsers}
+          />
+        </div>
       </div>
     </AppModal>
   );
