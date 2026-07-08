@@ -17,7 +17,6 @@ import type {
 
 import {
   type WhiteboardState,
-  type ZoomFocusEnum,
 } from '@/types/Store';
 
 import {
@@ -141,7 +140,6 @@ export const updateWhiteboard = (
 export const scaleWhiteboardZoom = (
   whiteboardId: WhiteboardIdType,
   zoomMultiplier: number,
-  focus: ZoomFocusEnum,
 ) => {
   const currState : RootState = store.getState();
 
@@ -178,7 +176,6 @@ export const scaleWhiteboardZoom = (
   store.dispatch(updateWhiteboardsById({
     [whiteboardId]: {
       currentZoom: nextZoom,
-      currentZoomFocus: focus,
     },
   }));
 };// -- end scaleWhiteboardZoom

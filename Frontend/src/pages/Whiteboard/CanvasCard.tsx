@@ -543,7 +543,7 @@ const CanvasCard = ({
           // how to scale? Zoom in? Or zoom out?
           const scaleBy = (e.deltaY > 0) ? WB_ZOOM_FACTOR : (1 / WB_ZOOM_FACTOR);
 
-          scaleWhiteboardZoom(whiteboardId, scaleBy, 'pointer');
+          scaleWhiteboardZoom(whiteboardId, scaleBy);
         };// -- end handleWheel
 
         container.addEventListener('wheel', handleWheel);
