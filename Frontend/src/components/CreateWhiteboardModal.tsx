@@ -29,10 +29,6 @@ import {
 } from '@/components/ui/label';
 
 import {
-  Command,
-} from '@/components/ui/command';
-
-import {
   Button,
   type ButtonStatus,
 } from '@/components/ui/button';
@@ -266,39 +262,37 @@ const CreateWhiteboardModal = ({
       }
     >
         <form onSubmit={handleSubmit} className='flex flex-col gap-3'>
-          <Command className="flex flex-col flex-shrink bg-page-background rounded-md border p-2">
-            <div className="flex flex-col gap-3 p-2">
-              <div className="flex flex-col">
-                <label htmlFor="whiteboard-name">Whiteboard Name:</label>
-                <Input
-                  name="name"
-                  type="text"
-                  onChange={handleChangeInput}
-                  value={formInputs.name}
-                  required
-                  placeholder="Whiteboard Name"
-                  maxLength={MAX_TITLE_LENGTH}
-                />
-                <ErrorTextNotification 
-                  show={formInputs.name.length >= MAX_TITLE_LENGTH}
-                  message={`You've reached the maximum title length of ${MAX_TITLE_LENGTH} characters.`}
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="visibility"
-                  checked={visibility === 'public'}
-                  onCheckedChange={(checked) =>
-                    setVisibility(checked ? 'public' : 'private')
-                  }
-                />
-                <Label htmlFor="visibility">Make this whiteboard public</Label>
-              </div>
+          <div className="flex flex-col flex-shrink bg-page-background rounded-md border p-2 gap-3">
+            <div className="flex flex-col">
+              <label htmlFor="whiteboard-name">Whiteboard Name:</label>
+              <Input
+                name="name"
+                type="text"
+                onChange={handleChangeInput}
+                value={formInputs.name}
+                required
+                placeholder="Whiteboard Name"
+                maxLength={MAX_TITLE_LENGTH}
+              />
+              <ErrorTextNotification 
+                show={formInputs.name.length >= MAX_TITLE_LENGTH}
+                message={`You've reached the maximum title length of ${MAX_TITLE_LENGTH} characters.`}
+              />
             </div>
-          </Command>
 
-          <Command className="flex flex-col flex-shrink bg-page-background rounded-md">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="visibility"
+                checked={visibility === 'public'}
+                onCheckedChange={(checked) =>
+                  setVisibility(checked ? 'public' : 'private')
+                }
+              />
+              <Label htmlFor="visibility">Make this whiteboard public</Label>
+            </div>
+          </div>
+
+          <div className="flex flex-col flex-shrink bg-page-background rounded-md">
             <div className='flex flex-col p-4 gap-2'>
               <h3 className="text-md text-start font-semibold">
                 Invite collaborators by email
@@ -359,7 +353,7 @@ const CreateWhiteboardModal = ({
                 permissions.length < 1 && <div className='text-center text-placeholder-text'>No users added.</div>
               }
             </div>
-          </Command>
+          </div>
 
           <div className="flex flex-row justify-center mt-1">
             <Button
