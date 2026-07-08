@@ -7,7 +7,6 @@
 // =============================================================================
 
 import { useLocation, useNavigate } from 'react-router';
-import { useModal } from './Modal';
 
 import Header, {
   type HeaderProps
@@ -26,43 +25,35 @@ const HeaderUnauthed = ({
 }: HeaderUnauthedProps): React.JSX.Element => {
   const location = useLocation();
   const navigate = useNavigate();
-  const {
-      Modal: ConfirmationModal,
-      openModal: openConfirmationModal,
-      closeModal: closeConfirmationModal,
-    } = useModal();
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
 
   const pathname = location.pathname;
   const [action, setAction] = useState<"login" | "signup">("login");
-  
+
   const handleLogin = useCallback(() => {
     if (pathname.startsWith("/login")) {
       console.log("from login");
       navigate("/login");
-    } 
+    }
     else if (pathname.startsWith("/whiteboard")) {
       console.log("log in from whiteboard, open modal");
-      openConfirmationModal();
+      setConfirmationOpen(true);
     }
-  }, [pathname, navigate, openConfirmationModal]);
+  }, [pathname, navigate, setConfirmationOpen]);
 
   const handleSignup = useCallback(() => {
     if (pathname.startsWith("/signup")) {
       console.log("from signup");
       navigate("/signup");
-    } 
+    }
     else if (pathname.startsWith("/whiteboard")) {
       console.log("action: ", action);
       console.log("create account from whiteboard, open modal");
       setAction("signup");
       console.log("action after setAction: ", action);
-      openConfirmationModal();
+      setConfirmationOpen(true);
     }
-  }, [pathname, navigate, openConfirmationModal, setAction]);
-
-  const handleCancel = useCallback(() => {
-    closeConfirmationModal();
-  }, [closeConfirmationModal]);
+  }, [pathname, navigate, setConfirmationOpen, setAction]);
 
   return (
     <div>
@@ -87,14 +78,11 @@ const HeaderUnauthed = ({
       />
 
       {/* Modal for confirming temp whiteboard ownership transfer to logged in user */}
-      <ConfirmationModal
-        zIndex={20}
-        className='p-8 rounded-sm'>
-          <ConfirmTempToPerm
-            onCancel={handleCancel}
-            action={action}
-          />
-      </ConfirmationModal>
+      <ConfirmTempToPerm
+        open={confirmationOpen}
+        onOpenChange={setConfirmationOpen}
+        action={action}
+      />
     </div>
   );
 };

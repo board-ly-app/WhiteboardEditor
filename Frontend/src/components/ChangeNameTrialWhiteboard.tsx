@@ -1,14 +1,19 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
+import { AppModal } from "./ui/app-modal";
+
+const FORM_ID = 'change-name-trial-whiteboard-form';
 
 export interface ChangeNameTrialWhiteboardProps {
+  open: boolean;
   onConfirm: (name: string) => void;
   onSkip: () => void;
 }
 
 const ChangeNameTrialWhiteboard = ({
+  open,
   onConfirm,
-  onSkip
+  onSkip,
 }: ChangeNameTrialWhiteboardProps) => {
   const [localNameEntry, setLocalNameEntry] = useState<string>('');
 
@@ -21,33 +26,33 @@ const ChangeNameTrialWhiteboard = ({
   };
 
   return (
-    <div>
-      <form 
-        onSubmit={handleFormSubmit}
-      >
-        <h1>Change the name of your trial whiteboard?</h1>
+    <AppModal
+      open={open}
+      // -- dismissing the modal (backdrop / esc / close button) skips the rename
+      onOpenChange={(nextOpen) => { if (! nextOpen) onSkip(); }}
+      title="Change the name of your trial whiteboard?"
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onSkip}>
+            Skip for now
+          </Button>
+          <Button form={FORM_ID} type="submit">
+            Confirm
+          </Button>
+        </>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleFormSubmit}>
         <input
           type="text"
           placeholder="Enter new name"
           value={localNameEntry}
           onChange={(e) => setLocalNameEntry(e.target.value)}
           className={"border p-2 w-full my-2 rounded-md"}
+          autoFocus
         />
-        <div className="flex flex-row justify-center pt-2 gap-2">
-          <Button
-            type="submit"
-          >
-            Confirm
-          </Button>
-          <Button
-            type="button"
-            onClick={onSkip}
-          >
-            Skip for now
-          </Button>
-        </div>
       </form>
-    </div>
+    </AppModal>
   );
 }
 

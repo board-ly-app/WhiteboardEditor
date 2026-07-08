@@ -23,9 +23,7 @@ import {
   Button,
 } from '@/components/ui/button';
 
-import {
-  useModal,
-} from "@/components/Modal";
+import { AppModal } from "@/components/ui/app-modal";
 
 import AuthContext from "@/context/AuthContext";
 import HeaderAuthed from "@/components/HeaderAuthed";
@@ -65,7 +63,7 @@ export default function AccountSettings() {
   const navigate = useNavigate();
 
   const { user, setUser } = useContext(AuthContext)!;
-  const { Modal, openModal, closeModal } = useModal();
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // -- button statuses
   const [updateProfileStatus, setUpdateProfileStatus] = useState<ButtonStatus>('enabled');
@@ -88,7 +86,7 @@ export default function AccountSettings() {
         if (res.status === 201) {
           const updated = res.data;
           setUser(updated);
-          alert("Profile updated successfully!");
+          toast.success("Profile updated successfully!");
         }
       } catch (err: unknown) {
         const apiErr = err as AxiosError;
@@ -131,7 +129,7 @@ export default function AccountSettings() {
         if (res.status === 201) {
           const updated = res.data;
           setUser(updated);
-          alert("Security settings updated successfully!");
+          toast.success("Security settings updated successfully!");
         }
       } catch (err: unknown) {
         const apiErr = err as AxiosError;
@@ -254,7 +252,7 @@ export default function AccountSettings() {
       <div className="flex flex-row justify-center">
         <div className="p-6 space-y-6 min-w-3xl w-1/2">
           {/* Basic Info */}
-          <div className="border rounded-lg p-6">
+          <div className="border bg-card-background rounded-lg p-6">
             <form onSubmit={(ev: React.FormEvent<HTMLFormElement>) => {
               ev.preventDefault();
               profileForm.handleSubmit(ev);
@@ -279,7 +277,7 @@ export default function AccountSettings() {
               <Button
                 type="submit"
                 status={updateProfileStatus}
-                className="px-4 py-2 bg-black text-white rounded"
+                className="px-4 py-2 bg-page-background border text-white rounded"
               >
                 Update Profile
               </Button>
@@ -287,7 +285,7 @@ export default function AccountSettings() {
           </div>
 
           {/* Security Settings */}
-          <div className="border rounded-lg p-6">
+          <div className="border bg-card-background rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-4">Security Settings</h2>
             <form onSubmit={(ev: React.FormEvent<HTMLFormElement>) => {
               ev.preventDefault();
@@ -369,7 +367,7 @@ export default function AccountSettings() {
               <Button
                 type="submit"
                 status={updateSecuritySettingsStatus}
-                className="px-4 py-2 bg-black text-white rounded"
+                className="px-4 py-2 bg-page-background border text-white rounded"
               >
                 Update Security Settings
               </Button>
@@ -377,12 +375,12 @@ export default function AccountSettings() {
           </div>
 
           {/* Danger Zone */}
-          <div className="border border-red-300 rounded-lg p-6">
+          <div className="border border-red-300 bg-card-background rounded-lg p-6">
             <h2 className="text-lg font-semibold text-red-600 mb-4">Danger Zone</h2>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                openModal();
+                setDeleteConfirmOpen(true);
               }}
             >
               <deleteForm.Field name="password">
@@ -405,31 +403,31 @@ export default function AccountSettings() {
               </Button>
             </form>
 
-            <Modal>
-              <div className="p-6 flex flex-col justify-between h-full">
-                <h3 className="text-lg font-semibold">Are you sure?</h3>
-                <p className="text-sm text-gray-600">
-                  This action is irreversible. All your data will be lost.
-                </p>
-                <div className="flex justify-end space-x-2 mt-4">
-                  <button
-                    className="px-4 py-2 bg-gray-200 rounded"
-                    onClick={closeModal}
+            <AppModal
+              open={deleteConfirmOpen}
+              onOpenChange={setDeleteConfirmOpen}
+              title="Are you sure?"
+              description="This action is irreversible. All your data will be lost."
+              footer={
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setDeleteConfirmOpen(false)}
                   >
                     Cancel
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-red-600 text-white rounded"
+                  </Button>
+                  <Button
+                    variant="destructive"
                     onClick={() => {
                       deleteForm.handleSubmit();
-                      closeModal();
+                      setDeleteConfirmOpen(false);
                     }}
                   >
                     Confirm
-                  </button>
-                </div>
-              </div>
-            </Modal>
+                  </Button>
+                </>
+              }
+            />
           </div>
         </div>
       </div>

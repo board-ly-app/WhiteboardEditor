@@ -56,13 +56,13 @@ import ShareWhiteboardFormUI, {
 } from '@/components/ShareWhiteboardForm';
 
 export interface ShareWhiteboardFormProps {
-  isActive: boolean;
-  onClose: () => unknown;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }// -- end interface ShareWhiteboardFormProps
 
 export const ShareWhiteboardForm = ({
-  isActive,
-  onClose,
+  open,
+  onOpenChange,
 }: ShareWhiteboardFormProps): React.JSX.Element => {
   const whiteboardContext = useContext(WhiteboardContext);
 
@@ -192,7 +192,7 @@ export const ShareWhiteboardForm = ({
         // -- display popup alert
         toast.success('User permissions updated successfully');
 
-        onClose();
+        onOpenChange(false);
       } catch (err: unknown) {
           const axiosErr = err as AxiosError<{ error: string; }>;
 
@@ -205,12 +205,13 @@ export const ShareWhiteboardForm = ({
           throw err;
       }
     },
-    [whiteboardId, onClose]
+    [whiteboardId, onOpenChange]
   );// -- end handleSubmit
 
   return (
     <ShareWhiteboardFormUI
-      isActive={isActive}
+      open={open}
+      onOpenChange={onOpenChange}
       initPermissionsByUserId={initPermissionsByUserId}
       initPermissionsByEmail={initPermissionsByEmail}
       onSubmit={handleSubmit}

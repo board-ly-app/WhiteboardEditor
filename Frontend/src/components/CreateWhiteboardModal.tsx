@@ -9,6 +9,10 @@ import {
   X,
 } from 'lucide-react';
 
+import {
+  toast,
+} from 'react-toastify';
+
 // -- local imports
 
 import {
@@ -18,11 +22,7 @@ import {
 } from '@/types/UserPermission';
 
 // -- ui
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from "@/components/ui/popover";
+import { AppPopover } from "@/components/ui/app-popover";
 
 import {
   Checkbox
@@ -31,10 +31,6 @@ import {
 import {
   Label
 } from '@/components/ui/label';
-
-import {
-  Command,
-} from '@/components/ui/command';
 
 import {
   Button,
@@ -106,7 +102,7 @@ const CreateWhiteboardModal = ({
       if (newEmail) {
         setPermissionsByKey(prev => ({
           ...prev,
-          [newEmail]: ({
+          [`email:${newEmail}`]: ({
             type: 'email',
             email: newEmail,
             permission: newUserPermType
@@ -162,7 +158,7 @@ const CreateWhiteboardModal = ({
       };
 
       if (! data.name) {
-        alert('Name required');
+        toast.error('Name required');
         return;
       }
 
@@ -235,166 +231,145 @@ const CreateWhiteboardModal = ({
     }
 
     return (
-      <tr key={key}>
-        <td className="text-center">{email || FIELD_UNAVAILABLE}</td>
-        <td className="text-center">{username || FIELD_UNAVAILABLE}</td>
-        <td className="text-center">{permission}</td>
-        <td className="text-center">
+      <div key={key} className='grid grid-flow-col grid-cols-5 text-center items-center ps-3'>
+        <div className="col-span-3 rounded-md border py-1 px-2 truncate">{email || FIELD_UNAVAILABLE}</div>
+        <div className="col-span-1 text-center ps-4">({permission})</div>
+        <div className="col-span-1 text-center">
           <button
+            type="button"
             onClick={makeHandleRemoveByKey(key)}
-            className="hover:cursor-pointer p-1 inline-block align-middle"
+            className="hover:cursor-pointer p-1 inline-block align-middle text-destructive"
           >
-            <X size={18} />
+            <X size={18}/>
           </button>
-        </td>
-      </tr>
+        </div>
+      </div>
     );
   };
 
   return (
-    <Popover
+    <AppPopover
       modal
       open={isOpen}
       onOpenChange={setIsOpen}
-    >
-      <PopoverTrigger asChild>
+      title="Create a new whiteboard"
+      className="w-xs sm:w-xl sm:ml-8 flex flex-col flex-shrink"
+      trigger={
         <Button
+          type="button"
           size="lg"
           onClick={handleOpenModal}
           className="bg-header-button-background border-1 border-border hover:text-header-button-text-hover"
         >
           + New Whiteboard
         </Button>
-      </PopoverTrigger>
-
-      <PopoverContent className="md:w-160 md:ml-8 flex flex-col flex-shrink">
-        <form onSubmit={handleSubmit}>
-          <h2 className="text-center text-2xl font-bold m-2">Create a new whiteboard</h2>
-
-          <Command className="flex flex-col flex-shrink p-4">
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col">
-                <label htmlFor="whiteboard-name">Whiteboard Name:</label>
-                <Input
-                  name="name"
-                  type="text"
-                  onChange={handleChangeInput}
-                  value={formInputs.name}
-                  required
-                  placeholder="Whiteboard Name"
-                  maxLength={MAX_TITLE_LENGTH}
-                />
-                <ErrorTextNotification 
-                  show={formInputs.name.length >= MAX_TITLE_LENGTH}
-                  message={`You've reached the maximum title length of ${MAX_TITLE_LENGTH} characters.`}
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="visibility"
-                  checked={visibility === 'public'}
-                  onCheckedChange={(checked) =>
-                    setVisibility(checked ? 'public' : 'private')
-                  }
-                />
-                <Label htmlFor="visibility">Make this whiteboard public</Label>
-              </div>
+      }
+    >
+        <form onSubmit={handleSubmit} className='flex flex-col gap-3'>
+          <div className="flex flex-col flex-shrink bg-page-background rounded-md border p-2 gap-3">
+            <div className="flex flex-col">
+              <label htmlFor="whiteboard-name">Whiteboard Name:</label>
+              <Input
+                name="name"
+                type="text"
+                onChange={handleChangeInput}
+                value={formInputs.name}
+                required
+                placeholder="Whiteboard Name"
+                maxLength={MAX_TITLE_LENGTH}
+              />
+              <ErrorTextNotification 
+                show={formInputs.name.length >= MAX_TITLE_LENGTH}
+                message={`You've reached the maximum title length of ${MAX_TITLE_LENGTH} characters.`}
+              />
             </div>
-          </Command>
 
-          <Command className="flex flex-col flex-shrink p-4">
-            <h3 className="text-center text-xl font-semibold m-2">
-              Collaborators
-            </h3>
-
-            <div className="flex flex-col flex-shrink p-4">
-              <h4 className="text-md font-semibold my-2">
-                Invite collaborators by email
-              </h4>
-
-              <div
-                className="flex flex-row align-text-bottom w-full"
-              >
-                <Input
-                  name="new-email"
-                  type="email"
-                  placeholder="Email"
-                  onChange={handleChangeNewEmail}
-                  value={newEmail}
-                  className="mr-2 grow"
-                />
-
-                <label
-                  htmlFor="permission-type"
-                  className="mr-2 grow"
-                >
-                  Permission:
-                </label>
-                <Select value={newUserPermType} onValueChange={handleChangePermType}>
-                  <SelectTrigger id="permission-type" className="hover:cursor-pointer mr-2 w-auto">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {USER_PERMISSION_TYPES.map(perm => (
-                      <SelectItem key={perm} value={perm}>{perm}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Button
-                  variant="secondary"
-                  onClick={handleAddNewEmail}
-                >
-                  + Add Collaborator
-                </Button>
-              </div>
-
-              <div>
-                {/** Display user emails to add, with option to remove **/}
-                <h4 className="text-md font-semibold my-2">
-                  Collaborators to invite:
-                </h4>
-                <table className="w-full">
-                  <thead>
-                    <tr>
-                      <th>
-                        Email
-                      </th>
-                      <th>
-                        Username
-                      </th>
-                      <th>
-                        Permission
-                      </th>
-                      <th>
-                        Delete
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {permissions.map(perm => RemovablePermission(perm)) }
-                  </tbody>
-                </table>
-                {
-                  permissions.length < 1 && <span>No user permissions created</span>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="visibility"
+                checked={visibility === 'public'}
+                onCheckedChange={(checked) =>
+                  setVisibility(checked ? 'public' : 'private')
                 }
+              />
+              <Label htmlFor="visibility">Make this whiteboard public</Label>
+            </div>
+          </div>
+
+          <div className="flex flex-col flex-shrink bg-page-background rounded-md">
+            <div className='flex flex-col p-4 gap-2'>
+              <h3 className="text-md text-start font-semibold">
+                Invite collaborators by email
+              </h3>
+              <div className="grid grid-flow-cols grid-cols-2 gap-2">
+                <div className="col-span-2 sm:col-span-1 w-full">
+                  <Input
+                    name="new-email"
+                    type="email"
+                    placeholder="Email"
+                    onChange={handleChangeNewEmail}
+                    value={newEmail}
+                    className="mr-2 grow"
+                  />
+                </div>
+
+                <div className='col-span-2 sm:col-span-1 flex justify-center items-center gap-2'>
+                  <label
+                    htmlFor="permission-type"
+                  >
+                    Permission:
+                  </label>
+
+                  <Select value={newUserPermType} onValueChange={handleChangePermType}>
+                    <SelectTrigger id="permission-type" className="hover:cursor-pointer w-auto">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {USER_PERMISSION_TYPES.map(perm => (
+                        <SelectItem key={perm} value={perm}>{perm}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className='text-center'>
+                    <Button
+                      type="button"
+                      className='border bg-card-background'
+                      variant="secondary"
+                      onClick={handleAddNewEmail}
+                    >
+                      + Add
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
-          </Command>
 
-          <div className="flex flex-row justify-center mb-4">
+            <div className='pb-4'>
+              {/** Display user emails to add, with option to remove **/}
+              <h4 className="text-md font-semibold text-center mb-2">
+                Collaborators to invite:
+              </h4>
+              <div className="flex flex-col gap-1">
+                {permissions.map(perm => RemovablePermission(perm)) }
+              </div>
+              {
+                permissions.length < 1 && <div className='text-center text-placeholder-text'>No users added.</div>
+              }
+            </div>
+          </div>
+
+          <div className="flex flex-row justify-center mt-1">
             <Button
               type="submit"
               status={submitButtonStatus}
-              className="md:w-1/2"
+              className="md:w-1/2 border"
             >
               + Create Whiteboard
             </Button>
           </div>
         </form>
-      </PopoverContent>
-    </Popover>
+    </AppPopover>
   );
 };
 

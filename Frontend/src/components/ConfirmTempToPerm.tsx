@@ -1,14 +1,19 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
+import { AppModal } from "./ui/app-modal";
 import { useCallback } from "react";
 
+const FORM_ID = 'confirm-temp-to-perm-form';
+
 export interface ConfirmTempToPermProps {
-  onCancel: () => void,
+  open: boolean,
+  onOpenChange: (open: boolean) => void,
   action: "login" | "signup",
 }
 
 const ConfirmTempToPerm = ({
-  onCancel,
+  open,
+  onOpenChange,
   action
 }: ConfirmTempToPermProps) => {
   let message : string = "";
@@ -19,7 +24,7 @@ const ConfirmTempToPerm = ({
   const url = new URL(window.location.href);
   const segments = url.pathname.split('/');
   const whiteboardId = segments.pop() || segments.pop();
-  
+
   if (! whiteboardId) {
     throw new Error('No whiteboardId found in URL');
   }
@@ -54,28 +59,27 @@ const ConfirmTempToPerm = ({
     default:
       throw new Error(`unrecognized action: ${action}`);
   }
-  
+
   return (
-    <div>
-      <form
-        onSubmit={handleSubmit}
-      >
-        <h1>{message}</h1>
-        <div className="flex flex-row justify-center pt-2 gap-2">
-          <Button
-            type="submit"
-          >
-            Confirm
-          </Button>
-          <Button
-            type="button"
-            onClick={onCancel}
-          >
+    <AppModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Transfer whiteboard ownership"
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-        </div>
+          <Button form={FORM_ID} type="submit">
+            Confirm
+          </Button>
+        </>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit}>
+        <p>{message}</p>
       </form>
-    </div>
+    </AppModal>
   );
 };
 

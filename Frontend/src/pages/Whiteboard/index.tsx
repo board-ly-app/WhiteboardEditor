@@ -32,10 +32,6 @@ import {
   useQuery,
 } from '@tanstack/react-query';
 
-import {
-  X,
-} from 'lucide-react';
-
 import Konva from 'konva';
 
 import {
@@ -90,7 +86,6 @@ import AuthContext from '@/context/AuthContext';
 
 import api from '@/api/axios';
 
-import { useModal } from '@/components/Modal';
 
 import Page from '@/components/Page';
 import CanvasCard from "@/components/CanvasCard";
@@ -328,41 +323,9 @@ const Whiteboard = ({
     lodash.isEqual
   );
 
-  const {
-    Modal: ShareModal,
-    openModal: openShareModal,
-    closeModal: closeShareModal
-  } = useModal();
-
-  const [isShareFormActive, setIsShareFormActive] = useState<boolean>(false);
-
-  const handleOpenShareModal = useCallback(
-    () => {
-      setIsShareFormActive(true);
-      openShareModal();
-    },
-    [openShareModal, setIsShareFormActive]
-  );// -- end handleOpenShareModal
-
-  const handleCloseShareModal = useCallback(
-    () => {
-      setIsShareFormActive(false);
-      closeShareModal();
-    },
-    [closeShareModal, setIsShareFormActive]
-  );// -- end handleCloseShareModal
-
-  const {
-    Modal: CreateCanvasModal,
-    openModal: openCreateCanvasModal,
-    closeModal: closeCreateCanvasModal,
-  } = useModal();
-
-  const {
-    Modal: DeleteWhiteboardModal,
-    openModal: openDeleteWhiteboardModal,
-    closeModal: closeDeleteWhiteboardModal,
-  } = useModal();
+  const [shareOpen, setShareOpen] = useState(false);
+  const [createCanvasOpen, setCreateCanvasOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [newCanvasDimensions, setNewCanvasDimensions] = useState<NewCanvasDimensions | null>(null);
   const [newCanvasParentId, setNewCanvasParentId] = useState<CanvasIdType | null>(null);
@@ -457,10 +420,10 @@ const Whiteboard = ({
         // -- propagate error
         throw err;
       } finally {
-        closeDeleteWhiteboardModal();
+        setDeleteOpen(false);
       }
     },
-    [closeDeleteWhiteboardModal, whiteboardId]
+    [setDeleteOpen, whiteboardId]
   );// -- end handleSubmitDeleteWhiteboard
 
   // -- derived state
@@ -470,9 +433,9 @@ const Whiteboard = ({
     (parentCanvasId: CanvasIdType, dimensions: NewCanvasDimensions) => {
         setNewCanvasDimensions(dimensions);
         setNewCanvasParentId(parentCanvasId);
-        openCreateCanvasModal();
+        setCreateCanvasOpen(true);
     },
-    [setNewCanvasDimensions, openCreateCanvasModal]
+    [setNewCanvasDimensions, setCreateCanvasOpen]
   );
 
   const handleNewCanvas = useCallback(
@@ -648,19 +611,19 @@ const Whiteboard = ({
       
       // -- Header elements
       const ShareWhiteboardButton = () => (
-        <HeaderButton 
+        <HeaderButton
           onClick={() => {
-            handleOpenShareModal();
+            setShareOpen(true);
           }}
           title="Share"
           disabled={ownPermission !== 'own'}
-        /> 
+        />
       );
 
       // Delete whiteboard button (only if the user is an owner)
       const DeleteWhiteboardButton = () => (
         <HeaderButton
-          onClick={openDeleteWhiteboardModal}
+          onClick={() => setDeleteOpen(true)}
           title="Delete"
           disabled={ownPermission !== 'own'}
         />
@@ -765,51 +728,25 @@ const Whiteboard = ({
             </div>
       
             {/** Modal that opens to share the whiteboard **/}
-            <ShareModal zIndex={20}>
-              <div className="flex flex-col">
-                <div
-                  className="flex flex-row justify-end"
-                >
-                  <button
-                    onClick={handleCloseShareModal}
-                    className="hover:cursor-pointer"
-                  >
-                    <X />
-                  </button>
-                </div>
-      
-                <ShareWhiteboardForm
-                  isActive={isShareFormActive}
-                  onClose={handleCloseShareModal}
-                />
-              </div>
-            </ShareModal>
-      
+            <ShareWhiteboardForm
+              open={shareOpen}
+              onOpenChange={setShareOpen}
+            />
+
             {/** Create Canvas Modal **/}
-            <CreateCanvasModal
-              zIndex={20}
-              className="p-4 rounded-sm"
-            >
-              <CreateCanvasMenu 
-                onCreate={(canvas) => {
-                  handleNewCanvas(canvas);
-                  closeCreateCanvasModal();
-                }}
-                onCancel={closeCreateCanvasModal}
-              />
-            </CreateCanvasModal>
+            <CreateCanvasMenu
+              open={createCanvasOpen}
+              onOpenChange={setCreateCanvasOpen}
+              onCreate={handleNewCanvas}
+            />
 
             {/** Delete Whiteboard Modal **/}
-            <DeleteWhiteboardModal
-              zIndex={20}
-              className="p-4 rounded-sm"
-            >
-                <DeleteWhiteboardForm
-                  whiteboardId={whiteboardId}
-                  onSubmit={handleSubmitDeleteWhiteboard}
-                  onCancel={closeDeleteWhiteboardModal}
-                />
-            </DeleteWhiteboardModal>
+            <DeleteWhiteboardForm
+              open={deleteOpen}
+              onOpenChange={setDeleteOpen}
+              whiteboardId={whiteboardId}
+              onSubmit={handleSubmitDeleteWhiteboard}
+            />
           </main>
         </Page>
       );

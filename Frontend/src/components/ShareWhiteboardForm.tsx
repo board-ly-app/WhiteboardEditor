@@ -41,12 +41,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+import { AppModal } from '@/components/ui/app-modal';
+
 export interface ShareWhiteboardFormData {
   userPermissions: UserPermission[];
 }
 
 export interface ShareWhiteboardFormProps {
-  isActive: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   initPermissionsByUserId: Record<UserIdType, UserPermissionByUser>;
   initPermissionsByEmail: Record<string, UserPermissionByEmail>;
   onSubmit: (data: ShareWhiteboardFormData) => Promise<unknown>;
@@ -142,35 +145,41 @@ const EditablePermission = ({
   } = perm;
 
   return (
-    <tr>
-      <td className="text-center">{email || FIELD_UNAVAILABLE}</td>
-      <td className="text-center">{username || FIELD_UNAVAILABLE}</td>
-      <td className="flex flex-row justify-center">
-        <Select value={permission} onValueChange={handleChangePermType}>
-          <SelectTrigger id="permission-type" className="hover:cursor-pointer mr-2 w-auto">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {USER_PERMISSION_TYPES.map(perm => (
-              <SelectItem key={perm} value={perm}>{perm}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </td>
-      <td className="text-center">
-        <button
-          onClick={() => onRemove(perm)}
-          className="hover:cursor-pointer hover:bg-gray-600 p-1 inline-block align-middle rounded-md"
-        >
-          <X size={18} />
-        </button>
-      </td>
-    </tr>
+    <div className='grid grid-flow-row grid-rows-2 sm:grid-rows-1 grid-cols-10 text-center px-2 gap-2'>
+      <div className='col-span-10 sm:col-start-2 sm:col-span-6 flex items-center justify-center rounded-md bg-page-background gap-2'>
+        <div className="py-1 px-2 truncate">{username || FIELD_UNAVAILABLE}</div>
+        <div className="py-1 px-2 truncate">{`<${email || FIELD_UNAVAILABLE}>`}</div>
+      </div>
+      <div className='col-span-10 sm:col-span-2 flex items-center justify-center sm:justify-start gap-2'>
+        <div className="text-center">
+          <Select value={permission} onValueChange={handleChangePermType}>
+            <SelectTrigger id="permission-type" className="hover:cursor-pointer w-auto">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {USER_PERMISSION_TYPES.map(perm => (
+                <SelectItem key={perm} value={perm}>{perm}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => onRemove(perm)}
+            className="hover:cursor-pointer p-1 inline-block align-middle text-destructive"
+          >
+            <X size={18}/>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };// -- end EditablePermission
 
 const ShareWhiteboardForm = ({
-  isActive,
+  open,
+  onOpenChange,
   initPermissionsByUserId,
   initPermissionsByEmail,
   onSubmit,
@@ -206,16 +215,16 @@ const ShareWhiteboardForm = ({
   );
   const [buttonStatus, setButtonStatus] = useState<ButtonStatus>('enabled');
 
-  // -- reset permissions to init permissions when set from inactive to active
+  // -- reset permissions to init permissions when the modal is opened
   useEffect(
     () => {
-      if (isActive) {
+      if (open) {
         setPermissionsByUserId(initPermissionsByUserId);
         setPermissionsByEmail(initPermissionsByEmail);
       }
     },
     [
-      isActive,
+      open,
       setPermissionsByUserId,
       setPermissionsByEmail,
       initPermissionsByUserId,
@@ -387,96 +396,96 @@ const ShareWhiteboardForm = ({
   );// -- end handleSubmit
 
   return (
-    <div className="w-200 p-0 m-4 mt-0 flex flex-col flex-shrink">
-      <h2 className="text-center text-2xl font-bold m-2">Update User Permissions</h2>
-
-      <div className="flex flex-col flex-shrink p-4">
-        <h3 className="text-lg font-semibold">
+    <AppModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Update User Permissions"
+      className="sm:max-w-3xl"
+      footer={
+        <Button
+          status={buttonStatus}
+          onClick={handleSubmit}
+          className='bg-card-background rounded-md border'
+        >
+          Update User Permissions
+        </Button>
+      }
+    >
+      <div className="flex flex-col flex-shrink bg-card-background rounded-lg border p-4">
+        
+        <h3 className="text-md text-start font-semibold">
           Invite collaborators by email
         </h3>
+        <div className="grid grid-flow-cols grid-cols-2 gap-2">
+          <div className="col-span-2 sm:col-span-1 w-full">
+            <Input
+              name="new-email"
+              type="email"
+              placeholder="Email"
+              onChange={handleChangeNewEmail}
+              value={newEmail}
+              className="mr-2 grow"
+            />
+          </div>
 
-        <div
-          className="flex flex-row align-center w-full"
-        >
-          <Input
-            name="new-email"
-            type="email"
-            placeholder="Email"
-            onChange={handleChangeNewEmail}
-            value={newEmail}
-            className="mr-2 grow"
-          />
+          <div className='col-span-2 sm:col-span-1 flex justify-center items-center gap-2'>
+            <label
+              htmlFor="permission-type"
+            >
+              Permission:
+            </label>
 
-          <label
-            htmlFor="permission-type"
-            className="mr-2 grow"
-          >
-            Permission:
-          </label>
-          <Select name="permission-type" value={newUserPermType} onValueChange={handleChangePermType}>
-            <SelectTrigger id="permission-type" className="hover:cursor-pointer mr-2 w-auto">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {USER_PERMISSION_TYPES.map(perm => (
-                <SelectItem key={perm} value={perm}>{perm}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={newUserPermType} onValueChange={handleChangePermType}>
+              <SelectTrigger id="permission-type" className="hover:cursor-pointer w-auto">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {USER_PERMISSION_TYPES.map(perm => (
+                  <SelectItem key={perm} value={perm}>{perm}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Button
-            variant="secondary"
-            onClick={handleAddNewEmail}
-          >
-            + Add Collaborator
-          </Button>
+            <div className='text-center'>
+              <Button
+                type="button"
+                className='border'
+                variant="secondary"
+                onClick={handleAddNewEmail}
+              >
+                + Add
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div>
           {/** Display user emails to add, with option to remove **/}
-          <h3 className="text-lg font-semibold my-2">
-            Collaborators to invite:
+          <h3 className="text-md text-center font-semibold mt-3 mb-1">
+            Collaborators:
           </h3>
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th>
-                  Email
-                </th>
-                <th>
-                  Username
-                </th>
-                <th>
-                  Permission
-                </th>
-                <th>
-                  Delete
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {
-                userIdPermissionsSorted.map(perm => (
-                  <EditablePermission
-                    key={getKeyForPermission(perm)}
-                    perm={perm}
-                    onChange={handleChangePermission}
-                    onRemove={removePermission}
-                  />
-                ))
-              }
-              {
-                emailPermissionsSorted.map(perm => (
-                  <EditablePermission
-                    key={getKeyForPermission(perm)}
-                    perm={perm}
-                    onChange={handleChangePermission}
-                    onRemove={removePermission}
-                  />
-                ))
-              }
-            </tbody>
-          </table>
+          <div className='flex flex-col gap-4'>
+            {
+              userIdPermissionsSorted.map(perm => (
+                <EditablePermission
+                  key={getKeyForPermission(perm)}
+                  perm={perm}
+                  onChange={handleChangePermission}
+                  onRemove={removePermission}
+                />
+              ))
+            }
+            {
+              emailPermissionsSorted.map(perm => (
+                <EditablePermission
+                  key={getKeyForPermission(perm)}
+                  perm={perm}
+                  onChange={handleChangePermission}
+                  onRemove={removePermission}
+                />
+              ))
+            }
+          </div>
           {
             (userIdPermissionsSorted.length + emailPermissionsSorted.length) < 1 && (
               <span>No user permissions created</span>
@@ -484,17 +493,7 @@ const ShareWhiteboardForm = ({
           }
         </div>
       </div>
-
-      <div className="flex flex-row justify-center">
-        <Button
-          status={buttonStatus}
-          className="w-1/2"
-          onClick={handleSubmit}
-        >
-          Update User Permissions
-        </Button>
-      </div>
-    </div>
+    </AppModal>
   );
 };
 
