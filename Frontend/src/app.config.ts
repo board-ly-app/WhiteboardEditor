@@ -55,7 +55,7 @@ export const DEFAULT_WB_ZOOM = 1.0;
 
 // -- Factor by which to multiply or divide the stage's scale to accomplish
 // zooming in and out.
-export const WB_ZOOM_FACTOR = 1.013;
+export const WB_ZOOM_FACTOR = 1.026;
 
 // -- Minimum zoom level of the whiteboard editor
 export const MIN_WB_ZOOM = 0.5;
