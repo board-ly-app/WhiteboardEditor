@@ -14,6 +14,9 @@ import {
 
 // Contains all data held for a whiteboard in the state store
 export interface WhiteboardState extends WhiteboardAttribs {
+  currentFocusX: number;
+  currentFocusY: number;
+  currentZoom: number;
   currentTool: ToolChoice;
   tooltipText: string;
   editingText: string;

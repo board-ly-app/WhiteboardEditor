@@ -4,6 +4,7 @@ import {
   useEffect,
   useRef,
   useCallback,
+  useMemo,
 } from 'react';
 
 import {
@@ -26,11 +27,12 @@ import {
 
 // -- local imports
 import {
+  WB_ZOOM_FACTOR,
   LS_KEY_COPIED_CANVAS_OBJECT,
 } from '@/app.config';
 
-import Canvas from "./Canvas";
-import CanvasMenu from "./CanvasMenu";
+import Canvas from "@/pages/Whiteboard/Canvas";
+import CanvasMenu from "@/pages/Whiteboard/CanvasMenu";
 
 import {
   type ClientIdType,
@@ -97,6 +99,11 @@ import {
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
+  scaleWhiteboardZoom,
+  updateWhiteboard,
+} from '@/controllers';
+
+import {
   type NewCanvasDimensions,
 } from '@/types/CreateCanvas';
 import WhiteboardContext from '@/context/WhiteboardContext';
@@ -151,17 +158,46 @@ const CanvasCard = ({
     lodash.isEqual
   );
 
+  const currentZoom : number | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentZoom ?? null,
+    lodash.isEqual
+  );
+
+  if (currentZoom === null) {
+    throw new Error('No currentZoom provided');
+  }
+
+  const currentFocusX : number | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentFocusX ?? null,
+    lodash.isEqual
+  );
+
+  if (currentFocusX === null) {
+    throw new Error('No currentFocusX provided');
+  }
+
+  const currentFocusY : number | null = useSelector(
+    (state: RootState) => selectWhiteboardById(state, whiteboardId)?.currentFocusY ?? null,
+    lodash.isEqual
+  );
+
+  if (currentFocusY === null) {
+    throw new Error('No currentFocusY provided');
+  }
+
   const selectedCanvasId : CanvasIdType | undefined = useSelector(
     (state: RootState) => selectSelectedCanvasByWhiteboard(state, whiteboardId),
     lodash.isEqual
   );
 
   const activeUsers : Record<ClientIdType, ClientSummary> = useSelector(
-    (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId)
+    (state: RootState) => selectActiveUsersByWhiteboard(state, whiteboardId),
+    lodash.isEqual
   );
 
   const cursorPositionsByClient : Record<ClientIdType, CursorPosition> = useSelector(
-    (state: RootState) => selectCursorPositionsByClients(state, Object.keys(activeUsers))
+    (state: RootState) => selectCursorPositionsByClients(state, Object.keys(activeUsers)),
+    lodash.isEqual
   );
 
   const clientMessengerContext = useContext(ClientMessengerContext);
@@ -235,6 +271,52 @@ const CanvasCard = ({
   const stageRef = useRef<Konva.Stage | null>(null);
   const cursorPosRef = useRef<{ x: number; y: number; } | null>(null);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // -- Set current zoom level
+  const scaledWidth = useMemo(
+    () => width * currentZoom,
+    [width, currentZoom]
+  );// -- end scaledWidth
+
+  const scaledHeight = useMemo(
+    () => height * currentZoom,
+    [height, currentZoom]
+  );// -- end scaledHeight
+  
+  const scrollLeft : number = useMemo(
+    () => {
+      const viewport = window.visualViewport;
+
+      if (! viewport) {
+        throw new Error('No visualViewport provided');
+      }
+
+      return Math.max(
+        (currentFocusX * currentZoom) - (viewport.width / 2),
+        0
+      );
+    },
+    [currentZoom, currentFocusX]
+  );// -- end scrollLeft
+  
+  const scrollTop : number = useMemo(
+    () => {
+      const viewport = window.visualViewport;
+
+      if (! viewport) {
+        throw new Error('No visualViewport provided');
+      }
+
+      return Math.max(
+        (currentFocusY * currentZoom) - (viewport.height / 2),
+        0
+      );
+    },
+    [currentZoom, currentFocusY]
+  );// -- end scrollTop
+
+  // -- set up interval to broadcast cursor position
   useEffect(
     () => {
       const timeoutId = window.setInterval(
@@ -319,15 +401,15 @@ const CanvasCard = ({
     return () => clearInterval(interval);
   }, [whiteboardId, canvasGroupRefsByIdRef, explicitPermission, rootCanvas.id, waitTime]);
 
-  // Handle initial scroll to the center of the stage
-  const containerRef = useRef<HTMLDivElement>(null);
+  // -- Handle resetting container scroll
   useEffect(() => {
     const container = containerRef.current;
+
     if (container) {
-      container.scrollLeft = (width - container.clientWidth) / 2;
-      container.scrollTop = (height - container.clientHeight) / 2;
+      container.scrollLeft = scrollLeft;
+      container.scrollTop = scrollTop;
     }
-  }, [width, height])
+  }, [scrollLeft, scrollTop])
 
   const handleUnselect = useCallback(
     () => {
@@ -361,9 +443,13 @@ const CanvasCard = ({
         container.addEventListener('pointerup', handlePointerEvent);
 
         const handleCopyObject = () => {
+          const currState = store.getState();
+          const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+            currState, whiteboardId, clientId
+          );
+
           if (selectedCanvasObjects.length > 0) {
             // -- copy only first shape to localStorage
-            const currState = store.getState();
             const targetObjectId = selectedCanvasObjects[0];
             const targetObject = selectCanvasObjectById(currState, targetObjectId);
 
@@ -377,6 +463,12 @@ const CanvasCard = ({
 
         // handle keypresses within container
         const handleKeyDown = (ev: KeyboardEvent) => {
+          const currState = store.getState();
+          const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+            currState, whiteboardId, clientId
+          );
+          const selectedCanvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+
           switch (ev.key) {
             case 'Delete':
             case 'Backspace':
@@ -400,106 +492,161 @@ const CanvasCard = ({
                 });
               }
               break;
-            // -- Copy currently selected object
-            case 'c':
-              if (ev.ctrlKey || ev.metaKey) {
-                handleCopyObject();
-                toast.success('Object copied to clipboard');
-              }
-              break;
-            // -- Cut currently selected object
-            case 'x':
-              if (ev.ctrlKey || ev.metaKey) {
-                if (clientMessenger && selectedCanvasId && selectedCanvasObjects.length > 0) {
-                  handleCopyObject();
-                  clientMessenger.sendDeleteCanvasObjects({
-                    type: 'delete_canvas_objects',
-                    canvasId: selectedCanvasId,
-                    canvasObjectIds: [selectedCanvasObjects[0]],
-                  });
-                  toast.success('Object cut to clipboard');
-                }
-              }
-              break;
-            case 'v':
-              // -- pasting objects
-              if (ev.ctrlKey || ev.metaKey) {
-                if (! clientMessenger) break;
-                if (! selectedCanvasId) break;
-
-                const currentObjectData = localStorage.getItem(LS_KEY_COPIED_CANVAS_OBJECT);
-                if (! currentObjectData) break;
-
-                const selectedCanvasRef = canvasGroupRefsByIdRef.current[selectedCanvasId];
-                if (! selectedCanvasRef?.current) break;
-
-                const selectedCanvasPointerPos = selectedCanvasRef.current.getRelativePointerPosition();
-                if (! selectedCanvasPointerPos) break;
-
-                const currState = store.getState();
-
-                const selectedCanvasAttribs = selectCanvasById(currState, selectedCanvasId);
-                if (! selectedCanvasAttribs) break;
-
-                const createdObjectAttribs : CanvasObjectModel = JSON.parse(currentObjectData);
-
-                // -- set created object position
-                switch (createdObjectAttribs.type) {
-                  case 'rect':
-                  case 'text':
-                  case 'ellipse':
-                    createdObjectAttribs.x = selectedCanvasPointerPos.x;
-                    createdObjectAttribs.y = selectedCanvasPointerPos.y;
-                    break;
-                  case 'vector':
-                    {
-                      if (createdObjectAttribs.points.length !== 4) break;
-                      const [xA, yA, xB, yB] = createdObjectAttribs.points;
-                      // -- C = leftmost point
-                      const xC : number = selectedCanvasPointerPos.x;
-                      const yC : number = selectedCanvasPointerPos.y;
-                      let xD : number;
-                      let yD : number;
-
-                      if (xA < xB) {
-                        xD = xC + (xB - xA);
-                        yD = yC + (yB - yA);
-                      } else {
-                        xD = xC + (xA - xB);
-                        yD = yC + (yA - yB);
-                      }
-
-                      createdObjectAttribs.points = [xC, yC, xD, yD];
-                    }
-                    break;
-                  default:
-                    throw new Error(`Unrecognized canvas object data: ${JSON.stringify(createdObjectAttribs)}`);
-                }// -- end switch (createdObjectAttribs.type)
-
-                clientMessenger.sendCreateCanvasObjects({
-                  type: 'create_canvas_objects',
-                  canvasId: selectedCanvasId,
-                  canvasObjects: [createdObjectAttribs],
-                });
-              }
-              break;
           }
         };// -- end handleKeyDown
 
         container.addEventListener('keydown', handleKeyDown);
 
+        // -- Handle copying objects
+        const handleCopy = () => {
+          handleCopyObject();
+          toast.success('Object copied to clipboard');
+        };// -- end handleCopy
+
+        container.addEventListener('copy', handleCopy);
+
+        // -- Handle cutting objects
+        const handleCut = () => {
+          const currState = store.getState();
+          const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+            currState, whiteboardId, clientId
+          );
+          const selectedCanvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+
+          if (clientMessenger && selectedCanvasId && selectedCanvasObjects.length > 0) {
+            handleCopyObject();
+            clientMessenger.sendDeleteCanvasObjects({
+              type: 'delete_canvas_objects',
+              canvasId: selectedCanvasId,
+              canvasObjectIds: [selectedCanvasObjects[0]],
+            });
+            toast.success('Object cut to clipboard');
+          }
+        };// -- end handleCut
+
+        container.addEventListener('cut', handleCut);
+
+        // -- Handle pasting objects
+        const handlePaste = () => {
+          const currState = store.getState();
+          const selectedCanvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+
+          if (! clientMessenger) return;
+          if (! selectedCanvasId) return;
+
+          const currentObjectData = localStorage.getItem(LS_KEY_COPIED_CANVAS_OBJECT);
+          if (! currentObjectData) return;
+
+          const selectedCanvasRef = canvasGroupRefsByIdRef.current[selectedCanvasId];
+          if (! selectedCanvasRef?.current) return;
+
+          const selectedCanvasPointerPos = selectedCanvasRef.current.getRelativePointerPosition();
+          if (! selectedCanvasPointerPos) return;
+
+          const selectedCanvasAttribs = selectCanvasById(currState, selectedCanvasId);
+          if (! selectedCanvasAttribs) return;
+
+          const createdObjectAttribs : CanvasObjectModel = JSON.parse(currentObjectData);
+
+          // -- set created object position
+          switch (createdObjectAttribs.type) {
+            case 'rect':
+            case 'text':
+            case 'ellipse':
+              createdObjectAttribs.x = selectedCanvasPointerPos.x;
+              createdObjectAttribs.y = selectedCanvasPointerPos.y;
+              break;
+            case 'vector':
+              {
+                if (createdObjectAttribs.points.length !== 4) return;
+                const [xA, yA, xB, yB] = createdObjectAttribs.points;
+                // -- C = leftmost point
+                const xC : number = selectedCanvasPointerPos.x;
+                const yC : number = selectedCanvasPointerPos.y;
+                let xD : number;
+                let yD : number;
+
+                if (xA < xB) {
+                  xD = xC + (xB - xA);
+                  yD = yC + (yB - yA);
+                } else {
+                  xD = xC + (xA - xB);
+                  yD = yC + (yA - yB);
+                }
+
+                createdObjectAttribs.points = [xC, yC, xD, yD];
+              }
+              break;
+            default:
+              throw new Error(`Unrecognized canvas object data: ${JSON.stringify(createdObjectAttribs)}`);
+          }// -- end switch (createdObjectAttribs.type)
+
+          clientMessenger.sendCreateCanvasObjects({
+            type: 'create_canvas_objects',
+            canvasId: selectedCanvasId,
+            canvasObjects: [createdObjectAttribs],
+          });
+        };// -- end handlePaste
+
+        container.addEventListener('paste', handlePaste);
+
+        // -- Handle scrolling in and out
+        const handleWheel = (e: WheelEvent) => {
+          // -- only zoom if meta key down
+          if ((! e.altKey) && (! e.metaKey)) return;
+
+          e.preventDefault();
+
+          // how to scale? Zoom in? Or zoom out?
+          const scaleBy = (e.deltaY > 0) ? WB_ZOOM_FACTOR : (1 / WB_ZOOM_FACTOR);
+
+          scaleWhiteboardZoom(whiteboardId, scaleBy);
+        };// -- end handleWheel
+
+        container.addEventListener('wheel', handleWheel);
+
+        const handleScrollEnd = (e: Event) => {
+          // -- only non-wheel scroll events
+          e.preventDefault();
+
+          const container = containerRef.current;
+
+          if (! container) return;
+
+          const viewport = window.visualViewport;
+
+          if (! viewport) return;
+
+          const currState : RootState = store.getState();
+
+          if (! (whiteboardId in currState.whiteboards)) return;
+
+          const currentZoom = currState.whiteboards[whiteboardId].currentZoom;
+
+          updateWhiteboard(store.dispatch, whiteboardId, {
+            currentFocusX: (container.scrollLeft + (viewport.width * 0.5)) / currentZoom,
+            currentFocusY: (container.scrollTop + (viewport.height * 0.5)) / currentZoom,
+          });
+        };// -- end handleScrollEnd
+
+        container.addEventListener('scrollend', handleScrollEnd);
+
         return () => {
           container.removeEventListener('pointerdown', handlePointerEvent);
           container.removeEventListener('pointerup', handlePointerEvent);
           container.removeEventListener('keydown', handleKeyDown);
+          container.removeEventListener('copy', handleCopy);
+          container.removeEventListener('cut', handleCut);
+          container.removeEventListener('paste', handlePaste);
+          container.removeEventListener('wheel', handleWheel);
+          container.removeEventListener('scrollend', handleScrollEnd);
         };
       }
     },
     [
-      containerRef,
+      clientId,
+      whiteboardId,
       clientMessenger,
-      selectedCanvasId,
-      selectedCanvasObjects,
       currentDispatcherRef,
       canvasGroupRefsByIdRef,
     ]
@@ -522,9 +669,11 @@ const CanvasCard = ({
       >
         <Stage
           ref={stageRef}
-          width={width}
-          height={height}
           onClick={handleUnselect}
+          width={scaledWidth}
+          height={scaledHeight}
+          scaleX={currentZoom}
+          scaleY={currentZoom}
         >
           <Layer
           >
@@ -542,6 +691,7 @@ const CanvasCard = ({
           <Layer>
             {Object.entries(cursorPositionsByClient).map(([clientId, cursorPos]) => (
               <Circle
+                key={clientId}
                 x={cursorPos.x}
                 y={cursorPos.y}
                 width={10}

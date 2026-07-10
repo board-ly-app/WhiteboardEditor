@@ -564,6 +564,7 @@ const Canvas = ({
         canvasObjectsIds && (
           canvasObjectsIds.map(objId => (
             <CanvasObject
+              key={objId}
               id={objId}
               canvasId={canvasId}
               isDraggable={areShapesDraggable}

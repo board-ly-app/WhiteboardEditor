@@ -1,5 +1,13 @@
 import {
+  DEFAULT_WB_ZOOM,
+  MIN_WB_ZOOM,
+  MAX_WB_ZOOM,
+} from '@/app.config';
+
+import {
   type AppDispatch,
+  type RootState,
+  store,
 } from '@/store';
 
 import type {
@@ -67,11 +75,20 @@ export const addWhiteboard = (
     allowedUsersByCanvas,
   } = normalizeWhiteboard(whiteboard);
 
+  const rootCanvas = canvases[whiteboard.rootCanvas];
+
+  if (! rootCanvas) {
+    throw new Error('Whiteboard root canvas not found');
+  }
+
   // -- add default whiteboard settings
   dispatch(setWhiteboards(Object.fromEntries(Object.entries(whiteboards).map(
     ([wid, attribs]) => [
       wid, {
         ...attribs,
+        currentFocusX: rootCanvas.width / 2,
+        currentFocusY: rootCanvas.height / 2,
+        currentZoom: DEFAULT_WB_ZOOM,
         currentTool: "hand",
         tooltipText: "",
         editingText: "",
@@ -126,3 +143,46 @@ export const updateWhiteboard = (
 ) => {
   dispatch(updateWhiteboardsById({ [whiteboardId]: update }));
 };// -- end updateWhiteboard
+
+export const scaleWhiteboardZoom = (
+  whiteboardId: WhiteboardIdType,
+  zoomMultiplier: number,
+) => {
+  const currState : RootState = store.getState();
+
+  const viewport = window.visualViewport;
+
+  if (! viewport) return;
+
+  if (! (whiteboardId in currState.whiteboards)) return;
+
+  const rootCanvasId = currState.whiteboards[whiteboardId].rootCanvas;
+
+  if (! (rootCanvasId in currState.canvases)) return;
+
+  const rootCanvas = currState.canvases[rootCanvasId];
+
+  const {
+    width,
+    height,
+  } = rootCanvas;
+
+  const currentZoom = currState.whiteboards[whiteboardId].currentZoom;
+
+  let nextZoom = currentZoom * zoomMultiplier;
+
+  if (width * nextZoom < viewport.width) return;
+  if (height * nextZoom < viewport.height) return;
+
+  if (nextZoom < MIN_WB_ZOOM) {
+    nextZoom = MIN_WB_ZOOM;
+  } else if (nextZoom > MAX_WB_ZOOM) {
+    nextZoom = MAX_WB_ZOOM;
+  }
+
+  store.dispatch(updateWhiteboardsById({
+    [whiteboardId]: {
+      currentZoom: nextZoom,
+    },
+  }));
+};// -- end scaleWhiteboardZoom

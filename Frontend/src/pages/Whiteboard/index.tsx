@@ -32,6 +32,11 @@ import {
   useQuery,
 } from '@tanstack/react-query';
 
+import {
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
+
 import Konva from 'konva';
 
 import {
@@ -46,6 +51,7 @@ import {
 // -- local types
 import {
   APP_NAME,
+  WB_ZOOM_FACTOR,
 } from '@/app.config';
 
 import {
@@ -88,17 +94,18 @@ import api from '@/api/axios';
 
 
 import Page from '@/components/Page';
-import CanvasCard from "@/components/CanvasCard";
 import Sidebar from "@/components/Sidebar";
-import Toolbar from "@/components/Toolbar";
-import ShapeAttributesMenu from "@/components/ShapeAttributesMenu";
-import DeleteShapesButton from '@/components/DeleteShapeButton';
 import HeaderButton from '@/components/HeaderButton';
 import HeaderAuthed from '@/components/HeaderAuthed';
 import shapeAttributesReducer from '@/reducers/shapeAttributesReducer';
 import type { ToolChoice } from '@/components/Tool';
 
 // -- page-specific components
+import CanvasCard from "@/pages/Whiteboard/CanvasCard";
+import Toolbar from "@/pages/Whiteboard/Toolbar";
+import ShapeAttributesMenu from "@/pages/Whiteboard/ShapeAttributesMenu";
+import DeleteShapesButton from '@/pages/Whiteboard/DeleteShapeButton';
+
 import {
   NotificationsHeaderMenu,
 } from '@/pages/Whiteboard/NotificationsHeaderMenu';
@@ -150,6 +157,7 @@ import {
   removeSelectorsByCanvasObject,
   updateWhiteboard,
   setNotifications,
+  scaleWhiteboardZoom,
 } from '@/controllers';
 
 type ComponentStatus = 
@@ -628,6 +636,26 @@ const Whiteboard = ({
           disabled={ownPermission !== 'own'}
         />
       );
+
+      const zoomFactor = WB_ZOOM_FACTOR * 1.2;
+
+      // -- Zoom out
+      const ZoomOutButton = () => (
+        <HeaderButton
+          onClick={() => scaleWhiteboardZoom(whiteboardId, 1.0 / zoomFactor)}
+          title={<ZoomOut />}
+          tooltip='Zoom Out (Alt + Scroll Down)'
+        />
+      );
+
+      // -- Zoom in
+      const ZoomInButton = () => (
+        <HeaderButton
+          onClick={() => scaleWhiteboardZoom(whiteboardId, zoomFactor)}
+          title={<ZoomIn />}
+          tooltip='Zoom In (Alt + Scroll Up)'
+        />
+      );
       
       const pageTitle = `${title} | ${APP_NAME}`;
 
@@ -644,6 +672,8 @@ const Whiteboard = ({
                 toolbarElemsLeft={[
                   ((ownPermission === 'own') && <ShareWhiteboardButton />),
                   ((ownPermission === 'own') && <DeleteWhiteboardButton />),
+                  <ZoomOutButton />,
+                  <ZoomInButton />,
                   <NotificationsHeaderMenu />,
                 ]}
                 toolbarElemsRight={[
@@ -671,7 +701,7 @@ const Whiteboard = ({
             </>}
       
             {/* Content */}
-            <div className="">
+            <div>
               {/**
                 Left-hand sidebar for toolbar and menus
                 Not displayed in view-only mode.
