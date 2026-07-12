@@ -227,6 +227,7 @@ export const DeleteWhiteboardForm = ({
         </p>
         <input
           type="text"
+          autoComplete="off"
           name="confirmationKeyEntry"
           placeholder={CONFIRMATION_KEY}
           value={confirmationKeyEntry}
