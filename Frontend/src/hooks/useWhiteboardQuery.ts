@@ -23,16 +23,18 @@ import {
 
 import api from '@/api/axios';
 
-const getWhiteboardQueryKey = (whiteboardId: WhiteboardIdType) => {
+const makeWhiteboardQueryKey = (whiteboardId: WhiteboardIdType) => {
   return ['whiteboard', whiteboardId];
-};// -- end getWhiteboardQueryKey
+};// -- end makeWhiteboardQueryKey
 
 export const useWhiteboardQuery = (
   wid: WhiteboardIdType
 ): UseQueryResult<Whiteboard, AxiosError<ErrorResponse>> => {
+  const queryKey = makeWhiteboardQueryKey(wid);
+
   return useQuery<Whiteboard, AxiosError<ErrorResponse>>({
-    queryKey: getWhiteboardQueryKey(wid),
-    queryFn: async () => {
+    queryKey,
+    queryFn: async (): Promise<Whiteboard> => {
       const res : AxiosResponse<Whiteboard> = await api.get(`/whiteboards/id/${wid.toString()}`);
 
       if (axiosResponseIsError(res)) {
@@ -64,6 +66,6 @@ export const invalidateWhiteboardQuery = async (
   wid: WhiteboardIdType
 ): Promise<void> => {
   return queryClient.invalidateQueries({
-    queryKey: getWhiteboardQueryKey(wid),
+    queryKey: makeWhiteboardQueryKey(wid),
   });
 };// -- end invalidateWhiteboardQuery
