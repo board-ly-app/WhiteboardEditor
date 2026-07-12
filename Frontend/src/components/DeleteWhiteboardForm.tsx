@@ -123,7 +123,7 @@ export const DeleteWhiteboardForm = ({
     };
   }
 
-  const confirmationKeyEntryClassnameBase = "placeholder:italic outline-2 rounded-sm p-1";
+  const confirmationKeyEntryClassnameBase = "placeholder:italic outline-2 rounded-sm px-2 py-1";
   let whiteboardData: Whiteboard;
   let confirmationKeyEntryClassname : string;
 
@@ -202,7 +202,13 @@ export const DeleteWhiteboardForm = ({
     <AppModal
       open={open}
       onOpenChange={onOpenChange}
-      title={`Delete "${whiteboardData.name}"?`}
+      title={
+        <span className="flex justify-center">
+          <span className="shrink-0">Delete&nbsp;"</span>
+          <span className="truncate">{whiteboardData.name}</span>
+          <span className="shrink-0">"?</span>
+        </span>
+      }
       footer={
         <>
           <Button type="button" onClick={() => onOpenChange(false)}>
