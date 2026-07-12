@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import {
+  useState,
+  useMemo,
+} from 'react';
 
 import {
   toast,
@@ -27,6 +30,7 @@ function CreateCanvasMenu({
   onOpenChange,
   onCreate,
 }: CreateCanvasMenuProps) {
+  const FORM_ID = "create-canvas";
   const [canvasName, setCanvasName] = useState("");
   const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);
 
@@ -46,7 +50,12 @@ function CreateCanvasMenu({
     setCanvasName("");
     setNewCanvasAllowedUsers([]);
     onOpenChange(false);
-  }
+  };// -- end handleSubmit
+
+  const isCreateDisabled : boolean = useMemo(
+    () => canvasName.trim().length <= 0,
+    [canvasName]
+  );
 
   return (
     <AppModal
@@ -60,8 +69,9 @@ function CreateCanvasMenu({
           </Button>
           <Button 
             type="submit"
+            form={FORM_ID}
             className='border bg-card-background'
-            disabled={canvasName.trim().length <= 0}
+            disabled={isCreateDisabled}
           >
             Create
           </Button>
@@ -69,6 +79,7 @@ function CreateCanvasMenu({
       }
     >
       <form 
+        id={FORM_ID}
         className="grid gap-4"
         onSubmit={handleSubmit}
       >
