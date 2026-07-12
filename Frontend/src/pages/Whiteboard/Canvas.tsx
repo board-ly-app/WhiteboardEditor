@@ -561,9 +561,6 @@ const Canvas = ({
             verticalAlign="bottom"
           />
         )}
-
-        {/** Preview Shape **/}
-        {getPreview()}
       </Group>
 
       {/** Canvas Objects **/}
@@ -591,6 +588,9 @@ const Canvas = ({
           />
         ))
       )}
+
+      {/** Preview Shape **/}
+      {getPreview()}
     </Group>
   );
 };
