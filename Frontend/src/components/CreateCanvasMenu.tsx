@@ -57,15 +57,18 @@ function CreateCanvasMenu({
             Cancel
           </Button>
           <Button 
+            type="submit"
             className='border bg-card-background'
-            onClick={handleSubmit}
           >
             Create
           </Button>
         </>
       }
     >
-      <div className="grid gap-4">
+      <form 
+        className="grid gap-4"
+        onSubmit={handleSubmit}
+      >
         <div className='flex flex-col gap-2'>
           <Label htmlFor="name">Canvas Name</Label>
           <Input
@@ -83,7 +86,7 @@ function CreateCanvasMenu({
             onChange={setNewCanvasAllowedUsers}
           />
         </div>
-      </div>
+      </form>
     </AppModal>
   );
 }
