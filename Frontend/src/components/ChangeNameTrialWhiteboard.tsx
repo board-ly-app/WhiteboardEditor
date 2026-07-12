@@ -36,7 +36,12 @@ const ChangeNameTrialWhiteboard = ({
           <Button type="button" variant="secondary" onClick={onSkip}>
             Skip for now
           </Button>
-          <Button form={FORM_ID} type="submit">
+          <Button 
+            form={FORM_ID} 
+            type="submit"
+            className="border bg-card-background"
+            disabled={localNameEntry.trim().length <= 0}
+          >
             Confirm
           </Button>
         </>
@@ -50,6 +55,7 @@ const ChangeNameTrialWhiteboard = ({
           onChange={(e) => setLocalNameEntry(e.target.value)}
           className={"border p-2 w-full my-2 rounded-md"}
           autoFocus
+          required
         />
       </form>
     </AppModal>

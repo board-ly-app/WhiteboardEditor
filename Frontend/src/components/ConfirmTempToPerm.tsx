@@ -70,7 +70,11 @@ const ConfirmTempToPerm = ({
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button form={FORM_ID} type="submit">
+          <Button 
+            form={FORM_ID} 
+            type="submit"
+            className="border bg-card-background"
+          >
             Confirm
           </Button>
         </>
