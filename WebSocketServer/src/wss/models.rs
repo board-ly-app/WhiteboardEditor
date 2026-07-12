@@ -42,6 +42,9 @@ pub enum CanvasObjectModel {
         stroke_color: String,
         fill_color: String,
         rotation: f64,
+        // -- default covers documents/messages predating z-ordering
+        #[serde(default)]
+        z_index: f64,
     },
     Ellipse {
         x: f64,
@@ -52,11 +55,15 @@ pub enum CanvasObjectModel {
         stroke_color: String,
         fill_color: String,
         rotation: f64,
+        #[serde(default)]
+        z_index: f64,
     },
     Vector {
         points: Vec<f64>,
         stroke_width: f64,
         stroke_color: String,
+        #[serde(default)]
+        z_index: f64,
     },
     Text {
         text: String,
@@ -67,6 +74,8 @@ pub enum CanvasObjectModel {
         width: f64,
         height: f64,
         rotation: f64,
+        #[serde(default)]
+        z_index: f64,
     },
 }
 

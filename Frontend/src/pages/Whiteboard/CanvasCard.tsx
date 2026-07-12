@@ -96,6 +96,7 @@ import {
 import {
   selectSelectedCanvasObjectsByWhiteboard,
   selectCanvasObjectById,
+  selectMaxZIndexByCanvas,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
@@ -547,6 +548,11 @@ const CanvasCard = ({
           if (! selectedCanvasAttribs) return;
 
           const createdObjectAttribs : CanvasObjectModel = JSON.parse(currentObjectData);
+
+          // -- paste on top of everything already on the canvas, discarding
+          // any zIndex copied from the source object
+          createdObjectAttribs.zIndex
+            = selectMaxZIndexByCanvas(currState, selectedCanvasId) + 1;
 
           // -- set created object position
           switch (createdObjectAttribs.type) {

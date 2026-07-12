@@ -20,6 +20,8 @@ export type CanvasObjectIdType = string;
 export interface CanvasObjectBase {
   strokeColor: ShapeColor;
   strokeWidth: number;
+  // -- optional: objects created before z-ordering have no zIndex (treated as 0)
+  zIndex?: number;
 }
 
 export interface ShapeModelAttributes {
@@ -29,6 +31,7 @@ export interface ShapeModelAttributes {
   fillColor: ShapeColor;
   fontSize: number;
   color: ShapeColor;
+  zIndex?: number;
 }
 
 export type ShapeModelBase = CanvasObjectBase & ShapeModelAttributes;

@@ -71,6 +71,7 @@ import {
 
 import {
   selectCanvasObjectIdsByCanvas,
+  selectMaxZIndexByCanvas,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
@@ -220,10 +221,16 @@ const Canvas = ({
   const addShapes = useCallback(
     (canvasObjects: CanvasObjectModel[]) => {
       if (clientMessenger) {
+        // stamp new shapes above everything already on the canvas
+        const maxZIndex = selectMaxZIndexByCanvas(store.getState(), canvasId);
+
         clientMessenger.sendCreateCanvasObjects({
           type: 'create_canvas_objects',
           canvasId,
-          canvasObjects
+          canvasObjects: canvasObjects.map((obj, i) => ({
+            ...obj,
+            zIndex: maxZIndex + 1 + i,
+          }))
         });
 
         // Switch to hand tool after shape creation
@@ -554,9 +561,6 @@ const Canvas = ({
             verticalAlign="bottom"
           />
         )}
-
-        {/** Preview Shape **/}
-        {getPreview()}
       </Group>
 
       {/** Canvas Objects **/}
@@ -584,6 +588,9 @@ const Canvas = ({
           />
         ))
       )}
+
+      {/** Preview Shape **/}
+      {getPreview()}
     </Group>
   );
 };
