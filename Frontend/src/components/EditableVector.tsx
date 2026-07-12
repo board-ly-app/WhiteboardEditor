@@ -141,21 +141,30 @@ const EditableVector = <VectorType extends VectorModel>({
 
   const handleAnchorDragMove = useCallback(
     (index: number, e: Konva.KonvaEventObject<DragEvent>) => {
-      const node = e.target;
       const newPoints = [...localPoints];
 
-      newPoints[index * 2] = node.x();
-      newPoints[index * 2 + 1] = node.y();
+      // Snap the line to exactly horizontal/vertical when close to the opposite endpoint's axis
+      const fixedIndex = 1 - index;
+      const fixedPoint = {
+        x: localPoints[fixedIndex * 2],
+        y: localPoints[fixedIndex * 2 + 1],
+      };
+      const snappedPos = snappingMonitor.onEndpointDragMove(e, fixedPoint);
+
+      newPoints[index * 2] = snappedPos.x;
+      newPoints[index * 2 + 1] = snappedPos.y;
 
       // Update local state and redraw the vector visually only
       setLocalPoints(newPoints);
       vectorRef.current?.setAttrs({ points: newPoints });
     },
-    [localPoints, setLocalPoints, vectorRef]
+    [localPoints, setLocalPoints, vectorRef, snappingMonitor]
   );
 
   const handleAnchorDragEnd = useCallback(
     (index: number, e: Konva.KonvaEventObject<DragEvent>) => {
+      snappingMonitor.onDragEnd(e);
+
       const node = e.target;
       const newPoints = [...localPoints];
 
@@ -170,7 +179,7 @@ const EditableVector = <VectorType extends VectorModel>({
 
       onUpdateObject(update);
     },
-    [localPoints, onUpdateObject, model]
+    [localPoints, onUpdateObject, model, snappingMonitor]
   );
 
   const handleVectorDragEnd = useCallback(
