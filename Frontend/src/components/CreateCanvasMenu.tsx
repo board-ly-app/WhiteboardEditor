@@ -30,7 +30,9 @@ function CreateCanvasMenu({
   const [canvasName, setCanvasName] = useState("");
   const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);
 
-  const handleSubmit = () => {
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+
     if (!canvasName.trim()) {
       toast.error("Canvas name cannot be empty");
       return;
@@ -59,6 +61,7 @@ function CreateCanvasMenu({
           <Button 
             type="submit"
             className='border bg-card-background'
+            disabled={canvasName.trim().length <= 0}
           >
             Create
           </Button>
@@ -76,6 +79,7 @@ function CreateCanvasMenu({
             value={canvasName}
             onChange={(e) => setCanvasName(e.target.value)}
             placeholder="Enter name"
+            required
           />
         </div>
 
