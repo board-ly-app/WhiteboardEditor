@@ -1540,6 +1540,7 @@ mod unit_tests {
                 stroke_color: String::from("#333333"),
                 fill_color: String::from("#ff0000"),
                 rotation: 0.0,
+                z_index: 0.0,
             },
             CanvasObjectModel::Rect {
                 x: 200.0,
@@ -1550,6 +1551,7 @@ mod unit_tests {
                 stroke_color: String::from("#333333"),
                 fill_color: String::from("#ff0000"),
                 rotation: 0.0,
+                z_index: 0.0,
             },
             CanvasObjectModel::Rect {
                 x: 300.0,
@@ -1560,6 +1562,7 @@ mod unit_tests {
                 stroke_color: String::from("#333333"),
                 fill_color: String::from("#ff0000"),
                 rotation: 0.0,
+                z_index: 0.0,
             },
         ];
         let client_msg_s = format!(
@@ -1707,6 +1710,7 @@ mod unit_tests {
                                         stroke_color,
                                         fill_color,
                                         rotation,
+                                        z_index,
                                     },
                                     CanvasObjectModel::Rect {
                                         x: x_exp,
@@ -1717,6 +1721,7 @@ mod unit_tests {
                                         stroke_color: stroke_color_exp,
                                         fill_color: fill_color_exp,
                                         rotation: rotation_exp,
+                                        z_index: z_index_exp,
                                     },
                                 ) => {
                                     if (x - x_exp).abs() > f64_prec {
@@ -1761,6 +1766,12 @@ mod unit_tests {
                                             rotation, rotation_exp
                                         );
                                     }
+                                    if (z_index - z_index_exp).abs() > f64_prec {
+                                        panic!(
+                                            "Expected canvas_object z_index = {}; got {}",
+                                            z_index, z_index_exp
+                                        );
+                                    }
                                 }
                                 (_, _) => panic!("Expected Rect; got {:?}", canvas_object),
                             };
@@ -1803,6 +1814,7 @@ mod unit_tests {
                     stroke_color: String::from("#333333"),
                     fill_color: String::from("#ff0000"),
                     rotation: 0.0,
+                    z_index: 0.0,
                 },
             ),
             (
@@ -1816,6 +1828,7 @@ mod unit_tests {
                     stroke_color: String::from("#333333"),
                     fill_color: String::from("#ff0000"),
                     rotation: 0.0,
+                    z_index: 0.0,
                 },
             ),
             (
@@ -1829,6 +1842,7 @@ mod unit_tests {
                     stroke_color: String::from("#333333"),
                     fill_color: String::from("#ff0000"),
                     rotation: 0.0,
+                    z_index: 0.0,
                 },
             ),
         ];

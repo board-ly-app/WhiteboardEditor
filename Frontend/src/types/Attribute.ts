@@ -31,6 +31,7 @@ import AttributeStrokeColor from "@/components/AttributeStrokeColor";
 import AttributeFillColor from "@/components/AttributeFillColor";
 import AttributeFontSize from "@/components/AttributeFontSize";
 import AttributeFontColor from "@/components/AttributeFontColor";
+import AttributeZOrder from "@/components/AttributeZOrder";
 
 export type AttributeType =
   | "number"
@@ -72,7 +73,8 @@ export interface AttributeProps {
     updates: Record<CanvasObjectIdType, Partial<CanvasObjectModel>>,
   ) => unknown;
   canvasId: string;
-  value: Attribute['value'];
+  // -- undefined for attributes absent on older shapes (e.g. zIndex)
+  value: Attribute['value'] | undefined;
   className: string;
 }
 
@@ -91,19 +93,23 @@ export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
     AttributeStrokeWidth,
     AttributeStrokeColor,
     AttributeFillColor,
+    AttributeZOrder,
   ],
   ellipse: [
     AttributeStrokeWidth,
     AttributeStrokeColor,
     AttributeFillColor,
+    AttributeZOrder,
   ],
   text: [
     AttributeFontSize,
     AttributeFontColor,
+    AttributeZOrder,
   ],
   vector: [
     AttributeStrokeWidth,
     AttributeStrokeColor,
+    AttributeZOrder,
   ],
 }
 

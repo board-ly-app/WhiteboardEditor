@@ -32,10 +32,10 @@ const StrokeWidthComponent = ({
     (state: RootState) => selectCanvasObjectsByCanvas(state, canvasId),
     lodash.isEqual
   );
-  const [inputValue, setInputValue] = useState(value.toString());
+  const [inputValue, setInputValue] = useState(value?.toString() ?? '');
 
   useEffect(() => {
-    setInputValue(value.toString());
+    setInputValue(value?.toString() ?? '');
   }, [value]);
 
   const onChangeStrokeWidth = useCallback(

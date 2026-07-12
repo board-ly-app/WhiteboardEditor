@@ -46,6 +46,9 @@ export const selectCanvasObjectsByCanvas = (
   }
 };
 
+// Returns object IDs in render order: ascending zIndex, with ties broken by
+// object ID (ObjectIds are chronologically ordered, so ties keep creation
+// order and stay deterministic across clients).
 export const selectCanvasObjectIdsByCanvas = (
   state: RootState,
   canvasId: CanvasIdType,
@@ -58,9 +61,41 @@ export const selectCanvasObjectIdsByCanvas = (
   if (objectIds === null) {
     return null;
   } else {
-    return Object.keys(objectIds);
+    return Object.keys(objectIds).sort((idA, idB) => {
+      const zA = state.canvasObjects[idA]?.zIndex ?? 0;
+      const zB = state.canvasObjects[idB]?.zIndex ?? 0;
+
+      if (zA !== zB) {
+        return zA - zB;
+      }
+
+      return idA < idB ? -1 : (idA > idB ? 1 : 0);
+    });
   }
 };// -- end selectCanvasObjectIdsByCanvas
+
+// === selectMaxZIndexByCanvas =================================================
+//
+// Returns the highest zIndex among a canvas' objects, or 0 if the canvas has
+// no objects. Used to stamp new shapes so they render on top.
+//
+// =============================================================================
+export const selectMaxZIndexByCanvas = (
+  state: RootState,
+  canvasId: CanvasIdType,
+): number => {
+  const objectIds: Record<CanvasObjectIdType, CanvasObjectIdType> | null
+    = state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId] || null;
+
+  if (objectIds === null) {
+    return 0;
+  }
+
+  return Object.keys(objectIds).reduce(
+    (max, objId) => Math.max(max, state.canvasObjects[objId]?.zIndex ?? 0),
+    0
+  );
+};// -- end selectMaxZIndexByCanvas
 
 export const selectCanvasObjectsByWhiteboard = (
   state: RootState,

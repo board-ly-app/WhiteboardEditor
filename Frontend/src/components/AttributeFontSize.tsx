@@ -31,10 +31,10 @@ const FontSizeComponent = ({
     lodash.isEqual
   );
 
-  const [inputValue, setInputValue] = useState(value.toString());
+  const [inputValue, setInputValue] = useState(value?.toString() ?? '');
 
   useEffect(() => {
-    setInputValue(value.toString());
+    setInputValue(value?.toString() ?? '');
   }, [value]);
   
   const onChangeFontSize = useCallback(
