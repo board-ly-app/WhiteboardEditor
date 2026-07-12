@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import {
+  useState,
+  useMemo,
+} from 'react';
 
 import {
   toast,
@@ -27,10 +30,13 @@ function CreateCanvasMenu({
   onOpenChange,
   onCreate,
 }: CreateCanvasMenuProps) {
+  const FORM_ID = "create-canvas";
   const [canvasName, setCanvasName] = useState("");
   const [newCanvasAllowedUsers, setNewCanvasAllowedUsers] = useState<string[]>([]);
 
-  const handleSubmit = () => {
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+
     if (!canvasName.trim()) {
       toast.error("Canvas name cannot be empty");
       return;
@@ -44,7 +50,12 @@ function CreateCanvasMenu({
     setCanvasName("");
     setNewCanvasAllowedUsers([]);
     onOpenChange(false);
-  }
+  };// -- end handleSubmit
+
+  const isCreateDisabled : boolean = useMemo(
+    () => canvasName.trim().length <= 0,
+    [canvasName]
+  );
 
   return (
     <AppModal
@@ -57,15 +68,21 @@ function CreateCanvasMenu({
             Cancel
           </Button>
           <Button 
+            type="submit"
+            form={FORM_ID}
             className='border bg-card-background'
-            onClick={handleSubmit}
+            disabled={isCreateDisabled}
           >
             Create
           </Button>
         </>
       }
     >
-      <div className="grid gap-4">
+      <form 
+        id={FORM_ID}
+        className="grid gap-4"
+        onSubmit={handleSubmit}
+      >
         <div className='flex flex-col gap-2'>
           <Label htmlFor="name">Canvas Name</Label>
           <Input
@@ -73,6 +90,7 @@ function CreateCanvasMenu({
             value={canvasName}
             onChange={(e) => setCanvasName(e.target.value)}
             placeholder="Enter name"
+            required
           />
         </div>
 
@@ -83,7 +101,7 @@ function CreateCanvasMenu({
             onChange={setNewCanvasAllowedUsers}
           />
         </div>
-      </div>
+      </form>
     </AppModal>
   );
 }
