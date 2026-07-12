@@ -21,6 +21,7 @@ import {
   patchUser,
   deleteUser,
   getSharedWhiteboardsByUser,
+  isUserOwnerCollaborator,
 } from "../services/userService";
 
 import {
@@ -85,7 +86,7 @@ export const handleCreateUser = async (
     try {
       const loginResult = await permanentUserLoginService("username", username, password);
       return res.status(201).json({
-        user: userFinal.toPublicView(),
+        user: userFinal.toSelfView(),
         token: loginResult.token
       });
     } catch (err: any) {
@@ -160,7 +161,7 @@ export const handleConvertTempUser = async (
     try {
       const loginResult = await permanentUserLoginService("username", username, password);
       return res.status(201).json({
-        user: userFinal.toPublicView(),
+        user: userFinal.toSelfView(),
         token: loginResult.token
       });
     } catch (err: any) {
@@ -203,7 +204,7 @@ export const handleCreateTempUser = async (
 
       return res.status(201).json({ 
         ...resp.payload,
-        user: resp.payload.user
+        user: resp.payload.user.toSelfView(),
       });
     default:
       throw new Error(`Unhandled case: ${resp}`);
@@ -232,7 +233,13 @@ export const handleGetUserById = async (
       case 'not_found':
         return res.status(404).json({ message: `User ${targetUserId} not found` });
       case 'ok':
-        return res.status(200).json(resp.user.toAttribView());
+        if (isUserOwnerCollaborator(authUserId, targetUserId)) {
+          // -- Deliver more restricted view
+          return res.status(200).json(resp.user.toWBOwnerView());
+        } else {
+          // -- Deliver more restricted view
+          return res.status(200).json(resp.user.toAttribView());
+        }
       default:
         throw new Error(`Unhandled case: ${resp}`);
     }
@@ -310,7 +317,7 @@ export const handlePatchOwnUser = async (
               }// -- end for whiteboard
             }
 
-            return res.status(201).json(patchUserRes.data);
+            return res.status(201).json(patchUserRes.data.toSelfView());
           }
         }
       }
@@ -363,7 +370,7 @@ export const handleDeleteOwnUser = async (
   if (resp.result === 'err') {
     return res.status(400).json({ message: resp.err });
   } else {
-    return res.status(200).json(resp.data);
+    return res.status(200).json(resp.data.toSelfView());
   }
 };// -- end handleDeleteOwnUser
 

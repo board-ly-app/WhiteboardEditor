@@ -78,9 +78,17 @@ export interface IPermanentUserModel extends IUserModel{
   passwordHashed: string;
 }
 
-// -- define protected fields for later omission from public view
+// -- define protected fields for later omission from protected views
 type PermanentUserProtectedFields =
+  | UserProtectedFields
   | "passwordHashed"
+;
+
+// -- define fields restricted from the general public (i.e. non-whiteboard
+// owners)
+type PermanentUserPublicRestrictedFields =
+  | PermanentUserProtectedFields
+  | "email"
 ;
 
 // === Permanent Data Transfer Objects =========================================
@@ -89,11 +97,19 @@ type PermanentUserProtectedFields =
 export type IPermanentUserDocument = ViewDocument<IPermanentUserModel>;
 
 // -- User, excluding sensitive fields
-export type IPermanentUserPublicView = Omit<IPermanentUserDocument, PermanentUserProtectedFields>;
+export type IPermanentUserPublicView = Omit<IPermanentUserDocument, PermanentUserPublicRestrictedFields>;
 
 // -- Public view, excluding vector attributes
 // -- In this case, there are no vector attributes
 export type IPermanentUserAttribView = IPermanentUserPublicView;
+
+// -- Projection intended for a user to view their own account.
+// Includes all but the most sensitive fields (i.e. the hashed password)
+export type IPermanentUserSelfView = Omit<IPermanentUserDocument, PermanentUserProtectedFields>;
+
+// -- Projection that includes fields only visible to whiteboard owners who have
+// shared a whiteboard with the user (namely, their email address).
+export type IPermanentUserWBOwnerView = Omit<IPermanentUserDocument, PermanentUserProtectedFields>;
 
 export type IPermanentUserVirtual = DocumentVirtualBase;
 
@@ -103,6 +119,10 @@ export type PermanentUserModelType = Model<IPermanentUserDocument, {}, {}, IPerm
 export type IPermanentUser = 
   & IPermanentUserDocument
   & DocumentViewMethods<IPermanentUser, IPermanentUserPublicView, IPermanentUserAttribView>
+  & {
+    toSelfView: () => IPermanentUserSelfView;
+    toWBOwnerView: () => IPermanentUserWBOwnerView;
+  }
   & Document <Types.ObjectId>
 ;
 // -- End IPermanentUser
@@ -124,15 +144,27 @@ export interface ITempUserModel extends IUserModel{
 export type ITempUserDocument = ViewDocument<ITempUserModel>;
 
 // -- User, excluding sensitive fields
-export type TempUserProtectedFields = 
+type TempUserProtectedFields =
   | UserProtectedFields
 ;
 
-export type ITempUserPublicView = Omit<ITempUserDocument, TempUserProtectedFields>;
+// -- define fields restricted from the general public (i.e. non-whiteboard
+// owners)
+type TempUserPublicRestrictedFields =
+  | TempUserProtectedFields
+;
+
+export type ITempUserPublicView = Omit<ITempUserDocument, TempUserPublicRestrictedFields>;
 
 // -- Public view, excluding vector attributes
 // -- In this case, there are no vector attributes
 export type ITempUserAttribView = ITempUserPublicView;
+
+// -- Projection intended for a user to view their own account.
+// Includes all but the most sensitive fields (i.e. the hashed password)
+export type ITempUserSelfView = Omit<ITempUserDocument, TempUserProtectedFields>;
+
+export type ITempUserWBOwnerView = Omit<ITempUserDocument, TempUserProtectedFields>;
 
 export type ITempUserVirtual = DocumentVirtualBase;
 
@@ -142,6 +174,10 @@ export type TempUserModelType = Model<ITempUserDocument, {}, {}, ITempUserVirtua
 export type ITempUser = 
   & ITempUserDocument
   & DocumentViewMethods<ITempUser, ITempUserPublicView, ITempUserAttribView>
+  & {
+    toSelfView: () => ITempUserSelfView;
+    toWBOwnerView: () => ITempUserWBOwnerView;
+  }
   & Document <Types.ObjectId>
 ;
 // -- End ITempUser
@@ -149,6 +185,21 @@ export type ITempUser =
 export type IUserType = 
   | IPermanentUser
   | ITempUser
+;
+
+export type IUserTypePublicView =
+  | IPermanentUserPublicView
+  | ITempUserPublicView
+;
+
+export type IUserTypeAttribView =
+  | IPermanentUserAttribView
+  | ITempUserAttribView
+;
+
+export type IUserTypeWBOwnerView =
+  | IPermanentUserWBOwnerView
+  | ITempUserWBOwnerView
 ;
 
 // === REST Request Body Definitions ===========================================
@@ -194,7 +245,8 @@ export type DeletePermanentUserRequest = AuthorizedRequestBody & DeletePermanent
 const permanentUserToPublicView = (user: IPermanentUser): IPermanentUserPublicView => {
   const {
     _id,
-    passwordHashed,
+    passwordHashed: _passwordHashed,
+    email: _email,
     ...out
   } = user;
 
@@ -203,6 +255,26 @@ const permanentUserToPublicView = (user: IPermanentUser): IPermanentUserPublicVi
 
 // -- identical to toPublicView, in this case
 const permanentUserToAttribView = permanentUserToPublicView;
+
+const permanentUserToSelfView = (user: IPermanentUser): IPermanentUserSelfView => {
+  const {
+    _id,
+    passwordHashed: _passwordHashed,
+    ...out
+  } = user;
+
+  return out;
+};// -- end permanentUserToSelfView
+
+const permanentUserToWBOwnerView = (user: IPermanentUser): IPermanentUserWBOwnerView => {
+  const {
+    _id,
+    passwordHashed: _passwordHashed,
+    ...out
+  } = user;
+
+  return out;
+};// -- end permanentUserToWBOwnerView
 
 // === Data Transfer Mappings ==================================================
 //
@@ -221,6 +293,12 @@ const tempUserToPublicView = (user: ITempUser): ITempUserPublicView => {
 
 // -- identical to toPublicView, in this case
 const tempUserToAttribView = tempUserToPublicView;
+
+// -- identical to toPublicView, in this case
+const tempUserToSelfView = tempUserToPublicView;
+
+// -- identical to toPublicView, in this case
+const tempUserToWBOwnerView = tempUserToPublicView;
 
 // === userSchema ==============================================================
 //
@@ -300,7 +378,13 @@ userSchema.discriminator(
       },// -- end toPublicView
       toAttribView(): IPermanentUserAttribView {
         return permanentUserToAttribView(this.toObject({ virtuals: true }));
-      }// -- end toAttribView
+      },// -- end toAttribView
+      toSelfView(): IPermanentUserSelfView {
+        return permanentUserToSelfView(this.toObject({ virtuals: true }));
+      },// -- end toSelfView
+      toWBOwnerView(): IPermanentUserWBOwnerView {
+        return permanentUserToWBOwnerView(this.toObject({ virtuals: true }));
+      },// -- end toWBOwnerView
     },
   },
 ));
@@ -346,7 +430,13 @@ const tempUserSchema = new Schema<ITempUser, TempUserModelType, {}, {}, ITempUse
       },// -- end toPublicView
       toAttribView(): ITempUserAttribView {
         return tempUserToAttribView(this.toObject({ virtuals: true }));
-      }// -- end toAttribView
+      },// -- end toAttribView
+      toSelfView(): ITempUserSelfView {
+        return tempUserToSelfView(this.toObject({ virtuals: true }));
+      },// -- end toSelfView
+      toWBOwnerView(): ITempUserWBOwnerView {
+        return tempUserToWBOwnerView(this.toObject({ virtuals: true }));
+      },// -- end toWBOwnerView
     },
   }
 );// -- end tempUserSchema

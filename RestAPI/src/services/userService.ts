@@ -1,5 +1,7 @@
 // -- std imports
-import { Types } from "mongoose";
+import {
+  Types,
+} from "mongoose";
 
 // -- third-party imports
 import bcrypt from "bcrypt";
@@ -13,7 +15,6 @@ import type {
 import {
   User,
   PatchPermanentUserData,
-  type IUserPublicView,
   type IUserType,
   IPermanentUser,
 } from "../models/User";
@@ -51,6 +52,41 @@ export const getUserById = async (userId: Types.ObjectId): Promise<GetUserByIdRe
     });
   }
 };// end getUser
+
+// === isUserOwnerCollaborator =================================================
+//
+// Determines whether a certain user owns a whiteboard which is shared with
+// another specified user. Important for determining whether the owning user can
+// see certain protected fields in the other user's account (namely, their email
+// address).
+//
+// =============================================================================
+export const isUserOwnerCollaborator = (
+  ownerId: Types.ObjectId,
+  collaboratorId: Types.ObjectId
+): boolean => {
+  // -- Query for at least one whiteboard for which both users have some
+  // permission
+  const res = Whiteboard.findOne({
+    "user_permissions": {
+      '$all': [
+        {
+          '$elemMatch': {
+            'user': ownerId,
+            'permission': 'own',
+          }
+        },
+        {
+          '$elemMatch': {
+            'user': collaboratorId,
+          }
+        },
+      ]
+    }
+  });
+
+  return !!res;
+};// -- end areUsersCollaborators
 
 export interface PatchPermanentUserOkResult {
   type: 'ok';
@@ -97,7 +133,9 @@ export const patchUser = async (
   }
 };// -- end patchUser
 
-export const deleteUser = async (userId: Types.ObjectId): Promise<Result<IUserPublicView, string>> => {
+export const deleteUser = async (
+  userId: Types.ObjectId
+): Promise<Result<IUserType, string>> => {
   try {
     const deletedUser = await User.findOne({ _id: userId });
 
@@ -111,7 +149,7 @@ export const deleteUser = async (userId: Types.ObjectId): Promise<Result<IUserPu
 
       return ({
         result: 'ok',
-        data: deletedUser.toPublicView()
+        data: deletedUser,
       });
     }
   } catch (err: any) {
