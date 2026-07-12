@@ -7,6 +7,23 @@ import React, {
 
 const GUIDELINE_OFFSET = 5;
 
+// -- Rotation angles (degrees) that the Transformer's rotate anchor snaps to.
+export const ROTATION_SNAPS = [0, 45, 90, 135, 180, 225, 270, 315];
+
+// -- How close (degrees) the rotation must be to a snap angle before the
+// Transformer locks onto it.
+export const ROTATION_SNAP_TOLERANCE = 5;
+
+// -- Tolerance (degrees) used to detect that a rotation is currently locked
+// onto a snap angle. Konva sets the rotation exactly when snapped, so this
+// only needs to absorb floating point error.
+const ROTATION_SNAP_EPSILON = 0.1;
+
+// -- Minimum share of an edge anchor's movement direction along an absolute
+// axis before resize snapping applies on that axis. Edge anchors travel along
+// a single local axis, which is rotated along with the shape.
+const ANCHOR_AXIS_COMPONENT_MIN = 0.1;
+
 type Snap = "start" | "center" | "end";
 
 type SnappingEdges = {
@@ -47,6 +64,14 @@ export interface UseSnappingInterface {
   drawGuides: (guides: Array<GuideType>, layer: Konva.Layer) => void;
   onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => void;
   onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  getAnchorBoundPosition: (
+    transformer: Konva.Transformer,
+    oldAbsPos: Konva.Vector2d,
+    newAbsPos: Konva.Vector2d
+  ) => Konva.Vector2d;
+  onTransform: (e: Konva.KonvaEventObject<Event>, transformer: Konva.Transformer | null) => void;
+  onTransformEnd: (e: Konva.KonvaEventObject<Event>) => void;
+  onEndpointDragMove: (e: Konva.KonvaEventObject<DragEvent>, fixedPoint: Konva.Vector2d) => Konva.Vector2d;
 }
 
 // === class SnappingMonitor ===================================================
@@ -63,6 +88,11 @@ export class SnappingMonitor {
     this.drawGuides = this.drawGuides.bind(this);
     this.onDragMove = this.onDragMove.bind(this);
     this.onDragEnd = this.onDragEnd.bind(this);
+    this.findNearestSnap = this.findNearestSnap.bind(this);
+    this.getAnchorBoundPosition = this.getAnchorBoundPosition.bind(this);
+    this.onTransform = this.onTransform.bind(this);
+    this.onTransformEnd = this.onTransformEnd.bind(this);
+    this.onEndpointDragMove = this.onEndpointDragMove.bind(this);
   }
 
   getLineGuideStops(skipShape: SnapObject): LineGuideStopType {
@@ -79,6 +109,12 @@ export class SnappingMonitor {
         return;
       }
       if (guideItem === skipShape) {
+        return;
+      }
+      // Skip nodes belonging to the same object group as the skipped shape
+      // (e.g. a vector's endpoint anchors and selection highlight), so an
+      // object never snaps to its own parts.
+      if (guideItem.getParent() === skipShape.getParent()) {
         return;
       }
       const box = guideItem.getClientRect();
@@ -289,23 +325,233 @@ export class SnappingMonitor {
   onDragEnd(e: Konva.KonvaEventObject<DragEvent>): void {
     e.target.getLayer()?.find(".guide-line").forEach(l => l.destroy());
   }// -- end onDragEnd
+
+  findNearestSnap(stops: number[], value: number): number | null {
+    let nearest: number | null = null;
+    let nearestDiff = GUIDELINE_OFFSET;
+
+    stops.forEach((stop) => {
+      const diff = Math.abs(stop - value);
+      if (diff < nearestDiff) {
+        nearestDiff = diff;
+        nearest = stop;
+      }
+    });
+
+    return nearest;
+  }// -- end findNearestSnap
+
+  // Bounds a Transformer resize anchor so it snaps to guide-line stops.
+  // Positions are in absolute (container) coordinates.
+  getAnchorBoundPosition(
+    transformer: Konva.Transformer,
+    _oldAbsPos: Konva.Vector2d,
+    newAbsPos: Konva.Vector2d
+  ): Konva.Vector2d {
+    const node = transformer.nodes()[0];
+    const layer = transformer.getLayer();
+    if (!node || !layer) return newAbsPos;
+
+    const anchor = transformer.getActiveAnchor();
+    // Rotation guides are owned by onTransform; leave them untouched here.
+    if (!anchor || anchor === "rotater") return newAbsPos;
+
+    layer.find(".guide-line").forEach(l => l.destroy());
+
+    // Edge anchors move along a single local axis, which the shape's rotation
+    // maps onto the absolute axes; only snap along axes the anchor can
+    // actually move on. Corner anchors move freely.
+    const radians = (node.getAbsoluteRotation() * Math.PI) / 180;
+    let snapX = true;
+    let snapY = true;
+
+    if (anchor === "top-center" || anchor === "bottom-center") {
+      // Moves along the local y axis: direction (-sin, cos)
+      snapX = Math.abs(Math.sin(radians)) > ANCHOR_AXIS_COMPONENT_MIN;
+      snapY = Math.abs(Math.cos(radians)) > ANCHOR_AXIS_COMPONENT_MIN;
+    } else if (anchor === "middle-left" || anchor === "middle-right") {
+      // Moves along the local x axis: direction (cos, sin)
+      snapX = Math.abs(Math.cos(radians)) > ANCHOR_AXIS_COMPONENT_MIN;
+      snapY = Math.abs(Math.sin(radians)) > ANCHOR_AXIS_COMPONENT_MIN;
+    }
+
+    const lineGuideStops = this.getLineGuideStops(node as SnapObject);
+    const snappedX = snapX ? this.findNearestSnap(lineGuideStops.vertical, newAbsPos.x) : null;
+    const snappedY = snapY ? this.findNearestSnap(lineGuideStops.horizontal, newAbsPos.y) : null;
+
+    const guides: Array<GuideType> = [];
+
+    if (snappedX !== null) {
+      guides.push({
+        lineGuide: snappedX,
+        offset: 0,
+        orientation: "V",
+        snap: "start"
+      });
+    }
+
+    if (snappedY !== null) {
+      guides.push({
+        lineGuide: snappedY,
+        offset: 0,
+        orientation: "H",
+        snap: "start"
+      });
+    }
+
+    if (guides.length) {
+      this.drawGuides(guides, layer);
+    }
+
+    return {
+      x: snappedX ?? newAbsPos.x,
+      y: snappedY ?? newAbsPos.y
+    };
+  }// -- end getAnchorBoundPosition
+
+  // Draws a horizontal/vertical guide through the shape's center while its
+  // rotation is locked onto 0/90/180/270 degrees.
+  onTransform(e: Konva.KonvaEventObject<Event>, transformer: Konva.Transformer | null): void {
+    if (!transformer || transformer.getActiveAnchor() !== "rotater") return;
+
+    const layer = e.target.getLayer();
+    if (!layer) return;
+
+    layer.find(".guide-line").forEach(l => l.destroy());
+
+    const rotation = ((e.target.rotation() % 360) + 360) % 360;
+    const snapped = [...ROTATION_SNAPS, 360].find(
+      (snap) => Math.abs(rotation - snap) < ROTATION_SNAP_EPSILON
+    );
+    if (snapped === undefined) return;
+
+    const box = e.target.getClientRect();
+    const isHorizontal = snapped % 180 === 0;
+
+    this.drawGuides([{
+      lineGuide: isHorizontal ? box.y + box.height / 2 : box.x + box.width / 2,
+      offset: 0,
+      orientation: isHorizontal ? "H" : "V",
+      snap: "center"
+    }], layer);
+  }// -- end onTransform
+
+  onTransformEnd(e: Konva.KonvaEventObject<Event>): void {
+    e.target.getLayer()?.find(".guide-line").forEach(l => l.destroy());
+  }// -- end onTransformEnd
+
+  // Snaps a dragged vector endpoint to guide-line stops and to the fixed
+  // endpoint's axes (making the line exactly horizontal or vertical when
+  // close), drawing the matching guides. fixedPoint and the returned position
+  // are in the anchor's parent coordinates.
+  onEndpointDragMove(
+    e: Konva.KonvaEventObject<DragEvent>,
+    fixedPoint: Konva.Vector2d
+  ): Konva.Vector2d {
+    const node = e.target;
+    const layer = node.getLayer();
+    const parent = node.getParent();
+    if (!layer || !parent) return node.position();
+
+    layer.find(".guide-line").forEach(l => l.destroy());
+
+    // Work in absolute coordinates to match the guide stops
+    const absPos = node.absolutePosition();
+    const absFixed = parent.getAbsoluteTransform().point(fixedPoint);
+    const lineGuideStops = this.getLineGuideStops(node as SnapObject);
+
+    type Candidate = { value: number; diff: number; isAxisSnap: boolean };
+
+    const axisCandidate = (current: number, axisValue: number): Candidate | null => {
+      const diff = Math.abs(current - axisValue);
+      return diff < GUIDELINE_OFFSET ? { value: axisValue, diff, isAxisSnap: true } : null;
+    };
+
+    const stopCandidate = (current: number, stops: number[]): Candidate | null => {
+      const stop = this.findNearestSnap(stops, current);
+      return stop !== null
+        ? { value: stop, diff: Math.abs(stop - current), isAxisSnap: false }
+        : null;
+    };
+
+    const closer = (a: Candidate | null, b: Candidate | null): Candidate | null => {
+      if (!a || !b) return a ?? b;
+      return a.diff <= b.diff ? a : b;
+    };
+
+    const stopX = stopCandidate(absPos.x, lineGuideStops.vertical);
+    const stopY = stopCandidate(absPos.y, lineGuideStops.horizontal);
+
+    let snapX = closer(axisCandidate(absPos.x, absFixed.x), stopX);
+    let snapY = closer(axisCandidate(absPos.y, absFixed.y), stopY);
+
+    // Never snap both axes onto the fixed endpoint, or short lines would
+    // collapse to a single point; keep the closer axis snap only.
+    if (snapX?.isAxisSnap && snapY?.isAxisSnap) {
+      if (snapX.diff <= snapY.diff) {
+        snapY = stopY;
+      } else {
+        snapX = stopX;
+      }
+    }
+
+    if (!snapX && !snapY) return node.position();
+
+    node.absolutePosition({
+      x: snapX?.value ?? absPos.x,
+      y: snapY?.value ?? absPos.y
+    });
+
+    const guides: Array<GuideType> = [];
+
+    if (snapX) {
+      guides.push({
+        lineGuide: snapX.value,
+        offset: 0,
+        orientation: "V",
+        snap: "center"
+      });
+    }
+
+    if (snapY) {
+      guides.push({
+        lineGuide: snapY.value,
+        offset: 0,
+        orientation: "H",
+        snap: "center"
+      });
+    }
+
+    this.drawGuides(guides, layer);
+
+    return node.position();
+  }// -- end onEndpointDragMove
 }// -- end SnappingMonitor
 
 export const useSnapping = (
   nodeRef: React.RefObject<SnapObject | null>,
-  snappingMonitor: UseSnappingInterface
+  snappingMonitor: UseSnappingInterface,
+  transformerRef?: React.RefObject<Konva.Transformer | null>
 ): void => {
 
   useEffect(() => {
     const node = nodeRef.current;
     if (!node) return;
 
+    // Resolve the transformer at event time; it is rendered conditionally.
+    const handleTransform = (e: Konva.KonvaEventObject<Event>) =>
+      snappingMonitor.onTransform(e, transformerRef?.current ?? null);
+
     node.on("dragmove", snappingMonitor.onDragMove);
     node.on("dragend", snappingMonitor.onDragEnd);
+    node.on("transform", handleTransform);
+    node.on("transformend", snappingMonitor.onTransformEnd);
 
     return () => {
       node.off("dragmove", snappingMonitor.onDragMove);
-      node.off("dragEnd", snappingMonitor.onDragEnd);
+      node.off("dragend", snappingMonitor.onDragEnd);
+      node.off("transform", handleTransform);
+      node.off("transformend", snappingMonitor.onTransformEnd);
     };
-  }, [nodeRef, snappingMonitor.onDragMove, snappingMonitor.onDragEnd]);
+  }, [nodeRef, transformerRef, snappingMonitor]);
 };// -- end useSnapping

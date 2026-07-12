@@ -62,6 +62,8 @@ import {
 } from '@/hooks/useUser';
 
 import {
+  ROTATION_SNAPS,
+  ROTATION_SNAP_TOLERANCE,
   SnappingMonitor,
   useSnapping,
 } from "@/hooks/useSnapping";
@@ -124,7 +126,15 @@ const EditableShape = <ShapeType extends ShapeModel> ({
 
   const isDraggable = draggable && ((! editor) || editor.clientId === clientId);
 
-  useSnapping(shapeRef, snappingMonitor);
+  useSnapping(shapeRef, snappingMonitor, trRef);
+
+  const anchorDragBoundFunc = useCallback(
+    (oldPos: Konva.Vector2d, newPos: Konva.Vector2d) =>
+      trRef.current
+        ? snappingMonitor.getAnchorBoundPosition(trRef.current, oldPos, newPos)
+        : newPos,
+    [snappingMonitor]
+  );
 
   const isSelected : boolean = useMemo(
     () => userHasCanvasAccess && (editor?.clientId === clientId),
@@ -193,6 +203,9 @@ const EditableShape = <ShapeType extends ShapeModel> ({
           resizeEnabled={isSelected}
           rotateEnabled={isSelected}
           flipEnabled={isSelected}
+          rotationSnaps={ROTATION_SNAPS}
+          rotationSnapTolerance={ROTATION_SNAP_TOLERANCE}
+          anchorDragBoundFunc={anchorDragBoundFunc}
         />
       )}
     </Group>

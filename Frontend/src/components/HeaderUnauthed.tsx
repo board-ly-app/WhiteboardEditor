@@ -31,7 +31,7 @@ const HeaderUnauthed = ({
   const [action, setAction] = useState<"login" | "signup">("login");
 
   const handleLogin = useCallback(() => {
-    if (pathname.startsWith("/login")) {
+    if (pathname.startsWith("/login") || pathname.startsWith("/signup")) {
       console.log("from login");
       navigate("/login");
     }
@@ -42,7 +42,7 @@ const HeaderUnauthed = ({
   }, [pathname, navigate, setConfirmationOpen]);
 
   const handleSignup = useCallback(() => {
-    if (pathname.startsWith("/signup")) {
+    if (pathname.startsWith("/login") || pathname.startsWith("/signup")) {
       console.log("from signup");
       navigate("/signup");
     }
