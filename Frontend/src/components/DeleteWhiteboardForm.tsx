@@ -5,16 +5,17 @@ import {
 } from 'react';
 
 import {
-  useSelector,
-} from 'react-redux';
-
-import lodash from 'lodash';
+  LoaderCircle,
+} from 'lucide-react';
 
 // -- local imports
 import {
   type WhiteboardIdType,
-  type WhiteboardAttribs,
 } from '@/types/WebSocketProtocol';
+
+import {
+  type Whiteboard,
+} from '@/types/APIProtocol';
 
 import {
   cn,
@@ -28,12 +29,8 @@ import {
 import { AppModal } from '@/components/ui/app-modal';
 
 import {
-  type RootState,
-} from '@/store';
-
-import {
-  selectWhiteboardById,
-} from '@/store/whiteboards/whiteboardsSelectors';
+  useWhiteboardQuery,
+} from '@/hooks/useWhiteboardQuery';
 
 const FORM_ID = 'delete-whiteboard-form';
 
@@ -45,10 +42,12 @@ export interface DeleteWhiteboardFormProps {
 }
 
 type ComponentStatus =
-  | { name: 'default'; }
-  | { name: 'deletion_unconfirmed'; }
-  | { name: 'deletion_confirmation_pending'; progress: number; }
-  | { name: 'deletion_confirmed'; }
+  | { name: 'pending'; }
+  | { name: 'error'; }
+  | { name: 'default'; whiteboardAttribs: Whiteboard; }
+  | { name: 'deletion_unconfirmed'; whiteboardAttribs: Whiteboard; }
+  | { name: 'deletion_confirmation_pending'; progress: number; whiteboardAttribs: Whiteboard; }
+  | { name: 'deletion_confirmed'; whiteboardAttribs: Whiteboard; }
 ;
 
 export const DeleteWhiteboardForm = ({
@@ -63,10 +62,12 @@ export const DeleteWhiteboardForm = ({
   const [confirmationKeyEntry, setConfirmationKeyEntry] = useState<string>('');
   const [deleteButtonStatus, setDeleteButtonStatus] = useState<ButtonStatus>('enabled');
 
-  const whiteboardAttribs : WhiteboardAttribs | null = useSelector(
-    (state: RootState) => selectWhiteboardById(state, whiteboardId),
-    lodash.isEqual
-  );
+  const {
+    isLoading: whiteboardIsLoading,
+    isFetching: whiteboardIsFetching,
+    error: whiteboardError,
+    data: whiteboardAttribs,
+  } = useWhiteboardQuery(whiteboardId);
 
   const handleConfirmationKeyEntryChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,66 +94,104 @@ export const DeleteWhiteboardForm = ({
   // -- derived state
   let status : ComponentStatus;
 
-  if (confirmationKeyEntry === '') {
-    status = { name: 'default' };
+  if (whiteboardError) {
+    status = { name: 'error' };
+  } else if (whiteboardIsLoading || whiteboardIsFetching || (! whiteboardAttribs)) {
+    status = { name: 'pending' };
+  } else if (confirmationKeyEntry === '') {
+    status = {
+      name: 'default',
+      whiteboardAttribs,
+    };
   } else if (confirmationKeyEntry === CONFIRMATION_KEY) {
-    status = { name: 'deletion_confirmed' };
+    status = {
+      name: 'deletion_confirmed',
+      whiteboardAttribs,
+    };
   } else if (CONFIRMATION_KEY.substring(0, confirmationKeyEntry.length) === confirmationKeyEntry) {
     const progress = confirmationKeyEntry.length / CONFIRMATION_KEY.length;
 
-    status = { name: 'deletion_confirmation_pending', progress };
+    status = {
+      name: 'deletion_confirmation_pending',
+      whiteboardAttribs,
+      progress,
+    };
   } else {
-    status = { name: 'deletion_unconfirmed' };
+    status = {
+      name: 'deletion_unconfirmed',
+      whiteboardAttribs,
+    };
   }
 
   const confirmationKeyEntryClassnameBase = "placeholder:italic outline-2 rounded-sm p-1";
+  let whiteboardData: Whiteboard;
   let confirmationKeyEntryClassname : string;
 
-  if (! whiteboardAttribs) {
-    return null;
-  }
-
   switch (status.name) {
+    case 'error':
+      return (
+        <AppModal
+          open={open}
+          onOpenChange={onOpenChange}
+          title="Delete Whiteboard (error)"
+        >
+          <p>Error: could not load whiteboard info</p>
+        </AppModal>
+      );
+    case 'pending':
+      return (
+        <AppModal
+          open={open}
+          onOpenChange={onOpenChange}
+          title="Delete Whiteboard (loading)"
+        >
+          <LoaderCircle />
+        </AppModal>
+      );
     case 'default':
     {
-        confirmationKeyEntryClassname = cn(
-          confirmationKeyEntryClassnameBase,
-        );
+      whiteboardData = status.whiteboardAttribs;
+      confirmationKeyEntryClassname = cn(
+        confirmationKeyEntryClassnameBase,
+      );
     }
     break;
     case 'deletion_confirmed':
     {
-        confirmationKeyEntryClassname = cn(
-          confirmationKeyEntryClassnameBase,
-          "outline-green-600",
-        );
+      whiteboardData = status.whiteboardAttribs;
+      confirmationKeyEntryClassname = cn(
+        confirmationKeyEntryClassnameBase,
+        "outline-green-600",
+      );
     }
     break;
     case 'deletion_confirmation_pending':
     {
-        const {
-          progress,
-        } = status;
-        const colorStart = 100;
-        const colorLimit = 600;
-        const colorStep = 100;
-        const colorScale = (colorLimit - colorStart);
-        const colorLevel = (Math.floor(
-          (progress * colorScale) / colorStep
-        ) * colorStep) + colorStart;
+      const {
+        progress,
+      } = status;
+      whiteboardData = status.whiteboardAttribs;
+      const colorStart = 100;
+      const colorLimit = 600;
+      const colorStep = 100;
+      const colorScale = (colorLimit - colorStart);
+      const colorLevel = (Math.floor(
+        (progress * colorScale) / colorStep
+      ) * colorStep) + colorStart;
 
-        confirmationKeyEntryClassname = cn(
-          confirmationKeyEntryClassnameBase,
-          `outline-green-${colorLevel}`,
-        );
+      confirmationKeyEntryClassname = cn(
+        confirmationKeyEntryClassnameBase,
+        `outline-green-${colorLevel}`,
+      );
     }
     break;
     case 'deletion_unconfirmed':
     {
-        confirmationKeyEntryClassname = cn(
-          confirmationKeyEntryClassnameBase,
-          "outline-red-600"
-        );
+      whiteboardData = status.whiteboardAttribs;
+      confirmationKeyEntryClassname = cn(
+        confirmationKeyEntryClassnameBase,
+        "outline-red-600"
+      );
     }
     break;
     default:
@@ -163,7 +202,7 @@ export const DeleteWhiteboardForm = ({
     <AppModal
       open={open}
       onOpenChange={onOpenChange}
-      title={`Delete "${whiteboardAttribs.name}"?`}
+      title={`Delete "${whiteboardData.name}"?`}
       footer={
         <>
           <Button type="button" onClick={() => onOpenChange(false)}>
