@@ -8,7 +8,7 @@ import React, {
 const GUIDELINE_OFFSET = 5;
 
 // -- Rotation angles (degrees) that the Transformer's rotate anchor snaps to.
-export const ROTATION_SNAPS = [0, 90, 180, 270];
+export const ROTATION_SNAPS = [0, 45, 90, 135, 180, 225, 270, 315];
 
 // -- How close (degrees) the rotation must be to a snap angle before the
 // Transformer locks onto it.
