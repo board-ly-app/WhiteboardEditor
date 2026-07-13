@@ -11,9 +11,7 @@ import {
 
 import {
   useParams,
-  useLocation,
   useNavigate,
-  Link,
 } from 'react-router-dom';
 
 import {
@@ -29,10 +27,6 @@ import {
 } from 'axios';
 
 import {
-  useQuery,
-} from '@tanstack/react-query';
-
-import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -44,21 +38,11 @@ import {
   toast,
 } from 'react-toastify';
 
-import {
-  type AxiosResponse as AxiosResp,
-} from 'axios';
-
 // -- local types
 import {
   APP_NAME,
   WB_ZOOM_FACTOR,
 } from '@/app.config';
-
-import {
-  axiosResponseIsError,
-  type Whiteboard as APIWhiteboard,
-  type ErrorResponse as APIErrorResponse,
-} from '@/types/APIProtocol';
 
 import {
   type Notification,
@@ -151,7 +135,9 @@ import {
 } from '@/types/OperationDispatcher';
 
 import HeaderUnauthed from '@/components/HeaderUnauthed';
-import { useUser } from '@/hooks/useUser';
+import {
+  useUser,
+} from '@/hooks/useUser';
 
 import {
   removeSelectorsByCanvasObject,
@@ -174,17 +160,7 @@ type ComponentStatus =
   | { status: 'deleted'; }
 ;
 
-type WhiteboardQueryType = ReturnType<typeof useQuery<APIWhiteboard, AxiosError>>;
-
-// -- only for inner whiteboard, not wrapper, which is the default export
-interface WhiteboardProps {
-  query: WhiteboardQueryType;
-}
-
-const Whiteboard = ({
-  query,
-}: WhiteboardProps) => {
-  const location = useLocation();
+const Whiteboard = () => {
   const navigate = useNavigate();
   const { user } = useUser();
 
@@ -224,13 +200,6 @@ const Whiteboard = ({
     lodash.isEqual
   );
 
-  // -- managed state
-  const {
-    isLoading: isWhiteboardLoading,
-    isFetching: isWhiteboardFetching,
-    error: whiteboardError,
-  } = query;
-
   // -- fetch unread notifications
   useEffect(
     () => {
@@ -247,25 +216,6 @@ const Whiteboard = ({
         });
     },
     [dispatch]
-  );
-
-  // alert user of any errors fetching whiteboard
-  useEffect(
-    () => {
-      if (whiteboardError && whiteboardError.status !== 403) {
-        console.error('Error fetching whiteboard', whiteboardId, ':', whiteboardError);
-        toast.error(`Error fetching whiteboard: ${whiteboardError}`, {
-          position: "bottom-center",
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "colored",
-          transition: Bounce,
-        });
-      }
-    }, [whiteboardError, whiteboardId]
   );
 
   const [shapeAttributesState, dispatchShapeAttributes] = useReducer(shapeAttributesReducer, {
@@ -482,24 +432,7 @@ const Whiteboard = ({
 
   let status : ComponentStatus;
 
-  if (whiteboardError) {
-    if (whiteboardError.status === 403) {
-      // -- Redirect to login on receipt of 403 error
-      if (whiteboardError && whiteboardError.status === 403) {
-        const redirectUrl : string = encodeURIComponent(`${location.pathname}${location.search}`);
-
-        navigate(`/login?redirect=${redirectUrl}`);
-        return null;
-      }
-    }
-
-    status = { status: 'error', error: whiteboardError };
-  } else if (
-    isWhiteboardLoading
-      || isWhiteboardFetching
-      || (! name)
-      || (! rootCanvas)
-  ) {
+  if ((! name) || (! rootCanvas)) {
     status = { status: 'pending' };
   } else if (whiteboardStatus === 'deleting') {
     status = {
@@ -547,64 +480,6 @@ const Whiteboard = ({
             </main>
           </Page>
         );
-    }
-    case 'error':
-    {
-        const {
-          error,
-        } = status;
-
-        switch (error.status) {
-          case 403:
-          case 404:
-            // -- indicate that the given resource either doesn't exist or can't
-            // be accessed
-            return (
-              <Page
-                title="Whiteboard Not Found"
-              >
-                <main>
-                  {/* Header */}
-                  <HeaderAuthed 
-                    title="Not Found"
-                    zIndex={10}
-                  />
-
-                  <div className="flex flex-col items-center gap-8 w-full px-16">
-                    <p className="text-center text-3xl font-normal">
-                      Either the requested whiteboard doesn't exist or you don't have permission to access it.
-                    </p>
-
-                    <Link
-                      to="/dashboard"
-                      className="w-64 rounded-md bg-blue-400 text-center text-xl"
-                    >
-                      Back to Dashboard
-                    </Link>
-                  </div>
-                </main>
-              </Page>
-            );
-          default:
-            // -- generic error message
-            return (
-              <Page
-                title="Error Loading Whiteboard"
-              >
-                <main>
-                  {/* Header */}
-                  <HeaderAuthed 
-                    title="Error Loading Whiteboard"
-                    zIndex={10}
-                  />
-
-                  <p className="text-xl font-semibold font-red">
-                    Error: {error.toString()}
-                  </p>
-                </main>
-              </Page>
-            );
-        }// -- end switch error.status
     }
     case 'ready':
     {
@@ -915,39 +790,6 @@ const WrappedWhiteboard = () => {
     throw new Error("No whiteboard ID provided to Whiteboard page");
   }
 
-  const whiteboardKey = ['whiteboard', whiteboardId];
-
-  const query = useQuery<APIWhiteboard, AxiosError>({
-    queryKey: whiteboardKey,
-    queryFn: async (): Promise<APIWhiteboard> => {
-      const res : AxiosResp<APIWhiteboard> | AxiosResp<APIErrorResponse> = await api.get(
-        `/whiteboards/id/${whiteboardId}`
-      );
-
-      if (axiosResponseIsError(res)) {
-        throw res;
-      } else {
-        // success
-        return res.data;
-      }
-    },
-    retry: (failureCount, error) => {
-      if (failureCount >= 3) {
-        return false;
-      } else {
-        switch (error.status) {
-          case 403:
-          case 404:
-            // -- We can be sure that the whiteboard either doesn't exist or we
-            // don't have permission to access it.
-            return false;
-          default:
-            return true;
-        }// -- end switch error.
-      }
-    },
-  });
-
   // -- track refs to canvas groups (frames)
   const canvasGroupRefsByIdRef: RefObject<Record<CanvasIdType, RefObject<Konva.Group | null>>> = useRef({});
 
@@ -997,9 +839,7 @@ const WrappedWhiteboard = () => {
       currentDispatcherRef={currentDispatcherRef}
       canvasGroupRefsByIdRef={canvasGroupRefsByIdRef}
     >
-      <Whiteboard
-        query={query}
-      />
+      <Whiteboard />
     </WhiteboardProvider>
   );
 };// end WrappedWhiteboard

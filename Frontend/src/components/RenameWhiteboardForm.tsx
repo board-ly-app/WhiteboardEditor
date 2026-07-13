@@ -66,7 +66,13 @@ export const RenameWhiteboardForm = ({
     <AppModal
       open={open}
       onOpenChange={onOpenChange}
-      title={`Rename "${currentName}"`}
+      title={
+        <span className="flex justify-center">
+          <span className="shrink-0">Rename&nbsp;"</span>
+          <span className="truncate">{currentName}</span>
+          <span className="shrink-0">"</span>
+        </span>
+      }
       footer={
         <>
           <Button
