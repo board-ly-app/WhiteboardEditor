@@ -1,5 +1,7 @@
 // -- std imports
-import { Types } from "mongoose";
+import {
+  Types,
+} from "mongoose";
 
 // -- third-party imports
 import bcrypt from "bcrypt";
@@ -13,8 +15,6 @@ import type {
 import {
   User,
   PatchPermanentUserData,
-  type IUserPublicView,
-  type IPermanentUserPublicView,
   type IUserType,
   IPermanentUser,
 } from "../models/User";
@@ -53,9 +53,44 @@ export const getUserById = async (userId: Types.ObjectId): Promise<GetUserByIdRe
   }
 };// end getUser
 
+// === isUserOwnerCollaborator =================================================
+//
+// Determines whether a certain user owns a whiteboard which is shared with
+// another specified user. Important for determining whether the owning user can
+// see certain protected fields in the other user's account (namely, their email
+// address).
+//
+// =============================================================================
+export const isUserOwnerCollaborator = (
+  ownerId: Types.ObjectId,
+  collaboratorId: Types.ObjectId
+): boolean => {
+  // -- Query for at least one whiteboard for which both users have some
+  // permission
+  const res = Whiteboard.findOne({
+    "user_permissions": {
+      '$all': [
+        {
+          '$elemMatch': {
+            'user': ownerId,
+            'permission': 'own',
+          }
+        },
+        {
+          '$elemMatch': {
+            'user': collaboratorId,
+          }
+        },
+      ]
+    }
+  });
+
+  return !!res;
+};// -- end areUsersCollaborators
+
 export interface PatchPermanentUserOkResult {
   type: 'ok';
-  data: IPermanentUserPublicView;
+  data: IPermanentUser;
 }
 
 export interface PatchPermanentUserErrorResult {
@@ -65,7 +100,10 @@ export interface PatchPermanentUserErrorResult {
 
 export type PatchPermanentUserResult = PatchPermanentUserOkResult | PatchPermanentUserErrorResult;
 
-export const patchUser = async (user: IPermanentUser, patchData: PatchPermanentUserData): Promise<PatchPermanentUserResult> => {
+export const patchUser = async (
+  user: IPermanentUser,
+  patchData: PatchPermanentUserData
+): Promise<PatchPermanentUserResult> => {
   try {
     const patchDataLocal = { ...patchData };
     const passwordHashed = patchDataLocal.password ? 
@@ -85,7 +123,7 @@ export const patchUser = async (user: IPermanentUser, patchData: PatchPermanentU
 
     return ({
       type: 'ok',
-      data: userModified.toPublicView()
+      data: userModified,
     });
   } catch (err: any) {
     return ({
@@ -95,7 +133,9 @@ export const patchUser = async (user: IPermanentUser, patchData: PatchPermanentU
   }
 };// -- end patchUser
 
-export const deleteUser = async (userId: Types.ObjectId): Promise<Result<IUserPublicView, string>> => {
+export const deleteUser = async (
+  userId: Types.ObjectId
+): Promise<Result<IUserType, string>> => {
   try {
     const deletedUser = await User.findOne({ _id: userId });
 
@@ -109,7 +149,7 @@ export const deleteUser = async (userId: Types.ObjectId): Promise<Result<IUserPu
 
       return ({
         result: 'ok',
-        data: deletedUser.toPublicView()
+        data: deletedUser,
       });
     }
   } catch (err: any) {

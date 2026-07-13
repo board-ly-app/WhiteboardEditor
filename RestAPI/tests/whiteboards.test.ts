@@ -55,14 +55,13 @@ afterAll(disconnectFromDatabase);
 // id, email, and username, but exclude the hashed password.
 //
 // =============================================================================
-const validateUser = (user: IUser, fieldValues: {} | any[]) => {
+const validateUser = (user: IUser, view: 'owner' | 'public', fieldValues: {} | any[]) => {
   expect(user).toHaveProperty('id');
   expect(user).toHaveProperty('username');
 
-  if (user.kind === 'permanent') {
+  if (view === 'owner' && user.kind === 'permanent') {
     expect(user).toHaveProperty('email');
-  }
-  else if (user.kind === 'temp') {
+  } else if (user.kind === 'temp') {
     expect(user).toHaveProperty("createdAt");
   }
 
@@ -75,6 +74,7 @@ const validateUser = (user: IUser, fieldValues: {} | any[]) => {
 
 const validateWhiteboardAttribView = (
   whiteboard: IWhiteboardAttribView,
+  view: 'owner' | 'public',
   fieldValues: Record<string, any>
 ) => {
   expect(whiteboard).toHaveProperty('id');
@@ -105,7 +105,7 @@ const validateWhiteboardAttribView = (
     switch (perm.type) {
       case 'user':
         expect(perm).toHaveProperty('user');
-        validateUser(perm.user as unknown as IUser, {});
+        validateUser(perm.user as unknown as IUser, view, {});
         break;
       case 'email':
         expect(perm).toHaveProperty('email');
@@ -177,7 +177,7 @@ describe("Whiteboards API", () => {
       .send()
       .expect(200);
 
-    validateWhiteboardAttribView(wbRes.body, {
+    validateWhiteboardAttribView(wbRes.body, 'owner', {
       user_permissions: [
         {
           type: 'user',
@@ -233,7 +233,7 @@ describe("Whiteboards API", () => {
     ];
 
     for (const i_wb in whiteboardsExpect) {
-      validateWhiteboardAttribView(wbRes.body[i_wb], whiteboardsExpect[i_wb]);
+      validateWhiteboardAttribView(wbRes.body[i_wb], 'owner', whiteboardsExpect[i_wb]);
     }// -- end for i_wb
   });
 
@@ -281,7 +281,7 @@ describe("Whiteboards API", () => {
       .expect(201);
 
     // Verify response body
-    validateWhiteboardAttribView(wbRes.body, {
+    validateWhiteboardAttribView(wbRes.body, 'owner', {
       name: "Alice's Whiteboard",
       kind: "permanent_whiteboard"
     });
@@ -309,7 +309,7 @@ describe("Whiteboards API", () => {
       })
       .expect(201);
 
-    validateWhiteboardAttribView(res.body, {
+    validateWhiteboardAttribView(res.body, 'owner', {
       name: "Temporary Session",
       kind: "temp_whiteboard"
     });
@@ -384,7 +384,7 @@ describe("Whiteboards API", () => {
       .expect(201);
 
     // Verify response body
-    validateWhiteboardAttribView(wbRes.body, {
+    validateWhiteboardAttribView(wbRes.body, 'owner', {
       name: "Alice's Shared Whiteboard",
       user_permissions: collaboratorPermissionsExpect,
     });
@@ -438,7 +438,7 @@ describe("Whiteboards API", () => {
       })
       .expect(200);
 
-      validateWhiteboardAttribView(wbRes.body, {
+      validateWhiteboardAttribView(wbRes.body, 'owner', {
         user_permissions: [
           {
             type: 'user',
@@ -647,7 +647,7 @@ describe("Whiteboards API", () => {
       })
       .expect(200);
 
-    validateWhiteboardAttribView(wbRes.body, {
+    validateWhiteboardAttribView(wbRes.body, 'owner', {
       user_permissions: userPermissionsExpect,
     });
   });
@@ -729,7 +729,7 @@ describe("Whiteboards API", () => {
       })
       .expect(200);
 
-    validateWhiteboardAttribView(wbRes.body, {});
+    validateWhiteboardAttribView(wbRes.body, 'owner', {});
 
     // -- shared users
     expect(wbRes.body.user_permissions.length).toBe(userPermissionsExpect.length);
@@ -817,7 +817,7 @@ describe("Whiteboards API", () => {
       .send()
       .expect(200);
 
-    validateWhiteboardAttribView(wbRes.body, {
+    validateWhiteboardAttribView(wbRes.body, 'owner', {
       user_permissions: [
         {
           type: 'user',
@@ -1131,7 +1131,7 @@ describe("Whiteboards API", () => {
       .send()
       .expect(200);
 
-    validateWhiteboardAttribView(wbRes.body, {
+    validateWhiteboardAttribView(wbRes.body, 'public', {
       name: "Project Public",
       kind: "permanent_whiteboard",
     });
@@ -1163,7 +1163,7 @@ describe("Whiteboards API", () => {
       .send()
       .expect(200);
 
-    validateWhiteboardAttribView(wbRes.body, {
+    validateWhiteboardAttribView(wbRes.body, 'public', {
       name: "Project Public",
       kind: "permanent_whiteboard",
     });

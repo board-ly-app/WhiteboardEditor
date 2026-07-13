@@ -74,23 +74,30 @@ export const handleGetWhiteboardById = async (
         const isValidUserPerm = (perm: IWhiteboardUserPermissionModel<IUser>): perm is IWhiteboardUserPermissionById <IUser> => {
           return (perm.type === 'user') && (!! perm.user);
         };
-        const validUserIdSet: Record<string, boolean> = Object.fromEntries(
+        const permsByUserId: Record<string, IWhiteboardPermissionEnum> = Object.fromEntries(
             whiteboard.user_permissions.filter(perm => isValidUserPerm(perm)).map(perm => [
-            perm.user.id, true 
+            perm.user.id, perm.permission 
           ])
         );
 
         if (whiteboard.visibility !== 'public') {
           // Private board - require authenticated user with permission
-          if (!userId || !(userId.toString() in validUserIdSet)) {
+          if (!userId || !(userId.toString() in permsByUserId)) {
             return res.status(403).json({
               message: 'You are not authorized to view this resource'
             });
           }
         }
 
-        const wbAttribView = whiteboard.toAttribView();
-        return res.status(200).json(wbAttribView);
+        if (userId && permsByUserId[userId.toHexString()] === 'own') {
+          // -- Return owner view
+          const wbOwnerView = whiteboard.toOwnerView();
+          return res.status(200).json(wbOwnerView);
+        } else {
+          // -- Return attrib view
+          const wbAttribView = whiteboard.toAttribView();
+          return res.status(200).json(wbAttribView);
+        }
     }
     default:
       return res.status(500).json({ message: 'Unexpected error occurred' });
@@ -183,7 +190,7 @@ export const handleCreateWhiteboard = async (
     const whiteboardOut = await whiteboard.save()
       .then(wb => wb.populateFull());
     
-    res.status(201).json(whiteboardOut.toPublicView());
+    res.status(201).json(whiteboardOut.toOwnerView());
   } catch (err: unknown) {
     if (process.env.NODE_ENV !== 'production') {
       console.error('Server Error:', err);
@@ -236,7 +243,7 @@ export const handleCreateTempWhiteboard = async (
     const whiteboardOut = await whiteboard.save()
       .then(wb => wb.populateFull());
     
-    res.status(201).json(whiteboardOut.toPublicView());
+    res.status(201).json(whiteboardOut.toOwnerView());
   } catch (err: unknown) {
     if (process.env.NODE_ENV !== 'production') {
       console.log('Server Error:', err);
@@ -390,7 +397,7 @@ export const handleGetOwnWhiteboards = async (
       const permissionsFiltered = removeDanglingUserPermissions(whiteboard.user_permissions);
 
       whiteboard.user_permissions = permissionsFiltered;
-      return whiteboard;
+      return whiteboard.toOwnerView();
   });
 
   res.status(200).json(ownWhiteboards);
@@ -421,7 +428,7 @@ export const handleShareWhiteboard = async (
 
     switch (result.status) {
       case "success":
-        const wbAttribView = result.whiteboard.toAttribView();
+        const wbAttribView = result.whiteboard.toOwnerView();
 
         return res.status(200).json({
           ...wbAttribView,

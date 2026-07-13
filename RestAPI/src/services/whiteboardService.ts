@@ -7,8 +7,8 @@ import {
   Whiteboard,
   Canvas,
   Shape,
+  type IWhiteboard,
   type IWhiteboardFull,
-  type IWhiteboardAttribView,
   type WhiteboardIdType,
   type IWhiteboardUserPermission,
   type IWhiteboardUserPermissionModel,
@@ -26,7 +26,7 @@ import {
 } from '../models/User';
 
 export type GetWhiteboardRes = 
-  | { status: 'ok'; whiteboard: IWhiteboardFull; }
+  | { status: 'ok'; whiteboard: IWhiteboard <IUser, ICanvas <IUser>>; }
   | { status: 'invalid_id'; }
   | { status: 'not_found'; }
   | { status: 'server_error'; message: string; }
@@ -129,7 +129,7 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
         // whiteboard
         whiteboard.set('user_permissions', sharedUsers);
         whiteboard = await whiteboard.save()
-          .then(wb => wb.populateAttribs());
+          .then(wb => wb.populateFull());
 
         if (! whiteboard) {
           throw new Error(`Whiteboard ${whiteboardId} not properly (re-)fetched`);
@@ -152,13 +152,15 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
   }
 };// -- end getWhiteboardById
 
-export const getWhiteboardsByOwner = async (ownerId: Types.ObjectId): Promise<IWhiteboardAttribView[]> => {
+export const getWhiteboardsByOwner = async (
+  ownerId: Types.ObjectId
+): Promise<IWhiteboard <IUser, ICanvas <IUser>>[]> => {
   const owner = await User.findOne({
     '_id': ownerId,
   });
 
   if (! owner) {
-    return [] as IWhiteboardAttribView[];
+    return [];
   }
 
   const userIdQueries = (owner.kind === 'permanent') ?
@@ -179,7 +181,7 @@ export const getWhiteboardsByOwner = async (ownerId: Types.ObjectId): Promise<IW
     },
   };
 
-  return await Whiteboard.findAttribs(query) as IWhiteboardAttribView[];
+  return await Whiteboard.findFull(query) as IWhiteboard <IUser, ICanvas <IUser>>[];
 };// -- end getWhiteboardsByOwner
 
 export type GetSharedUsersByWhiteboardRes =

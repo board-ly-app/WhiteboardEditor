@@ -12,7 +12,7 @@ import {
 // -- local imports
 import {
   isIPermanentUser,
-  ITempUserPublicView,
+  ITempUser,
   type IUserType,
   User,
 } from '../models/User';
@@ -87,7 +87,7 @@ export type CreateTempUserRes =
   | { 
       status: 'ok'; 
       payload: { 
-        user: ITempUserPublicView, 
+        user: ITempUser, 
         accessToken: string, 
         refreshToken: string 
       }; 
@@ -167,7 +167,7 @@ export const tempUserLoginService = async (): Promise<CreateTempUserRes> => {
     return {
       status: 'ok',
       payload: {
-        user: saved.toPublicView() as ITempUserPublicView,
+        user: saved as ITempUser,
         accessToken,
         refreshToken
       }  
