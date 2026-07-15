@@ -19,6 +19,8 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
   handleUpdateShape: (updatedShape: ShapeType) => void
 ): EditableObjectProps => {
   const handleMouseOver = (ev: Konva.KonvaEventObject<MouseEvent>) => {
+    if (! isDraggable) return;
+
     ev.cancelBubble = true;
 
     const stage = ev.target.getStage();
@@ -29,6 +31,8 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
   };
 
   const handleMouseOut = (ev: Konva.KonvaEventObject<MouseEvent>) => {
+    if (! isDraggable) return;
+    
     ev.cancelBubble = true;
 
     const stage = ev.target.getStage();
@@ -39,6 +43,8 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
   };
 
   const handleMouseDown = (ev: Konva.KonvaEventObject<MouseEvent>) => {
+    if (! isDraggable) return;
+
     ev.cancelBubble = true;
 
     const stage = ev.target.getStage();
@@ -49,6 +55,8 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
   };
 
   const handleMouseUp = (ev: Konva.KonvaEventObject<MouseEvent>) => {
+    if (! isDraggable) return;
+
     ev.cancelBubble = true;
 
     const stage = ev.target.getStage();
@@ -59,6 +67,8 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
   };
 
   const handleDragEnd = (ev: Konva.KonvaEventObject<DragEvent>) => {
+    if (! isDraggable) return;
+
     ev.cancelBubble = true;
 
     const x = ev.target.x();
@@ -69,6 +79,8 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
 
   // transform the targetted box locally in real time without broadcasting
   const handleTransform = (ev: Konva.KonvaEventObject<Event>) => {
+    if (! isDraggable) return;
+    
     ev.cancelBubble = true;
 
     const node = ev.target;
@@ -86,12 +98,12 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
   };
 
   return ({
-    onMouseOver: isDraggable && handleMouseOver || undefined,
-    onMouseOut: isDraggable && handleMouseOut || undefined,
-    onMouseDown: isDraggable && handleMouseDown || undefined,
-    onMouseUp: isDraggable && handleMouseUp || undefined,
-    onDragEnd: isDraggable && handleDragEnd || undefined,
-    onTransform: isDraggable && handleTransform || undefined,
+    onMouseOver: handleMouseOver,
+    onMouseOut: handleMouseOut,
+    onMouseDown: handleMouseDown,
+    onMouseUp: handleMouseUp,
+    onDragEnd: handleDragEnd,
+    onTransform: handleTransform,
   });
 };
 
