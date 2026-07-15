@@ -1,5 +1,7 @@
 import { Router } from "express";
-import { login } from "../controllers/auth";
+import {
+  handleLogin,
+} from "../controllers/auth";
 
 import {
   globalRateLimiter,
@@ -10,6 +12,6 @@ const router = Router();
 // -- apply rate limiting
 router.use(globalRateLimiter);
 
-router.post("/login", login);
+router.post("/login", handleLogin);
 
 export default router;
