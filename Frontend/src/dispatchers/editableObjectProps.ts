@@ -19,7 +19,7 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
   handleUpdateShape: (updatedShape: ShapeType) => void
 ): EditableObjectProps => {
   const handleMouseOver = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!isDraggable) return;
+    if (! isDraggable) return;
 
     ev.cancelBubble = true;
 
@@ -31,7 +31,7 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
   };
 
   const handleMouseOut = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!isDraggable) return;
+    if (! isDraggable) return;
     
     ev.cancelBubble = true;
 
@@ -43,7 +43,7 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
   };
 
   const handleMouseDown = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!isDraggable) return;
+    if (! isDraggable) return;
 
     ev.cancelBubble = true;
 
@@ -55,7 +55,7 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
   };
 
   const handleMouseUp = (ev: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!isDraggable) return;
+    if (! isDraggable) return;
 
     ev.cancelBubble = true;
 
@@ -67,7 +67,7 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
   };
 
   const handleDragEnd = (ev: Konva.KonvaEventObject<DragEvent>) => {
-    if (!isDraggable) return;
+    if (! isDraggable) return;
 
     ev.cancelBubble = true;
 
@@ -79,7 +79,7 @@ const editableObjectProps = <ShapeType extends CanvasObjectModel> (
 
   // transform the targetted box locally in real time without broadcasting
   const handleTransform = (ev: Konva.KonvaEventObject<Event>) => {
-    if (!isDraggable) return;
+    if (! isDraggable) return;
     
     ev.cancelBubble = true;
 
