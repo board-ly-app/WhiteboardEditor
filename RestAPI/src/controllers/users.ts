@@ -13,7 +13,7 @@ import {
 
 // -- local imports
 import {
-  SetInclusionOptionType
+  SetInclusionOptionType,
 } from '../utils';
 
 import {
@@ -25,27 +25,41 @@ import {
 } from "../services/userService";
 
 import {
-  permanentUserLoginService,
-  tempUserLoginService,
+  loginPermanentUser,
+  loginTempUser,
 } from '../services/loginService';
 
-import type {
-  AuthorizedRequestBody
+import {
+  type AuthorizedRequestBody,
 } from "../models/Auth";
 
 import {
-  User,
   type PatchPermanentUserRequest,
   type CreatePermanentUserRequest,
   type DeletePermanentUserRequest,
+  type IPermanentUserSelfView,
+  User,
   isIPermanentUser,
   ConvertTempUserRequest,
 } from "../models/User";
 
 import {
-  Whiteboard,
   type IWhiteboardPermissionEnum,
+  Whiteboard,
 } from '../models/Whiteboard';
+
+interface PostUserRouteBadRequestErrRes {
+  message: string;
+}
+
+interface PostUserRouteServerErrRes {
+  message: 'An unexpected error occurred';
+}
+
+interface PostUserRouteOkRes {
+  token: string;
+  user: IPermanentUserSelfView;
+}
 
 export const handleCreateUser = async (
   req: Request<{}, {}, CreatePermanentUserRequest>,
@@ -56,58 +70,90 @@ export const handleCreateUser = async (
 
     // --- Validate input ---
     if (!email || !username || !password) {
-      return res.status(400).json({ error: "Email, username, and password are required."});
+      const resp : PostUserRouteBadRequestErrRes = ({
+        message: "Email, username, and password are required.",
+      });
+      return res.status(400).json(resp);
     }
 
     // --- Check for existing user ---
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
-      return res.status(400).json({ error: "Email already in use." });
+      const resp : PostUserRouteBadRequestErrRes = ({
+        message: "Email already in use.",
+      });
+      return res.status(400).json(resp);
     }
 
     const existingUser = await User.findOne({ username });
     if (existingUser) {
-      return res.status(400).json({ error: "Username already in use." });
+      const resp : PostUserRouteBadRequestErrRes = ({
+        message: "Username already in use.",
+      });
+      return res.status(400).json(resp);
     }
 
     // --- Hash password ---
     const hashed = await bcrypt.hash(password, 10);
     
     const user = new User({
+      kind: 'permanent',
       username,
       email,
-      kind: 'permanent',
       passwordHashed: hashed,
     });
 
-    const userFinal = await user.save();
+    await user.save();
 
     // --- Automatically log in user via service ---
-    try {
-      const loginResult = await permanentUserLoginService("username", username, password);
-      return res.status(201).json({
-        user: userFinal.toSelfView(),
-        token: loginResult.token
-      });
-    } catch (err: any) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error("Login after signup failed:", err);   
-      } else {
-        console.error("Login after signup failed");   
-      }
+    const loginResult = await loginPermanentUser("username", username, password);
 
-      return res.status(500).json({ message: 'Unexpected login failure' })   
-    }
-    
+    switch (loginResult.kind) {
+      case 'other_err':
+      // -- If user creation logic has been implemented correctly, these cases should never happen
+      case 'no_user':
+      case 'no_perm_user':
+      case 'bad_pass':
+        throw new Error(`Unexpected result type: ${JSON.stringify(loginResult)}`);
+      case 'ok':
+      {
+        const resp : PostUserRouteOkRes = ({
+          user: loginResult.user.toSelfView(),
+          token: loginResult.token,
+        });
+
+        return res.status(201).json(resp);
+      }
+      default:
+        throw new Error(`Unexpected result type: ${JSON.stringify(loginResult)}`);
+    }// -- end switch (loginResult.kind)
   } catch (err: any) {
     if (process.env.NODE_ENV !== 'production') {
       console.error("Create user failed: ", err);
     } else {
       console.error("Create user failed");
     }
-    return res.status(500).json({ error: "Internal server error" });
+
+    const resp : PostUserRouteServerErrRes = ({
+      message: 'An unexpected error occurred',
+    });
+
+    return res.status(500).json(resp);
   }
 };
+
+interface PostConvertTempRouteBadRequestErrRes {
+  message: string;
+}
+
+interface PostConvertTempRouteServerErrRes {
+  message: 'An unexpected error occurred';
+}
+
+interface PostConvertTempRouteOkRes {
+  token: string;
+  user: IPermanentUserSelfView;
+}
 
 // === POST /users/convert_temp ================================================
 //
@@ -121,8 +167,11 @@ export const handleConvertTempUser = async (
   try {
     const { email, username, password, authUser } = req.body;
     const tempUserIdRaw = authUser?.id;
-    if (!Types.ObjectId.isValid(tempUserIdRaw)) {
-      return res.status(400).json({ error: "Invalid user id." });
+    if (! Types.ObjectId.isValid(tempUserIdRaw)) {
+      const resp : PostConvertTempRouteBadRequestErrRes = ({
+        message: "Invalid user id.",
+      });
+      return res.status(400).json(resp);
     }
     const tempUserId = new Types.ObjectId(tempUserIdRaw);
     
@@ -152,32 +201,64 @@ export const handleConvertTempUser = async (
     });
 
     if (! user) {
-      return res.status(400).json({ error: "Could not find temp user to convert." });
+      const resp : PostConvertTempRouteBadRequestErrRes = ({
+        message: "Could not find temp user to convert.",
+      });
+      return res.status(400).json(resp);
     }
     
-    const userFinal = await user.save();
-
     // --- Automatically log in user via service ---
     try {
-      const loginResult = await permanentUserLoginService("username", username, password);
-      return res.status(201).json({
-        user: userFinal.toSelfView(),
-        token: loginResult.token
-      });
+      const loginResult = await loginPermanentUser("username", username, password);
+
+      switch (loginResult.kind) {
+        case 'other_err':
+        // -- If user creation and authentication logic has been implemented properly,
+        // the following errors should never occur
+          throw loginResult.err;
+        case 'no_user':
+          throw new Error('No such user found');
+        case 'no_perm_user':
+          throw new Error('No permanent user found');
+        case 'bad_pass':
+          throw new Error('Invalid password');
+        case 'ok':
+        {
+          const resp : PostConvertTempRouteOkRes = ({
+            user: loginResult.user.toSelfView(),
+            token: loginResult.token
+          });
+          return res.status(201).json(resp);
+        }
+        default:
+          throw new Error(`Unexpected login result: ${JSON.stringify(loginResult)}`);
+      }// -- end switch (loginResult.kind)
     } catch (err: any) {
       if (process.env.NODE_ENV !== 'production') {
         console.error("Login after signup failed: ", err);   
       } else {
         console.error("Login after signup failed");   
       }
-      return res.status(500).json({ message: 'Unexpected login failure' })   
+
+      const resp : PostConvertTempRouteServerErrRes = ({
+        message: 'An unexpected error occurred',
+      });
+      return res.status(500).json(resp)   
     }
     
   } catch (err: any) {
-    console.error("Create temp user failed: ", err);
-    return res.status(500).json({ error: "Internal server error" });
+    if (process.env.NODE_ENV !== 'production') {
+      console.error("Create temp user failed: ", err);   
+    } else {
+      console.error("Create temp user failed: ");   
+    }
+
+    const resp : PostConvertTempRouteServerErrRes = ({
+      message: 'An unexpected error occurred',
+    });
+    return res.status(500).json(resp)   
   }
-}
+};// -- end handleConvertTempUser
 
 // === POST /users/temp ========================================================
 //
@@ -188,7 +269,7 @@ export const handleCreateTempUser = async (
   _req: Request,
   res: Response
 ) => {
-  const resp = await tempUserLoginService();
+  const resp = await loginTempUser();
 
   switch(resp.status) {
     case 'missing_env':
