@@ -24,7 +24,7 @@ interface PostLoginRouteOkRes {
   user: IPermanentUserSelfView;
 }
 
-export const login = async (
+export const handleLogin = async (
   req: Request<{}, {}, AuthRequest>,
   res: Response
 ) => {
@@ -92,4 +92,4 @@ export const login = async (
 
     return res.status(500).json(resp);
   }
-};
+};// -- end handleLogin
