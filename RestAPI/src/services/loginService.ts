@@ -11,69 +11,108 @@ import {
 
 // -- local imports
 import {
+  type IUserType,
+  type IPermanentUser,
   isIPermanentUser,
   ITempUser,
-  type IUserType,
   User,
 } from '../models/User';
 import mongoose from 'mongoose';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
-const JWT_EXPIRATION_SECS = parseInt(process.env.JWT_EXPIRATION_SECS || '');
+const JWT_EXPIRATION_SECS = parseInt(process.env?.JWT_EXPIRATION_SECS ?? '');
 
 if (! JWT_SECRET) {
-  console.error('Missing required env var JWT_SECRET');
-  process.exit(1);
+  throw new Error('Missing required env var JWT_SECRET');
 }
 
 if (! JWT_EXPIRATION_SECS) {
-  console.error('Missing required env var JWT_EXPIRATION_SECS');
-  process.exit(1);
+  throw new Error('Missing required env var JWT_EXPIRATION_SECS');
 }
 
-export const permanentUserLoginService = async (
+export interface LoginPermanentUserOkRes {
+  kind: 'ok';
+  user: IPermanentUser;
+  token: string;
+}
+
+export interface LoginPermanentUserNoUserRes {
+  kind: 'no_user';
+}
+
+export interface LoginPermanentUserNoPermUserRes {
+  kind: 'no_perm_user';
+}
+
+export interface LoginPermanentUserBadPassRes {
+  kind: 'bad_pass';
+}
+
+export interface LoginPermanentUserOtherErrRes {
+  kind: 'other_err';
+  err: any;
+}
+
+export type LoginPermanentUserRes =
+  | LoginPermanentUserOkRes
+  | LoginPermanentUserNoUserRes
+  | LoginPermanentUserNoPermUserRes
+  | LoginPermanentUserBadPassRes
+  | LoginPermanentUserOtherErrRes
+;
+
+export const loginPermanentUser = async (
   authSource: 'email' | 'username',
   identifier: string,
   password: string,
-) => {
-  // Find user by email or username
-  const user: IUserType | null = await (async () => {
-    switch (authSource) {
-      case 'email':
-        return await User.findOne({ email: { '$eq': identifier } });
-      case 'username':
-        return await User.findOne({ username: { '$eq': identifier } });
-      default:
-        return null;
-    }
-  })();
+): Promise<LoginPermanentUserRes> => {
+  try {
+    // Find user by email or username
+    const user: IUserType | null = await (async () => {
+      switch (authSource) {
+        case 'email':
+          return await User.findOne({ email: { '$eq': identifier } });
+        case 'username':
+          return await User.findOne({ username: { '$eq': identifier } });
+        default:
+          return null;
+      }
+    })();
 
-  if (!user) throw new Error("Invalid credentials, user not found");
+    if (! user) return ({ kind: 'no_user' });
 
-  const userId = user._id;
+    const userId = user._id;
 
-  if (!isIPermanentUser(user)) throw new Error("User is not permanent");
+    if (! isIPermanentUser(user)) return ({ kind: 'no_perm_user' });
 
-  // Check password
-  if (!user.passwordHashed) throw new Error("Error: User does not have password");
-  const valid = await bcrypt.compare(password, user.passwordHashed);
-  if (!valid) throw new Error("Invalid credentials, incorrect password");
+    // Check password
+    if (! user.passwordHashed) throw new Error("Error: User does not have password");
 
-  // Sign JWT
-  const token = jwt.sign(
-    { sub: userId.toString() },   // sub = subject claim
-    JWT_SECRET, 
-    {
-      algorithm: 'HS256',
-      expiresIn: JWT_EXPIRATION_SECS,
-    },
-  );
+    const valid = await bcrypt.compare(password, user.passwordHashed);
+    if (! valid) return ({ kind: 'bad_pass' });
 
-  return ({
-    token,
-    user: user.toPublicView()
-  });
-}
+    // Sign JWT
+    const token = jwt.sign(
+      { sub: userId.toString() },   // sub = subject claim
+      JWT_SECRET, 
+      {
+        algorithm: 'HS256',
+        expiresIn: JWT_EXPIRATION_SECS,
+      },
+    );
+
+    return ({
+      kind: 'ok',
+      token,
+      user,
+    });
+  } catch (err: any) {
+    return {
+      kind: 'other_err',
+      err,
+    };
+  }
+};// -- end loginPermanentUser
 
 export type CreateTempUserRes =
   | { 
@@ -94,7 +133,7 @@ export type CreateTempUserRes =
     }
 ;
 
-export const tempUserLoginService = async (): Promise<CreateTempUserRes> => {
+export const loginTempUser = async (): Promise<CreateTempUserRes> => {
   // -- Config for generating random unique names
   const uniqueNamesConfig : UniqueNamesConfig = {
     dictionaries: [adjectives, colors, animals],
