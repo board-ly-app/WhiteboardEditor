@@ -1,9 +1,14 @@
 import Konva from "konva";
 
-import React, { 
+import React, {
   useEffect,
-  // useRef 
+  // useRef
 } from "react";
+
+import {
+  KONVA_NODE_CANVAS_KEY,
+  KONVA_NODE_UI_ONLY_KEY,
+} from "@/app.config";
 
 const GUIDELINE_OFFSET = 5;
 
@@ -96,15 +101,22 @@ export class SnappingMonitor {
   }
 
   getLineGuideStops(skipShape: SnapObject): LineGuideStopType {
-    const stage = skipShape.getStage();
-    if (!stage) return { vertical: [], horizontal: [] };
+    const canvasGroup = skipShape.findAncestor(`.${KONVA_NODE_CANVAS_KEY}`) as Konva.Group | null;
+    if (!canvasGroup) return { vertical: [], horizontal: [] };
 
-    // we can snap to stage borders and the center of the stage
-    const vertical = [0, stage.width() / 2, stage.width()];
-    const horizontal = [0, stage.height() / 2, stage.height()];
+    // we can snap to the containing canvas's borders and center, in absolute
+    // coordinates to match the shapes' client rects
+    const transform = canvasGroup.getAbsoluteTransform();
+    const topLeft = transform.point({ x: 0, y: 0 });
+    const bottomRight = transform.point({
+      x: canvasGroup.width(),
+      y: canvasGroup.height()
+    });
+    const vertical = [topLeft.x, (topLeft.x + bottomRight.x) / 2, bottomRight.x];
+    const horizontal = [topLeft.y, (topLeft.y + bottomRight.y) / 2, bottomRight.y];
 
-    // and we snap over edges and center of each object on the canvas
-    stage.find("Shape").forEach((guideItem) => {
+    // and we snap over edges and center of each object on the same canvas
+    canvasGroup.find("Shape").forEach((guideItem) => {
       if (guideItem.getParent() instanceof Konva.Transformer) {
         return;
       }
@@ -115,6 +127,15 @@ export class SnappingMonitor {
       // (e.g. a vector's endpoint anchors and selection highlight), so an
       // object never snaps to its own parts.
       if (guideItem.getParent() === skipShape.getParent()) {
+        return;
+      }
+      // Skip objects inside nested child canvases; their nearest canvas
+      // ancestor is the child canvas, not this one.
+      if (guideItem.findAncestor(`.${KONVA_NODE_CANVAS_KEY}`) !== canvasGroup) {
+        return;
+      }
+      // Skip UI-only elements (canvas border, editor label).
+      if (guideItem.findAncestor(`.${KONVA_NODE_UI_ONLY_KEY}`)) {
         return;
       }
       const box = guideItem.getClientRect();

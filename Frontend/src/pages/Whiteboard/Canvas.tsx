@@ -31,6 +31,7 @@ import {
 
 // -- local imports
 import {
+  KONVA_NODE_CANVAS_KEY,
   KONVA_NODE_UI_ONLY_KEY,
 } from '@/app.config';
 
@@ -520,6 +521,7 @@ const Canvas = ({
   return (
     <Group
       ref={groupRef}
+      name={KONVA_NODE_CANVAS_KEY}
       x={originX}
       y={originY}
       width={width}
