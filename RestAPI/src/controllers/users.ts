@@ -119,7 +119,7 @@ export const handleCreateUser = async (
       {
         const resp : PostUserRouteOkRes = ({
           user: loginResult.user.toSelfView(),
-          token: loginResult.token,
+          token: loginResult.accessToken,
         });
 
         return res.status(201).json(resp);
@@ -166,7 +166,7 @@ export const handleConvertTempUser = async (
 ) => {
   try {
     const { email, username, password, authUser } = req.body;
-    const tempUserIdRaw = authUser?.id;
+    const tempUserIdRaw = authUser?._id;
     if (! Types.ObjectId.isValid(tempUserIdRaw)) {
       const resp : PostConvertTempRouteBadRequestErrRes = ({
         message: "Invalid user id.",
@@ -226,7 +226,7 @@ export const handleConvertTempUser = async (
         {
           const resp : PostConvertTempRouteOkRes = ({
             user: loginResult.user.toSelfView(),
-            token: loginResult.token
+            token: loginResult.accessToken
           });
           return res.status(201).json(resp);
         }
@@ -302,7 +302,7 @@ export const handleGetUserById = async (
   res: Response
 ) => {
     const { authUser } = req.body;
-    const { id: authUserId } = authUser;
+    const { _id: authUserId } = authUser;
     const { userId } = req.params;
     const targetUserId = (userId === 'me') ? authUserId : userId;
 
@@ -342,7 +342,7 @@ export const handlePatchOwnUser = async (
     ...req.body
   });
   const {
-    id: userId,
+    _id: userId,
   } = authUser;
   const resp = await getUserById(userId);
   
@@ -421,7 +421,7 @@ export const handleDeleteOwnUser = async (
     password,
   } = req.body;
   const {
-    id: userId,
+    _id: userId,
   } = authUser;
   const user = await User.findOne({
     '_id': userId,
@@ -475,7 +475,7 @@ export const handleGetSharedWhiteboardsByUser = async (
     authUser,
   } = req.body;
   const {
-    id: authUserId,
+    _id: authUserId,
   } = authUser;
 
   const targetUserId = (userId === 'me') ?

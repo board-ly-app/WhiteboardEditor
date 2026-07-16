@@ -29,7 +29,7 @@ export const handleGetAllNotifications = async (
     authUser,
   } = req.body;
   const {
-    id: authUserId,
+    _id: authUserId,
   } = authUser;
 
   const resp = await getAllNotifications(authUserId);
@@ -58,7 +58,7 @@ export const handleGetNotification = async (
     authUser,
   } = req.body;
   const {
-    id: authUserId,
+    _id: authUserId,
   } = authUser;
   const {
     notificationId: notificationIdStr,
@@ -105,7 +105,7 @@ export const handleDeleteNotification = async (
     notificationId: notificationIdStr,
   } = req.body;
   const {
-    id: authUserId,
+    _id: authUserId,
   } = authUser;
 
   if (! Types.ObjectId.isValid(notificationIdStr)) {

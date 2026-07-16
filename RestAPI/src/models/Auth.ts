@@ -1,4 +1,6 @@
-import { Types } from 'mongoose';
+import {
+  type IUserType,
+} from './User';
 
 interface BaseAuthRequest {
   password: string;
@@ -35,7 +37,5 @@ export interface AuthPayload {
 //
 // =============================================================================
 export interface AuthorizedRequestBody {
-  authUser: {
-    id: Types.ObjectId;
-  };
+  authUser: IUserType;
 }

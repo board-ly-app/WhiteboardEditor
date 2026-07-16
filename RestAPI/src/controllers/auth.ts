@@ -35,7 +35,7 @@ export const handleLogin = async (
 
     const identifier = (authSource === "email") ? req.body.email : req.body.username;
     const loginResult = await loginPermanentUser(authSource, identifier, password);
-
+    
     switch (loginResult.kind) {
       case 'bad_pass':
       case 'no_user':
@@ -72,7 +72,7 @@ export const handleLogin = async (
       case 'ok':
       {
         const resp : PostLoginRouteOkRes = ({
-          token: loginResult.token,
+          token: loginResult.accessToken,
           user: loginResult.user.toSelfView(),
         });
 
