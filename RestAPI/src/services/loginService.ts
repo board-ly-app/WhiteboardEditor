@@ -1,4 +1,7 @@
 // -- third-party imports
+import mongoose, {
+  Types,
+} from 'mongoose';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import {
@@ -17,23 +20,107 @@ import {
   ITempUser,
   User,
 } from '../models/User';
-import mongoose from 'mongoose';
+
+import {
+  type AuthPayload,
+} from '../models/Auth';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
-const JWT_EXPIRATION_SECS = parseInt(process.env?.JWT_EXPIRATION_SECS ?? '');
 
 if (! JWT_SECRET) {
   throw new Error('Missing required env var JWT_SECRET');
 }
 
-if (! JWT_EXPIRATION_SECS) {
-  throw new Error('Missing required env var JWT_EXPIRATION_SECS');
+const ACCESS_TOKEN_EXPIRATION_SECS = parseInt(process.env?.ACCESS_TOKEN_EXPIRATION_SECS ?? '');
+
+if (! ACCESS_TOKEN_EXPIRATION_SECS) {
+  throw new Error('Missing required env var ACCESS_TOKEN_EXPIRATION_SECS');
 }
+
+const REFRESH_TOKEN_EXPIRATION_SECS = parseInt(process.env?.REFRESH_TOKEN_EXPIRATION_SECS ?? '');
+
+if (! REFRESH_TOKEN_EXPIRATION_SECS) {
+  throw new Error('Missing required env var REFRESH_TOKEN_EXPIRATION_SECS');
+}
+
+interface VerifyUserFromTokenInvalidTokenRes {
+  kind: 'invalid_token';
+}
+
+interface VerifyUserFromTokenNoUserRes {
+  kind: 'no_user';
+}
+
+interface VerifyUserFromTokenOkRes {
+  kind: 'ok';
+  user: IUserType;
+}
+
+export type VerifyUserFromTokenRes =
+  | VerifyUserFromTokenInvalidTokenRes
+  | VerifyUserFromTokenNoUserRes
+  | VerifyUserFromTokenOkRes
+;
+
+export const verifyUserFromToken = async (
+  token: string
+): Promise<VerifyUserFromTokenRes> => {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as AuthPayload;
+
+    if (! Types.ObjectId.isValid(payload.sub)) return { kind: 'invalid_token' };
+
+    const userId = new Types.ObjectId(payload.sub);
+    const user = await User.findById(userId);
+
+    if (! user) return { kind: 'no_user' };
+
+    await user.populateAttribs();
+
+    return {
+      kind: 'ok',
+      user,
+    };
+  } catch (_err) {
+    return { kind: 'invalid_token' };
+  }
+};// -- end verifyUserFromToken
+
+export const createAccessToken = (userId: Types.ObjectId): string => {
+  const token = jwt.sign(
+    {
+      sub: userId.toString(),
+    },
+    JWT_SECRET, 
+    {
+      algorithm: 'HS256',
+      expiresIn: ACCESS_TOKEN_EXPIRATION_SECS,
+    },
+  );
+
+  return token;
+};// -- end createAccessToken
+
+export const createRefreshToken = (userId: Types.ObjectId): string => {
+  const token = jwt.sign(
+    {
+      sub: userId.toString(),
+    },
+    JWT_SECRET, 
+    {
+      algorithm: 'HS256',
+      expiresIn: REFRESH_TOKEN_EXPIRATION_SECS,
+    },
+  );
+
+  return token;
+};// -- end createRefreshToken
 
 export interface LoginPermanentUserOkRes {
   kind: 'ok';
   user: IPermanentUser;
-  token: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 export interface LoginPermanentUserNoUserRes {
@@ -92,18 +179,13 @@ export const loginPermanentUser = async (
     if (! valid) return ({ kind: 'bad_pass' });
 
     // Sign JWT
-    const token = jwt.sign(
-      { sub: userId.toString() },   // sub = subject claim
-      JWT_SECRET, 
-      {
-        algorithm: 'HS256',
-        expiresIn: JWT_EXPIRATION_SECS,
-      },
-    );
+    const accessToken = createAccessToken(userId);
+    const refreshToken = createRefreshToken(userId);
 
     return ({
       kind: 'ok',
-      token,
+      accessToken,
+      refreshToken,
       user,
     });
   } catch (err: any) {
@@ -168,40 +250,18 @@ export const loginTempUser = async (): Promise<CreateTempUserRes> => {
       // -- Fall back on "TempUser<User Object ID>"
       return `TempUser-${tempUserId.toHexString()}`;
     })();
-
-    // unique name is found
-    const expirationTime = process.env.TEMP_USER_EXPIRATION_SECS;
-    if (!expirationTime) {
-      console.error("TEMP_USER_EXPIRATION_SECS not defined in env.");
-      return {
-        status: 'missing_env',
-        envVar: 'TEMP_USER_EXPIRATION_SECS'
-      }
-    }
   
     const tempUser = new User({
       _id: tempUserId,
-      username: tempUsername,
       kind: 'temp',
+      username: tempUsername,
       createdAt: new Date(Date.now()),
     });
   
     const saved = await tempUser.save();
   
-    const accessToken = jwt.sign(
-      { 
-        sub: saved._id.toString(),
-        isTemp: true
-      },
-      JWT_SECRET,
-      { expiresIn: "15m" }
-    );
-  
-    const refreshToken = jwt.sign(
-      { userId: saved._id, isTemp: true },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const accessToken = createAccessToken(tempUserId);
+    const refreshToken = createRefreshToken(tempUserId);
   
     return {
       status: 'ok',
@@ -218,4 +278,4 @@ export const loginTempUser = async (): Promise<CreateTempUserRes> => {
       message: `${e}`
     }
   }
-};
+};// -- end loginTempUser

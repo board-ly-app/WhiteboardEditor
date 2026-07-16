@@ -48,7 +48,7 @@ export const handleGetWhiteboardById = async (
   res: Response
 ) => {
   const authUser = req.body?.authUser;
-  const userId = authUser?.id;
+  const userId = authUser?._id;
   const {
     whiteboardId,
   } = req.params;
@@ -89,7 +89,7 @@ export const handleGetWhiteboardById = async (
           }
         }
 
-        if (userId && permsByUserId[userId.toHexString()] === 'own') {
+        if (userId && permsByUserId[userId.toString()] === 'own') {
           // -- Return owner view
           const wbOwnerView = whiteboard.toOwnerView();
           return res.status(200).json(wbOwnerView);
@@ -110,7 +110,7 @@ export const handleCreateWhiteboard = async (
 ) => {
   try {
     const { authUser, name, visibility } = req.body;
-    const { id: ownerId } = authUser;
+    const { _id: ownerId } = authUser;
     console.log("handleCreateWhiteboard req.body: ", req.body);
     
     // Give owner 'own' permission for user_permissions
@@ -208,7 +208,7 @@ export const handleCreateTempWhiteboard = async (
 ) => {
   try {
     const { authUser, name } = req.body;
-    const { id: ownerId } = authUser;
+    const { _id: ownerId } = authUser;
     console.log("handleCreateTempWhiteboard req.body: ", req.body);
     
     // Give owner 'own' permission for user_permissions
@@ -260,7 +260,7 @@ export const handleConvertTempToPerm = async (
   res: Response
 ) => {
   const { whiteboardId } = req.params;
-  const tempUserId = req.body.authUser.id;
+  const tempUserId = req.body.authUser._id;
   const permanentUserId = req.body.user._id || req.body.user.id;
 
   try {
@@ -338,7 +338,7 @@ export const handleChangeWhiteboardName = async (
 ) => {
   const { whiteboardId } = req.params;
   const { newName, authUser } = req.body;
-  const userId = authUser.id;
+  const userId = authUser._id;
   
   try {
     const whiteboard = await Whiteboard.findById(whiteboardId);
@@ -388,7 +388,7 @@ export const handleGetOwnWhiteboards = async (
     authUser,
   } = req.body;
   const {
-    id: ownerId,
+    _id: ownerId,
   } = authUser;
   // -- filter out dangling user permissions (user permissions for users who no
   // longer exist)
@@ -422,7 +422,7 @@ export const handleShareWhiteboard = async (
 
     const result = await setSharedUsers(
       whiteboardId,
-      authUser.id,
+      authUser._id,
       userPermissions
     );
 
@@ -494,7 +494,7 @@ export const handlePutThumbnail = async (
     const hasPermission = whiteboard.user_permissions.some(perm =>
       perm.type === 'user' &&
       perm.user &&
-      perm.user._id.toString() === authUser.id.toString() &&
+      perm.user._id.toString() === authUser._id.toString() &&
       (perm.permission === 'own' || perm.permission === 'edit')
     );
 
@@ -535,7 +535,7 @@ export const handleDeleteWhiteboard = async (
 
     const resp = await deleteWhiteboardById(
       new Types.ObjectId(whiteboardId),
-      authUser.id
+      authUser._id
     );
 
     switch (resp.status) {

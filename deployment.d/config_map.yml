@@ -9,7 +9,7 @@ data:
 
   # JWT
   jwt_secret: "${WHITEBOARD_EDITOR_JWT_SECRET}"
-  jwt_expiration_secs: "${WHITEBOARD_EDITOR_JWT_EXPIRATION_SECS}"
+  jwt_expiration_secs: "${WHITEBOARD_EDITOR_ACCESS_TOKEN_EXPIRATION_SECS}"
 
   # Temp user settings
   temp_user_expiration_secs: "${WHITEBOARD_EDITOR_TEMP_USER_EXPIRATION_SECS}"
