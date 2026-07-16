@@ -27,7 +27,7 @@ import {
 import {
   loginPermanentUser,
   loginTempUser,
-} from '../services/loginService';
+} from '../services/authService';
 
 import {
   type AuthorizedRequestBody,
