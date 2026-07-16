@@ -3,7 +3,7 @@ import {
 } from "express";
 import {
   loginPermanentUser,
-} from "../services/loginService";
+} from "../services/authService";
 import {
   type AuthRequest,
 } from "../models/Auth";

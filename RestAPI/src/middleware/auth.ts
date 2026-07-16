@@ -17,7 +17,7 @@ import {
 
 import {
   verifyUserFromToken,
-} from '../services/loginService';
+} from '../services/authService';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
