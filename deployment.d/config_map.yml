@@ -8,7 +8,7 @@ data:
   mongo_uri: "${WHITEBOARD_EDITOR_MONGO_URI}"
 
   # JWT
-  jwt_secret: "${WHITEBOARD_EDITOR_JWT_SECRET}"
+  jwt_secret: "${WHITEBOARD_EDITOR_ACCESS_TOKEN_SECRET}"
   jwt_expiration_secs: "${WHITEBOARD_EDITOR_ACCESS_TOKEN_EXPIRATION_SECS}"
 
   # Temp user settings

@@ -19,10 +19,10 @@ import {
   verifyUserFromAccessToken,
 } from '../services/authService';
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
 
-if (! JWT_SECRET) {
-  console.error('ERROR: missing required env var JWT_SECRET');
+if (! ACCESS_TOKEN_SECRET) {
+  console.error('ERROR: missing required env var ACCESS_TOKEN_SECRET');
   process.exit(1);
 }
 

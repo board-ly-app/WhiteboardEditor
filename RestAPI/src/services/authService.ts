@@ -27,10 +27,16 @@ import {
   isRefreshTokenPayload,
 } from '../models/Auth';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
 
-if (! JWT_SECRET) {
-  throw new Error('Missing required env var JWT_SECRET');
+if (! ACCESS_TOKEN_SECRET) {
+  throw new Error('Missing required env var ACCESS_TOKEN_SECRET');
+}
+
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
+
+if (! REFRESH_TOKEN_SECRET) {
+  throw new Error('Missing required env var REFRESH_TOKEN_SECRET');
 }
 
 const ACCESS_TOKEN_EXPIRATION_SECS = parseInt(process.env?.ACCESS_TOKEN_EXPIRATION_SECS ?? '');
@@ -68,7 +74,7 @@ export const verifyUserFromAccessToken = async (
   token: string
 ): Promise<VerifyUserFromAccessTokenRes> => {
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as AccessTokenPayload;
+    const payload = jwt.verify(token, ACCESS_TOKEN_SECRET) as AccessTokenPayload;
 
     if (! Types.ObjectId.isValid(payload.sub)) return { kind: 'invalid_token' };
 
@@ -116,7 +122,7 @@ export const verifyUserFromRefreshToken = async (
   token: string
 ): Promise<VerifyUserFromRefreshTokenRes> => {
   try {
-    const payload : any = jwt.verify(token, JWT_SECRET);
+    const payload : any = jwt.verify(token, REFRESH_TOKEN_SECRET);
 
     if (! isRefreshTokenPayload(payload)) return ({ kind: 'malformed_token' });
 
@@ -140,7 +146,7 @@ export const createAccessToken = (userId: Types.ObjectId): string => {
   const payload : AccessTokenPayload = ({
     sub: userId.toString(),
   });
-  const token = jwt.sign(payload, JWT_SECRET, {
+  const token = jwt.sign(payload, ACCESS_TOKEN_SECRET, {
     algorithm: 'HS256',
     expiresIn: ACCESS_TOKEN_EXPIRATION_SECS,
   });
@@ -153,7 +159,7 @@ export const createRefreshToken = (userId: Types.ObjectId): string => {
     kind: 'refresh',
     userId: userId.toHexString(),
   });
-  const token = jwt.sign(payload, JWT_SECRET, {
+  const token = jwt.sign(payload, REFRESH_TOKEN_SECRET, {
     algorithm: 'HS256',
     expiresIn: REFRESH_TOKEN_EXPIRATION_SECS,
   });

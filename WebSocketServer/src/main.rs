@@ -33,9 +33,9 @@ async fn main() -> process::ExitCode {
     };
 
     let port = 3000u16;
-    let jwt_secret = match env::var("JWT_SECRET") {
+    let jwt_secret = match env::var("ACCESS_TOKEN_SECRET") {
         Err(e) => {
-            eprintln!("Could not find $JWT_SECRET: {}", e);
+            eprintln!("Could not find $ACCESS_TOKEN_SECRET: {}", e);
             return process::ExitCode::FAILURE;
         }
         Ok(secret) => secret,

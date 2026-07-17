@@ -11,11 +11,11 @@ import jwt from "jsonwebtoken";
 const MONGO_URI = 'mongodb://test_db:27017/testdb';
 
 const {
-  JWT_SECRET,
+  ACCESS_TOKEN_SECRET,
 } = process.env;
 
-if (! JWT_SECRET) {
-  throw new Error('JWT_SECRET not defined in process environment');
+if (! ACCESS_TOKEN_SECRET) {
+  throw new Error('ACCESS_TOKEN_SECRET not defined in process environment');
 }
 
 // handle database connection
@@ -131,7 +131,7 @@ describe("Users API", () => {
       // Generate signed JWT
       const authToken = jwt.sign(
         { sub: user._id.toHexString() },   // sub = subject claim
-        JWT_SECRET,
+        ACCESS_TOKEN_SECRET,
         { expiresIn: 999999999 }
       );
 
