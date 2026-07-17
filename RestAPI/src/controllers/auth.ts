@@ -131,6 +131,7 @@ export const handleLogin = async (
         return res.status(201)
           .cookie(REFRESH_TOKEN_COOKIE_ID, loginResult.refreshToken, {
             path: `${AUTH_ROUTE}/refresh`,
+            sameSite: 'strict',
             httpOnly: true,
             maxAge: REFRESH_TOKEN_EXPIRATION_SECS * 1_000,
           })
@@ -161,6 +162,7 @@ export const handleLogout = (
   return res.status(201)
     .clearCookie(REFRESH_TOKEN_COOKIE_ID, {
       path: `${AUTH_ROUTE}/refresh`,
+      sameSite: 'strict',
       httpOnly: true,
     })
     .end();
