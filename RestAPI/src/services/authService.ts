@@ -1,4 +1,7 @@
 // -- third-party imports
+import {
+  type Response,
+} from 'express';
 import mongoose, {
   Types,
 } from 'mongoose';
@@ -13,6 +16,12 @@ import {
 } from 'unique-names-generator';
 
 // -- local imports
+import {
+  AUTH_ROUTE,
+  REFRESH_TOKEN_COOKIE_ID,
+  ACCESS_TOKEN_COOKIE_ID,
+} from '../app.config';
+
 import {
   type IUserType,
   type IPermanentUser,
@@ -51,6 +60,23 @@ const REFRESH_TOKEN_EXPIRATION_SECS = parseInt(process.env?.REFRESH_TOKEN_EXPIRA
 if (! REFRESH_TOKEN_EXPIRATION_SECS) {
   throw new Error('Missing required env var REFRESH_TOKEN_EXPIRATION_SECS');
 }
+
+export const setRefreshTokenCookie = (res: Response, token: string): void => {
+  res.cookie(REFRESH_TOKEN_COOKIE_ID, token, {
+    path: `${AUTH_ROUTE}/refresh`,
+    sameSite: 'strict',
+    httpOnly: true,
+    maxAge: REFRESH_TOKEN_EXPIRATION_SECS * 1_000,
+  });
+};// -- end setRefreshTokenCookie
+
+export const setAccessTokenCookie = (res: Response, token: string): void => {
+  res.cookie(ACCESS_TOKEN_COOKIE_ID, token, {
+    sameSite: 'strict',
+    httpOnly: true,
+    maxAge: ACCESS_TOKEN_EXPIRATION_SECS * 1_000,
+  });
+};// -- end setAccessTokenCookie
 
 interface VerifyUserFromAccessTokenInvalidTokenRes {
   kind: 'invalid_token';

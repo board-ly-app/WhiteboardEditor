@@ -93,7 +93,7 @@ export default function AccountSettings() {
 
         console.error(err);
 
-        if (apiErr.status === 403) {
+        if (apiErr.status === 401) {
           // redirect to login
           navigate(`/login?redirect=${locationEncoded}`);
         }
@@ -136,7 +136,7 @@ export default function AccountSettings() {
 
         console.error(err);
 
-        if (apiErr.status === 403) {
+        if (apiErr.status === 401) {
           // redirect to login
           navigate(`/login?redirect=${locationEncoded}`);
         }
@@ -222,7 +222,7 @@ export default function AccountSettings() {
 
         console.error(err);
 
-        if (apiErr.status === 403) {
+        if (apiErr.status === 401) {
           // -- redirect to login
           navigate(`/login?redirect=${locationEncoded}`);
         }

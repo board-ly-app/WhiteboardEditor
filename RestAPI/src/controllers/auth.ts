@@ -1,5 +1,6 @@
 import {
-  Request, Response,
+  Request,
+  Response,
 } from "express";
 
 import {
@@ -11,6 +12,8 @@ import {
 import {
   type LoginPermanentUserRes,
   createAccessToken,
+  setAccessTokenCookie,
+  setRefreshTokenCookie,
   verifyUserFromRefreshToken,
   loginPermanentUser,
 } from "../services/authService";
@@ -33,18 +36,6 @@ interface PostLoginRouteOkRes {
   token: string;
   user: IPermanentUserSelfView;
 }
-
-if (! process.env.REFRESH_TOKEN_EXPIRATION_SECS) {
-  throw new Error('Env var REFRESH_TOKEN_EXPIRATION_SECS not set');
-}
-
-const REFRESH_TOKEN_EXPIRATION_SECS = parseInt(process.env.REFRESH_TOKEN_EXPIRATION_SECS);
-
-if (! process.env.ACCESS_TOKEN_EXPIRATION_SECS) {
-  throw new Error('Env var ACCESS_TOKEN_EXPIRATION_SECS not set');
-}
-
-const ACCESS_TOKEN_EXPIRATION_SECS = parseInt(process.env.ACCESS_TOKEN_EXPIRATION_SECS);
 
 export const handleLogin = async (
   req: Request<{}, {}, AuthRequest>,
@@ -134,18 +125,10 @@ export const handleLogin = async (
           user: loginResult.user.toSelfView(),
         });
 
+        setRefreshTokenCookie(res, loginResult.refreshToken);
+        setAccessTokenCookie(res, loginResult.accessToken);
+
         return res.status(201)
-          .cookie(REFRESH_TOKEN_COOKIE_ID, loginResult.refreshToken, {
-            path: `${AUTH_ROUTE}/refresh`,
-            sameSite: 'strict',
-            httpOnly: true,
-            maxAge: REFRESH_TOKEN_EXPIRATION_SECS * 1_000,
-          })
-          .cookie(ACCESS_TOKEN_COOKIE_ID, loginResult.accessToken, {
-            sameSite: 'strict',
-            httpOnly: true,
-            maxAge: ACCESS_TOKEN_EXPIRATION_SECS * 1_000,
-          })
           .json(resp);
       }
       default:
@@ -204,7 +187,7 @@ export const handleRefreshAccessToken = async (
     const refreshTokenCookie = req.cookies[REFRESH_TOKEN_COOKIE_ID];
 
     if (! refreshTokenCookie) {
-      return res.status(403).end();
+      return res.status(401).end();
     }
 
     const verifyUserRes = await verifyUserFromRefreshToken(refreshTokenCookie);
@@ -219,7 +202,7 @@ export const handleRefreshAccessToken = async (
         const resp : RefreshAccessTokenUnauthedRes = ({
           message: 'Invalid or expired refresh token provided.',
         });
-        return res.status(400).json(resp);
+        return res.status(401).json(resp);
       }
       case 'ok':
       {
