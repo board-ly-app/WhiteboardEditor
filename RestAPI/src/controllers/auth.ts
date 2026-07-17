@@ -152,6 +152,20 @@ export const handleLogin = async (
   }
 };// -- end handleLogin
 
+export const handleLogout = (
+  _req: Request,
+  res: Response,
+) => {
+  // -- Don't bother verifying whether user has a valid refresh token; end
+  // result will be the same regardless.
+  return res.status(201)
+    .clearCookie(REFRESH_TOKEN_COOKIE_ID, {
+      path: `${AUTH_ROUTE}/refresh`,
+      httpOnly: true,
+    })
+    .end();
+};// -- end handleLogout
+
 interface RefreshAccessTokenUnauthedRes {
   message: string;
 }
