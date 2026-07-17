@@ -77,7 +77,7 @@ export const UserCacheProvider = ({
       const res : AxiosResponse<User> = await api.get(`/users/${userId}`);
 
       if (res.status >= 400) {
-        if (res.status === 403) {
+        if (res.status === 401) {
           const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
 
           navigate(`/login?redirect=${locationEncoded}`);

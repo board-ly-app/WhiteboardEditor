@@ -48,7 +48,7 @@ export const authenticateJWT = async (
       case 'no_user':
       case 'invalid_token':
         console.log('Access token rejected:', verifyTokenRes.kind);
-        return res.status(403).json({ error: "Invalid or expired token" });
+        return res.status(401).json({ error: "Invalid or expired token" });
       case 'ok':
         {
           if (! req.body) {

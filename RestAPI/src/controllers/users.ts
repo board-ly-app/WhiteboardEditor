@@ -27,6 +27,8 @@ import {
 import {
   loginPermanentUser,
   loginTempUser,
+  setRefreshTokenCookie,
+  setAccessTokenCookie,
 } from '../services/authService';
 
 import {
@@ -277,16 +279,15 @@ export const handleCreateTempUser = async (
     case 'unexpected_error':
       return res.status(500).json({ message: resp.message });
     case 'ok':
-      res.cookie("refreshToken", resp.payload.refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "strict"
-      });
+      {
+        setRefreshTokenCookie(res, resp.payload.refreshToken);
+        setAccessTokenCookie(res, resp.payload.accessToken);
 
-      return res.status(201).json({ 
-        ...resp.payload,
-        user: resp.payload.user.toSelfView(),
-      });
+        return res.status(201).json({ 
+          ...resp.payload,
+          user: resp.payload.user.toSelfView(),
+        });
+      }
     default:
       throw new Error(`Unhandled case: ${resp}`);
   }
@@ -506,4 +507,4 @@ export const handleGetSharedWhiteboardsByUser = async (
         // accounted for.
         throw new Error(`Unexpected case: ${resp}`);
   }// end switch (resp.status)
-};
+};// -- end handleGetSharedWhiteboardsByUser

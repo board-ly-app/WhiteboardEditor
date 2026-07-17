@@ -128,7 +128,7 @@ const AllowedUsersPopover = ({ selected, onChange }: AllowedUsersPopoverProps) =
     onChange(next);
   };
 
-  if (whiteboardError && whiteboardError.status === 403) {
+  if (whiteboardError && whiteboardError.status === 401) {
     // -- redirect to login
     const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
 
