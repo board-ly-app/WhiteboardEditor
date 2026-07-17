@@ -9,7 +9,7 @@ import {
 import {
   type LoginPermanentUserRes,
   createAccessToken,
-  verifyUserFromToken,
+  verifyUserFromRefreshToken,
   loginPermanentUser,
 } from "../services/authService";
 import {
@@ -176,12 +176,15 @@ export const handleRefreshAccessToken = async (
       return res.status(403).end();
     }
 
-    const verifyUserRes = await verifyUserFromToken(refreshTokenCookie);
+    const verifyUserRes = await verifyUserFromRefreshToken(refreshTokenCookie);
 
     switch (verifyUserRes.kind) {
       case 'no_user':
       case 'invalid_token':
+      case 'malformed_token':
       {
+        console.error('Could not verify user from refresh token: ', verifyUserRes.kind);
+
         const resp : RefreshAccessTokenUnauthedRes = ({
           message: 'Invalid or expired refresh token provided.',
         });

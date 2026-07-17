@@ -16,7 +16,7 @@ import {
 } from '../models/Auth';
 
 import {
-  verifyUserFromToken,
+  verifyUserFromAccessToken,
 } from '../services/authService';
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -41,7 +41,7 @@ export const authenticateJWT = async (
 
     const token = authHeader.split(" ")[1];
 
-    const verifyTokenRes = await verifyUserFromToken(token);
+    const verifyTokenRes = await verifyUserFromAccessToken(token);
 
     switch (verifyTokenRes.kind) {
       case 'no_user':
@@ -85,7 +85,7 @@ export const authenticateJWTOptional = async (
 
     const token = authHeader.split(" ")[1];
 
-    const verifyTokenRes = await verifyUserFromToken(token);
+    const verifyTokenRes = await verifyUserFromAccessToken(token);
 
     switch (verifyTokenRes.kind) {
       case 'no_user':

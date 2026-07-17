@@ -22,7 +22,9 @@ import {
 } from '../models/User';
 
 import {
-  type AuthPayload,
+  type AccessTokenPayload,
+  type RefreshTokenPaylod,
+  isRefreshTokenPayload,
 } from '../models/Auth';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -43,30 +45,30 @@ if (! REFRESH_TOKEN_EXPIRATION_SECS) {
   throw new Error('Missing required env var REFRESH_TOKEN_EXPIRATION_SECS');
 }
 
-interface VerifyUserFromTokenInvalidTokenRes {
+interface VerifyUserFromAccessTokenInvalidTokenRes {
   kind: 'invalid_token';
 }
 
-interface VerifyUserFromTokenNoUserRes {
+interface VerifyUserFromAccessTokenNoUserRes {
   kind: 'no_user';
 }
 
-interface VerifyUserFromTokenOkRes {
+interface VerifyUserFromAccessTokenOkRes {
   kind: 'ok';
   user: IUserType;
 }
 
-export type VerifyUserFromTokenRes =
-  | VerifyUserFromTokenInvalidTokenRes
-  | VerifyUserFromTokenNoUserRes
-  | VerifyUserFromTokenOkRes
+export type VerifyUserFromAccessTokenRes =
+  | VerifyUserFromAccessTokenInvalidTokenRes
+  | VerifyUserFromAccessTokenNoUserRes
+  | VerifyUserFromAccessTokenOkRes
 ;
 
-export const verifyUserFromToken = async (
+export const verifyUserFromAccessToken = async (
   token: string
-): Promise<VerifyUserFromTokenRes> => {
+): Promise<VerifyUserFromAccessTokenRes> => {
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as AuthPayload;
+    const payload = jwt.verify(token, JWT_SECRET) as AccessTokenPayload;
 
     if (! Types.ObjectId.isValid(payload.sub)) return { kind: 'invalid_token' };
 
@@ -84,34 +86,77 @@ export const verifyUserFromToken = async (
   } catch (_err) {
     return { kind: 'invalid_token' };
   }
-};// -- end verifyUserFromToken
+};// -- end verifyUserFromAccessToken
+
+interface VerifyUserFromRefreshTokenInvalidTokenRes {
+  kind: 'invalid_token';
+}
+
+interface VerifyUserFromRefreshTokenMalformedTokenRes {
+  kind: 'malformed_token';
+}
+
+interface VerifyUserFromRefreshTokenNoUserRes {
+  kind: 'no_user';
+}
+
+interface VerifyUserFromRefreshTokenOkRes {
+  kind: 'ok';
+  user: IUserType;
+}
+
+export type VerifyUserFromRefreshTokenRes =
+  | VerifyUserFromRefreshTokenInvalidTokenRes
+  | VerifyUserFromRefreshTokenMalformedTokenRes
+  | VerifyUserFromRefreshTokenNoUserRes
+  | VerifyUserFromRefreshTokenOkRes
+;
+
+export const verifyUserFromRefreshToken = async (
+  token: string
+): Promise<VerifyUserFromRefreshTokenRes> => {
+  try {
+    const payload : any = jwt.verify(token, JWT_SECRET);
+
+    if (! isRefreshTokenPayload(payload)) return ({ kind: 'malformed_token' });
+
+    const userId = new Types.ObjectId(payload.userId);
+    const user = await User.findById(userId);
+
+    if (! user) return { kind: 'no_user' };
+
+    await user.populateAttribs();
+
+    return {
+      kind: 'ok',
+      user,
+    };
+  } catch (_err) {
+    return { kind: 'invalid_token' };
+  }
+};// -- end verifyUserFromRefreshToken
 
 export const createAccessToken = (userId: Types.ObjectId): string => {
-  const token = jwt.sign(
-    {
-      sub: userId.toString(),
-    },
-    JWT_SECRET, 
-    {
-      algorithm: 'HS256',
-      expiresIn: ACCESS_TOKEN_EXPIRATION_SECS,
-    },
-  );
+  const payload : AccessTokenPayload = ({
+    sub: userId.toString(),
+  });
+  const token = jwt.sign(payload, JWT_SECRET, {
+    algorithm: 'HS256',
+    expiresIn: ACCESS_TOKEN_EXPIRATION_SECS,
+  });
 
   return token;
 };// -- end createAccessToken
 
 export const createRefreshToken = (userId: Types.ObjectId): string => {
-  const token = jwt.sign(
-    {
-      sub: userId.toString(),
-    },
-    JWT_SECRET, 
-    {
-      algorithm: 'HS256',
-      expiresIn: REFRESH_TOKEN_EXPIRATION_SECS,
-    },
-  );
+  const payload : RefreshTokenPaylod = ({
+    kind: 'refresh',
+    userId: userId.toHexString(),
+  });
+  const token = jwt.sign(payload, JWT_SECRET, {
+    algorithm: 'HS256',
+    expiresIn: REFRESH_TOKEN_EXPIRATION_SECS,
+  });
 
   return token;
 };// -- end createRefreshToken
