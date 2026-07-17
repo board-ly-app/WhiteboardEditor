@@ -23,6 +23,7 @@ import {
   type ButtonStatus,
   Button,
 } from '@/components/ui/button';
+import BackgroundVideo from '@/components/BackgroundVideo';
 
 interface UserAuthProps {
   action: "login" | "signup";
@@ -121,29 +122,31 @@ const UserAuth = ({
         title={authActionLabel}
       />
 
+      <BackgroundVideo />
+      
       <div className="flex flex-col justify-center items-center pb-12">
         {/** Main branding section **/}
         <div
           id="branding"
-          className="text-center mx-16 md:mx-32 lg:mx-56 mt-4 mb-8 md:mb-12"
+          className="text-center mx-16 md:mx-32 lg:mx-56 mt-4 mb-8 md:mb-12 max-w-2xl"
         >
-          <h1 className="text-4xl md:text-8xl text-h1-text font-light mb-2 md:my-8">
+          <h1 className="text-4xl md:text-8xl font-light text-dark-blue-text mb-2 md:my-8">
             {APP_NAME}
           </h1>
 
           <Button 
             onClick={handleCreateTrialWhiteboard}
             status={tempWhiteboardButtonStatus}
-            className="text-h2-text font-medium rounded-lg border-border border-1 p-4 bg-button-600 hover:bg-button-hover hover:cursor-pointer shadow-md"
+            className="text-h2-text font-medium rounded-lg border-border border-1 p-4 bg-page-background hover:bg-button-hover hover:cursor-pointer shadow-md"
           >
             Try it out!
           </Button>
 
-          <h2 className="text-2xl md:text-4xl text-h2-text font-thin my-4">
+          <h2 className="text-2xl md:text-4xl font-thin text-dark-blue-text my-4">
             The better web whiteboard
           </h2>
 
-          <p className="text-md md:text-lg text-p-text font-sans">
+          <p className="text-md md:text-lg font-sans text-dark-blue-text">
             Need a place to make quick and easy diagrams to share with your colleagues? Look no further — Boardly is here for you.
             Get started in minutes and share your designs with your peers with a simple email invite.
           </p>
