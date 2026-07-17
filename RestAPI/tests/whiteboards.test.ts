@@ -1,11 +1,15 @@
 import request from "supertest";
-import app from "../src/app";
 import mongoose, {
   Types,
 } from 'mongoose';
 import jwt from "jsonwebtoken";
 
 // -- imports from models
+import app from "../src/app";
+import {
+  ACCESS_TOKEN_COOKIE_ID,
+} from '../src/app.config';
+
 import {
   type IUser,
 } from '../src/models/User';
@@ -161,11 +165,11 @@ describe("Whiteboards API", () => {
       return;
     }
 
-    const targetUrl = `/api/v1/whiteboards/id/${whiteboard._id.toString()}`;
+    const targetUrl = `/api/v1/whiteboards/id/${whiteboard._id.toHexString()}`;
 
     // Generate signed JWT
     const authToken = jwt.sign(
-      { sub: owner._id.toString() },   // sub = subject claim
+      { sub: owner._id.toHexString() },   // sub = subject claim
       jwtSecret,
       { expiresIn: 999999999 }
     );
@@ -173,7 +177,7 @@ describe("Whiteboards API", () => {
     // -- Get whiteboard
     const wbRes = await request(app)
       .get(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(200);
 
@@ -219,7 +223,7 @@ describe("Whiteboards API", () => {
     // -- Get whiteboard
     const wbRes = await request(app)
       .get(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(200);
 
@@ -272,7 +276,7 @@ describe("Whiteboards API", () => {
     // -- Create whiteboard
     const wbRes = await request(app)
       .post("/api/v1/whiteboards")
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         name: "Alice's Whiteboard",
         width: 3000,
@@ -301,7 +305,7 @@ describe("Whiteboards API", () => {
 
     const res = await request(app)
       .post("/api/v1/whiteboards/temp")
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         name: "Temporary Session",
         width: 1920,
@@ -374,7 +378,7 @@ describe("Whiteboards API", () => {
     // -- Create whiteboard
     const wbRes = await request(app)
       .post("/api/v1/whiteboards")
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         name: "Alice's Shared Whiteboard",
         width: 3000,
@@ -421,7 +425,7 @@ describe("Whiteboards API", () => {
     // -- Share whiteboard
     const wbRes = await request(app)
       .post(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         userPermissions: [
           {
@@ -491,7 +495,7 @@ describe("Whiteboards API", () => {
     // -- Share whiteboard
     await request(app)
       .post(`/api/v1/whiteboards/${whiteboard._id}/user_permissions`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         userPermissions: [{
           type: 'user',
@@ -529,7 +533,7 @@ describe("Whiteboards API", () => {
     // -- Share whiteboard
     await request(app)
       .post(`/api/v1/whiteboards/${whiteboard._id}/user_permissions`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         // Not a real id
         userPermissions: [{
@@ -568,7 +572,7 @@ describe("Whiteboards API", () => {
     // -- Share whiteboard
     await request(app)
       .post(`/api/v1/whiteboards/${whiteboard._id}/user_permissions`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         // With timestamp at beginning of unix epoch
         userPermissions: [{
@@ -641,7 +645,7 @@ describe("Whiteboards API", () => {
     // -- Share whiteboard
     const wbRes = await request(app)
       .post(`/api/v1/whiteboards/${whiteboard._id}/user_permissions`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         userPermissions: userPermissionsReq
       })
@@ -723,7 +727,7 @@ describe("Whiteboards API", () => {
     // -- Share whiteboard
     const wbRes = await request(app)
       .post(`/api/v1/whiteboards/${whiteboard._id}/user_permissions`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         userPermissions: userPermissionsReq
       })
@@ -777,7 +781,7 @@ describe("Whiteboards API", () => {
     // -- Attempt to reset shared users to exclude owner; should fail
     await request(app)
       .post(`/api/v1/whiteboards/${whiteboard._id}/user_permissions`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         userPermissions: userPermissionsReq
       })
@@ -813,7 +817,7 @@ describe("Whiteboards API", () => {
     // -- Get whiteboard
     const wbRes = await request(app)
       .get(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(200);
 
@@ -861,7 +865,7 @@ describe("Whiteboards API", () => {
     // -- Try to delete whiteboard
     await request(app)
       .delete(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(200);
 
@@ -897,7 +901,7 @@ describe("Whiteboards API", () => {
     // -- Try to delete whiteboard
     await request(app)
       .delete(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(403);
 
@@ -933,7 +937,7 @@ describe("Whiteboards API", () => {
     // -- Try to delete whiteboard
     await request(app)
       .delete(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(403);
 
@@ -982,7 +986,7 @@ describe("Whiteboards API", () => {
 
       const resp = await request(app)
         .get(`/api/v1/whiteboards/id/${whiteboardOrig._id.toHexString()}`)
-        .set("Authorization", `Bearer ${authToken}`)
+        .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
         .send()
         .expect(200);
 
@@ -1045,7 +1049,7 @@ describe("Whiteboards API", () => {
 
     await request(app)
       .post(`/api/v1/whiteboards/${tempWhiteboard._id}/convert_temp_to_perm`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         user: { _id: user._id }
       })
@@ -1096,7 +1100,7 @@ describe("Whiteboards API", () => {
 
     await request(app)
       .post(`/api/v1/whiteboards/${tempWhiteboard._id}/convert_temp_to_perm`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         user: { _id: user._id }
       })
@@ -1159,7 +1163,7 @@ describe("Whiteboards API", () => {
 
     const wbRes = await request(app)
       .get(`/api/v1/whiteboards/id/${whiteboard._id.toString()}`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(200);
 
@@ -1209,7 +1213,7 @@ describe("Whiteboards API", () => {
 
     await request(app)
       .get(`/api/v1/whiteboards/id/${whiteboard._id.toString()}`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(403);
   });
@@ -1241,7 +1245,7 @@ describe("Whiteboards API", () => {
     // -- Update thumbnail
     const wbRes = await request(app)
       .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({ thumbnailUrl })
       .expect(200);
 
@@ -1279,7 +1283,7 @@ describe("Whiteboards API", () => {
     // -- Update thumbnail
     const wbRes = await request(app)
       .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({ thumbnailUrl })
       .expect(200);
 
@@ -1312,7 +1316,7 @@ describe("Whiteboards API", () => {
     // -- Try to update thumbnail
     await request(app)
       .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({ thumbnailUrl: 'data:image/jpeg;base64,YXR0YWNrZXI=' })
       .expect(403);
 
@@ -1347,7 +1351,7 @@ describe("Whiteboards API", () => {
     // -- Try to update thumbnail
     await request(app)
       .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({ thumbnailUrl: 'data:image/jpeg;base64,YXR0YWNrZXI=' })
       .expect(403);
 
@@ -1382,7 +1386,7 @@ describe("Whiteboards API", () => {
     // -- Try to update thumbnail
     await request(app)
       .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({ thumbnailUrl: 'data:image/jpeg;base64,dmlld2Vy' })
       .expect(403);
   });// -- end test case
@@ -1412,7 +1416,7 @@ describe("Whiteboards API", () => {
     // -- Try to update thumbnail with no thumbnailUrl
     await request(app)
       .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({})
       .expect(400);
   });// -- end test case
@@ -1439,7 +1443,7 @@ describe("Whiteboards API", () => {
     // -- Try to update thumbnail on a malformed whiteboard id
     await request(app)
       .put(`/api/v1/whiteboards/zzzzzzz/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({ thumbnailUrl: 'data:image/jpeg;base64,dGVzdA==' })
       .expect(400);
   });// -- end test case
