@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
 
 // === Routers =================================================================
 //
@@ -14,6 +15,7 @@ const API_VERSION = 'v1';
 const app = express();
 
 app.use(express.json());
+app.use(cookieParser());
 
 // Mount routers
 app.use(`/api/${API_VERSION}/health`, healthRouter);
