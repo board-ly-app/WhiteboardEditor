@@ -168,7 +168,7 @@ export const handleRefreshAccessToken = async (
         const resp : RefreshAccessTokenUnauthedRes = ({
           message: 'Invalid or expired refresh token provided.',
         });
-        return res.status(403).json(resp);
+        return res.status(400).json(resp);
       }
       case 'ok':
       {
