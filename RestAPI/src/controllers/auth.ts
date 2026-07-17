@@ -1,6 +1,11 @@
 import {
   Request, Response,
 } from "express";
+
+import {
+  AUTH_ROUTE,
+} from '../app.config';
+
 import {
   type LoginPermanentUserRes,
   createAccessToken,
@@ -28,6 +33,12 @@ interface PostLoginRouteOkRes {
 }
 
 const REFRESH_TOKEN_COOKIE_ID = 'refresh_token';
+
+if (! process.env.REFRESH_TOKEN_EXPIRATION_SECS) {
+  throw new Error('Env var REFRESH_TOKEN_EXPIRATION_SECS not set');
+}
+
+const REFRESH_TOKEN_EXPIRATION_SECS = parseInt(process.env.REFRESH_TOKEN_EXPIRATION_SECS);
 
 export const handleLogin = async (
   req: Request<{}, {}, AuthRequest>,
@@ -117,7 +128,13 @@ export const handleLogin = async (
           user: loginResult.user.toSelfView(),
         });
 
-        return res.status(201).json(resp);
+        return res.status(201)
+          .cookie(REFRESH_TOKEN_COOKIE_ID, loginResult.refreshToken, {
+            path: `${AUTH_ROUTE}/refresh`,
+            httpOnly: true,
+            maxAge: REFRESH_TOKEN_EXPIRATION_SECS * 1_000,
+          })
+          .json(resp);
       }
       default:
         throw new Error(`Unrecognized login result type "${JSON.stringify(loginResult)}"`);
