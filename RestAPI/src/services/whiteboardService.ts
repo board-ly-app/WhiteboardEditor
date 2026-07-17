@@ -136,15 +136,13 @@ export const getWhiteboardById = async (whiteboardId: string): Promise<GetWhiteb
         }
       }
 
-      console.log("Returning whiteboard:", JSON.stringify(whiteboard, null, 2));
-
       return ({
         status: 'ok',
         whiteboard,
       });
     }
   } catch (err: any) {
-    console.log('Error fetching whiteboard', whiteboardId, ':', err);
+    console.error('Error fetching whiteboard', whiteboardId, ':', err);
     return ({
       status: 'server_error',
       message: 'An unexpected error occurred',

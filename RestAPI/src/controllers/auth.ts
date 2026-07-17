@@ -4,6 +4,8 @@ import {
 
 import {
   AUTH_ROUTE,
+  REFRESH_TOKEN_COOKIE_ID,
+  ACCESS_TOKEN_COOKIE_ID,
 } from '../app.config';
 
 import {
@@ -32,13 +34,17 @@ interface PostLoginRouteOkRes {
   user: IPermanentUserSelfView;
 }
 
-const REFRESH_TOKEN_COOKIE_ID = 'refresh_token';
-
 if (! process.env.REFRESH_TOKEN_EXPIRATION_SECS) {
   throw new Error('Env var REFRESH_TOKEN_EXPIRATION_SECS not set');
 }
 
 const REFRESH_TOKEN_EXPIRATION_SECS = parseInt(process.env.REFRESH_TOKEN_EXPIRATION_SECS);
+
+if (! process.env.ACCESS_TOKEN_EXPIRATION_SECS) {
+  throw new Error('Env var ACCESS_TOKEN_EXPIRATION_SECS not set');
+}
+
+const ACCESS_TOKEN_EXPIRATION_SECS = parseInt(process.env.ACCESS_TOKEN_EXPIRATION_SECS);
 
 export const handleLogin = async (
   req: Request<{}, {}, AuthRequest>,
@@ -135,6 +141,11 @@ export const handleLogin = async (
             httpOnly: true,
             maxAge: REFRESH_TOKEN_EXPIRATION_SECS * 1_000,
           })
+          .cookie(ACCESS_TOKEN_COOKIE_ID, loginResult.accessToken, {
+            sameSite: 'strict',
+            httpOnly: true,
+            maxAge: ACCESS_TOKEN_EXPIRATION_SECS * 1_000,
+          })
           .json(resp);
       }
       default:
@@ -162,6 +173,10 @@ export const handleLogout = (
   return res.status(201)
     .clearCookie(REFRESH_TOKEN_COOKIE_ID, {
       path: `${AUTH_ROUTE}/refresh`,
+      sameSite: 'strict',
+      httpOnly: true,
+    })
+    .clearCookie(ACCESS_TOKEN_COOKIE_ID, {
       sameSite: 'strict',
       httpOnly: true,
     })

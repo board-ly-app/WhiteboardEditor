@@ -1,12 +1,17 @@
 import request from "supertest";
-import app from "../src/app";
-import {
-  type IWhiteboard,
-} from '../src/models/Whiteboard';
 import mongoose, {
   Types,
 } from 'mongoose';
 import jwt from "jsonwebtoken";
+
+import app from "../src/app";
+import {
+  ACCESS_TOKEN_COOKIE_ID,
+} from '../src/app.config';
+
+import {
+  type IWhiteboard,
+} from '../src/models/Whiteboard';
 
 const MONGO_URI = 'mongodb://test_db:27017/testdb';
 
@@ -145,7 +150,7 @@ describe("Users API", () => {
       // -- Perform patch
       const resp = await request(app)
         .patch(targetUrl)
-        .set("Authorization", `Bearer ${authToken}`)
+        .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
         .send(patchData)
         .expect(201);
 

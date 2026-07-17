@@ -12,6 +12,10 @@ import {
 } from "express";
 
 import {
+  ACCESS_TOKEN_COOKIE_ID,
+} from '../app.config';
+
+import {
   type AuthorizedRequestBody
 } from '../models/Auth';
 
@@ -32,20 +36,18 @@ export const authenticateJWT = async (
   next: NextFunction
 ) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (! authHeader?.startsWith("Bearer ")) {
-      res.status(401).json({ error: "Missing token" });
-      return;
+    if (! (ACCESS_TOKEN_COOKIE_ID in req.cookies)) {
+      return res.status(401).json({ error: "Missing token" });
     }
 
-    const token = authHeader.split(" ")[1];
+    const token = req.cookies[ACCESS_TOKEN_COOKIE_ID];
 
     const verifyTokenRes = await verifyUserFromAccessToken(token);
 
     switch (verifyTokenRes.kind) {
       case 'no_user':
       case 'invalid_token':
+        console.log('Access token rejected:', verifyTokenRes.kind);
         return res.status(403).json({ error: "Invalid or expired token" });
       case 'ok':
         {
@@ -77,13 +79,11 @@ export const authenticateJWTOptional = async (
   next: NextFunction
 ) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (! authHeader?.startsWith("Bearer ")) {
+    if (! (ACCESS_TOKEN_COOKIE_ID in req.cookies)) {
       return next();
     }
 
-    const token = authHeader.split(" ")[1];
+    const token = req.cookies[ACCESS_TOKEN_COOKIE_ID];
 
     const verifyTokenRes = await verifyUserFromAccessToken(token);
 
