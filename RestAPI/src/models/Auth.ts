@@ -3,20 +3,23 @@ import {
 } from './User';
 
 interface BaseAuthRequest {
-  password: string;
+  password?: string;
 }
 
 export interface EmailAuthRequest extends BaseAuthRequest {
-  authSource: 'email';
-  email: string;
+  authSource?: 'email';
+  email?: string;
 }
 
 export interface UsernameAuthRequest extends BaseAuthRequest {
-  authSource: 'username';
-  username: string;
+  authSource?: 'username';
+  username?: string;
 }
 
-export type AuthRequest = EmailAuthRequest | UsernameAuthRequest;
+export type AuthRequest = 
+  | EmailAuthRequest
+  | UsernameAuthRequest
+;
 
 // === AuthPayload =============================================================
 //
