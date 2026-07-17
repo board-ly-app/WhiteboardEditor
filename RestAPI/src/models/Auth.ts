@@ -1,4 +1,7 @@
 import {
+  Types,
+} from 'mongoose';
+import {
   type IUserType,
 } from './User';
 
@@ -21,14 +24,27 @@ export type AuthRequest =
   | UsernameAuthRequest
 ;
 
-// === AuthPayload =============================================================
+// === AccessTokenPayload =============================================================
 //
 // The inner payload of a JWT used for authorization.
 //
 // =============================================================================
-export interface AuthPayload {
+export interface AccessTokenPayload {
   sub: string;  // The user ID, as a string
 }
+
+export interface RefreshTokenPaylod {
+  kind: 'refresh';
+  userId: string;
+}
+
+export const isRefreshTokenPayload = (payload: any): payload is RefreshTokenPaylod => {
+  if (typeof payload !== 'object') return false;
+  if (payload?.kind !== 'refresh') return false;
+  if (! Types.ObjectId.isValid(payload?.userId)) return false;
+
+  return true;
+};
 
 // === AuthorizedRequestBody ===================================================
 //
