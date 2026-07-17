@@ -24,6 +24,7 @@ import {
 import {
   type AccessTokenPayload,
   type RefreshTokenPaylod,
+  isAccessTokenPayload,
   isRefreshTokenPayload,
 } from '../models/Auth';
 
@@ -55,6 +56,10 @@ interface VerifyUserFromAccessTokenInvalidTokenRes {
   kind: 'invalid_token';
 }
 
+interface VerifyUserFromAccessTokenMalformedTokenRes {
+  kind: 'malformed_token';
+}
+
 interface VerifyUserFromAccessTokenNoUserRes {
   kind: 'no_user';
 }
@@ -66,6 +71,7 @@ interface VerifyUserFromAccessTokenOkRes {
 
 export type VerifyUserFromAccessTokenRes =
   | VerifyUserFromAccessTokenInvalidTokenRes
+  | VerifyUserFromAccessTokenMalformedTokenRes
   | VerifyUserFromAccessTokenNoUserRes
   | VerifyUserFromAccessTokenOkRes
 ;
@@ -74,9 +80,9 @@ export const verifyUserFromAccessToken = async (
   token: string
 ): Promise<VerifyUserFromAccessTokenRes> => {
   try {
-    const payload = jwt.verify(token, ACCESS_TOKEN_SECRET) as AccessTokenPayload;
+    const payload : any = jwt.verify(token, ACCESS_TOKEN_SECRET);
 
-    if (! Types.ObjectId.isValid(payload.sub)) return { kind: 'invalid_token' };
+    if (! isAccessTokenPayload(payload)) return { kind: 'malformed_token' };
 
     const userId = new Types.ObjectId(payload.sub);
     const user = await User.findById(userId);
