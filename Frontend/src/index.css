@@ -61,6 +61,7 @@
   --color-p-text: var(--p-text);
   --color-placeholder-text: var(--placeholder-text);
   --color-dark-text: var(--dark-text);
+  --color-dark-blue-text: var(--dark-blue-text);
   
   --color-button-300: var(--button-background);
   --color-button-600: var(--button-background);
@@ -123,6 +124,7 @@
   --p-text: #b3b6b9;
   --placeholder-text: oklch(40% 0.013 250);
   --dark-text: #111820; 
+  --dark-blue-text: #142537; 
 
   --dropdown-background: #111820;
 }
