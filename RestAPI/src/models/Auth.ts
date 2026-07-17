@@ -33,6 +33,13 @@ export interface AccessTokenPayload {
   sub: string;  // The user ID, as a string
 }
 
+export const isAccessTokenPayload = (payload: any): payload is AccessTokenPayload => {
+  if (typeof payload !== 'object') return false;
+  if (! Types.ObjectId.isValid(payload?.sub)) return false;
+
+  return true;
+};// -- end isAccessTokenPayload
+
 export interface RefreshTokenPaylod {
   kind: 'refresh';
   userId: string;
