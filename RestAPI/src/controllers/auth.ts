@@ -215,6 +215,7 @@ export const handleRefreshAccessToken = async (
           token,
         });
 
+        setAccessTokenCookie(res, token);
         return res.status(201).json(resp);
       }
     }// -- end switch (verifyUserRes.kind)
