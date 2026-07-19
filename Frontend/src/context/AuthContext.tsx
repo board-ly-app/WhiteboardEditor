@@ -70,7 +70,11 @@ export const AuthProvider = ({
       api.post('/auth/refresh')
         .catch((_e: unknown) => {
           console.error('Access token refresh failed');
-          // -- If refresh unsuccessful, navigate to login page
+          // -- Unset isAuthed state
+          isAuthedRef.current = false;
+          localStorage.setItem(LS_KEY_IS_AUTHED, LS_VAL_IS_AUTHED_FALSE);
+
+          // -- Finally, redirect to login page
           const location = window.location;
           const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
 
