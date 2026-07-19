@@ -2,7 +2,14 @@ mod wss;
 
 // -- standard library imports
 
-use std::{cmp::Ordering, collections::HashMap, env, net::SocketAddr, process, sync::Arc};
+use std::{
+    cmp::Ordering,
+    collections::HashMap,
+    env,
+    net::SocketAddr,
+    process,
+    sync::Arc,
+};
 
 use futures::{SinkExt, StreamExt, lock::Mutex};
 
@@ -10,10 +17,15 @@ use futures::{SinkExt, StreamExt, lock::Mutex};
 
 use tokio::sync::broadcast;
 use warp::Filter;
+use warp::http::StatusCode;
 use warp::ws::{Message, WebSocket};
+use cookie;
 
 use mongodb::{
-    bson,
+    bson::{
+        self,
+        doc,
+    },
 };
 
 // -- local imports
@@ -231,12 +243,18 @@ async fn main() -> process::ExitCode {
 
     let ws_route = warp::path!("ws" / WhiteboardIdType)
         .and(warp::ws())
+        .and(warp::header::optional::<String>("cookie"))
         .and(connection_state_ref_filter)
-        .map(
-            |wid: WhiteboardIdType, ws: warp::ws::Ws, connection_state_ref| {
-                ws.on_upgrade(move |socket| handle_connection(socket, wid, connection_state_ref))
-            },
-        );
+        .then(
+            async |wid, ws: warp::ws::Ws, cookie_s: Option<String>, connection_state_ref: Arc<ConnectionState>| {
+                ws.on_upgrade(move |socket| handle_connection(socket, wid, cookie_s, connection_state_ref))
+            }
+        )
+        .recover(async |e| -> Result::<warp::reply::WithStatus<&str>, std::convert::Infallible> {
+            eprintln!("Unexpected error parsing cookie header: {:?}", e);
+
+            Ok(warp::reply::with_status("Internal server error", StatusCode::INTERNAL_SERVER_ERROR))
+        });
 
     let addr: SocketAddr = ([0, 0, 0, 0], port).into();
     println!("Rust WebSocket server running at ws://{}", addr);
@@ -252,29 +270,94 @@ async fn main() -> process::ExitCode {
 async fn handle_connection(
     ws: WebSocket,
     whiteboard_id: wss::models::WhiteboardIdType,
+    cookie_s: Option<String>,
     connection_state_ref: Arc<wss::server::ConnectionState>,
 ) {
     use wss::{
         db::{MongoDBInterface, get_whiteboard_by_id},
         models::{
-            ClientIdType,
+            User,
+            UserMongoDBView,
+            UserSummary,
+            WhiteboardMetadataMongoDBView,
+            WhiteboardVisibilityEnum,
+            WhiteboardPermissionType,
         },
         protocol::{
             ClientError,
             ServerSocketMessage,
-            ServerSocketBroadcastMessage,
             ServerSocketIndividualMessage,
         },
         server::{
-            ClientStateBase, SharedWhiteboardEntry,
+            ClientStateBase,
+            SharedWhiteboardEntry,
             handle_authenticated_client_message,
             handle_unauthenticated_client_message,
         },
         collections,
+        jwt::get_user_id_from_jwt,
         utils::generate_unique_client_id,
     };
 
-    let (mut user_ws_tx, mut user_ws_rx) = ws.split();
+    let (mut user_tx, mut user_rx) = ws.split();
+
+    // -- If no cookies, send back an unauthorized error
+    let cookie_s : String = match cookie_s {
+        None => {
+            // -- No cookie header
+            let err_msg = ServerSocketIndividualMessage::Error {
+                error: ClientError::NotAuthenticated,
+            };
+
+            let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
+
+            return;
+        },
+        Some(s) => s,
+    };// -- end let cookie_s
+
+    // -- Extract access_token cookie
+    let user_id : mongodb::bson::oid::ObjectId = 'val: {
+        for ck_res in cookie::Cookie::split_parse(cookie_s.as_str()) {
+            let token : String = match ck_res {
+                Err(_) => { continue; },
+                Ok(ck) => if ck.name() == "access_token" {
+                    ck.value().to_string()
+                } else {
+                    continue;
+                },
+            };// -- end match ck_res
+
+            let user_id = match get_user_id_from_jwt(
+                token.as_str(),
+                connection_state_ref.jwt_secret.as_str()
+            ) {
+                Err(e) => {
+                    println!("Error parsing user_id from jwt: {}", e);
+
+                    let err_msg = ServerSocketIndividualMessage::Error {
+                        error: ClientError::InternalServerError,
+                    };
+
+                    let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
+
+                    return;
+                }
+                Ok(user_id) => user_id,
+            };// -- end let user_id
+
+            break 'val user_id;
+        }// -- end for ck_res in cookie::Cookie::split_parse(cookie_s.as_str())
+        
+        // -- access token cookie not found; return 401 error
+        let err_msg = ServerSocketIndividualMessage::Error {
+            error: ClientError::NotAuthenticated,
+        };
+
+        let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
+
+        return;
+    };// -- end let user_id
 
     let db = match connection_state_ref.mongo_client.default_database() {
         None => {
@@ -285,7 +368,89 @@ async fn handle_connection(
             );
         }
         Some(db) => db,
-    };
+    };// -- end let db
+    let whiteboard_coll = db.collection::<WhiteboardMetadataMongoDBView>("whiteboards");
+
+    let wb = match whiteboard_coll.find_one(doc!{ "_id": whiteboard_id }).await {
+        Err(e) => {
+            println!("Error fetching whiteboard {}: {}", whiteboard_id, e);
+
+            let err_msg = ServerSocketIndividualMessage::Error {
+                error: ClientError::InternalServerError,
+            };
+
+            let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
+
+            return;
+        },
+        Ok(None) => {
+            let err_msg = ServerSocketIndividualMessage::Error {
+                error: ClientError::InternalServerError,
+            };
+
+            let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
+
+            return;
+        },
+        Ok(Some(wb)) => wb,
+    };// -- end let wb
+
+    'check_vis: {
+        match wb.visibility {
+            // -- No need to have particular permission
+            WhiteboardVisibilityEnum::Public => {},
+            WhiteboardVisibilityEnum::Private => {
+                for perm in wb.user_permissions.iter() {
+                    match perm.permission_type {
+                        WhiteboardPermissionType::User { user, .. } => {
+                            if user == user_id {
+                                break 'check_vis;
+                            }
+                        },
+                        _ => {},
+                    };// -- end match perm.permission_type
+                }// -- end for perm in wb.user_permissions.iter()
+
+                // -- No permission found for user
+                let err_msg = ServerSocketIndividualMessage::Error {
+                    error: ClientError::UnauthorizedWhiteboard,
+                };
+
+                let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
+
+                return;
+            },
+        };// -- end match wb.visibility
+    };// -- end 'check_vis
+
+    // -- Fetch user
+    let user_coll = db.collection::<UserMongoDBView>("users");
+    let user = match user_coll.find_one(doc!{ "_id": user_id }).await {
+        Err(e) => {
+            println!("Error fetching user by id: {}", e);
+
+            let err_msg = ServerSocketIndividualMessage::Error {
+                error: ClientError::InternalServerError,
+            };
+
+            let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
+
+            return;
+        }
+        Ok(None) => {
+            let err_msg = ServerSocketIndividualMessage::Error {
+                error: ClientError::InvalidAuth,
+            };
+
+            let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
+
+            return;
+        }
+        Ok(Some(user)) => user.to_user(),
+    };// -- end let user
+
+    // -- TODO: write method on SharedWhiteboardEntry to initialize user, including adding user
+    // summary to relevant maps and braodcasting login message to existing clients
 
     let current_client_id = {
         let mut next_client_id_index = connection_state_ref.next_client_id_index.lock().await;
@@ -297,7 +462,7 @@ async fn handle_connection(
 
     println!("New client: {}", current_client_id);
 
-    let shared_whiteboard_entry: SharedWhiteboardEntry = {
+    let mut shared_whiteboard_entry : SharedWhiteboardEntry = {
         // - Fetch whiteboard identified by id from program state
         // - If no such whiteboard, send an individual error message and disconnect
         let mut whiteboards_by_id = connection_state_ref.program_state.whiteboards.lock().await;
@@ -321,7 +486,7 @@ async fn handle_connection(
                             },
                         };
 
-                        let _ = user_ws_tx
+                        let _ = user_tx
                             .send(Message::text(serde_json::to_string(&err_msg).unwrap()))
                             .await;
 
@@ -329,9 +494,7 @@ async fn handle_connection(
                     }
                     Ok(None) => {
                         // connection error: print and disconnect
-                        eprintln!(
-                            "Connection error; could not fetch whiteboard: not found in database"
-                        );
+                        eprintln!("Connection error; could not fetch whiteboard: not found in database");
 
                         let err_msg = ServerSocketIndividualMessage::Error {
                             error: ClientError::WhiteboardNotFound {
@@ -339,7 +502,7 @@ async fn handle_connection(
                             },
                         };
 
-                        let _ = user_ws_tx
+                        let _ = user_tx
                             .send(Message::text(serde_json::to_string(&err_msg).unwrap()))
                             .await;
 
@@ -370,13 +533,38 @@ async fn handle_connection(
                         );
 
                         // return new shared whiteboard entry
-                        shared_whiteboard_entry.clone()
+                        shared_whiteboard_entry
                     }
                 }
             }
             Some(shared_whiteboard_entry) => shared_whiteboard_entry.clone(),
         }
     };
+
+    // -- Log client into whiteboard
+    let user_summ = UserSummary {
+        client_id: current_client_id.clone(),
+        user_id: user_id.clone(),
+        username: match user {
+            User::Temp { username, .. } | User::Permanent { username, .. } => username.clone(),
+        },
+    };
+
+    if let Err(_) = shared_whiteboard_entry.login_client(&user_summ).await {
+        eprintln!(
+            "Could not log client {} into whiteboard {}; client id already taken",
+            current_client_id, whiteboard_id
+        );
+
+        // -- This shouldn't have been allowed to happen, so it's an internal server error
+        let err_msg = ServerSocketIndividualMessage::Error {
+            error: ClientError::InternalServerError,
+        };
+
+        let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
+
+        return;
+    }
 
     // -- subscribe to broadcaster
     let tx = shared_whiteboard_entry.broadcaster.clone();
@@ -396,6 +584,25 @@ async fn handle_connection(
         edits: Arc::clone(&shared_whiteboard_entry.edits),
     };
 
+    // -- Initialize client
+    {
+        let whiteboard = shared_whiteboard_entry.whiteboard_ref.lock().await;
+        let active_clients = shared_whiteboard_entry.active_clients.lock().await;
+        let selectors_by_canvas_objects = shared_whiteboard_entry.selectors_to_canvas_objects.lock().await;
+
+        let init_msg = ServerSocketIndividualMessage::InitClient {
+            client_id: current_client_id.clone(),
+            whiteboard: whiteboard.to_client_view(),
+            active_clients: active_clients.clone(),
+            selectors_by_canvas_objects: selectors_by_canvas_objects
+                .iter_key_value()
+                .map(|(k, v)| (v.clone(), k.clone()))
+                .collect(),
+        };
+
+        let _ = user_tx.send(Message::text(serde_json::to_string(&init_msg).unwrap())).await;
+    }
+
     let send_task = {
         let current_client_id = current_client_id.clone();
 
@@ -408,7 +615,7 @@ async fn handle_connection(
                     Individual { ref target_client_id, ref msg } => {
                         if let Ordering::Equal = target_client_id.cmp(&current_client_id) {
                             let json = serde_json::to_string(&msg).unwrap();
-                            if user_ws_tx.send(Message::text(json)).await.is_err() {
+                            if user_tx.send(Message::text(json)).await.is_err() {
                                 break;
                             }
                         }
@@ -416,14 +623,14 @@ async fn handle_connection(
                     Broadcast { msg } => {
                         let json = serde_json::to_string(&msg).unwrap();
 
-                        if user_ws_tx.send(Message::text(json)).await.is_err() {
+                        if user_tx.send(Message::text(json)).await.is_err() {
                             break;
                         }
                     },
                     BroadcastRest { ref src_client_id, ref msg } => {
                         if ! matches!(src_client_id.cmp(&current_client_id), Ordering::Equal) {
                             let json = serde_json::to_string(&msg).unwrap();
-                            if user_ws_tx.send(Message::text(json)).await.is_err() {
+                            if user_tx.send(Message::text(json)).await.is_err() {
                                 break;
                             }
                         }
@@ -438,7 +645,7 @@ async fn handle_connection(
                                 reason,
                             }).unwrap();
 
-                            let _ = user_ws_tx.send(Message::text(json)).await;
+                            let _ = user_tx.send(Message::text(json)).await;
                             break;
                         }
                     }
@@ -448,40 +655,14 @@ async fn handle_connection(
     }; // -- end send_task
 
     let recv_task = {
-        let current_client_id = current_client_id.clone();
-
         tokio::spawn({
             let tx = tx.clone();
-            let db = match connection_state_ref.mongo_client.default_database() {
-                None => {
-                    // No database specified in mongo uri
-                    // Print error and disconnect early
-                    eprintln!(
-                        "Database connection error; could not fetch whiteboard - no default database defined in mongo uri"
-                    );
-                    let err_msg = ServerSocketMessage::Individual {
-                        target_client_id: current_client_id.clone(),
-                        msg: ServerSocketIndividualMessage::Error {
-                            error: ClientError::Other {
-                                message: format!("Error fetching whiteboard {}", whiteboard_id),
-                            },
-                        },
-                    };
-
-                   if let Err(e) = tx.send(err_msg) {
-                       eprintln!("ERROR: failed to send message to client: {:?}", e);
-                   }
-
-                    return;
-                }
-                Some(db) => db,
-            };
             let mongo_interface = MongoDBInterface::new(&db);
 
             async move {
                 // Handle client messages in this loop
                 loop {
-                    let msg = if let Some(Ok(msg)) = user_ws_rx.next().await {
+                    let msg = if let Some(Ok(msg)) = user_rx.next().await {
                         msg
                     } else {
                         return;
@@ -491,7 +672,7 @@ async fn handle_connection(
                     {
                         let whiteboard = client_state_base.whiteboard_ref.lock().await;
 
-                        if !whiteboard.is_active() {
+                        if ! whiteboard.is_active() {
                             return;
                         }
                     }
@@ -537,22 +718,11 @@ async fn handle_connection(
     };
 
     // Clean up when client disconnects
-    {
-        let mut clients = shared_whiteboard_entry.active_clients.lock().await;
-        let mut clients_by_user_id = shared_whiteboard_entry.clients_by_user_id.lock().await;
-        let mut selectors_to_canvas_objects = shared_whiteboard_entry
-            .selectors_to_canvas_objects.lock().await;
-
-        clients.remove(&current_client_id);
-        clients_by_user_id.remove_value(&current_client_id);
-        selectors_to_canvas_objects.remove_key(&current_client_id);
-
-        // -- notify other clients of client disconnect
-        let _ = tx.send(ServerSocketMessage::Broadcast {
-            msg: ServerSocketBroadcastMessage::LogoutUsers {
-                clients: Vec::<ClientIdType>::from_iter([current_client_id.clone()]),
-            },
-        });
+    if let Err(_) = shared_whiteboard_entry.logout_client(&current_client_id).await {
+        eprintln!(
+            "Error logging out client {} from whiteboard {}",
+            current_client_id, whiteboard_id
+        );
     }
 
     println!("Client {} disconnected", current_client_id);

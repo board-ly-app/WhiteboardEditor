@@ -49,7 +49,6 @@ import {
 import {
   type ClientIdType,
   type UserIdType,
-  type ClientMessageLogin,
   type SocketServerMessage,
   type CanvasIdType,
   type CanvasAttribs,
@@ -625,12 +624,7 @@ const WebSocketClientMessengerProvider = ({
         console.error('Cannot log into web socket server without authentication token');
       } else {
         const messenger = new WhiteboardSocketMessenger(ws);
-        const loginMessage : ClientMessageLogin = {
-          type: "login",
-          jwt: authToken,
-        };
 
-        messenger.sendLogin(loginMessage);
         setClientMessenger(messenger);
       }
 
