@@ -138,10 +138,6 @@ const WebSocketClientMessengerProvider = ({
     throw new Error('No authenticated user provided.');
   }
 
-  const {
-    authToken,
-  } = authContext;
-
   const dispatch = store.dispatch;
 
   const [clientMessenger, setClientMessenger] = useState<IWhiteboardClientMessenger | null>(null);
@@ -620,8 +616,6 @@ const WebSocketClientMessengerProvider = ({
       // Send login/auth message with user ID, if currently logged in
       if (! user) {
         console.error('Cannot log into web socket server without authenticated user');
-      } else if (! authToken) {
-        console.error('Cannot log into web socket server without authentication token');
       } else {
         const messenger = new WhiteboardSocketMessenger(ws);
 
@@ -632,7 +626,7 @@ const WebSocketClientMessengerProvider = ({
 
       ws.onmessage = handleServerMessage;
     },
-    [authToken, handleServerMessage, setClientMessenger, user]
+    [handleServerMessage, setClientMessenger, user]
   );
 
   useEffect(

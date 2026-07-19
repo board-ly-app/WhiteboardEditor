@@ -16,8 +16,6 @@ import Footer from '@/components/Footer';
 import api from '@/api/axios';
 import type { CreateWhiteboardFormData } from '@/components/CreateWhiteboardModal';
 import { useNavigate } from 'react-router';
-import { useContext } from 'react';
-import AuthContext from '@/context/AuthContext';
 import { useUser } from '@/hooks/useUser';
 import {
   type ButtonStatus,
@@ -48,16 +46,7 @@ const UserAuth = ({
 
   const pageTitle = `${authActionLabel} | ${APP_NAME}`;
 
-  const { setUser } = useUser();
-  const authContext = useContext(AuthContext);
-
-  if (! authContext) {
-    throw new Error('AuthContext not provided');
-  }
-
-  const {
-    setAuthToken,
-  } = authContext;
+  const { handleLogin } = useUser();
 
   const [tempWhiteboardButtonStatus, setTempWhiteboardButtonStatus]
     = useState<ButtonStatus>('enabled');
@@ -70,17 +59,12 @@ const UserAuth = ({
 
         const userResp = await api.post('/users/temp');
 
-        if (process.env.NODE_ENV !== 'production') {
-          console.log("userResp: ", userResp);
-        }
 
         const {
           user,
-          accessToken
         } = userResp.data;
 
-        setAuthToken(accessToken);
-        setUser(user);
+        handleLogin(user);
         
         const tempWhiteboardData: CreateWhiteboardFormData = {
           name: `${userResp.data.user.username}'s Whiteboard`,
@@ -110,7 +94,7 @@ const UserAuth = ({
         setTempWhiteboardButtonStatus('enabled');
       }
     },
-    [navigate, setAuthToken, setUser, setTempWhiteboardButtonStatus]
+    [navigate, handleLogin, setTempWhiteboardButtonStatus]
   );// -- end handleCreateTrialWhiteboard
 
   return (
@@ -159,7 +143,7 @@ const UserAuth = ({
 
       <Footer />
     </Page>
-);
-};
+  );
+};// -- end UserAuth
 
 export default UserAuth;
