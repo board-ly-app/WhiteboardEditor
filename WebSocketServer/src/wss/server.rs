@@ -1540,7 +1540,13 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                &[],
+                &[WhiteboardPermission {
+                    permission_type: WhiteboardPermissionType::User {
+                        user: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
+                        email: None,
+                    },
+                    permission: WhiteboardPermissionEnum::Edit,
+                }],
             ),
             test_canvas_id,
             HashMap::new(),
@@ -1693,7 +1699,13 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                &[],
+                &[WhiteboardPermission {
+                    permission_type: WhiteboardPermissionType::User {
+                        user: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
+                        email: None,
+                    },
+                    permission: WhiteboardPermissionEnum::Own,
+                }],
             ),
             canvas_a_id,
             HashMap::from([(
@@ -1948,7 +1960,13 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                &[],
+                &[WhiteboardPermission {
+                    permission_type: WhiteboardPermissionType::User {
+                        user: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
+                        email: None,
+                    },
+                    permission: WhiteboardPermissionEnum::Own,
+                }],
             ),
             canvas_a_id,
             HashMap::from([(
@@ -2453,7 +2471,7 @@ mod unit_tests {
         use utils::generate_unique_client_id;
 
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
-        let test_user_id = ObjectId::new();
+        let test_user_id = ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap();
         let invalid_canvas_id = ObjectId::new();
         let client_msg_s = format!(
             r#"{{
@@ -2515,7 +2533,7 @@ mod unit_tests {
             base: &client_state_base,
             user_summary: UserSummary {
                 client_id: test_client_id.clone(),
-                user_id: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
+                user_id: test_user_id.clone(),
                 username: String::from("Alice"),
             },
         };
