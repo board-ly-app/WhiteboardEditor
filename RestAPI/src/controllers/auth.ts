@@ -33,7 +33,6 @@ interface PostLoginRouteServerErrRes {
 }
 
 interface PostLoginRouteOkRes {
-  token: string;
   user: IPermanentUserSelfView;
 }
 
@@ -121,7 +120,6 @@ export const handleLogin = async (
       case 'ok':
       {
         const resp : PostLoginRouteOkRes = ({
-          token: loginResult.accessToken,
           user: loginResult.user.toSelfView(),
         });
 
@@ -174,10 +172,6 @@ interface RefreshAccessTokenServerErrRes {
   message: 'Internal server error.';
 }
 
-interface RefreshAccessTokenOkRes {
-  token: string;
-}
-
 export const handleRefreshAccessToken = async (
   req: Request,
   res: Response
@@ -211,12 +205,9 @@ export const handleRefreshAccessToken = async (
         } = verifyUserRes;
         const userId = user._id;
         const token = createAccessToken(userId);
-        const resp : RefreshAccessTokenOkRes = ({
-          token,
-        });
 
         setAccessTokenCookie(res, token);
-        return res.status(201).json(resp);
+        return res.status(201).end();
       }
     }// -- end switch (verifyUserRes.kind)
   } catch (e: any) {
