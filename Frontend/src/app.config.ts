@@ -66,3 +66,8 @@ export const MIN_WB_ZOOM = 0.5;
 
 // -- Maximum zoom level of the whiteboard editor
 export const MAX_WB_ZOOM = 4.0;
+
+// -- Interval at which to query for new access tokens, in seconds
+// NOTE: make sure WHITEBOARD_EDITOR_ACCESS_TOKEN_EXPIRATION_SECS in the .env
+// file is greater than this value.
+export const REFRESH_ACCESS_TOKEN_QUERY_SECS = 5;

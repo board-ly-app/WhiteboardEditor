@@ -32,11 +32,16 @@ const HeaderAuthed = ({
   ...props
 }: HeaderAuthedProps): React.JSX.Element => {
   const navigate = useNavigate();
-  const { user, setUser } = useUser();
+  const {
+    user,
+    handleLogout: handleLogoutUtil,
+  } = useUser();
 
-  const handleLogOut = () => {
-    setUser(null);
-    navigate("/login");
+  const handleLogout = () => {
+    handleLogoutUtil()
+      .finally(() => {
+        navigate("/login");
+      });
   };
 
   return (
@@ -69,7 +74,7 @@ const HeaderAuthed = ({
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <HeaderButton 
-                  onClick={handleLogOut}
+                  onClick={handleLogout}
                   title="Log Out" 
                 />
               </DropdownMenuItem>
