@@ -27,7 +27,7 @@ const Page = ({
   );
 
   return (
-    <div>
+    <div className='min-h-dvh flex flex-col overscroll-none bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_120%)]'>
       {children}
     </div>
   );
