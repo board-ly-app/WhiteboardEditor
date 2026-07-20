@@ -323,7 +323,7 @@ function WhiteboardCard({
   return (
     <>
       <div
-        className="flex flex-col w-69 rounded-xl border-1 border-border shadow-2xl bg-card-background"
+        className="flex flex-col w-69 rounded-xl border-1 border-border shadow-2xl bg-card-background transition-shadow duration-250 hover:shadow-[0_0_24px_4px_rgba(15,122,237,0.45)]"
       >
         <Link
           key={id}
