@@ -124,7 +124,7 @@ const UserAuth = ({
 
       <BackgroundVideo />
       
-      <div className="flex flex-col justify-center items-center pb-12">
+      <div className="flex flex-col justify-center backdrop-blur-[1px] items-center pb-12">
         {/** Main branding section **/}
         <div
           id="branding"
@@ -137,7 +137,7 @@ const UserAuth = ({
           <Button 
             onClick={handleCreateTrialWhiteboard}
             status={tempWhiteboardButtonStatus}
-            className="text-h2-text font-medium rounded-lg border-border border-1 p-4 bg-page-background hover:bg-button-hover hover:cursor-pointer shadow-md"
+            className="text-white font-medium rounded-lg border-border border-1 p-4 bg-page-background hover:bg-button-hover hover:cursor-pointer shadow-md transition-shadow duration-250 hover:text-white hover:shadow-[0_0_24px_4px_rgba(15,122,237,0.45)]"
           >
             Try it out!
           </Button>
