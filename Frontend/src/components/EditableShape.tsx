@@ -165,28 +165,42 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   }, [editor]);
 
   const handleSingleSelect = useCallback(
-    (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      ev.cancelBubble = true;
+    (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+      e.cancelBubble = true;
 
-      if (clientMessenger && (! editor)) {
+      if (clientMessenger) {
         const currState = store.getState();
         const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
           currState, whiteboardId, clientId
         );
 
-        // -- Unselect any previously selected objects
-        if (selectedCanvasObjects.length > 0) {
-          clientMessenger.sendUnselectedCanvasObjects({
-            type: 'unselected_canvas_objects',
-            canvasObjectIds: selectedCanvasObjects,
+        // -- Control key signals unselect target
+        if (e.evt.ctrlKey) {
+          if (editor?.clientId === clientId) {
+            // -- Identify the current user as the current selector
+            clientMessenger.sendUnselectedCanvasObjects({
+              type: 'unselected_canvas_objects',
+              canvasObjectIds: [id],
+            });
+          }
+        } else if (! editor) {
+          // -- Shift key indicates multi select
+          if (! e.evt.shiftKey) {
+            // -- Unselect any previously selected objects
+            if (selectedCanvasObjects.length > 0) {
+              clientMessenger.sendUnselectedCanvasObjects({
+                type: 'unselected_canvas_objects',
+                canvasObjectIds: selectedCanvasObjects,
+              });
+            }
+          }
+
+          // -- Identify the current user as the current selector
+          clientMessenger.sendSelectedCanvasObjects({
+            type: 'selected_canvas_objects',
+            canvasObjectIds: [id],
           });
         }
-
-        // -- Identify the current user as the current selector
-        clientMessenger.sendSelectedCanvasObjects({
-          type: 'selected_canvas_objects',
-          canvasObjectIds: [id],
-        });
       }
     },
     [id, whiteboardId, clientId, clientMessenger, editor]
