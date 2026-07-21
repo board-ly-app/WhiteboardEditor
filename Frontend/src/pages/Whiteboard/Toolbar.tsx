@@ -37,12 +37,12 @@ interface ToolbarButtonProps {
 }
 const tools: ToolChoice[] = [
   "hand",
+  "select",
   "vector",
   "rect",
   "ellipse",
   "text",
   "create_canvas",
-  "select",
 ];
 
 const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonProps>(

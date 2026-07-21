@@ -137,8 +137,6 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
     return null;
   }
 
-  if (currentTool === 'create_canvas') return null;
-
   if (! selectedCanvasId) {
     return null;
   }
@@ -150,8 +148,7 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
     // Shape edit mode
     attributeComponents = getAttributesByShape(shapeType);
     useSelectedShapeValues = true;
-  }
-  else {
+  } else {
     // Tool mode
     if (currentTool === "hand") {
       return null;
@@ -159,6 +156,8 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
 
     attributeComponents = currentDispatcherRef.current?.getAttributes() ?? [];
   }
+
+  if ((! attributeComponents) || (attributeComponents.length < 1)) return null;
 
   return (
     <div className="flex flex-col flex-shrink-0 text-center p-4 pr-2 rounded-lg shadow-2xl backdrop-blur-md bg-bar-background/80 border-1 border-border">
