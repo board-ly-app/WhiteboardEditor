@@ -28,7 +28,7 @@ import {
 // -- local imports
 import {
   WB_ZOOM_FACTOR,
-  LS_KEY_COPIED_CANVAS_OBJECT,
+  LS_KEY_COPIED_CANVAS_OBJECTS,
 } from '@/app.config';
 
 import Canvas from "@/pages/Whiteboard/Canvas";
@@ -443,21 +443,103 @@ const CanvasCard = ({
 
         const handleCopyObject = () => {
           const currState = store.getState();
-          const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+          const selectedCanvasObjectIds = selectSelectedCanvasObjectsByWhiteboard(
             currState, whiteboardId, clientId
           );
 
-          if (selectedCanvasObjects.length > 0) {
-            // -- copy only first shape to localStorage
-            const targetObjectId = selectedCanvasObjects[0];
-            const targetObject = selectCanvasObjectById(currState, targetObjectId);
+          if (selectedCanvasObjectIds.length < 1) return;
 
-            if (targetObject) {
-              const targetObjectData = JSON.stringify(targetObject);
+          const targetObjects : CanvasObjectModel[] = selectedCanvasObjectIds.map(
+            objId => selectCanvasObjectById(currState, objId)
+          ).filter((obj : CanvasObjectModel | null) => !! obj);
 
-              localStorage.setItem(LS_KEY_COPIED_CANVAS_OBJECT, targetObjectData);
+          if (targetObjects.length < 1) return;
+
+          // -- Re-calculate all coordinates relative to the minimum x and y
+          // coordinates
+          const [minX, minY, minZ] = targetObjects.reduce(
+            ([currMinX, currMinY, currMinZ], currObj) => {
+              switch (currObj.type) {
+                case 'rect':
+                case 'text':
+                case 'ellipse':
+                  return [
+                    Math.min(currMinX, currObj.x),
+                    Math.min(currMinY, currObj.y),
+                    Math.min(
+                      currMinZ,
+                      currObj.zIndex === undefined ? currMinZ : currObj.zIndex
+                    ),
+                  ];
+                case 'vector':
+                {
+                  const minZ = currObj.zIndex === undefined ? currMinZ : currObj.zIndex;
+                  let minX = currMinX;
+                  let minY = currMinY;
+
+                  for (let i = 0; i < currObj.points.length; ++i) {
+                    if (i % 2 === 0) {
+                      minX = Math.min(minX, currObj.points[i]);
+                    } else {
+                      minY = Math.min(minY, currObj.points[i]);
+                    }
+                  }// -- end for i
+
+                  return [minX, minY, minZ];
+                }
+                default:
+                  throw new Error('Unhandled object type');
+              }// -- end switch (currObj.type)
+            },
+            [width, height, Number.MAX_VALUE]
+          );// -- end const [minX, minY]
+
+          // -- Re-assign x and y values plus z indices
+          const createdObjects = targetObjects.map(targetObject => {
+            const createdObject = { ...targetObject };
+
+            if (createdObject.zIndex === undefined) {
+              createdObject.zIndex = 0;
+            } else {
+              createdObject.zIndex -= minZ;
             }
-          }
+            
+            // -- Reset x and y values
+            switch (createdObject.type) {
+              case 'rect':
+              case 'ellipse':
+              case 'text':
+              {
+                createdObject.x -= minX;
+                createdObject.y -= minY;
+              }
+              break;
+              case 'vector':
+              {
+                const points = [...createdObject.points];
+
+                for (let i = 0; i < points.length; ++i) {
+                  if (i % 2 === 0) {
+                    points[i] -= minX;
+                  } else {
+                    points[i] -= minY;
+                  }
+                }// -- end for i
+
+                createdObject.points = points;
+              }
+              break;
+              default:
+                throw new Error('Unhandled createdObjectect type');
+            }// -- end switch (createdObject.type)
+
+            return createdObject;
+          });
+
+          localStorage.setItem(
+            LS_KEY_COPIED_CANVAS_OBJECTS,
+            JSON.stringify(createdObjects)
+          );
         };// -- end handleCopyObject
 
         // handle keypresses within container
@@ -499,7 +581,7 @@ const CanvasCard = ({
         // -- Handle copying objects
         const handleCopy = () => {
           handleCopyObject();
-          toast.success('Object copied to clipboard');
+          toast.success('Object(s) copied to clipboard');
         };// -- end handleCopy
 
         container.addEventListener('copy', handleCopy);
@@ -517,7 +599,7 @@ const CanvasCard = ({
             clientMessenger.sendDeleteCanvasObjects({
               type: 'delete_canvas_objects',
               canvasId: selectedCanvasId,
-              canvasObjectIds: [selectedCanvasObjects[0]],
+              canvasObjectIds: selectedCanvasObjects,
             });
             toast.success('Object cut to clipboard');
           }
@@ -533,7 +615,7 @@ const CanvasCard = ({
           if (! clientMessenger) return;
           if (! selectedCanvasId) return;
 
-          const currentObjectData = localStorage.getItem(LS_KEY_COPIED_CANVAS_OBJECT);
+          const currentObjectData = localStorage.getItem(LS_KEY_COPIED_CANVAS_OBJECTS);
           if (! currentObjectData) return;
 
           const selectedCanvasRef = canvasGroupRefsByIdRef.current[selectedCanvasId];
@@ -545,50 +627,58 @@ const CanvasCard = ({
           const selectedCanvasAttribs = selectCanvasById(currState, selectedCanvasId);
           if (! selectedCanvasAttribs) return;
 
-          const createdObjectAttribs : CanvasObjectModel = JSON.parse(currentObjectData);
+          const createdObjectAttribs : CanvasObjectModel[] = JSON.parse(currentObjectData);
+          if ((! Array.isArray(createdObjectAttribs)) || (createdObjectAttribs.length < 1)) return;
 
           // -- paste on top of everything already on the canvas, discarding
           // any zIndex copied from the source object
-          createdObjectAttribs.zIndex
-            = selectMaxZIndexByCanvas(currState, selectedCanvasId) + 1;
+          const zIndexBase = selectMaxZIndexByCanvas(currState, selectedCanvasId) + 1;
 
           // -- set created object position
-          switch (createdObjectAttribs.type) {
-            case 'rect':
-            case 'text':
-            case 'ellipse':
-              createdObjectAttribs.x = selectedCanvasPointerPos.x;
-              createdObjectAttribs.y = selectedCanvasPointerPos.y;
-              break;
-            case 'vector':
-              {
-                if (createdObjectAttribs.points.length !== 4) return;
-                const [xA, yA, xB, yB] = createdObjectAttribs.points;
-                // -- C = leftmost point
-                const xC : number = selectedCanvasPointerPos.x;
-                const yC : number = selectedCanvasPointerPos.y;
-                let xD : number;
-                let yD : number;
+          for (const attribs of createdObjectAttribs) {
+            if (attribs.zIndex === undefined) {
+              attribs.zIndex = zIndexBase;
+            } else {
+              attribs.zIndex += zIndexBase;
+            }
 
-                if (xA < xB) {
-                  xD = xC + (xB - xA);
-                  yD = yC + (yB - yA);
-                } else {
-                  xD = xC + (xA - xB);
-                  yD = yC + (yA - yB);
+            switch (attribs.type) {
+              case 'rect':
+              case 'text':
+              case 'ellipse':
+                attribs.x += selectedCanvasPointerPos.x;
+                attribs.y += selectedCanvasPointerPos.y;
+                break;
+              case 'vector':
+                {
+                  for (let i = 0; i < attribs.points.length; ++i) {
+                    if (i % 2 === 0) {
+                      attribs.points[i] += selectedCanvasPointerPos.x;
+                    } else {
+                      attribs.points[i] += selectedCanvasPointerPos.y;
+                    }
+                  }// -- end for i
                 }
+                break;
+              default:
+                throw new Error(`Unrecognized canvas object data: ${JSON.stringify(attribs)}`);
+            }// -- end switch (attribs.type)
+          }// -- end for attribs
 
-                createdObjectAttribs.points = [xC, yC, xD, yD];
-              }
-              break;
-            default:
-              throw new Error(`Unrecognized canvas object data: ${JSON.stringify(createdObjectAttribs)}`);
-          }// -- end switch (createdObjectAttribs.type)
+          createdObjectAttribs.sort((a, b) => {
+            if ((a.zIndex || 0) < (b.zIndex || 0)) {
+              return -1;
+            } else if ((a.zIndex || 0) > (b.zIndex || 0)) {
+              return 1;
+            } else {
+              return 0;
+            }
+          });
 
           clientMessenger.sendCreateCanvasObjects({
             type: 'create_canvas_objects',
             canvasId: selectedCanvasId,
-            canvasObjects: [createdObjectAttribs],
+            canvasObjects: createdObjectAttribs,
           });
         };// -- end handlePaste
 
@@ -653,6 +743,8 @@ const CanvasCard = ({
       clientMessenger,
       currentDispatcherRef,
       canvasGroupRefsByIdRef,
+      width,
+      height,
     ]
   );
 
