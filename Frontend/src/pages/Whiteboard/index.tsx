@@ -295,12 +295,10 @@ const Whiteboard = () => {
         currentTool: choice,
       });
 
-      for (const objId of selectedCanvasObjects) {
-        clientMessenger?.sendUnselectedCanvasObject({
-          type: 'unselected_canvas_object',
-          canvasObjectId: objId,
-        });
-      }// -- end for objId
+      clientMessenger?.sendUnselectedCanvasObjects({
+        type: 'unselected_canvas_objects',
+        canvasObjectIds: selectedCanvasObjects,
+      });
 
       removeSelectorsByCanvasObject(dispatch, selectedCanvasObjects);
     },

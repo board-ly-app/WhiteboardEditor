@@ -40,7 +40,14 @@ export const selectorsByCanvasObjectSlice = createSlice({
         }
 
         selectorsByCanvasObject[objId] = clientId;
-        canvasObjectsBySelector[clientId][objId] = true;
+
+        if (! (clientId in canvasObjectsBySelector)) {
+          canvasObjectsBySelector[clientId] = {
+            [objId]: true,
+          };
+        } else {
+          canvasObjectsBySelector[clientId][objId] = true;
+        }
       }// -- end for objId, clientId
 
       return state;
@@ -68,7 +75,7 @@ export const selectorsByCanvasObjectSlice = createSlice({
 
       for (const clientId of action.payload) {
         if (clientId in canvasObjectsBySelector) {
-          for (const objId of Object.keys(canvasObjectsBySelector)) {
+          for (const objId of Object.keys(canvasObjectsBySelector[clientId])) {
             delete selectorsByCanvasObject[objId];
           }// -- end for (const objId of Object.keys(canvasObjectsBySelector))
 

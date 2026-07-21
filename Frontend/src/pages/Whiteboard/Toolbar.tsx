@@ -42,6 +42,7 @@ const tools: ToolChoice[] = [
   "ellipse",
   "text",
   "create_canvas",
+  "select",
 ];
 
 const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonProps>(

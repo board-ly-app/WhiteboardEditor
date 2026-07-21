@@ -159,17 +159,17 @@ pub enum ServerSocketBroadcastMessage {
     UpdateWhiteboardMetadata {
         name: Option<String>,
     },
-    SelectedCanvasObject {
+    SelectedCanvasObjects {
         #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
-        #[serde_as(as = "DisplayFromStr")]
-        canvas_object_id: CanvasObjectIdType,
+        #[serde_as(as = "Vec<DisplayFromStr>")]
+        canvas_object_ids: Vec<CanvasObjectIdType>,
     },
-    UnselectedCanvasObject {
+    UnselectedCanvasObjects {
         #[serde_as(as = "DisplayFromStr")]
         client_id: ClientIdType,
-        #[serde_as(as = "DisplayFromStr")]
-        canvas_object_id: CanvasObjectIdType,
+        #[serde_as(as = "Vec<DisplayFromStr>")]
+        canvas_object_ids: Vec<CanvasObjectIdType>,
     },
     EditingCanvas {
         #[serde_as(as = "DisplayFromStr")]
@@ -290,13 +290,13 @@ pub enum ClientSocketMessage {
         #[serde_as(as = "DisplayFromStr")]
         canvas_id: CanvasIdType,
     },
-    SelectedCanvasObject {
-        #[serde_as(as = "DisplayFromStr")]
-        canvas_object_id: CanvasObjectIdType,
+    SelectedCanvasObjects {
+        #[serde_as(as = "Vec<DisplayFromStr>")]
+        canvas_object_ids: Vec<CanvasObjectIdType>,
     },
-    UnselectedCanvasObject {
-        #[serde_as(as = "DisplayFromStr")]
-        canvas_object_id: CanvasObjectIdType,
+    UnselectedCanvasObjects {
+        #[serde_as(as = "Vec<DisplayFromStr>")]
+        canvas_object_ids: Vec<CanvasObjectIdType>,
     },
     CreateCanvasObjects {
         #[serde_as(as = "DisplayFromStr")]

@@ -130,9 +130,9 @@ const EditableVector = <VectorType extends VectorModel>({
       e.cancelBubble = true;
 
       if (! editor) {
-        clientMessenger?.sendSelectedCanvasObject({
-          type: 'selected_canvas_object',
-          canvasObjectId: id,
+        clientMessenger?.sendSelectedCanvasObjects({
+          type: 'selected_canvas_objects',
+          canvasObjectIds: [id],
         });
       }
     },

@@ -24,6 +24,7 @@ import {
 // Local imports
 import {
   type RootState,
+  store,
 } from '@/store';
 
 import {
@@ -33,6 +34,10 @@ import {
 import {
   selectSelectorByCanvasObject,
 } from '@/store/activeUsers/activeUsersSelectors';
+
+import {
+  selectSelectedCanvasObjectsByWhiteboard,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
   selectUserHasAccessToCanvas,
@@ -52,6 +57,8 @@ import {
 } from "@/types/CanvasObjectModel";
 
 import editableObjectProps from "@/dispatchers/editableObjectProps";
+
+import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
   ClientMessengerContext,
@@ -101,6 +108,16 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     clientMessenger,
   } = clientMessengerContext;
 
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
+    throw new Error('No WhiteboardContext provided');
+  }
+
+  const {
+    whiteboardId,
+  } = whiteboardContext;
+
   const {
     user,
   } = useUser();
@@ -147,19 +164,32 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     trRef.current.nodes(editor ? [shapeRef.current] : []);
   }, [editor]);
 
-  const handleSelect = useCallback(
+  const handleSingleSelect = useCallback(
     (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       ev.cancelBubble = true;
 
-      if (! editor) {
+      if (clientMessenger && (! editor)) {
+        const currState = store.getState();
+        const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+          currState, whiteboardId, clientId
+        );
+
+        // -- Unselect any previously selected objects
+        if (selectedCanvasObjects.length > 0) {
+          clientMessenger.sendUnselectedCanvasObjects({
+            type: 'unselected_canvas_objects',
+            canvasObjectIds: selectedCanvasObjects,
+          });
+        }
+
         // -- Identify the current user as the current selector
-        clientMessenger?.sendSelectedCanvasObject({
-          type: 'selected_canvas_object',
-          canvasObjectId: id,
+        clientMessenger.sendSelectedCanvasObjects({
+          type: 'selected_canvas_objects',
+          canvasObjectIds: [id],
         });
       }
     },
-    [id, clientMessenger, editor]
+    [id, whiteboardId, clientId, clientMessenger, editor]
   );
 
   // Override onDragEnd to reselect at end
@@ -179,7 +209,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
 
   const shapeEditableProps = {
     ...editableProps,
-    onDragStart: handleSelect,
+    onDragStart: handleSingleSelect,
     onDragEnd: shapeOnDragEnd,
   };
 
@@ -189,8 +219,8 @@ const EditableShape = <ShapeType extends ShapeModel> ({
         id,
         ref: shapeRef,
         draggable: isDraggable,
-        onClick: handleSelect,
-        onTap: handleSelect,
+        onClick: handleSingleSelect,
+        onTap: handleSingleSelect,
         onTransformEnd,
         ...shapeEditableProps,
       })}
