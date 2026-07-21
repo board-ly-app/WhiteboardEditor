@@ -48,8 +48,8 @@ import {
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
-  setSelectorsByCanvasObject,
-} from '@/controllers';
+  ClientMessengerContext,
+} from '@/context/ClientMessengerContext';
 
 import WhiteboardContext from '@/context/WhiteboardContext';
 
@@ -80,6 +80,16 @@ const useSelectDispatcher = (): OperationDispatcher => {
   const {
     whiteboardId,
   } = whiteboardContext;
+
+  const clientMessengerContext = useContext(ClientMessengerContext);
+
+  if (! clientMessengerContext) {
+    throw new Error('No ClientMessengerContext provided');
+  }
+
+  const {
+    clientMessenger,
+  } = clientMessengerContext;
 
   const clientId = useSelector(
     (state: RootState) => selectClientId(state),
@@ -119,90 +129,90 @@ const useSelectDispatcher = (): OperationDispatcher => {
 
   const handleSelectShapes = useCallback(
     (originCoords: EventCoords, finalCoords: EventCoords) => {
-      const currState : RootState = store.getState();
-      const selectedCanvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+      if (clientMessenger) {
+        const currState : RootState = store.getState();
+        const selectedCanvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
 
-      if (! selectedCanvasId) return;
+        if (! selectedCanvasId) return;
 
-      const canvasObjects = selectCanvasObjectsByCanvas(currState, selectedCanvasId);
-      if (! canvasObjects) return;
+        const canvasObjects = selectCanvasObjectsByCanvas(currState, selectedCanvasId);
+        if (! canvasObjects) return;
 
-      const { x: originX, y: originY } = originCoords;
-      const { x: finalX, y: finalY } = finalCoords;
+        const { x: originX, y: originY } = originCoords;
+        const { x: finalX, y: finalY } = finalCoords;
 
-      const [minX, maxX] = (originX < finalX) ?
-        [originX, finalX]
-        : [finalX, originX]
-      ;
+        const [minX, maxX] = (originX < finalX) ?
+          [originX, finalX]
+          : [finalX, originX]
+        ;
 
-      const [minY, maxY] = (originY < finalY) ?
-        [originY, finalY]
-        : [finalY, originY]
-      ;
+        const [minY, maxY] = (originY < finalY) ?
+          [originY, finalY]
+          : [finalY, originY]
+        ;
 
-      // -- Locate all shapes between the origin and the final coordinates
-      const selectedCanvasObjectIds : CanvasObjectIdType[] = [];
+        // -- Locate all shapes between the origin and the final coordinates
+        const selectedCanvasObjectIds : CanvasObjectIdType[] = [];
 
-      for (const [objId, obj] of Object.entries(canvasObjects)) {
-        switch (obj.type) {
-          case 'rect':
-          case 'text':
-          {
-            const { x: objX, y: objY } = obj;
+        for (const [objId, obj] of Object.entries(canvasObjects)) {
+          switch (obj.type) {
+            case 'rect':
+            case 'text':
+            {
+              const { x: objX, y: objY } = obj;
 
-            if (objX < minX) continue;
-            if (objX > maxX) continue;
-            if (objY < minY) continue;
-            if (objY > maxY) continue;
-
-            selectedCanvasObjectIds.push(objId);
-          }
-          break;
-          case 'ellipse':
-          {
-            const { x: objX, y: objY } = obj;
-
-            if (objX < minX) continue;
-            if (objX > maxX) continue;
-            if (objY < minY) continue;
-            if (objY > maxY) continue;
-
-            selectedCanvasObjectIds.push(objId);
-          }
-          break;
-          case 'vector':
-          {
-            const { points } = obj;
-            const [xA, yA, xB, yB] = points;
-            const coords = [
-              [xA, yA],
-              [xB, yB],
-            ];
-
-            for (const [pointX, pointY] of coords) {
-              if (pointX < minX) continue;
-              if (pointX > maxX) continue;
-              if (pointY < minY) continue;
-              if (pointY > maxY) continue;
+              if (objX < minX) continue;
+              if (objX > maxX) continue;
+              if (objY < minY) continue;
+              if (objY > maxY) continue;
 
               selectedCanvasObjectIds.push(objId);
-              break;
-            }// -- end for (const [pointX, pointY] of coords)
-          }
-          break;
-          default:
-            throw new Error('ERROR: unrecognized object type');
-        }// -- end switch (obj.type)
-      }// -- end for obj
+            }
+            break;
+            case 'ellipse':
+            {
+              const { x: objX, y: objY } = obj;
 
-      setSelectorsByCanvasObject(
-        store.dispatch,
-        Object.fromEntries(
-          selectedCanvasObjectIds.map(objId => [objId, clientId])
-        )
-      );
+              if (objX < minX) continue;
+              if (objX > maxX) continue;
+              if (objY < minY) continue;
+              if (objY > maxY) continue;
+
+              selectedCanvasObjectIds.push(objId);
+            }
+            break;
+            case 'vector':
+            {
+              const { points } = obj;
+              const [xA, yA, xB, yB] = points;
+              const coords = [
+                [xA, yA],
+                [xB, yB],
+              ];
+
+              for (const [pointX, pointY] of coords) {
+                if (pointX < minX) continue;
+                if (pointX > maxX) continue;
+                if (pointY < minY) continue;
+                if (pointY > maxY) continue;
+
+                selectedCanvasObjectIds.push(objId);
+                break;
+              }// -- end for (const [pointX, pointY] of coords)
+            }
+            break;
+            default:
+              throw new Error('ERROR: unrecognized object type');
+          }// -- end switch (obj.type)
+        }// -- end for obj
+
+        clientMessenger.sendSelectedCanvasObjects({
+          type: 'selected_canvas_objects',
+          canvasObjectIds: selectedCanvasObjectIds,
+        });
+      }
     },
-    [whiteboardId, clientId]
+    [whiteboardId, clientMessenger]
   );// -- end handleSelectShapes
 
   const handlePointerUp = useCallback(
@@ -259,7 +269,7 @@ const useSelectDispatcher = (): OperationDispatcher => {
       if (mouseDownCoords) {
         return 'Drag to enclose the shapes to select, then release';
       } else {
-        return 'Click to select shapes on this canvas.';
+        return 'Click and drag to select shapes on this canvas.';
       }
     },
     [mouseDownCoords]
