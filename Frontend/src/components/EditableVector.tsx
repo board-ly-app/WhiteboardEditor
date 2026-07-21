@@ -19,6 +19,7 @@ import {
 
 import {
   type RootState,
+  store,
 } from '@/store';
 
 import {
@@ -34,12 +35,18 @@ import {
 } from '@/store/canvases/canvasesSelectors';
 
 import {
+  selectSelectedCanvasObjectsByWhiteboard,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
+
+import {
   useUser,
 } from '@/hooks/useUser';
 
 import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
+
+import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
   type CanvasObjectIdType,
@@ -90,6 +97,16 @@ const EditableVector = <VectorType extends VectorModel>({
     clientMessenger,
   } = clientMessengerContext;
 
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
+    throw new Error('No WhiteboardContext provided');
+  }
+
+  const {
+    whiteboardId,
+  } = whiteboardContext;
+
   const {
     user,
   } = useUser();
@@ -125,18 +142,32 @@ const EditableVector = <VectorType extends VectorModel>({
     [draggable, isSelected, editor]
   );
 
-  const handleSelect = useCallback(
+  const handleSingleSelect = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       e.cancelBubble = true;
 
-      if (! editor) {
-        clientMessenger?.sendSelectedCanvasObjects({
+      if (clientMessenger && (! editor)) {
+        const currState = store.getState();
+        const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+          currState, whiteboardId, clientId
+        );
+
+        // -- Unselect any previously selected objects
+        if (selectedCanvasObjects.length > 0) {
+          clientMessenger.sendUnselectedCanvasObjects({
+            type: 'unselected_canvas_objects',
+            canvasObjectIds: selectedCanvasObjects,
+          });
+        }
+
+        // -- Identify the current user as the current selector
+        clientMessenger.sendSelectedCanvasObjects({
           type: 'selected_canvas_objects',
           canvasObjectIds: [id],
         });
       }
     },
-    [id, clientMessenger, editor]
+    [id, whiteboardId, clientId, clientMessenger, editor]
   );
 
   const handleAnchorDragMove = useCallback(
@@ -214,7 +245,7 @@ const EditableVector = <VectorType extends VectorModel>({
   // Override the onDragEnd handler for vectors to change points rather than x, y
   const vectorEditableProps = {
     ...editableObjectProps(model, isDraggable, onUpdateObject),
-    onDragStart: handleSelect,
+    onDragStart: handleSingleSelect,
     onDragEnd: handleVectorDragEnd,
   };
 
@@ -236,8 +267,8 @@ const EditableVector = <VectorType extends VectorModel>({
         id,
         ref: vectorRef,
         draggable: isDraggable,
-        onClick: handleSelect,
-        onTap: handleSelect,
+        onClick: handleSingleSelect,
+        onTap: handleSingleSelect,
         hitStrokeWidth: 20,
         ...vectorEditableProps,
       })}

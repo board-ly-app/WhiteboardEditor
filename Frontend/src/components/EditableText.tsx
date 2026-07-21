@@ -23,6 +23,7 @@ import {
 
 import {
   type RootState,
+  store,
 } from '@/store';
 
 import {
@@ -34,12 +35,18 @@ import {
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import {
+  selectSelectedCanvasObjectsByWhiteboard,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
+
+import {
   selectUserHasAccessToCanvas,
 } from '@/store/canvases/canvasesSelectors';
 
 import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
+
+import WhiteboardContext from '@/context/WhiteboardContext';
 
 import TextEditor from "./TextEditor";
 
@@ -121,6 +128,16 @@ const EditableText = ({
     clientMessenger,
   } = clientMessengerContext;
 
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
+    throw new Error('No WhiteboardContext provided');
+  }
+
+  const {
+    whiteboardId,
+  } = whiteboardContext;
+
   const {
     user,
   } = useUser();
@@ -165,16 +182,33 @@ const EditableText = ({
     trRef.current.nodes(editor ? [textRef.current] : []);
   }, [editor]);
   
-  const handleSelect = useCallback((ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-    ev.cancelBubble = true;
+  const handleSingleSelect = useCallback(
+    (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+      ev.cancelBubble = true;
 
-    if (! editor) {
-      clientMessenger?.sendSelectedCanvasObjects({
-        type: 'selected_canvas_objects',
-        canvasObjectIds: [id],
-      });
-    }
-  }, [editor, clientMessenger, id]);
+      if (clientMessenger && (! editor)) {
+        const currState = store.getState();
+        const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+          currState, whiteboardId, clientId
+        );
+
+        // -- Unselect any previously selected objects
+        if (selectedCanvasObjects.length > 0) {
+          clientMessenger.sendUnselectedCanvasObjects({
+            type: 'unselected_canvas_objects',
+            canvasObjectIds: selectedCanvasObjects,
+          });
+        }
+
+        // -- Identify the current user as the current selector
+        clientMessenger.sendSelectedCanvasObjects({
+          type: 'selected_canvas_objects',
+          canvasObjectIds: [id],
+        });
+      }
+    },
+    [id, whiteboardId, clientId, clientMessenger, editor]
+  );// -- end handleSingleSelect
 
   const handleTextDblClick = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (!draggable) return;
@@ -240,13 +274,13 @@ const EditableText = ({
         height={height}
         rotation={rotation}
         draggable={draggable}
-        onClick={handleSelect}
-        onTap={handleSelect}
+        onClick={handleSingleSelect}
+        onTap={handleSingleSelect}
         onDblClick={handleTextDblClick}
         onDblTap={handleTextDblClick}
         listening={!isEditing && draggable}
         visible={!isEditing}
-        onDragStart={handleSelect}
+        onDragStart={handleSingleSelect}
         onDragEnd={onDragEnd}
         onMouseUp={onMouseUp}
         onMouseDown={onMouseDown}
