@@ -32,9 +32,11 @@ import {
 
 import {
   selectUserHasAccessToCanvas,
+  selectSelectedCanvasByWhiteboard,
 } from '@/store/canvases/canvasesSelectors';
 
 import {
+  selectCanvasObjectById,
   selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
@@ -174,6 +176,14 @@ const EditableVector = <VectorType extends VectorModel>({
     [draggable, isSelected, editor]
   );
 
+  // -- Ensure localPoints changes whenever the model's points change
+  useEffect(
+    () => {
+      setLocalPoints(model.points);
+    },
+    [model.points, setLocalPoints]
+  );// -- end useEffect
+
   const handleSingleSelect = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       e.cancelBubble = true;
@@ -259,43 +269,149 @@ const EditableVector = <VectorType extends VectorModel>({
     [localPoints, onUpdateObject, model, snappingMonitor]
   );
 
-  const handleVectorDragEnd = useCallback(
-    (ev: Konva.KonvaEventObject<DragEvent>) => {
-      const node = ev.target;
-      const dx = node.x();
-      const dy = node.y();
-
-      const updatedPoints = model.points.map((p, i) =>
-        i % 2 === 0 ? p + dx : p + dy
-      );
-
-      // Prevent flicker by updating localPoints before broadcasting
-      setLocalPoints(updatedPoints);
-      vectorRef.current?.setAttrs({ points: updatedPoints });
-      node.position({ x: 0, y: 0 });
-
-      const update : VectorType = {
-        ...model,
-        points: updatedPoints,
-      };
-
-      onUpdateObject(update);
-    },
-    [onUpdateObject, model, setLocalPoints]
-  );
-
   useEffect(() => {
     setLocalPoints(model.points);
   }, [model.points]);
 
+  const childStrokeWidth = (children.props.strokeWidth as number | undefined) ?? 2;
+
+  // -- Reset x and y offsets whenever the model points change
+  useEffect(
+    () => {
+      console.log('!! RESET VECTOR NODE COORDS');
+      if (! vectorRef.current) return;
+
+      const vector = vectorRef.current;
+      console.log(`vector.x = ${vector.x()}, vector.y = ${vector.y()}`);
+
+      vector.x(0);
+      vector.y(0);
+    },
+    [vectorRef.current, model.points]
+  );// -- end useEffect
+
+  const handleDragStart = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      handleSingleSelect(e);
+    },
+    [handleSingleSelect]
+  );// -- end handleDragStart
+
+  const handleDragEnd = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      if (! clientMessenger) return;
+
+      const currState : RootState = store.getState();
+      const canvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+      if (! canvasId) return;
+
+      const translateX = e.currentTarget.x();
+      const translateY = e.currentTarget.y();
+
+      const selectedObjectRefsById = selectedObjectRefsByIdRef.current;
+      const updatedObjects = Object.fromEntries(Object.entries(selectedObjectRefsById).map(
+        ([objId, objRef]) => {
+          if (! objRef.current) return null;
+
+          const prevObj = selectCanvasObjectById(currState, objId);
+          if (! prevObj) return null;
+
+          switch (prevObj.type) {
+            case 'rect':
+            case 'ellipse':
+            case 'text':
+            {
+              const objUpdate = ({
+                ...prevObj,
+                x: prevObj.x + translateX,
+                y: prevObj.y + translateY,
+              });
+
+              return [objId, objUpdate];
+            }
+            case 'vector':
+            {
+              const objUpdate = ({
+                ...prevObj,
+                points: prevObj.points.map((val, i) => {
+                  if (i % 2 === 0) {
+                    return val + translateX;
+                  } else {
+                    return val + translateY;
+                  }
+                }),
+              });
+
+              return [objId, objUpdate];
+            }
+            default:
+              throw new Error('ERROR: unrecognized object type');
+          }// -- end switch (prevObj.type)
+        }
+      ).filter(entry => !! entry));
+
+      clientMessenger.sendUpdateCanvasObjects({
+        type: 'update_canvas_objects',
+        canvasId,
+        canvasObjects: updatedObjects,
+      });
+    },
+    [whiteboardId, clientMessenger, selectedObjectRefsByIdRef]
+  );// -- end handleDragEnd
+
+  const handleDragMove = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      const currState : RootState = store.getState();
+
+      const translateX = e.currentTarget.x();
+      const translateY = e.currentTarget.y();
+
+      for (const [objId, objRef] of Object.entries(selectedObjectRefsByIdRef.current)) {
+        if (objId === id) continue;
+        if (! objRef.current) continue;
+
+        const obj = objRef.current;
+        const prevObj = selectCanvasObjectById(currState, objId);
+        if (! prevObj) continue;
+
+        switch (prevObj.type) {
+          case 'rect':
+          case 'ellipse':
+          case 'text':
+          {
+            obj.x(prevObj.x + translateX);
+            obj.y(prevObj.y + translateY);
+          }
+          break;
+          case 'vector':
+          {
+            const vec = obj as Konva.Line;
+            const pointsUpdate = prevObj.points.map((val, i) => {
+              if (i % 2 === 0) {
+                return val + translateX;
+              } else {
+                return val + translateY;
+              }
+            });
+
+            vec.points(pointsUpdate);
+          }
+          break;
+          default:
+            throw new Error('Unrecognized object type');
+        }// -- end switch (prevObj.type)
+      }// -- end 
+    },
+    [id, selectedObjectRefsByIdRef]
+  );// -- end handleDragMove
+
   // Override the onDragEnd handler for vectors to change points rather than x, y
   const vectorEditableProps = {
     ...editableObjectProps(model, isDraggable, onUpdateObject),
-    onDragStart: handleSingleSelect,
-    onDragEnd: handleVectorDragEnd,
+    ondragstart: handleDragStart,
+    onDragMove: handleDragMove,
+    onDragEnd: handleDragEnd,
   };
-
-  const childStrokeWidth = (children.props.strokeWidth as number | undefined) ?? 2;
 
   return (
     <Group>
@@ -315,6 +431,7 @@ const EditableVector = <VectorType extends VectorModel>({
         draggable: isDraggable,
         onClick: handleSingleSelect,
         onTap: handleSingleSelect,
+        onDragStart: handleSingleSelect,
         hitStrokeWidth: 20,
         ...vectorEditableProps,
       })}
@@ -363,6 +480,6 @@ const EditableVector = <VectorType extends VectorModel>({
       )}
     </Group>
   );
-};
+};// -- end EditableVector
 
 export default EditableVector;

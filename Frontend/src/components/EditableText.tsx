@@ -22,10 +22,6 @@ import {
 } from 'react-redux';
 
 import {
-  type EventCoords,
-} from '@/types/EventCoords';
-
-import {
   type RootState,
   store,
 } from '@/store';
@@ -268,19 +264,6 @@ const EditableText = ({
     [id, whiteboardId, clientId, clientMessenger, editor]
   );// -- end handleSingleSelect
 
-  // -- Record initial x and y coordinates on drag start to calculate total
-  // movement on drag end.
-  const dragStartCoordsRef = useRef<EventCoords>({ x, y });
-
-  const handleDragStart = useCallback(
-    (e: Konva.KonvaEventObject<DragEvent>) => {
-      handleSingleSelect(e);
-      dragStartCoordsRef.current.x = e.evt.x;
-      dragStartCoordsRef.current.y = e.evt.y;
-    },
-    [handleSingleSelect, dragStartCoordsRef]
-  );// -- end handleDragStart
-
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
       if (! clientMessenger) return;
@@ -289,14 +272,8 @@ const EditableText = ({
       const canvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
       if (! canvasId) return;
 
-      const {
-        x: prevX,
-        y: prevY,
-      } = dragStartCoordsRef.current;
-      const currX = e.currentTarget.x();
-      const currY = e.currentTarget.y();
-      const moveX = currX - prevX;
-      const moveY = currY - prevY;
+      const translateX = e.currentTarget.x() - x;
+      const translateY = e.currentTarget.y() - y;
 
       const selectedObjectRefsById = selectedObjectRefsByIdRef.current;
       const updatedObjects = Object.fromEntries(Object.entries(selectedObjectRefsById).map(
@@ -313,24 +290,23 @@ const EditableText = ({
             {
               const objUpdate = ({
                 ...prevObj,
-                x: prevObj.x + moveX,
-                y: prevObj.y + moveY,
+                x: prevObj.x + translateX,
+                y: prevObj.y + translateY,
               });
 
               return [objId, objUpdate];
             }
             case 'vector':
             {
-              const updatedPoints = prevObj.points.map((val, i) => {
-                if (i % 2 === 0) {
-                  return val + moveX;
-                } else {
-                  return val + moveY;
-                }
-              });
               const objUpdate = ({
                 ...prevObj,
-                points: updatedPoints,
+                points: prevObj.points.map((val, i) => {
+                  if (i % 2 === 0) {
+                    return val + translateX;
+                  } else {
+                    return val + translateY;
+                  }
+                }),
               });
 
               return [objId, objUpdate];
@@ -347,22 +323,52 @@ const EditableText = ({
         canvasObjects: updatedObjects,
       });
     },
-    [whiteboardId, clientMessenger, selectedObjectRefsByIdRef]
+    [whiteboardId, clientMessenger, selectedObjectRefsByIdRef, x, y]
   );// -- end handleDragEnd
 
   const handleDragMove = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
+      const currState : RootState = store.getState();
+      const translateX = e.currentTarget.x() - x;
+      const translateY = e.currentTarget.y() - y;
+
       for (const [objId, objRef] of Object.entries(selectedObjectRefsByIdRef.current)) {
         if (objId === id) continue;
         if (! objRef.current) continue;
 
         const obj = objRef.current;
+        const prevObj = selectCanvasObjectById(currState, objId);
+        if (! prevObj) continue;
 
-        obj.x(obj.x() + e.evt.movementX);
-        obj.y(obj.y() + e.evt.movementY);
+        switch (prevObj.type) {
+          case 'rect':
+          case 'ellipse':
+          case 'text':
+          {
+            obj.x(prevObj.x + translateX);
+            obj.y(prevObj.y + translateY);
+          }
+          break;
+          case 'vector':
+          {
+            const vec = obj as Konva.Line;
+            const pointsUpdate = prevObj.points.map((val, i) => {
+              if (i % 2 === 0) {
+                return val + translateX;
+              } else {
+                return val + translateY;
+              }
+            });
+
+            vec.points(pointsUpdate);
+          }
+          break;
+          default:
+            throw new Error('Unrecognized object type');
+        }// -- end switch (prevObj.type)
       }// -- end 
     },
-    [id, selectedObjectRefsByIdRef]
+    [id, selectedObjectRefsByIdRef, x, y]
   );// -- end handleDragMove
 
   const handleTextDblClick = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -435,7 +441,7 @@ const EditableText = ({
         onDblTap={handleTextDblClick}
         listening={!isEditing && draggable}
         visible={!isEditing}
-        onDragStart={handleDragStart}
+        onDragStart={handleSingleSelect}
         onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
         onMouseUp={onMouseUp}

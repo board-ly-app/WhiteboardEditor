@@ -50,10 +50,6 @@ import type {
 } from "@/dispatchers/editableObjectProps";
 
 import {
-  type EventCoords,
-} from '@/types/EventCoords';
-
-import {
   type CanvasIdType,
 } from '@/types/WebSocketProtocol';
 
@@ -251,22 +247,6 @@ const EditableShape = <ShapeType extends ShapeModel> ({
   // Override onDragEnd to reselect at end
   const editableProps = editableObjectProps(shapeModel, isDraggable, onUpdateObject);
 
-  // -- Record initial x and y coordinates on drag start to calculate total
-  // movement on drag end.
-  const dragStartCoordsRef = useRef<EventCoords>({
-    x: shapeModel.x,
-    y: shapeModel.y,
-  });
-
-  const handleDragStart = useCallback(
-    (e: Konva.KonvaEventObject<DragEvent>) => {
-      handleSingleSelect(e);
-      dragStartCoordsRef.current.x = e.evt.x;
-      dragStartCoordsRef.current.y = e.evt.y;
-    },
-    [handleSingleSelect, dragStartCoordsRef]
-  );// -- end handleDragStart
-
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
       if (! clientMessenger) return;
@@ -275,14 +255,8 @@ const EditableShape = <ShapeType extends ShapeModel> ({
       const canvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
       if (! canvasId) return;
 
-      const {
-        x: prevX,
-        y: prevY,
-      } = dragStartCoordsRef.current;
-      const currX = e.currentTarget.x();
-      const currY = e.currentTarget.y();
-      const moveX = currX - prevX;
-      const moveY = currY - prevY;
+      const translateX = e.currentTarget.x() - shapeModel.x;
+      const translateY = e.currentTarget.y() - shapeModel.y;
 
       const selectedObjectRefsById = selectedObjectRefsByIdRef.current;
       const updatedObjects = Object.fromEntries(Object.entries(selectedObjectRefsById).map(
@@ -299,24 +273,23 @@ const EditableShape = <ShapeType extends ShapeModel> ({
             {
               const objUpdate = ({
                 ...prevObj,
-                x: prevObj.x + moveX,
-                y: prevObj.y + moveY,
+                x: prevObj.x + translateX,
+                y: prevObj.y + translateY,
               });
 
               return [objId, objUpdate];
             }
             case 'vector':
             {
-              const updatedPoints = prevObj.points.map((val, i) => {
-                if (i % 2 === 0) {
-                  return val + moveX;
-                } else {
-                  return val + moveY;
-                }
-              });
               const objUpdate = ({
                 ...prevObj,
-                points: updatedPoints,
+                points: prevObj.points.map((val, i) => {
+                  if (i % 2 === 0) {
+                    return val + translateX;
+                  } else {
+                    return val + translateY;
+                  }
+                }),
               });
 
               return [objId, objUpdate];
@@ -333,27 +306,56 @@ const EditableShape = <ShapeType extends ShapeModel> ({
         canvasObjects: updatedObjects,
       });
     },
-    [whiteboardId, clientMessenger, selectedObjectRefsByIdRef]
+    [whiteboardId, clientMessenger, selectedObjectRefsByIdRef, shapeModel.x, shapeModel.y]
   );// -- end handleDragEnd
 
   const handleDragMove = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
+      const currState : RootState = store.getState();
+      const translateX = e.currentTarget.x() - shapeModel.x;
+      const translateY = e.currentTarget.y() - shapeModel.y;
+
       for (const [objId, objRef] of Object.entries(selectedObjectRefsByIdRef.current)) {
         if (objId === id) continue;
         if (! objRef.current) continue;
 
         const obj = objRef.current;
+        const prevObj = selectCanvasObjectById(currState, objId);
+        if (! prevObj) continue;
 
-        obj.x(obj.x() + e.evt.movementX);
-        obj.y(obj.y() + e.evt.movementY);
+        switch (prevObj.type) {
+          case 'rect':
+          case 'ellipse':
+          case 'text':
+          {
+            obj.x(prevObj.x + translateX);
+            obj.y(prevObj.y + translateY);
+          }
+          break;
+          case 'vector':
+          {
+            const vec = obj as Konva.Line;
+            const pointsUpdate = prevObj.points.map((val, i) => {
+              if (i % 2 === 0) {
+                return val + translateX;
+              } else {
+                return val + translateY;
+              }
+            });
+
+            vec.points(pointsUpdate);
+          }
+          break;
+          default:
+            throw new Error('Unrecognized object type');
+        }// -- end switch (prevObj.type)
       }// -- end 
     },
-    [id, selectedObjectRefsByIdRef]
+    [id, selectedObjectRefsByIdRef, shapeModel.x, shapeModel.y]
   );// -- end handleDragMove
 
   const shapeEditableProps = {
     ...editableProps,
-    onDragStart: handleDragStart,
     onDragMove: handleDragMove,
     onDragEnd: handleDragEnd,
   };
@@ -365,6 +367,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
         ref: shapeRef,
         draggable: isDraggable,
         onClick: handleSingleSelect,
+        onDragStart: handleSingleSelect,
         onTap: handleSingleSelect,
         onTransformEnd,
         ...shapeEditableProps,
