@@ -36,16 +36,22 @@ import {
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import {
+  selectCanvasObjectById,
   selectSelectedCanvasObjectsByWhiteboard,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
+  selectSelectedCanvasByWhiteboard,
   selectUserHasAccessToCanvas,
 } from '@/store/canvases/canvasesSelectors';
 
 import type { 
   EditableObjectProps 
 } from "@/dispatchers/editableObjectProps";
+
+import {
+  type EventCoords,
+} from '@/types/EventCoords';
 
 import {
   type CanvasIdType,
@@ -116,6 +122,8 @@ const EditableShape = <ShapeType extends ShapeModel> ({
 
   const {
     whiteboardId,
+    canvasObjectRefsByIdRef,
+    selectedObjectRefsByIdRef,
   } = whiteboardContext;
 
   const {
@@ -131,6 +139,10 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     lodash.isEqual
   );
 
+  if (! clientId) {
+    throw new Error('No clientId provided');
+  }
+
   const editor = useSelector(
     (state: RootState) => selectSelectorByCanvasObject(state, id),
     lodash.isEqual
@@ -145,6 +157,18 @@ const EditableShape = <ShapeType extends ShapeModel> ({
 
   useSnapping(shapeRef, snappingMonitor, trRef);
 
+  // -- Register canvas object ref
+  useEffect(
+    () => {
+      canvasObjectRefsByIdRef.current[id] = shapeRef;
+
+      return () => {
+        delete canvasObjectRefsByIdRef.current[id];
+      };
+    },
+    [id, canvasObjectRefsByIdRef]
+  );
+
   const anchorDragBoundFunc = useCallback(
     (oldPos: Konva.Vector2d, newPos: Konva.Vector2d) =>
       trRef.current
@@ -157,6 +181,24 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     () => userHasCanvasAccess && (editor?.clientId === clientId),
     [userHasCanvasAccess, editor, clientId]
   );// -- end const isSelected
+
+  // -- Register/unregister shape in selected objects ref
+  useEffect(
+    () => {
+      if (isSelected) {
+        selectedObjectRefsByIdRef.current[id] = shapeRef;
+      } else if (id in selectedObjectRefsByIdRef.current) {
+        delete selectedObjectRefsByIdRef.current[id];
+      }
+
+      return () => {
+        if (id in selectedObjectRefsByIdRef.current) {
+          delete selectedObjectRefsByIdRef.current[id];
+        }
+      };
+    },
+    [id, isSelected, selectedObjectRefsByIdRef]
+  );
 
   // Transformer attach/detach
   useEffect(() => {
@@ -204,27 +246,116 @@ const EditableShape = <ShapeType extends ShapeModel> ({
       }
     },
     [id, whiteboardId, clientId, clientMessenger, editor]
-  );
+  );// -- end handleSingleSelect
 
   // Override onDragEnd to reselect at end
   const editableProps = editableObjectProps(shapeModel, isDraggable, onUpdateObject);
-  const {
-    onDragEnd,
-  } = editableProps;
 
-  const shapeOnDragEnd = useCallback(
-    (ev: Konva.KonvaEventObject<DragEvent>) => {
-      if (onDragEnd) {
-        onDragEnd(ev);
-      }
+  // -- Record initial x and y coordinates on drag start to calculate total
+  // movement on drag end.
+  const dragStartCoordsRef = useRef<EventCoords>({
+    x: shapeModel.x,
+    y: shapeModel.y,
+  });
+
+  const handleDragStart = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      handleSingleSelect(e);
+      dragStartCoordsRef.current.x = e.evt.x;
+      dragStartCoordsRef.current.y = e.evt.y;
     },
-    [onDragEnd]
-  );
+    [handleSingleSelect, dragStartCoordsRef]
+  );// -- end handleDragStart
+
+  const handleDragEnd = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      if (! clientMessenger) return;
+
+      const currState : RootState = store.getState();
+      const canvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+      if (! canvasId) return;
+
+      const {
+        x: prevX,
+        y: prevY,
+      } = dragStartCoordsRef.current;
+      const currX = e.currentTarget.x();
+      const currY = e.currentTarget.y();
+      const moveX = currX - prevX;
+      const moveY = currY - prevY;
+
+      const selectedObjectRefsById = selectedObjectRefsByIdRef.current;
+      const updatedObjects = Object.fromEntries(Object.entries(selectedObjectRefsById).map(
+        ([objId, objRef]) => {
+          if (! objRef.current) return null;
+
+          const prevObj = selectCanvasObjectById(currState, objId);
+          if (! prevObj) return null;
+
+          switch (prevObj.type) {
+            case 'rect':
+            case 'ellipse':
+            case 'text':
+            {
+              const objUpdate = ({
+                ...prevObj,
+                x: prevObj.x + moveX,
+                y: prevObj.y + moveY,
+              });
+
+              return [objId, objUpdate];
+            }
+            case 'vector':
+            {
+              const updatedPoints = prevObj.points.map((val, i) => {
+                if (i % 2 === 0) {
+                  return val + moveX;
+                } else {
+                  return val + moveY;
+                }
+              });
+              const objUpdate = ({
+                ...prevObj,
+                points: updatedPoints,
+              });
+
+              return [objId, objUpdate];
+            }
+            default:
+              throw new Error('ERROR: unrecognized object type');
+          }// -- end switch (prevObj.type)
+        }
+      ).filter(entry => !! entry));
+
+      clientMessenger.sendUpdateCanvasObjects({
+        type: 'update_canvas_objects',
+        canvasId,
+        canvasObjects: updatedObjects,
+      });
+    },
+    [whiteboardId, clientMessenger, selectedObjectRefsByIdRef]
+  );// -- end handleDragEnd
+
+  const handleDragMove = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      for (const [objId, objRef] of Object.entries(selectedObjectRefsByIdRef.current)) {
+        if (objId === id) continue;
+        if (! objRef.current) continue;
+
+        const obj = objRef.current;
+
+        obj.x(obj.x() + e.evt.movementX);
+        obj.y(obj.y() + e.evt.movementY);
+      }// -- end 
+    },
+    [id, selectedObjectRefsByIdRef]
+  );// -- end handleDragMove
 
   const shapeEditableProps = {
     ...editableProps,
-    onDragStart: handleSingleSelect,
-    onDragEnd: shapeOnDragEnd,
+    onDragStart: handleDragStart,
+    onDragMove: handleDragMove,
+    onDragEnd: handleDragEnd,
   };
 
   return (

@@ -621,7 +621,6 @@ const Whiteboard = () => {
                 {/* Display Canvases */}
                 <div className="flex flex-1 flex-row justify-center flex-wrap">
                   <CanvasCard
-                    whiteboardId={whiteboardId}
                     rootCanvasId={rootCanvasId}
                     shapeAttributes={shapeAttributesState}
                     onSelectCanvasDimensions={handleCreateCanvasDimensions}
@@ -718,7 +717,6 @@ const Whiteboard = () => {
                 {/* Display Canvases */}
                 <div className="flex flex-1 flex-row justify-center flex-wrap">
                   <CanvasCard
-                    whiteboardId={whiteboardId}
                     rootCanvasId={rootCanvasId}
                     shapeAttributes={shapeAttributesState}
                     onSelectCanvasDimensions={handleCreateCanvasDimensions}
@@ -788,6 +786,10 @@ const WrappedWhiteboard = () => {
     throw new Error("No whiteboard ID provided to Whiteboard page");
   }
 
+  const stageRef : RefObject<Konva.Stage | null> = useRef(null);
+  const canvasObjectRefsByIdRef : RefObject<Record<CanvasObjectIdType, RefObject<Konva.Shape | null>>> = useRef({});
+  const selectedObjectRefsByIdRef : RefObject<Record<CanvasObjectIdType, RefObject<Konva.Shape | null>>> = useRef({});
+
   // -- track refs to canvas groups (frames)
   const canvasGroupRefsByIdRef: RefObject<Record<CanvasIdType, RefObject<Konva.Group | null>>> = useRef({});
 
@@ -834,6 +836,9 @@ const WrappedWhiteboard = () => {
     <WhiteboardProvider
       handleUpdateShapes={handleUpdateShapes}
       whiteboardId={whiteboardId}
+      stageRef={stageRef}
+      canvasObjectRefsByIdRef={canvasObjectRefsByIdRef}
+      selectedObjectRefsByIdRef={selectedObjectRefsByIdRef}
       currentDispatcherRef={currentDispatcherRef}
       canvasGroupRefsByIdRef={canvasGroupRefsByIdRef}
     >

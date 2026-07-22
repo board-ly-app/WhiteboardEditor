@@ -105,6 +105,8 @@ const EditableVector = <VectorType extends VectorModel>({
 
   const {
     whiteboardId,
+    canvasObjectRefsByIdRef,
+    selectedObjectRefsByIdRef,
   } = whiteboardContext;
 
   const {
@@ -132,10 +134,40 @@ const EditableVector = <VectorType extends VectorModel>({
     lodash.isEqual
   );
 
+  // -- Register canvas object ref
+  useEffect(
+    () => {
+      canvasObjectRefsByIdRef.current[id] = vectorRef;
+
+      return () => {
+        delete canvasObjectRefsByIdRef.current[id];
+      };
+    },
+    [id, canvasObjectRefsByIdRef]
+  );// -- end registering canvas object ref
+
   const isSelected : boolean = useMemo(
     () => userHasCanvasAccess && (editor?.clientId === clientId),
     [userHasCanvasAccess, editor, clientId]
   );// -- end const isSelected
+
+  // -- Register/unregister shape in selected objects ref
+  useEffect(
+    () => {
+      if (isSelected) {
+        selectedObjectRefsByIdRef.current[id] = vectorRef;
+      } else if (id in selectedObjectRefsByIdRef.current) {
+        delete selectedObjectRefsByIdRef.current[id];
+      }
+
+      return () => {
+        if (id in selectedObjectRefsByIdRef.current) {
+          delete selectedObjectRefsByIdRef.current[id];
+        }
+      };
+    },
+    [id, isSelected, selectedObjectRefsByIdRef]
+  );
 
   const isDraggable : boolean = useMemo(
     () => draggable && (isSelected || (! editor)),

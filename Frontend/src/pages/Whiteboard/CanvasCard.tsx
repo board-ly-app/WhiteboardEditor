@@ -13,8 +13,6 @@ import {
 
 import lodash from 'lodash';
 
-import Konva from 'konva';
-
 import {
   Stage,
   Layer,
@@ -36,7 +34,6 @@ import CanvasMenu from "@/pages/Whiteboard/CanvasMenu";
 
 import {
   type ClientIdType,
-  type WhiteboardIdType,
   type CanvasIdType,
   type CanvasAttribs,
 } from "@/types/WebSocketProtocol";
@@ -115,7 +112,6 @@ import { captureImage, type ImageTypeEnum } from '@/lib/captureImage';
 import api from '@/api/axios';
 
 export interface CanvasCardProps {
-  whiteboardId: WhiteboardIdType;
   rootCanvasId: CanvasIdType,
   shapeAttributes: ShapeAttributesState;
   // -- editor identified by user id
@@ -123,7 +119,6 @@ export interface CanvasCardProps {
 }
 
 const CanvasCard = ({
-  whiteboardId,
   rootCanvasId,
   shapeAttributes,
   onSelectCanvasDimensions,
@@ -143,6 +138,11 @@ const CanvasCard = ({
   if (! whiteboardContext) {
     throw new Error('No WhiteboardContext provided to CanvasCard');
   }
+
+  const {
+    whiteboardId,
+    stageRef,
+  } = whiteboardContext;
 
   const {
     canvasGroupRefsByIdRef,
@@ -269,9 +269,7 @@ const CanvasCard = ({
   );
 
   // -- set up interval to broadcast cursor position
-  const stageRef = useRef<Konva.Stage | null>(null);
   const cursorPosRef = useRef<{ x: number; y: number; } | null>(null);
-
   const containerRef = useRef<HTMLDivElement>(null);
 
   // -- Set current zoom level
