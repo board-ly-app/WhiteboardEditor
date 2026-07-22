@@ -278,16 +278,14 @@ const EditableVector = <VectorType extends VectorModel>({
   // -- Reset x and y offsets whenever the model points change
   useEffect(
     () => {
-      console.log('!! RESET VECTOR NODE COORDS');
       if (! vectorRef.current) return;
 
       const vector = vectorRef.current;
-      console.log(`vector.x = ${vector.x()}, vector.y = ${vector.y()}`);
 
       vector.x(0);
       vector.y(0);
     },
-    [vectorRef.current, model.points]
+    [model.points]
   );// -- end useEffect
 
   const handleDragStart = useCallback(
