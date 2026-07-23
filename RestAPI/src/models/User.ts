@@ -12,10 +12,6 @@ import type {
   DocumentVirtualBase,
 } from './Model';
 
-import type {
-  AuthorizedRequestBody
-} from './Auth';
-
 export type UserIdType = Types.ObjectId;
 
 export type UserTypeEnum = 
@@ -213,7 +209,7 @@ export interface CreatePermanentUserRequest extends IPermanentUserModel {
   password: string;
 }
 
-export interface ConvertTempUserRequest extends IPermanentUserModel, AuthorizedRequestBody {
+export interface ConvertTempUserRequest extends IPermanentUserModel {
   password: string;
 }
 
@@ -221,12 +217,12 @@ export interface ConvertTempUserRequest extends IPermanentUserModel, AuthorizedR
 export type PatchPermanentUserData = Partial<CreatePermanentUserRequest>;
 
 // -- (must be authorized)
-export type PatchPermanentUserRequest = AuthorizedRequestBody & PatchPermanentUserData;
+export type PatchPermanentUserRequest = PatchPermanentUserData;
 
 // -- for PUT
 export type PutPermanentUserData = IPermanentUserDocument;
 
-export type PutPermanentUserRequest = AuthorizedRequestBody & PutPermanentUserData;
+export type PutPermanentUserRequest = PutPermanentUserData;
 
 // -- for DELETE
 export interface DeletePermanentUserData {
@@ -234,7 +230,7 @@ export interface DeletePermanentUserData {
   password?: string;
 }
 
-export type DeletePermanentUserRequest = AuthorizedRequestBody & DeletePermanentUserData;
+export type DeletePermanentUserRequest = DeletePermanentUserData;
 
 // === Data Transfer Mappings ==================================================
 //

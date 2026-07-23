@@ -32,7 +32,8 @@ import {
 } from '../services/authService';
 
 import {
-  type AuthorizedRequestBody,
+  type AuthorizedRequest,
+  type AuthorizedResponse,
 } from "../models/Auth";
 
 import {
@@ -163,11 +164,12 @@ interface PostConvertTempRouteOkRes {
 //
 // =============================================================================
 export const handleConvertTempUser = async (
-  req: Request<{}, {}, ConvertTempUserRequest>,
-  res: Response
+  req: AuthorizedRequest<{}, {}, ConvertTempUserRequest>,
+  res: AuthorizedResponse,
 ) => {
   try {
-    const { email, username, password, authUser } = req.body;
+    const { authUser } = res.locals;
+    const { email, username, password } = req.body;
     const tempUserIdRaw = authUser?._id;
     if (! Types.ObjectId.isValid(tempUserIdRaw)) {
       const resp : PostConvertTempRouteBadRequestErrRes = ({
@@ -299,10 +301,10 @@ export const handleCreateTempUser = async (
 //
 // =============================================================================
 export const handleGetUserById = async (
-  req: Request<{ userId: Types.ObjectId | 'me'}, any, AuthorizedRequestBody>,
-  res: Response
+  req: AuthorizedRequest<{ userId: Types.ObjectId | 'me'}, any>,
+  res: AuthorizedResponse,
 ) => {
-    const { authUser } = req.body;
+    const { authUser } = res.locals;
     const { _id: authUserId } = authUser;
     const { userId } = req.params;
     const targetUserId = (userId === 'me') ? authUserId : userId;
@@ -333,12 +335,12 @@ export const handleGetUserById = async (
 //
 // =============================================================================
 export const handlePatchOwnUser = async (
-  req: Request<{}, any, PatchPermanentUserRequest>,
-  res: Response
+  req: AuthorizedRequest<{}, any, PatchPermanentUserRequest>,
+  res: AuthorizedResponse,
 ) => {
   const {
     authUser,
-  } = req.body;
+  } = res.locals;
   const patchData: Partial<PatchPermanentUserRequest> = ({
     ...req.body
   });
@@ -368,7 +370,6 @@ export const handlePatchOwnUser = async (
           })
         } else {
           const origUser = user.toObject();
-          delete patchData.authUser;
           const patchUserRes = await patchUser(user, patchData);
         
           if (patchUserRes.type === 'error') {
@@ -414,16 +415,18 @@ export const handlePatchOwnUser = async (
 // 
 // =============================================================================
 export const handleDeleteOwnUser = async (
-  req: Request<{}, any, DeletePermanentUserRequest>,
-  res: Response
+  req: AuthorizedRequest<{}, any, DeletePermanentUserRequest>,
+  res: AuthorizedResponse,
 ) => {
   const {
     authUser,
-    password,
-  } = req.body;
+  } = res.locals;
   const {
     _id: userId,
   } = authUser;
+  const {
+    password,
+  } = req.body;
   const user = await User.findOne({
     '_id': userId,
   });
@@ -466,15 +469,15 @@ export const handleDeleteOwnUser = async (
 //
 // =============================================================================
 export const handleGetSharedWhiteboardsByUser = async (
-  req: Request<{ userId: Types.ObjectId | 'me' }, any, AuthorizedRequestBody>,
-  res: Response,
+  req: AuthorizedRequest<{ userId: Types.ObjectId | 'me' }, any>,
+  res: AuthorizedResponse,
 ) => {
   const {
     userId,
   } = req.params;
   const {
     authUser,
-  } = req.body;
+  } = res.locals;
   const {
     _id: authUserId,
   } = authUser;
