@@ -16,7 +16,8 @@ import {
 } from '../app.config';
 
 import {
-  type AuthorizedRequestBody
+  type AuthorizedResponse,
+  type OptAuthorizedResponse,
 } from '../models/Auth';
 
 import {
@@ -26,8 +27,7 @@ import {
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
 
 if (! ACCESS_TOKEN_SECRET) {
-  console.error('ERROR: missing required env var ACCESS_TOKEN_SECRET');
-  process.exit(1);
+  throw new Error('ERROR: missing required env var ACCESS_TOKEN_SECRET');
 }
 
 export const authenticateJWT = async (
@@ -51,11 +51,7 @@ export const authenticateJWT = async (
         return res.status(401).json({ error: "Invalid or expired token" });
       case 'ok':
         {
-          if (! req.body) {
-            req.body = { authUser: verifyTokenRes.user };
-          } else {
-            (req.body as AuthorizedRequestBody).authUser = verifyTokenRes.user;
-          }
+          (res as AuthorizedResponse).locals.authUser = verifyTokenRes.user;
 
           return next();
         }
@@ -94,11 +90,7 @@ export const authenticateJWTOptional = async (
         return next();
       case 'ok':
         {
-          if (! req.body) {
-            req.body = { authUser: verifyTokenRes.user };
-          } else {
-            (req.body as AuthorizedRequestBody).authUser = verifyTokenRes.user;
-          }
+          (res as OptAuthorizedResponse).locals.authUser = verifyTokenRes.user;
 
           return next();
         }

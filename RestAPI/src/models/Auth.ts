@@ -1,4 +1,12 @@
 import {
+  type Request,
+  type Response,
+} from 'express';
+import {
+  type ParamsDictionary,
+  type Query,
+} from 'express-serve-static-core';
+import {
   Types,
 } from 'mongoose';
 import {
@@ -53,15 +61,51 @@ export const isRefreshTokenPayload = (payload: any): payload is RefreshTokenPayl
   return true;
 };
 
-// === AuthorizedRequestBody ===================================================
+// === AuthorizedRequest =======================================================
 //
-// Base type defining minimum data to expect in the body of any request to an
-// authorized endpoint.
-//
-// The authUser field will be set by the authentication middleware, rather than
-// being sent by the client.
+// Base type defining a request that has been processed and accepted by the
+// authorization middleware. The middleware adds the authUser field, which
+// contains the Mongoose IUserType object for the authenticated user.
 //
 // =============================================================================
-export interface AuthorizedRequestBody {
+interface AuthLocals {
   authUser: IUserType;
 }
+
+export type AuthorizedRequest<
+  P = ParamsDictionary,
+  ResBody = any,
+  ReqBody = any,
+  ReqQuery = Query,
+  Locals = {},
+> = Request <P, ResBody, ReqBody, ReqQuery, AuthLocals & Locals>;
+
+export type AuthorizedResponse<
+  ResBody = any,
+  Locals = {},
+> = Response <ResBody, AuthLocals & Locals>;
+
+// === OptAuthorizedRequest ====================================================
+//
+// Base type defining a request that may or may not have been been processed and
+// accepted by the authorization middleware. It may or may not contain the
+// authUser field, which contains the Mongoose IUserType object for the
+// authenticated user.
+//
+// =============================================================================
+interface OptAuthLocals {
+  authUser?: IUserType;
+}
+
+export type OptAuthorizedRequest<
+  P = ParamsDictionary,
+  ResBody = any,
+  ReqBody = any,
+  ReqQuery = Query,
+  Locals = {},
+> = Request <P, ResBody, ReqBody, ReqQuery, OptAuthLocals & Locals>;
+
+export type OptAuthorizedResponse<
+  ResBody = any,
+  Locals = {},
+> = Response <ResBody, OptAuthLocals & Locals>;

@@ -3,16 +3,12 @@
 // =============================================================================
 
 import {
-  type Request,
-  type Response,
-} from 'express';
-
-import {
   Types,
 } from 'mongoose';
 
 import {
-  type AuthorizedRequestBody,
+  type AuthorizedRequest,
+  type AuthorizedResponse,
 } from '../models/Auth';
 
 import {
@@ -22,12 +18,12 @@ import {
 } from '../services/notificationService';
 
 export const handleGetAllNotifications = async (
-  req: Request<{}, any, AuthorizedRequestBody>,
-  res: Response,
+  _req: AuthorizedRequest<{}, any>,
+  res: AuthorizedResponse,
 ) => {
   const {
     authUser,
-  } = req.body;
+  } = res.locals;
   const {
     _id: authUserId,
   } = authUser;
@@ -51,12 +47,12 @@ export const handleGetAllNotifications = async (
 };// -- end handleGetAllNotifications
 
 export const handleGetNotification = async (
-  req: Request<{ notificationId: string; }, any, AuthorizedRequestBody>,
-  res: Response,
+  req: AuthorizedRequest<{ notificationId: string; }, any>,
+  res: AuthorizedResponse,
 ) => {
   const {
     authUser,
-  } = req.body;
+  } = res.locals;
   const {
     _id: authUserId,
   } = authUser;
@@ -97,16 +93,18 @@ export const handleGetNotification = async (
 };// -- end handleGetNotification
 
 export const handleDeleteNotification = async (
-  req: Request<{}, any, AuthorizedRequestBody & { notificationId: string; }>,
-  res: Response,
+  req: AuthorizedRequest<{}, any, { notificationId: string; }>,
+  res: AuthorizedResponse,
 ) => {
   const {
     authUser,
-    notificationId: notificationIdStr,
-  } = req.body;
+  } = res.locals;
   const {
     _id: authUserId,
   } = authUser;
+  const {
+    notificationId: notificationIdStr,
+  } = req.body;
 
   if (! Types.ObjectId.isValid(notificationIdStr)) {
     return res.status(400).json({
