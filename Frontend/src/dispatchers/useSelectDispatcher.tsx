@@ -48,6 +48,10 @@ import {
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
+  updateWhiteboard,
+} from '@/controllers';
+
+import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
 
@@ -222,9 +226,14 @@ const useSelectDispatcher = (): OperationDispatcher => {
       if (pos && mouseDownCoords) {
         handleSelectShapes(mouseDownCoords, pos);
         setMouseDownCoords(null);
+
+        // Switch to hand tool after selecting shapes
+        updateWhiteboard(store.dispatch, whiteboardId, {
+          currentTool: "hand",
+        });
       }
     },
-    [handleSelectShapes, mouseDownCoords]
+    [whiteboardId, handleSelectShapes, mouseDownCoords]
   );// -- end handlePointerUp
 
   const handleCancel = useCallback(

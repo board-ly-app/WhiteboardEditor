@@ -246,8 +246,6 @@ const Whiteboard = () => {
 
   // Current tool choice will be saved to localStorage to ensure seamless UX
   // after page reloads.
-  // TODO: save default tool choice ('hand') in a separate config file.
-  // const [currentTool, setCurrentTool] = useState<ToolChoice>('hand');
   const LS_CURRENT_TOOL_KEY = 'current_tool';
 
   // -- Reload previous current tool on page refresh
