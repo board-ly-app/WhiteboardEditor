@@ -244,6 +244,10 @@ const CanvasCard = ({
     lodash.isEqual
   );
 
+  if (! clientId) {
+    throw new Error('No clientId provided');
+  }
+
   const allowedUserIds = useSelector(
     (state: RootState) => selectAllowedUsersByCanvas(state, selectedCanvasId ?? ''),
     lodash.isEqual
@@ -561,8 +565,16 @@ const CanvasCard = ({
               break;
             case 'Escape':
             case 'Esc':
+            {
               currentDispatcherRef.current?.handleCancel();
-              break;
+
+              // -- Unselect all selected objects
+              clientMessenger?.sendUnselectedCanvasObjects({
+                type: 'unselected_canvas_objects',
+                canvasObjectIds: selectedCanvasObjects,
+              });
+            }
+            break;
             case 'z':
               // -- undo edit
               if (ev.ctrlKey || ev.metaKey) {
