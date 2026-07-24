@@ -19,6 +19,7 @@ import {
 
 import {
   type RootState,
+  store,
 } from '@/store';
 
 import {
@@ -31,7 +32,13 @@ import {
 
 import {
   selectUserHasAccessToCanvas,
+  selectSelectedCanvasByWhiteboard,
 } from '@/store/canvases/canvasesSelectors';
+
+import {
+  selectCanvasObjectById,
+  selectSelectedCanvasObjectsByWhiteboard,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
 
 import {
   useUser,
@@ -40,6 +47,8 @@ import {
 import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
+
+import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
   type CanvasObjectIdType,
@@ -90,6 +99,18 @@ const EditableVector = <VectorType extends VectorModel>({
     clientMessenger,
   } = clientMessengerContext;
 
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
+    throw new Error('No WhiteboardContext provided');
+  }
+
+  const {
+    whiteboardId,
+    canvasObjectRefsByIdRef,
+    selectedObjectRefsByIdRef,
+  } = whiteboardContext;
+
   const {
     user,
   } = useUser();
@@ -115,28 +136,94 @@ const EditableVector = <VectorType extends VectorModel>({
     lodash.isEqual
   );
 
+  // -- Register canvas object ref
+  useEffect(
+    () => {
+      canvasObjectRefsByIdRef.current[id] = vectorRef;
+
+      return () => {
+        delete canvasObjectRefsByIdRef.current[id];
+      };
+    },
+    [id, canvasObjectRefsByIdRef]
+  );// -- end registering canvas object ref
+
   const isSelected : boolean = useMemo(
     () => userHasCanvasAccess && (editor?.clientId === clientId),
     [userHasCanvasAccess, editor, clientId]
   );// -- end const isSelected
+
+  // -- Register/unregister shape in selected objects ref
+  useEffect(
+    () => {
+      if (isSelected) {
+        selectedObjectRefsByIdRef.current[id] = vectorRef;
+      } else if (id in selectedObjectRefsByIdRef.current) {
+        delete selectedObjectRefsByIdRef.current[id];
+      }
+
+      return () => {
+        if (id in selectedObjectRefsByIdRef.current) {
+          delete selectedObjectRefsByIdRef.current[id];
+        }
+      };
+    },
+    [id, isSelected, selectedObjectRefsByIdRef]
+  );
 
   const isDraggable : boolean = useMemo(
     () => draggable && (isSelected || (! editor)),
     [draggable, isSelected, editor]
   );
 
-  const handleSelect = useCallback(
+  // -- Ensure localPoints changes whenever the model's points change
+  useEffect(
+    () => {
+      setLocalPoints(model.points);
+    },
+    [model.points, setLocalPoints]
+  );// -- end useEffect
+
+  const handleSingleSelect = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       e.cancelBubble = true;
 
-      if (! editor) {
-        clientMessenger?.sendSelectedCanvasObject({
-          type: 'selected_canvas_object',
-          canvasObjectId: id,
-        });
+      if (clientMessenger) {
+        const currState = store.getState();
+        const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+          currState, whiteboardId, clientId
+        );
+
+        // -- Control key signals unselect target
+        if (e.evt.ctrlKey || e.evt.metaKey) {
+          if (editor?.clientId === clientId) {
+            // -- Identify the current user as the current selector
+            clientMessenger.sendUnselectedCanvasObjects({
+              type: 'unselected_canvas_objects',
+              canvasObjectIds: [id],
+            });
+          }
+        } else if (! editor) {
+          // -- Shift key indicates multi select
+          if (! e.evt.shiftKey) {
+            // -- Unselect any previously selected objects
+            if (selectedCanvasObjects.length > 0) {
+              clientMessenger.sendUnselectedCanvasObjects({
+                type: 'unselected_canvas_objects',
+                canvasObjectIds: selectedCanvasObjects,
+              });
+            }
+          }
+
+          // -- Identify the current user as the current selector
+          clientMessenger.sendSelectedCanvasObjects({
+            type: 'selected_canvas_objects',
+            canvasObjectIds: [id],
+          });
+        }
       }
     },
-    [id, clientMessenger, editor]
+    [id, whiteboardId, clientId, clientMessenger, editor]
   );
 
   const handleAnchorDragMove = useCallback(
@@ -182,43 +269,147 @@ const EditableVector = <VectorType extends VectorModel>({
     [localPoints, onUpdateObject, model, snappingMonitor]
   );
 
-  const handleVectorDragEnd = useCallback(
-    (ev: Konva.KonvaEventObject<DragEvent>) => {
-      const node = ev.target;
-      const dx = node.x();
-      const dy = node.y();
-
-      const updatedPoints = model.points.map((p, i) =>
-        i % 2 === 0 ? p + dx : p + dy
-      );
-
-      // Prevent flicker by updating localPoints before broadcasting
-      setLocalPoints(updatedPoints);
-      vectorRef.current?.setAttrs({ points: updatedPoints });
-      node.position({ x: 0, y: 0 });
-
-      const update : VectorType = {
-        ...model,
-        points: updatedPoints,
-      };
-
-      onUpdateObject(update);
-    },
-    [onUpdateObject, model, setLocalPoints]
-  );
-
   useEffect(() => {
     setLocalPoints(model.points);
   }, [model.points]);
 
+  const childStrokeWidth = (children.props.strokeWidth as number | undefined) ?? 2;
+
+  // -- Reset x and y offsets whenever the model points change
+  useEffect(
+    () => {
+      if (! vectorRef.current) return;
+
+      const vector = vectorRef.current;
+
+      vector.x(0);
+      vector.y(0);
+    },
+    [model.points]
+  );// -- end useEffect
+
+  const handleDragStart = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      handleSingleSelect(e);
+    },
+    [handleSingleSelect]
+  );// -- end handleDragStart
+
+  const handleDragEnd = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      if (! clientMessenger) return;
+
+      const currState : RootState = store.getState();
+      const canvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+      if (! canvasId) return;
+
+      const translateX = e.currentTarget.x();
+      const translateY = e.currentTarget.y();
+
+      const selectedObjectRefsById = selectedObjectRefsByIdRef.current;
+      const updatedObjects = Object.fromEntries(Object.entries(selectedObjectRefsById).map(
+        ([objId, objRef]) => {
+          if (! objRef.current) return null;
+
+          const prevObj = selectCanvasObjectById(currState, objId);
+          if (! prevObj) return null;
+
+          switch (prevObj.type) {
+            case 'rect':
+            case 'ellipse':
+            case 'text':
+            {
+              const objUpdate = ({
+                ...prevObj,
+                x: prevObj.x + translateX,
+                y: prevObj.y + translateY,
+              });
+
+              return [objId, objUpdate];
+            }
+            case 'vector':
+            {
+              const objUpdate = ({
+                ...prevObj,
+                points: prevObj.points.map((val, i) => {
+                  if (i % 2 === 0) {
+                    return val + translateX;
+                  } else {
+                    return val + translateY;
+                  }
+                }),
+              });
+
+              return [objId, objUpdate];
+            }
+            default:
+              throw new Error('ERROR: unrecognized object type');
+          }// -- end switch (prevObj.type)
+        }
+      ).filter(entry => !! entry));
+
+      clientMessenger.sendUpdateCanvasObjects({
+        type: 'update_canvas_objects',
+        canvasId,
+        canvasObjects: updatedObjects,
+      });
+    },
+    [whiteboardId, clientMessenger, selectedObjectRefsByIdRef]
+  );// -- end handleDragEnd
+
+  const handleDragMove = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      const currState : RootState = store.getState();
+
+      const translateX = e.currentTarget.x();
+      const translateY = e.currentTarget.y();
+
+      for (const [objId, objRef] of Object.entries(selectedObjectRefsByIdRef.current)) {
+        if (objId === id) continue;
+        if (! objRef.current) continue;
+
+        const obj = objRef.current;
+        const prevObj = selectCanvasObjectById(currState, objId);
+        if (! prevObj) continue;
+
+        switch (prevObj.type) {
+          case 'rect':
+          case 'ellipse':
+          case 'text':
+          {
+            obj.x(prevObj.x + translateX);
+            obj.y(prevObj.y + translateY);
+          }
+          break;
+          case 'vector':
+          {
+            const vec = obj as Konva.Line;
+            const pointsUpdate = prevObj.points.map((val, i) => {
+              if (i % 2 === 0) {
+                return val + translateX;
+              } else {
+                return val + translateY;
+              }
+            });
+
+            vec.points(pointsUpdate);
+          }
+          break;
+          default:
+            throw new Error('Unrecognized object type');
+        }// -- end switch (prevObj.type)
+      }// -- end 
+    },
+    [id, selectedObjectRefsByIdRef]
+  );// -- end handleDragMove
+
   // Override the onDragEnd handler for vectors to change points rather than x, y
   const vectorEditableProps = {
     ...editableObjectProps(model, isDraggable, onUpdateObject),
-    onDragStart: handleSelect,
-    onDragEnd: handleVectorDragEnd,
+    ondragstart: handleDragStart,
+    onDragMove: handleDragMove,
+    onDragEnd: handleDragEnd,
   };
-
-  const childStrokeWidth = (children.props.strokeWidth as number | undefined) ?? 2;
 
   return (
     <Group>
@@ -236,8 +427,9 @@ const EditableVector = <VectorType extends VectorModel>({
         id,
         ref: vectorRef,
         draggable: isDraggable,
-        onClick: handleSelect,
-        onTap: handleSelect,
+        onClick: handleSingleSelect,
+        onTap: handleSingleSelect,
+        onDragStart: handleSingleSelect,
         hitStrokeWidth: 20,
         ...vectorEditableProps,
       })}
@@ -286,6 +478,6 @@ const EditableVector = <VectorType extends VectorModel>({
       )}
     </Group>
   );
-};
+};// -- end EditableVector
 
 export default EditableVector;

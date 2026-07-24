@@ -32,7 +32,7 @@ pub struct SharedWhiteboardEntry {
     pub active_clients: Arc<Mutex<HashMap<ClientIdType, UserSummary>>>,
     pub clients_by_user_id: Arc<Mutex<OneToMany<UserIdType, ClientIdType>>>,
     // -- tracking which client is selecting, thereby currently owns, a given canvas object
-    pub selectors_to_canvas_objects: Arc<Mutex<OneToOne<ClientIdType, CanvasObjectIdType>>>,
+    pub selectors_to_canvas_objects: Arc<Mutex<OneToMany<ClientIdType, CanvasObjectIdType>>>,
     pub edits: Arc<Mutex<Vec<Edit>>>,
 } // -- end pub struct SharedWhiteboardEntry
 
@@ -66,7 +66,7 @@ pub struct ClientStateBase {
     pub active_clients: Arc<Mutex<HashMap<ClientIdType, UserSummary>>>,
     pub clients_by_user_id: Arc<Mutex<OneToMany<UserIdType, ClientIdType>>>,
     // -- tracking which client is selecting, thereby currently owns, a given canvas object
-    pub selectors_to_canvas_objects: Arc<Mutex<OneToOne<ClientIdType, CanvasObjectIdType>>>,
+    pub selectors_to_canvas_objects: Arc<Mutex<OneToMany<ClientIdType, CanvasObjectIdType>>>,
     pub edits: Arc<Mutex<Vec<Edit>>>,
 } // -- end pub struct ClientStateBase
 
@@ -259,124 +259,125 @@ pub async fn handle_authenticated_client_message<'a>(
                         }
                     }
                 }
-                SelectedCanvasObject {
-                    canvas_object_id,
+                SelectedCanvasObjects {
+                    canvas_object_ids,
                 } => {
                     let wb = client_state.base.whiteboard_ref.lock().await;
                     let mut selectors_to_canvas_objects
                         = client_state.base.selectors_to_canvas_objects.lock().await;
+                    let mut messages = Vec::<ServerSocketMessage>::new();
+                    let mut approved_selected_objects = Vec::<CanvasObjectIdType>::new();
 
-                    // -- ensure the client has permission to edit the canvas
-                    if let Some(canvas_id) = wb.canvases_to_canvas_objects().get_key_by_value(&canvas_object_id) {
-                        if let Some(canvas) = wb.canvases().get(&canvas_id) {
-                            if ! canvas.user_can_edit(&client_state.user_summary.user_id) {
-                                return ClientMessageResponse {
-                                    messages: vec![ServerSocketMessage::Individual {
+                    for canvas_object_id in canvas_object_ids.iter() {
+                        // -- ensure the client has permission to edit the canvas
+                        if let Some(canvas_id) = wb.canvases_to_canvas_objects().get_key_by_value(canvas_object_id) {
+                            if let Some(canvas) = wb.canvases().get(&canvas_id) {
+                                if ! canvas.user_can_edit(&client_state.user_summary.user_id) {
+                                    messages.push(ServerSocketMessage::Individual {
                                         target_client_id: client_state.base.client_id.clone(),
                                         msg: ServerSocketIndividualMessage::Error {
                                             error: ClientError::UnauthorizedCanvas {
                                                 canvas_id: canvas_id.clone(),
                                             },
                                         }
-                                    }],
-                                    notifications: vec![],
-                                };
-                            }
-                        } else {
-                            return ClientMessageResponse {
-                                messages: vec![ServerSocketMessage::Individual {
+                                    });
+                                }
+                            } else {
+                                messages.push(ServerSocketMessage::Individual {
                                     target_client_id: client_state.base.client_id.clone(),
                                     msg: ServerSocketIndividualMessage::Error {
                                         error: ClientError::CanvasNotFound {
                                             canvas_id: canvas_id.clone(),
                                         },
                                     }
-                                }],
-                                notifications: vec![],
-                            };
-                        }
-                    } else {
-                        return ClientMessageResponse {
-                            messages: vec![ServerSocketMessage::Individual {
+                                });
+                            }
+                        } else {
+                            messages.push(ServerSocketMessage::Individual {
                                 target_client_id: client_state.base.client_id.clone(),
                                 msg: ServerSocketIndividualMessage::Error {
                                     error: ClientError::CanvasObjectNotFound {
                                         canvas_object_id: canvas_object_id.clone(),
                                     },
                                 }
-                            }],
-                            notifications: vec![],
-                        };
+                            });
+                        }
+
+                        // -- ensure the object isn't already selected by someone else
+                        match selectors_to_canvas_objects.get_key_by_value(&canvas_object_id).cloned() {
+                            Some(selector_id) if selector_id != client_state.base.client_id => {
+                                messages.push(ServerSocketMessage::Individual {
+                                    target_client_id: client_state.base.client_id.clone(),
+                                    msg: ServerSocketIndividualMessage::Error {
+                                        error: ClientError::CanvasObjectAlreadySelected {
+                                            client_id: selector_id.clone(),
+                                        },
+                                    }
+                                });
+                            },
+                            _ => {
+                                // -- set this client as the current selector
+                                selectors_to_canvas_objects.insert(
+                                    client_state.base.client_id.clone(), canvas_object_id.clone()
+                                );
+
+                                approved_selected_objects.push(canvas_object_id.clone());
+                            }
+                        }// -- end match
+                    }// -- end for canvas_object_id
+
+                    // -- Add one last message to add approved selected objects
+                    if ! approved_selected_objects.is_empty() {
+                        messages.push(ServerSocketMessage::Broadcast {
+                            msg: ServerSocketBroadcastMessage::SelectedCanvasObjects {
+                                client_id: client_state.base.client_id.clone(),
+                                canvas_object_ids: approved_selected_objects,
+                            },
+                        });
                     }
 
-                    // -- ensure the object isn't already selected by someone else
-                    match selectors_to_canvas_objects.get_key_by_value(&canvas_object_id).cloned() {
-                        Some(selector_id) if selector_id != client_state.base.client_id => {
-                            ClientMessageResponse {
-                                messages: vec![ServerSocketMessage::Individual {
-                                    target_client_id: client_state.base.client_id.clone(),
-                                    msg: ServerSocketIndividualMessage::Error {
-                                        error: ClientError::CanvasObjectAlreadySelected {
-                                            client_id: selector_id.clone(),
-                                        },
-                                    }
-                                }],
-                                notifications: vec![],
-                            }
-                        },
-                        _ => {
-                            // -- set this client as the current selector
-                            selectors_to_canvas_objects.insert(
-                                client_state.base.client_id.clone(), canvas_object_id.clone()
-                            );
-
-                            ClientMessageResponse {
-                                messages: vec![ServerSocketMessage::Broadcast {
-                                    msg: ServerSocketBroadcastMessage::SelectedCanvasObject {
-                                        client_id: client_state.base.client_id.clone(),
-                                        canvas_object_id: canvas_object_id.clone(),
-                                    },
-                                }],
-                                notifications: vec![],
-                            }
-                        }
-                    }// -- end match
+                    ClientMessageResponse { messages, notifications: vec![], }
                 }
-                UnselectedCanvasObject {
-                    canvas_object_id,
+                UnselectedCanvasObjects {
+                    canvas_object_ids,
                 } => {
                     let mut selectors_to_canvas_objects = client_state.base.selectors_to_canvas_objects.lock().await;
+                    let mut messages = Vec::<ServerSocketMessage>::new();
+                    let mut approved_unselected_objects = Vec::<CanvasObjectIdType>::new();
 
-                    match selectors_to_canvas_objects.get_key_by_value(&canvas_object_id).cloned() {
-                        Some(selector_id) if selector_id != client_state.base.client_id => {
-                            ClientMessageResponse {
-                                messages: vec![ServerSocketMessage::Individual {
+                    for canvas_object_id in canvas_object_ids.iter() {
+                        match selectors_to_canvas_objects.get_key_by_value(&canvas_object_id).cloned() {
+                            Some(selector_id) if selector_id != client_state.base.client_id => {
+                                messages.push(ServerSocketMessage::Individual {
                                     target_client_id: client_state.base.client_id.clone(),
                                     msg: ServerSocketIndividualMessage::Error {
                                         error: ClientError::CanvasObjectAlreadySelected {
                                             client_id: selector_id.clone(),
                                         },
                                     }
-                                }],
-                                notifications: vec![],
-                            }
-                        },
-                        _ => {
-                            // -- remove client->object mapping
-                            selectors_to_canvas_objects.remove_value(&canvas_object_id);
+                                });
+                            },
+                            _ => {
+                                // -- remove client->object mapping
+                                selectors_to_canvas_objects.remove_value(&canvas_object_id);
 
-                            // -- echo back to other clients
-                            ClientMessageResponse {
-                                messages: vec![ServerSocketMessage::Broadcast {
-                                    msg: ServerSocketBroadcastMessage::UnselectedCanvasObject {
-                                        client_id: client_state.base.client_id.clone(),
-                                        canvas_object_id: canvas_object_id.clone(),
-                                    },
-                                }],
-                                notifications: vec![],
-                            }
-                        },
-                    }// -- end match
+                                // -- echo back to other clients
+                                approved_unselected_objects.push(canvas_object_id.clone());
+                            },
+                        };// -- end match
+                    }// -- end for canvas_object_id
+
+                    // -- Add one last message to add approved unselected objects
+                    if ! approved_unselected_objects.is_empty() {
+                        messages.push(ServerSocketMessage::Broadcast {
+                            msg: ServerSocketBroadcastMessage::UnselectedCanvasObjects {
+                                client_id: client_state.base.client_id.clone(),
+                                canvas_object_ids: approved_unselected_objects,
+                            },
+                        });
+                    }
+
+                    ClientMessageResponse { messages, notifications: vec![], }
                 }
                 SetCursorPos {
                     x,
@@ -924,22 +925,30 @@ pub async fn handle_authenticated_client_message<'a>(
                         for removed_user_id in users_removed.iter() {
                             if let Some(removed_client_ids) = clients_by_user_id.get_values_by_key(&removed_user_id) {
                                 for client_id in removed_client_ids.iter() {
-                                    if let Some(obj_id) = selectors_to_canvas_objects.get_value_by_key(&client_id).cloned() {
-                                        match whiteboard.canvases_to_canvas_objects().get_key_by_value(&obj_id) {
-                                            Some(canv_id) if *canv_id == canvas_id => {
-                                                // -- found an object to deselect
-                                                selectors_to_canvas_objects.remove_key(&client_id);
+                                    if let Some(obj_ids) = selectors_to_canvas_objects.get_values_by_key(&client_id).cloned() {
+                                        let mut unselected_canvas_objects = Vec::<CanvasObjectIdType>::new();
 
-                                                // -- notify clients of forced deselect
-                                                response_msgs.push(ServerSocketMessage::Broadcast {
-                                                    msg: ServerSocketBroadcastMessage::UnselectedCanvasObject {
-                                                        client_id: client_id.clone(),
-                                                        canvas_object_id: obj_id.clone(),
-                                                    },
-                                                });
-                                            },
-                                            _ => {},
-                                        };// -- end match
+                                        for obj_id in obj_ids.iter() {
+                                            match whiteboard.canvases_to_canvas_objects().get_key_by_value(&obj_id) {
+                                                Some(canv_id) if *canv_id == canvas_id => {
+                                                    // -- found an object to deselect
+                                                    selectors_to_canvas_objects.remove_key(&client_id);
+
+                                                    // -- notify clients of forced deselect
+                                                    unselected_canvas_objects.push(obj_id.clone());
+                                                },
+                                                _ => {},
+                                            };// -- end match
+                                        }// -- end for obj_id
+
+                                        if ! unselected_canvas_objects.is_empty() {
+                                            response_msgs.push(ServerSocketMessage::Broadcast {
+                                                msg: ServerSocketBroadcastMessage::UnselectedCanvasObjects {
+                                                    client_id: client_id.clone(),
+                                                    canvas_object_ids: unselected_canvas_objects,
+                                                },
+                                            });
+                                        }
                                     }
                                 }// -- end for client_id
                             }
@@ -1371,7 +1380,7 @@ pub async fn handle_unauthenticated_client_message<
                                                 whiteboard: whiteboard.to_client_view(),
                                                 active_clients,
                                                 selectors_by_canvas_objects: selectors_to_canvas_objects
-                                                    .iter_key_value()
+                                                    .iter()
                                                     .map(|(selector_id, obj_id)| (obj_id.clone(), selector_id.clone()))
                                                     .collect()
                                             },
@@ -1479,7 +1488,7 @@ mod unit_tests {
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
-            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
 
@@ -1646,7 +1655,7 @@ mod unit_tests {
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
-            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
 
@@ -1902,7 +1911,7 @@ mod unit_tests {
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
-            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
 
@@ -2166,7 +2175,7 @@ mod unit_tests {
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
-            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
 
@@ -2435,7 +2444,7 @@ mod unit_tests {
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
-            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
 
@@ -2602,7 +2611,7 @@ mod unit_tests {
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
-            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
 
@@ -2799,7 +2808,7 @@ mod unit_tests {
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
-            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
             edits: Arc::new(Mutex::new(Vec::new())),
         };
 
@@ -2971,7 +2980,7 @@ mod unit_tests {
         let whiteboard_ref = Arc::new(Mutex::new(whiteboard.clone()));
         let active_clients = Arc::new(Mutex::new(HashMap::new()));
         let clients_by_user_id = Arc::new(Mutex::new(collections::OneToMany::new()));
-        let selectors_to_canvas_objects = Arc::new(Mutex::new(collections::OneToOne::new()));
+        let selectors_to_canvas_objects = Arc::new(Mutex::new(collections::OneToMany::new()));
         let edits = Arc::new(Mutex::new(Vec::new()));
 
         let client_state_a_base = ClientStateBase {

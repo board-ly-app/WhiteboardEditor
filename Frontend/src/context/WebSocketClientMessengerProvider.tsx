@@ -94,6 +94,7 @@ import {
   setActiveUsersByWhiteboard,
   addActiveUsersByWhiteboard,
   removeSelectorsByCanvasObject,
+  removeCanvasObjectsBySelector,
   removeActiveUsers,
   setSelectorsByCanvasObject,
   setNotifications,
@@ -234,6 +235,7 @@ const WebSocketClientMessengerProvider = ({
 
               // -- remove logged out users
               removeActiveUsers(dispatch, clients);
+              removeCanvasObjectsBySelector(dispatch, clients);
             } 
             break;
           case 'set_permissions':
@@ -289,25 +291,28 @@ const WebSocketClientMessengerProvider = ({
               );
             }
             break;
-          case 'selected_canvas_object':
+          case 'selected_canvas_objects':
             {
               const {
                 clientId,
-                canvasObjectId,
+                canvasObjectIds,
               } = msg;
 
               // -- Set selector
-              setSelectorsByCanvasObject(dispatch, { [canvasObjectId]: clientId });
+              setSelectorsByCanvasObject(
+                dispatch,
+                Object.fromEntries(canvasObjectIds.map(objId => [objId, clientId]))
+              );
             }
             break;
-          case 'unselected_canvas_object':
+          case 'unselected_canvas_objects':
             {
               const {
-                canvasObjectId,
+                canvasObjectIds,
               } = msg;
 
               // -- Remove client color from canvas object
-              removeSelectorsByCanvasObject(dispatch, [canvasObjectId]);
+              removeSelectorsByCanvasObject(dispatch, canvasObjectIds);
             }
             break;
           case 'create_canvas_objects':

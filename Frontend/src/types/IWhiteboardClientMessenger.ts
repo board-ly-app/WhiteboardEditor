@@ -17,8 +17,8 @@ import {
   type ClientMessageCreateCanvasObjects,
   type ClientMessageDeleteCanvasObjects,
   type ClientMessageEditingCanvas,
-  type ClientMessageSelectedCanvasObject,
-  type ClientMessageUnselectedCanvasObject,
+  type ClientMessageSelectedCanvasObjects,
+  type ClientMessageUnselectedCanvasObjects,
   type ClientMessageCreateCanvas,
   type ClientMessageUpdateCanvasObjects,
   type ClientMessageUndoHistory,
@@ -33,8 +33,8 @@ export interface IWhiteboardClientMessenger {
   sendCreateCanvasObjects: (msg: ClientMessageCreateCanvasObjects) => unknown;
   sendDeleteCanvasObjects: (msg: ClientMessageDeleteCanvasObjects) => unknown;
   sendEditingCanvas: (msg: ClientMessageEditingCanvas) => unknown;
-  sendSelectedCanvasObject: (msg: ClientMessageSelectedCanvasObject) => unknown;
-  sendUnselectedCanvasObject: (msg: ClientMessageUnselectedCanvasObject) => unknown;
+  sendSelectedCanvasObjects: (msg: ClientMessageSelectedCanvasObjects) => unknown;
+  sendUnselectedCanvasObjects: (msg: ClientMessageUnselectedCanvasObjects) => unknown;
   sendCreateCanvas: (msg: ClientMessageCreateCanvas) => unknown;
   sendMergeCanvas: (msg: ClientMessageMergeCanvas) => unknown;
   sendUpdateCanvasObjects: (msg: ClientMessageUpdateCanvasObjects) => unknown;
