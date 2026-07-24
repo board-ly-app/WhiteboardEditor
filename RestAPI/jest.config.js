@@ -1,4 +1,6 @@
-const { createDefaultPreset } = require("ts-jest");
+const {
+  createDefaultPreset,
+} = require("ts-jest");
 
 const tsJestTransformCfg = createDefaultPreset().transform;
 
@@ -9,5 +11,9 @@ module.exports = {
   testMatch: ["**/tests/**/*.test.ts"],
   transform: {
     ...tsJestTransformCfg,
+    "^.+\\.(js|jsx|ts|tsx)$": "babel-jest",
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(uuid)/)'
+  ],
 };

@@ -18,6 +18,9 @@ import {
   loginPermanentUser,
 } from "../services/authService";
 import {
+  generateCsrfToken,
+} from '../services/antiCsrfService';
+import {
   type AuthRequest,
 } from "../models/Auth";
 import {
@@ -34,6 +37,7 @@ interface PostLoginRouteServerErrRes {
 
 interface PostLoginRouteOkRes {
   user: IPermanentUserSelfView;
+  csrfToken: string;
 }
 
 export const handleLogin = async (
@@ -119,8 +123,10 @@ export const handleLogin = async (
       }
       case 'ok':
       {
+        const csrfToken = generateCsrfToken(req, res);
         const resp : PostLoginRouteOkRes = ({
           user: loginResult.user.toSelfView(),
+          csrfToken,
         });
 
         setRefreshTokenCookie(res, loginResult.refreshToken);
