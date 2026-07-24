@@ -15,6 +15,10 @@ export const WHITEBOARDS_ROUTE = `/api/${API_VERSION}/whiteboards`;
 export const NOTIFICATIONS_ROUTE = `/api/${API_VERSION}/notifications`;
 
 // -- Cookie ids
+export const SESSION_ID_COOKIE_ID = 'session_id';
 export const REFRESH_TOKEN_COOKIE_ID = 'refresh_token';
 export const ACCESS_TOKEN_COOKIE_ID = 'access_token';
+
+// -- Misc. custom header names
+export const CSRF_TOKEN_HEADER = 'x-session-token';
 
