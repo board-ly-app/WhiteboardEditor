@@ -30,7 +30,11 @@ export interface WhiteboardContextType {
       updates: Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
   ) => unknown;
   whiteboardId: WhiteboardIdType;
-  // -- view/edit/own permission - determines which actions to enable/disable
+  // -- Contains ref to stage containing root canvas, located in pages/Whiteboard/CanvasCard
+  stageRef: RefObject<Konva.Stage | null>;
+  // -- Contains mapping of canvas object IDs to Konva objects
+  canvasObjectRefsByIdRef: RefObject<Record<CanvasObjectIdType, RefObject<Konva.Shape | null>>>;
+  selectedObjectRefsByIdRef: RefObject<Record<CanvasObjectIdType, RefObject<Konva.Shape | null>>>;
   currentDispatcherRef: RefObject<OperationDispatcher | null>;
   // -- tracks refs to Canvas groups (Konva Groups serve as frames for each Canvas)
   canvasGroupRefsByIdRef: RefObject<Record<CanvasIdType, RefObject<Konva.Group | null>>>;
@@ -43,14 +47,20 @@ const WhiteboardContext = createContext<WhiteboardContextType | undefined>(undef
 const WhiteboardProvider = ({
   handleUpdateShapes,
   whiteboardId,
-  children,
+  stageRef,
+  canvasObjectRefsByIdRef,
+  selectedObjectRefsByIdRef,
   currentDispatcherRef,
   canvasGroupRefsByIdRef,
+  children,
 }: PropsWithChildren<WhiteboardProvidersProps>): React.JSX.Element => {
   return (
     <WhiteboardContext.Provider value={{
       handleUpdateShapes,
       whiteboardId,
+      stageRef,
+      canvasObjectRefsByIdRef,
+      selectedObjectRefsByIdRef,
       currentDispatcherRef,
       canvasGroupRefsByIdRef,
     }}>

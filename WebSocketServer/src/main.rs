@@ -357,7 +357,7 @@ async fn handle_connection(
                             broadcaster: tx.clone(),
                             active_clients: Arc::new(Mutex::new(HashMap::new())),
                             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
-                            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToOne::new())),
+                            selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
                             edits: Arc::new(Mutex::new(Vec::new())),
                         };
 

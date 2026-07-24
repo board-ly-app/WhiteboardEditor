@@ -11,9 +11,10 @@ import {
   type CanvasObjectIdType,
 } from '@/types/CanvasObjectModel';
 
+// -- One to many binding: Client => {CanvasObject}
 interface SelectorsByCanvasObjectState {
   selectorsByCanvasObject: Record<CanvasObjectIdType, ClientIdType>;
-  canvasObjectsBySelector: Record<ClientIdType, CanvasObjectIdType>;
+  canvasObjectsBySelector: Record<ClientIdType, Record<CanvasObjectIdType, unknown>>;
 }
 
 const initialState: SelectorsByCanvasObjectState = {
@@ -32,12 +33,21 @@ export const selectorsByCanvasObjectSlice = createSlice({
       } = state;
 
       for (const [objId, clientId] of Object.entries(action.payload)) {
-        // -- Delete old mapping
-        delete canvasObjectsBySelector[selectorsByCanvasObject[objId]];
-        delete selectorsByCanvasObject[canvasObjectsBySelector[clientId]];
+        // -- Delete old mappings
+        if (objId in selectorsByCanvasObject) {
+          delete canvasObjectsBySelector[selectorsByCanvasObject[objId]][objId];
+          delete selectorsByCanvasObject[objId];
+        }
 
         selectorsByCanvasObject[objId] = clientId;
-        canvasObjectsBySelector[clientId] = objId;
+
+        if (! (clientId in canvasObjectsBySelector)) {
+          canvasObjectsBySelector[clientId] = {
+            [objId]: true,
+          };
+        } else {
+          canvasObjectsBySelector[clientId][objId] = true;
+        }
       }// -- end for objId, clientId
 
       return state;
@@ -50,7 +60,7 @@ export const selectorsByCanvasObjectSlice = createSlice({
 
       for (const objId of action.payload) {
         if (objId in selectorsByCanvasObject) {
-          delete canvasObjectsBySelector[selectorsByCanvasObject[objId]];
+          delete canvasObjectsBySelector[selectorsByCanvasObject[objId]][objId];
           delete selectorsByCanvasObject[objId];
         }
       }// -- end for objId
@@ -65,7 +75,10 @@ export const selectorsByCanvasObjectSlice = createSlice({
 
       for (const clientId of action.payload) {
         if (clientId in canvasObjectsBySelector) {
-          delete selectorsByCanvasObject[canvasObjectsBySelector[clientId]];
+          for (const objId of Object.keys(canvasObjectsBySelector[clientId])) {
+            delete selectorsByCanvasObject[objId];
+          }// -- end for (const objId of Object.keys(canvasObjectsBySelector))
+
           delete canvasObjectsBySelector[clientId];
         }
       }// -- end for clientId

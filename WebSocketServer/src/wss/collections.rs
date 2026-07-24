@@ -131,12 +131,14 @@ impl <K: Clone + std::hash::Hash + Ord, V: Clone + std::hash::Hash + Ord> OneToM
 // relations once created.
 //
 // =================================================================================================
+#[allow(unused)]
 #[derive(Clone,Debug)]
 pub struct OneToOne <K, V> {
     values_by_key: HashMap<K, V>,
     keys_by_value: HashMap<V, K>,
 }// -- end pub struct OneToOne
 
+#[allow(unused)]
 impl <K: Clone + std::hash::Hash + Ord, V: Clone + std::hash::Hash + Ord> OneToOne <K, V> {
     pub fn new() -> Self {
         Self {

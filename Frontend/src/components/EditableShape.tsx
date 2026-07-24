@@ -24,6 +24,7 @@ import {
 // Local imports
 import {
   type RootState,
+  store,
 } from '@/store';
 
 import {
@@ -35,6 +36,12 @@ import {
 } from '@/store/activeUsers/activeUsersSelectors';
 
 import {
+  selectCanvasObjectById,
+  selectSelectedCanvasObjectsByWhiteboard,
+} from '@/store/canvasObjects/canvasObjectsSelectors';
+
+import {
+  selectSelectedCanvasByWhiteboard,
   selectUserHasAccessToCanvas,
 } from '@/store/canvases/canvasesSelectors';
 
@@ -52,6 +59,8 @@ import {
 } from "@/types/CanvasObjectModel";
 
 import editableObjectProps from "@/dispatchers/editableObjectProps";
+
+import WhiteboardContext from '@/context/WhiteboardContext';
 
 import {
   ClientMessengerContext,
@@ -101,6 +110,18 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     clientMessenger,
   } = clientMessengerContext;
 
+  const whiteboardContext = useContext(WhiteboardContext);
+
+  if (! whiteboardContext) {
+    throw new Error('No WhiteboardContext provided');
+  }
+
+  const {
+    whiteboardId,
+    canvasObjectRefsByIdRef,
+    selectedObjectRefsByIdRef,
+  } = whiteboardContext;
+
   const {
     user,
   } = useUser();
@@ -113,6 +134,10 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     (state: RootState) => selectClientId(state),
     lodash.isEqual
   );
+
+  if (! clientId) {
+    throw new Error('No clientId provided');
+  }
 
   const editor = useSelector(
     (state: RootState) => selectSelectorByCanvasObject(state, id),
@@ -128,6 +153,18 @@ const EditableShape = <ShapeType extends ShapeModel> ({
 
   useSnapping(shapeRef, snappingMonitor, trRef);
 
+  // -- Register canvas object ref
+  useEffect(
+    () => {
+      canvasObjectRefsByIdRef.current[id] = shapeRef;
+
+      return () => {
+        delete canvasObjectRefsByIdRef.current[id];
+      };
+    },
+    [id, canvasObjectRefsByIdRef]
+  );
+
   const anchorDragBoundFunc = useCallback(
     (oldPos: Konva.Vector2d, newPos: Konva.Vector2d) =>
       trRef.current
@@ -141,46 +178,186 @@ const EditableShape = <ShapeType extends ShapeModel> ({
     [userHasCanvasAccess, editor, clientId]
   );// -- end const isSelected
 
+  // -- Register/unregister shape in selected objects ref
+  useEffect(
+    () => {
+      if (isSelected) {
+        selectedObjectRefsByIdRef.current[id] = shapeRef;
+      } else if (id in selectedObjectRefsByIdRef.current) {
+        delete selectedObjectRefsByIdRef.current[id];
+      }
+
+      return () => {
+        if (id in selectedObjectRefsByIdRef.current) {
+          delete selectedObjectRefsByIdRef.current[id];
+        }
+      };
+    },
+    [id, isSelected, selectedObjectRefsByIdRef]
+  );
+
   // Transformer attach/detach
   useEffect(() => {
     if (!trRef.current || !shapeRef.current) return;
     trRef.current.nodes(editor ? [shapeRef.current] : []);
   }, [editor]);
 
-  const handleSelect = useCallback(
-    (ev: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      ev.cancelBubble = true;
+  const handleSingleSelect = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+      e.cancelBubble = true;
 
-      if (! editor) {
-        // -- Identify the current user as the current selector
-        clientMessenger?.sendSelectedCanvasObject({
-          type: 'selected_canvas_object',
-          canvasObjectId: id,
-        });
+      if (clientMessenger) {
+        const currState = store.getState();
+        const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+          currState, whiteboardId, clientId
+        );
+
+        // -- Control key signals unselect target
+        if (e.evt.ctrlKey || e.evt.metaKey) {
+          if (editor?.clientId === clientId) {
+            // -- Identify the current user as the current selector
+            clientMessenger.sendUnselectedCanvasObjects({
+              type: 'unselected_canvas_objects',
+              canvasObjectIds: [id],
+            });
+          }
+        } else if (! editor) {
+          // -- Shift key indicates multi select
+          if (! e.evt.shiftKey) {
+            // -- Unselect any previously selected objects
+            if (selectedCanvasObjects.length > 0) {
+              clientMessenger.sendUnselectedCanvasObjects({
+                type: 'unselected_canvas_objects',
+                canvasObjectIds: selectedCanvasObjects,
+              });
+            }
+          }
+
+          // -- Identify the current user as the current selector
+          clientMessenger.sendSelectedCanvasObjects({
+            type: 'selected_canvas_objects',
+            canvasObjectIds: [id],
+          });
+        }
       }
     },
-    [id, clientMessenger, editor]
-  );
+    [id, whiteboardId, clientId, clientMessenger, editor]
+  );// -- end handleSingleSelect
 
   // Override onDragEnd to reselect at end
   const editableProps = editableObjectProps(shapeModel, isDraggable, onUpdateObject);
-  const {
-    onDragEnd,
-  } = editableProps;
 
-  const shapeOnDragEnd = useCallback(
-    (ev: Konva.KonvaEventObject<DragEvent>) => {
-      if (onDragEnd) {
-        onDragEnd(ev);
-      }
+  const handleDragEnd = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      if (! clientMessenger) return;
+
+      const currState : RootState = store.getState();
+      const canvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+      if (! canvasId) return;
+
+      const translateX = e.currentTarget.x() - shapeModel.x;
+      const translateY = e.currentTarget.y() - shapeModel.y;
+
+      const selectedObjectRefsById = selectedObjectRefsByIdRef.current;
+      const updatedObjects = Object.fromEntries(Object.entries(selectedObjectRefsById).map(
+        ([objId, objRef]) => {
+          if (! objRef.current) return null;
+
+          const prevObj = selectCanvasObjectById(currState, objId);
+          if (! prevObj) return null;
+
+          switch (prevObj.type) {
+            case 'rect':
+            case 'ellipse':
+            case 'text':
+            {
+              const objUpdate = ({
+                ...prevObj,
+                x: prevObj.x + translateX,
+                y: prevObj.y + translateY,
+              });
+
+              return [objId, objUpdate];
+            }
+            case 'vector':
+            {
+              const objUpdate = ({
+                ...prevObj,
+                points: prevObj.points.map((val, i) => {
+                  if (i % 2 === 0) {
+                    return val + translateX;
+                  } else {
+                    return val + translateY;
+                  }
+                }),
+              });
+
+              return [objId, objUpdate];
+            }
+            default:
+              throw new Error('ERROR: unrecognized object type');
+          }// -- end switch (prevObj.type)
+        }
+      ).filter(entry => !! entry));
+
+      clientMessenger.sendUpdateCanvasObjects({
+        type: 'update_canvas_objects',
+        canvasId,
+        canvasObjects: updatedObjects,
+      });
     },
-    [onDragEnd]
-  );
+    [whiteboardId, clientMessenger, selectedObjectRefsByIdRef, shapeModel.x, shapeModel.y]
+  );// -- end handleDragEnd
+
+  const handleDragMove = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      const currState : RootState = store.getState();
+      const translateX = e.currentTarget.x() - shapeModel.x;
+      const translateY = e.currentTarget.y() - shapeModel.y;
+
+      for (const [objId, objRef] of Object.entries(selectedObjectRefsByIdRef.current)) {
+        if (objId === id) continue;
+        if (! objRef.current) continue;
+
+        const obj = objRef.current;
+        const prevObj = selectCanvasObjectById(currState, objId);
+        if (! prevObj) continue;
+
+        switch (prevObj.type) {
+          case 'rect':
+          case 'ellipse':
+          case 'text':
+          {
+            obj.x(prevObj.x + translateX);
+            obj.y(prevObj.y + translateY);
+          }
+          break;
+          case 'vector':
+          {
+            const vec = obj as Konva.Line;
+            const pointsUpdate = prevObj.points.map((val, i) => {
+              if (i % 2 === 0) {
+                return val + translateX;
+              } else {
+                return val + translateY;
+              }
+            });
+
+            vec.points(pointsUpdate);
+          }
+          break;
+          default:
+            throw new Error('Unrecognized object type');
+        }// -- end switch (prevObj.type)
+      }// -- end 
+    },
+    [id, selectedObjectRefsByIdRef, shapeModel.x, shapeModel.y]
+  );// -- end handleDragMove
 
   const shapeEditableProps = {
     ...editableProps,
-    onDragStart: handleSelect,
-    onDragEnd: shapeOnDragEnd,
+    onDragMove: handleDragMove,
+    onDragEnd: handleDragEnd,
   };
 
   return (
@@ -189,8 +366,9 @@ const EditableShape = <ShapeType extends ShapeModel> ({
         id,
         ref: shapeRef,
         draggable: isDraggable,
-        onClick: handleSelect,
-        onTap: handleSelect,
+        onClick: handleSingleSelect,
+        onDragStart: handleSingleSelect,
+        onTap: handleSingleSelect,
         onTransformEnd,
         ...shapeEditableProps,
       })}

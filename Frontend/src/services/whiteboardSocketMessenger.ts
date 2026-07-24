@@ -7,8 +7,8 @@ import {
   type ClientMessageSetCursorPos,
   type ClientMessageLogin,
   type ClientMessageEditingCanvas,
-  type ClientMessageSelectedCanvasObject,
-  type ClientMessageUnselectedCanvasObject,
+  type ClientMessageSelectedCanvasObjects,
+  type ClientMessageUnselectedCanvasObjects,
   type ClientMessageCreateCanvasObjects,
   type ClientMessageUpdateCanvasObjects,
   type ClientMessageDeleteCanvasObjects,
@@ -63,13 +63,13 @@ class WhiteboardSocketMessenger {
     this.#sendMessage(msg);
   }// -- end sendEditingCanvas
 
-  sendSelectedCanvasObject(msg: ClientMessageSelectedCanvasObject) {
+  sendSelectedCanvasObjects(msg: ClientMessageSelectedCanvasObjects) {
     this.#sendMessage(msg);
-  }// -- end sendSelectedCanvasObject
+  }// -- end sendSelectedCanvasObjects
 
-  sendUnselectedCanvasObject(msg: ClientMessageUnselectedCanvasObject) {
+  sendUnselectedCanvasObjects(msg: ClientMessageUnselectedCanvasObjects) {
     this.#sendMessage(msg);
-  }// -- end sendUnselectedCanvasObject
+  }// -- end sendUnselectedCanvasObjects
 
   sendCreateCanvas(msg: ClientMessageCreateCanvas) {
     this.#sendMessage(msg);

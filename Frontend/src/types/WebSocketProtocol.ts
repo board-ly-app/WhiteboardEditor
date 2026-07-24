@@ -246,18 +246,18 @@ export interface ServerMessageEditingCanvas {
 
 // Notifies clients that a given client has selected a certain canvas object,
 // and thus they shouldn't attempt to edit the object themselves.
-export interface ServerMessageSelectedCanvasObject {
-  type: 'selected_canvas_object';
+export interface ServerMessageSelectedCanvasObjects {
+  type: 'selected_canvas_objects';
   clientId: ClientIdType;
-  canvasObjectId: CanvasIdType;
+  canvasObjectIds: CanvasIdType[];
 }
 
 // Notifies clients that a given client has unselected a certain canvas object,
 // and thus they are free to select it themselves.
-export interface ServerMessageUnselectedCanvasObject {
-  type: 'unselected_canvas_object';
+export interface ServerMessageUnselectedCanvasObjects {
+  type: 'unselected_canvas_objects';
   clientId: ClientIdType;
-  canvasObjectId: CanvasIdType;
+  canvasObjectIds: CanvasIdType[];
 }
 
 // Creates a new shape in a canvas
@@ -345,8 +345,8 @@ export type SocketServerMessage =
   | ServerMessageSetPermissions
   | ServerMessageUpdateWhiteboardMetadata
   | ServerMessageEditingCanvas
-  | ServerMessageSelectedCanvasObject
-  | ServerMessageUnselectedCanvasObject
+  | ServerMessageSelectedCanvasObjects
+  | ServerMessageUnselectedCanvasObjects
   | ServerMessageCreateCanvasObjects
   | ServerMessageUpdateCanvasObjects
   | ServerMessageCreateCanvas
@@ -380,16 +380,16 @@ export interface ClientMessageEditingCanvas {
 
 // Notifies clients that a given client has selected a certain canvas object,
 // and thus they shouldn't attempt to edit the object themselves.
-export interface ClientMessageSelectedCanvasObject {
-  type: 'selected_canvas_object';
-  canvasObjectId: CanvasIdType;
+export interface ClientMessageSelectedCanvasObjects {
+  type: 'selected_canvas_objects';
+  canvasObjectIds: CanvasObjectIdType[];
 }
 
 // Notifies clients that a given client has unselected a certain canvas object,
 // and thus they are free to select it themselves.
-export interface ClientMessageUnselectedCanvasObject {
-  type: 'unselected_canvas_object';
-  canvasObjectId: CanvasIdType;
+export interface ClientMessageUnselectedCanvasObjects {
+  type: 'unselected_canvas_objects';
+  canvasObjectIds: CanvasObjectIdType[];
 }
 
 // Notify the server that the client has created a new shape.
@@ -463,8 +463,8 @@ export interface ClientMessageRequestCanvasEditPermission {
 export type SocketClientMessage =
   | ClientMessageLogin
   | ClientMessageEditingCanvas
-  | ClientMessageSelectedCanvasObject
-  | ClientMessageUnselectedCanvasObject
+  | ClientMessageSelectedCanvasObjects
+  | ClientMessageUnselectedCanvasObjects
   | ClientMessageCreateCanvasObjects
   | ClientMessageUpdateCanvasObjects
   | ClientMessageCreateCanvas

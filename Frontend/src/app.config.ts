@@ -52,7 +52,7 @@ export const WB_CARD_COLLABORATORS_DISPLAY_LIMIT = 3;
 export const MAX_TITLE_LENGTH = 64;
 
 // -- Name of current copied canvas object in localStorage
-export const LS_KEY_COPIED_CANVAS_OBJECT = 'copied_canvas_object';
+export const LS_KEY_COPIED_CANVAS_OBJECTS = 'copied_canvas_objects';
 
 // -- Default (starting) zoom level of the whiteboard editor
 export const DEFAULT_WB_ZOOM = 1.0;

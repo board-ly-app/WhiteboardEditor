@@ -122,6 +122,7 @@ import useVectorDispatcher from '@/dispatchers/useVectorDispatcher';
 import useHandDispatcher from '@/dispatchers/useHandDispatcher';
 import useTextDispatcher from '@/dispatchers/useTextDispatcher';
 import useCreateCanvasDispatcher from '@/dispatchers/useCreateCanvasDispatcher';
+import useSelectDispatcher from '@/dispatchers/useSelectDispatcher';
 
 export interface CanvasProps {
   id: CanvasIdType;
@@ -300,6 +301,8 @@ const Canvas = ({
     },
   });
 
+  const selectDispatcher = useSelectDispatcher();
+
   const getDispatcher: (tool: ToolChoice) => OperationDispatcher = useCallback(
     (tool: ToolChoice) => {
       if (! userHasAccess) {
@@ -318,6 +321,8 @@ const Canvas = ({
             return textDispatcher;
           case 'create_canvas':
             return createCanvasDispatcher;
+          case 'select':
+            return selectDispatcher;
           default:
             return defaultDispatcher;
         }// -- end switch (currentTool)
@@ -331,6 +336,7 @@ const Canvas = ({
       vectorDispatcher,
       textDispatcher,
       createCanvasDispatcher,
+      selectDispatcher,
       defaultDispatcher,
       inaccessibleDispatcher,
     ]

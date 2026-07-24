@@ -246,8 +246,6 @@ const Whiteboard = () => {
 
   // Current tool choice will be saved to localStorage to ensure seamless UX
   // after page reloads.
-  // TODO: save default tool choice ('hand') in a separate config file.
-  // const [currentTool, setCurrentTool] = useState<ToolChoice>('hand');
   const LS_CURRENT_TOOL_KEY = 'current_tool';
 
   // -- Reload previous current tool on page refresh
@@ -295,12 +293,10 @@ const Whiteboard = () => {
         currentTool: choice,
       });
 
-      for (const objId of selectedCanvasObjects) {
-        clientMessenger?.sendUnselectedCanvasObject({
-          type: 'unselected_canvas_object',
-          canvasObjectId: objId,
-        });
-      }// -- end for objId
+      clientMessenger?.sendUnselectedCanvasObjects({
+        type: 'unselected_canvas_objects',
+        canvasObjectIds: selectedCanvasObjects,
+      });
 
       removeSelectorsByCanvasObject(dispatch, selectedCanvasObjects);
     },
@@ -623,7 +619,6 @@ const Whiteboard = () => {
                 {/* Display Canvases */}
                 <div className="flex flex-1 flex-row justify-center flex-wrap">
                   <CanvasCard
-                    whiteboardId={whiteboardId}
                     rootCanvasId={rootCanvasId}
                     shapeAttributes={shapeAttributesState}
                     onSelectCanvasDimensions={handleCreateCanvasDimensions}
@@ -720,7 +715,6 @@ const Whiteboard = () => {
                 {/* Display Canvases */}
                 <div className="flex flex-1 flex-row justify-center flex-wrap">
                   <CanvasCard
-                    whiteboardId={whiteboardId}
                     rootCanvasId={rootCanvasId}
                     shapeAttributes={shapeAttributesState}
                     onSelectCanvasDimensions={handleCreateCanvasDimensions}
@@ -790,6 +784,10 @@ const WrappedWhiteboard = () => {
     throw new Error("No whiteboard ID provided to Whiteboard page");
   }
 
+  const stageRef : RefObject<Konva.Stage | null> = useRef(null);
+  const canvasObjectRefsByIdRef : RefObject<Record<CanvasObjectIdType, RefObject<Konva.Shape | null>>> = useRef({});
+  const selectedObjectRefsByIdRef : RefObject<Record<CanvasObjectIdType, RefObject<Konva.Shape | null>>> = useRef({});
+
   // -- track refs to canvas groups (frames)
   const canvasGroupRefsByIdRef: RefObject<Record<CanvasIdType, RefObject<Konva.Group | null>>> = useRef({});
 
@@ -836,6 +834,9 @@ const WrappedWhiteboard = () => {
     <WhiteboardProvider
       handleUpdateShapes={handleUpdateShapes}
       whiteboardId={whiteboardId}
+      stageRef={stageRef}
+      canvasObjectRefsByIdRef={canvasObjectRefsByIdRef}
+      selectedObjectRefsByIdRef={selectedObjectRefsByIdRef}
       currentDispatcherRef={currentDispatcherRef}
       canvasGroupRefsByIdRef={canvasGroupRefsByIdRef}
     >

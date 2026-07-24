@@ -37,6 +37,7 @@ interface ToolbarButtonProps {
 }
 const tools: ToolChoice[] = [
   "hand",
+  "select",
   "vector",
   "rect",
   "ellipse",

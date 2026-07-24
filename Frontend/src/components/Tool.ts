@@ -6,6 +6,7 @@ import {
   Circle,
   ALargeSmall,
   SquarePlus,
+  BoxSelect,
 } from 'lucide-react';
 
 export type ToolChoice =
@@ -15,6 +16,7 @@ export type ToolChoice =
   | 'vector' 
   | 'text'
   | 'create_canvas'
+  | 'select'
 ;
 
 const getToolChoiceLabel = (toolChoice: ToolChoice): LucideIcon => {
@@ -31,6 +33,8 @@ const getToolChoiceLabel = (toolChoice: ToolChoice): LucideIcon => {
       return ALargeSmall;
     case 'create_canvas':
       return SquarePlus;
+    case 'select':
+      return BoxSelect;
     default:
       throw new Error(`Unrecognized tool choice: ${toolChoice}`);
   }// end switch (toolChoice)
@@ -50,6 +54,8 @@ export const getTooltip = (toolChoice: ToolChoice): string => {
       return "Add Text";
     case 'create_canvas':
       return "Create a new Canvas";
+    case 'select':
+      return "Select Shape(s)";
     default:
       throw new Error(`Unrecognized tool choice: ${toolChoice}`);
   }
