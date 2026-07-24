@@ -213,7 +213,7 @@ const EditableShape = <ShapeType extends ShapeModel> ({
         );
 
         // -- Control key signals unselect target
-        if (e.evt.ctrlKey) {
+        if (e.evt.ctrlKey || e.evt.metaKey) {
           if (editor?.clientId === clientId) {
             // -- Identify the current user as the current selector
             clientMessenger.sendUnselectedCanvasObjects({
