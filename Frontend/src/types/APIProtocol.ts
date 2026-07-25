@@ -91,6 +91,7 @@ export type Whiteboard =
 // =============================================================================
 export interface AuthLoginSuccessResponse {
   user: User;
+  sessionToken: string;
 }
 
 // === ErrorResponse ===========================================================

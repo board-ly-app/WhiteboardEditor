@@ -37,7 +37,7 @@ interface PostLoginRouteServerErrRes {
 
 interface PostLoginRouteOkRes {
   user: IPermanentUserSelfView;
-  csrfToken: string;
+  sessionToken: string;
 }
 
 export const handleLogin = async (
@@ -123,10 +123,10 @@ export const handleLogin = async (
       }
       case 'ok':
       {
-        const csrfToken = generateCsrfToken(req, res);
+        const sessionToken = generateCsrfToken(req, res);
         const resp : PostLoginRouteOkRes = ({
           user: loginResult.user.toSelfView(),
-          csrfToken,
+          sessionToken,
         });
 
         setRefreshTokenCookie(res, loginResult.refreshToken);
