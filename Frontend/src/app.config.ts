@@ -51,6 +51,12 @@ export const WB_CARD_COLLABORATORS_DISPLAY_LIMIT = 3;
 // -- Max title character lenght
 export const MAX_TITLE_LENGTH = 64;
 
+// -- Name of header for csrf session token
+export const HEADER_NAME_SESSION_TOKEN = 'x-session-token';
+
+// -- Key for csrf session token in localStorage
+export const LS_KEY_SESSION_TOKEN = 'session_token';
+
 // -- Name of current copied canvas object in localStorage
 export const LS_KEY_COPIED_CANVAS_OBJECTS = 'copied_canvas_objects';
 

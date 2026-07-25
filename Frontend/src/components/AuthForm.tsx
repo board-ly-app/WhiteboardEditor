@@ -34,6 +34,7 @@ import {
 
 import {
   APP_NAME,
+  LS_KEY_SESSION_TOKEN,
 } from '@/app.config';
 
 import {
@@ -120,7 +121,10 @@ const AuthForm = ({
       
       const {
         user,
+        sessionToken,
       } = res.data;
+
+      localStorage.setItem(LS_KEY_SESSION_TOKEN, sessionToken);
 
       // -- Attempt to transfer temp whiteboard if applicable
       if (tempWhiteboardId) {
@@ -152,7 +156,7 @@ const AuthForm = ({
         }
       }
 
-      setUiStatus('ok'); // -- ensure fields are not highlit as errors
+      setUiStatus('ok'); // -- ensure fields are not highlighted as errors
       handleLogin(user);
 
       if (!isTransferring) {
@@ -201,13 +205,13 @@ const AuthForm = ({
   );// -- end const handleSubmit
 
   const handleToggle = useCallback(
-      () => {
-        // -- remove highlighting
-        setUiStatus('ok');
+    () => {
+      // -- remove highlighting
+      setUiStatus('ok');
 
-        navigate(action === "login" ? "/signup" : "/login");
-      },
-      [setUiStatus, navigate, action]
+      navigate(action === "login" ? "/signup" : "/login");
+    },
+    [setUiStatus, navigate, action]
   );// -- end handleToggle
 
   const handleConfirmNameChange = useCallback(

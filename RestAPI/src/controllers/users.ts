@@ -11,6 +11,10 @@ import {
   Types,
 } from 'mongoose';
 
+import {
+  generateCsrfToken,
+} from '../services/antiCsrfService';
+
 // -- local imports
 import {
   SetInclusionOptionType,
@@ -270,7 +274,7 @@ export const handleConvertTempUser = async (
 //
 // =============================================================================
 export const handleCreateTempUser = async (
-  _req: Request,
+  req: Request,
   res: Response
 ) => {
   const resp = await loginTempUser();
@@ -282,12 +286,14 @@ export const handleCreateTempUser = async (
       return res.status(500).json({ message: resp.message });
     case 'ok':
       {
+        const sessionToken = generateCsrfToken(req, res);
+
         setRefreshTokenCookie(res, resp.payload.refreshToken);
         setAccessTokenCookie(res, resp.payload.accessToken);
 
         return res.status(201).json({ 
-          ...resp.payload,
           user: resp.payload.user.toSelfView(),
+          sessionToken,
         });
       }
     default:

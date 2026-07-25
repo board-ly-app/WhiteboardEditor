@@ -71,11 +71,14 @@ export const {
 
     return sessionId;
   },
+  cookieName: IS_PRODUCTION ? undefined : 'session-token',
   getCsrfTokenFromRequest(req: Request) {
     const tokenHeader = req.headers[CSRF_TOKEN_HEADER];
     if (! tokenHeader) return undefined;
 
-    return tokenHeader[0];
+    const token = Array.isArray(tokenHeader) ? tokenHeader[0] : tokenHeader;
+
+    return token;
   },
   // -- May want to skip all CSRF protection in select testing environments
   skipCsrfProtection: IS_CSRF_DISABLED ? skipAllCsrf : skipSelectedCsrf,

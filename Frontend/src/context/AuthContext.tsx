@@ -16,6 +16,7 @@ import {
 } from 'react-toastify';
 
 import {
+  LS_KEY_SESSION_TOKEN,
   REFRESH_ACCESS_TOKEN_QUERY_SECS,
 } from '@/app.config';
 
@@ -159,6 +160,7 @@ export const AuthProvider = ({
       setUserWrapper(null);
       isAuthedRef.current = false;
       localStorage.setItem(LS_KEY_IS_AUTHED, LS_VAL_IS_AUTHED_FALSE);
+      localStorage.removeItem(LS_KEY_SESSION_TOKEN);
 
       if (refreshAccessTokenIntervalRef.current !== null) {
         window.clearInterval(refreshAccessTokenIntervalRef.current);
