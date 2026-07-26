@@ -654,7 +654,6 @@ const WebSocketClientMessengerProvider = ({
 
       ws.onerror = (e: Event) => {
         console.error('Error opening web socket connection:', e);
-        toast.error('Unable to connect to web socket server');
       };// -- end onerror
       ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
       webSocketRef.current = ws;
