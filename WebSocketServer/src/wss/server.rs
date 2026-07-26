@@ -203,6 +203,7 @@ impl <'a> std::cmp::PartialEq for ClientStateAuthenticated <'a> {
 // ================================================================================================
 #[derive(Debug)]
 pub struct ConnectionState {
+    #[allow(unused)]
     pub session_secret: String,
     pub access_token_secret: String,
     pub mongo_client: Client,
