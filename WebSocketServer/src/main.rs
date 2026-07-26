@@ -252,11 +252,11 @@ async fn main() -> process::ExitCode {
     let ws_route = warp::path!("ws" / WhiteboardIdType)
         .and(warp::ws())
         .and(warp::header::optional::<String>("cookie"))
-        .and(warp::header::optional::<String>("sec-websocket-protocol"))
+        .and(warp::query::query::<HashMap<String, String>>())
         .and(connection_state_ref_filter)
         .map(
-            |wid, ws: warp::ws::Ws, cookie_s: Option<String>, protocol_s: Option<String>, connection_state_ref: Arc<ConnectionState>| {
-                ws.on_upgrade(move |socket| handle_connection(socket, wid, cookie_s, protocol_s, connection_state_ref))
+            |wid, ws: warp::ws::Ws, cookie_s: Option<String>, query: HashMap<String, String>, connection_state_ref: Arc<ConnectionState>| {
+                ws.on_upgrade(move |socket| handle_connection(socket, wid, cookie_s, query, connection_state_ref))
             }
         )
         .map(|reply| warp::reply::with_header(reply, "sec-websocket-protocol", "soap"))
@@ -281,7 +281,7 @@ async fn handle_connection(
     ws: WebSocket,
     whiteboard_id: wss::models::WhiteboardIdType,
     cookie_s: Option<String>,
-    protocol_s: Option<String>,
+    query: HashMap<String, String>,
     connection_state_ref: Arc<wss::server::ConnectionState>,
 ) {
     use wss::{
@@ -352,18 +352,21 @@ async fn handle_connection(
                 break 'verify_session_success;
             };// -- end let session_token_cookie
 
-            let protocol_header_items : Vec<String> = if let Some(p) = protocol_s {
-                p.split(", ").map(|s| s.to_string()).collect()
-            } else {
-                break 'verify_session_success;
-            };
-            let session_token_header = if let Some(s) = protocol_header_items.get(2) {
-                s
+            let session_token_query : String = if let Some(v) = query.get("sessionToken") {
+                match urlencoding::decode(v) {
+                    Ok(s) => s.to_string(),
+                    Err(e) => {
+                        eprintln!("Could not decode sessionToken query value: {:?}", e);
+                        break 'verify_session_success;
+                    },
+                }// -- end match
             } else {
                 break 'verify_session_success;
             };
 
-            if session_token_header != session_token_cookie {
+            eprintln!("!! SESSION_TOKEN_QUERY = {:?}, SESSION_TOKEN_COOKIE = {:?}", session_token_query, session_token_cookie);
+            if session_token_query != *session_token_cookie {
+                eprintln!("Session token from query does not match session token from cookie; refusing connection.");
                 break 'verify_session_success;
             }
 

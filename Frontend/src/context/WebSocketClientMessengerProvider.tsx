@@ -649,16 +649,12 @@ const WebSocketClientMessengerProvider = ({
       if (! sessionToken) return handleClose;
 
       const wsUriScheme : 'ws' | 'wss' = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const wsUri = `${wsUriScheme}://${window.location.host}/ws/${encodeURIComponent(whiteboardId)}`;
-      const ws : WebSocket = new WebSocket(wsUri, ['soap', 'sessionToken', sessionToken]);
+      const wsUri = `${wsUriScheme}://${window.location.host}/ws/${encodeURIComponent(whiteboardId)}?sessionToken=${encodeURIComponent(sessionToken)}`;
+      const ws : WebSocket = new WebSocket(wsUri);
 
       ws.onerror = (e: Event) => {
         console.error('Error opening web socket connection:', e);
-
-        // -- Only notify user if web socket not open/ready
-        if (ws.readyState !== 1)  {
-          toast.error('Unable to connect to web socket server');
-        }
+        toast.error('Unable to connect to web socket server');
       };// -- end onerror
       ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
       webSocketRef.current = ws;
