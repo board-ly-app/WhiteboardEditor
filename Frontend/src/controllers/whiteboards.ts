@@ -108,6 +108,14 @@ export const addWhiteboard = (
   ));
 };
 
+// -- Clear whiteboard data without signalling deletion status
+export const clearWhiteboard = (
+  dispatch: AppDispatch,
+  whiteboardId: WhiteboardIdType,
+) => {
+  dispatch(deleteWhiteboardsAction([whiteboardId]));
+};// -- end clearWhiteboard
+
 export const deleteWhiteboard = (
   dispatch: AppDispatch,
   whiteboardId: WhiteboardIdType,
