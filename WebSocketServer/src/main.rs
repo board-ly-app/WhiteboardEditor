@@ -648,7 +648,7 @@ async fn handle_connection(
             whiteboard: whiteboard.to_client_view(),
             active_clients: active_clients.clone(),
             selectors_by_canvas_objects: selectors_by_canvas_objects
-                .iter_key_value()
+                .iter()
                 .map(|(k, v)| (v.clone(), k.clone()))
                 .collect(),
         };
