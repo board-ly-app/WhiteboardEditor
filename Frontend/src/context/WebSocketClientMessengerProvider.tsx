@@ -653,8 +653,12 @@ const WebSocketClientMessengerProvider = ({
       const ws : WebSocket = new WebSocket(wsUri, ['soap', 'sessionToken', sessionToken]);
 
       ws.onerror = (e: Event) => {
-        console.error('Could not open web socket connection:', e);
-        toast.error('Unable to reach web socket server');
+        console.error('Error opening web socket connection:', e);
+
+        // -- Only notify user if web socket not open/ready
+        if (ws.readyState !== 1)  {
+          toast.error('Unable to connect to web socket server');
+        }
       };// -- end onerror
       ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
       webSocketRef.current = ws;
