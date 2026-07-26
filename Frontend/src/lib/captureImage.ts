@@ -54,6 +54,14 @@ export const captureImage = (
     // -- filter out UI-only nodes
     destroyUIOnlyDescendants(exportableCanvas);
 
+    // -- the first child is the canvas background rect; its bounds define the
+    //    logical canvas area we clamp the thumbnail to. All coordinates here are
+    //    in the (detached) clone's unscaled coordinate space, independent of the
+    //    live stage's zoom.
+    const canvasBounds = exportableCanvas
+      .getChildren()[0]
+      .getClientRect({ skipShadow: true, skipStroke: false });
+
     // skip the first child, it's the canvas itself
     const children = exportableCanvas.getChildren().slice(1);
 
@@ -66,28 +74,36 @@ export const captureImage = (
 
     children.forEach(child => {
       const box = child.getClientRect({ skipShadow: true, skipStroke: false });
+
+      // -- skip empty / zero-area nodes (e.g. object wrapper groups that render
+      //    nothing); Konva reports their bounds as {0, 0, 0, 0}, which would
+      //    otherwise drag the thumbnail frame to the canvas origin.
+      if (box.width === 0 && box.height === 0) {
+        return;
+      }
+
       minX = Math.min(minX, box.x);
       minY = Math.min(minY, box.y);
       maxX = Math.max(maxX, box.x + box.width);
       maxY = Math.max(maxY, box.y + box.height);
     });
 
-    // get the stage from any node
-    const stage = canvasGroupRef.current?.getStage();
-    if (!stage) {
-      console.error("Could not get stage from group");
-      return "";
+    // -- no shapes (or degenerate bounds): fall back to the full canvas area
+    if (! Number.isFinite(minX)) {
+      minX = canvasBounds.x;
+      minY = canvasBounds.y;
+      maxX = canvasBounds.x + canvasBounds.width;
+      maxY = canvasBounds.y + canvasBounds.height;
     }
 
-    // stage width & height
-    const canvasWidth = stage.width();
-    const canvasHeight = stage.height();
-
-    // calculate clamped export rectangle
-    const x = Math.max(0, minX - padding);
-    const y = Math.max(0, minY - padding);
-    const width = Math.min(maxX - minX + 2 * padding, canvasWidth - x);
-    const height = Math.min(maxY - minY + 2 * padding, canvasHeight - y);
+    // -- intersect the padded content bounds with the canvas area so an
+    //    out-of-range child canvas or stray shape can't blow up the frame
+    const x = Math.max(canvasBounds.x, minX - padding);
+    const y = Math.max(canvasBounds.y, minY - padding);
+    const right = Math.min(canvasBounds.x + canvasBounds.width, maxX + padding);
+    const bottom = Math.min(canvasBounds.y + canvasBounds.height, maxY + padding);
+    const width = right - x;
+    const height = bottom - y;
 
     // export
     const exportUrl = exportableCanvas.toDataURL({
