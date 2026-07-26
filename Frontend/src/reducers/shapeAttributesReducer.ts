@@ -10,6 +10,7 @@ import type {
   ShapeModelBase,
   TextAlign,
   TextVerticalAlign,
+  ArrowTip,
 } from '@/types/CanvasObjectModel';
 
 // === ShapeAttributesState ====================================================
@@ -20,6 +21,8 @@ import type {
 export type ShapeAttributesState = ShapeModelBase & {
   align: TextAlign;
   verticalAlign: TextVerticalAlign;
+  arrowStart: ArrowTip;
+  arrowEnd: ArrowTip;
 };
 
 export type ShapeAttributesAction =
@@ -30,6 +33,8 @@ export type ShapeAttributesAction =
   | { type: 'SET_FONT_COLOR'; payload: string }
   | { type: 'SET_TEXT_ALIGN'; payload: TextAlign }
   | { type: 'SET_TEXT_VERTICAL_ALIGN'; payload: TextVerticalAlign }
+  | { type: 'SET_ARROW_START'; payload: ArrowTip }
+  | { type: 'SET_ARROW_END'; payload: ArrowTip }
 ;
 
 const shapeAttributesReducer = (state: ShapeAttributesState, action: ShapeAttributesAction) => {
@@ -48,6 +53,10 @@ const shapeAttributesReducer = (state: ShapeAttributesState, action: ShapeAttrib
       return ({ ...state, align: action.payload });
     case 'SET_TEXT_VERTICAL_ALIGN':
       return ({ ...state, verticalAlign: action.payload });
+    case 'SET_ARROW_START':
+      return ({ ...state, arrowStart: action.payload });
+    case 'SET_ARROW_END':
+      return ({ ...state, arrowEnd: action.payload });
     default:
       return state;
   }// end switch (action.type)

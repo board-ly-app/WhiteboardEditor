@@ -6,7 +6,7 @@ import {
 
 // --- third-party imports
 import Konva from 'konva';
-import { Line } from 'react-konva';
+import { Arrow } from 'react-konva';
 
 // --- local imports
 import type {
@@ -94,20 +94,25 @@ const useVectorDispatcher = ({
   const getPreview = useCallback(
     (): React.JSX.Element | null => {
       if (mouseDownCoords && mouseCoords) {
-        const { x: xA, y: yA } = mouseDownCoords;
-        const { x: xB, y: yB } = mouseCoords;
+        // Match handlePointerUp's point order ([current, mouseDown]) so the
+        // preview arrow tips land on the same ends as the committed vector
+        const { x: xA, y: yA } = mouseCoords;
+        const { x: xB, y: yB } = mouseDownCoords;
 
         return (
-          <Line
+          <Arrow
             points={[xA, yA, xB, yB]}
             stroke="#888888"
+            fill="#888888"
+            pointerAtBeginning={shapeAttributes.arrowStart === 'arrow'}
+            pointerAtEnding={shapeAttributes.arrowEnd === 'arrow'}
           />
         );
       } else {
         return null;
       }
     },
-    [mouseCoords, mouseDownCoords]
+    [mouseCoords, mouseDownCoords, shapeAttributes]
   );// -- end getPreview
 
   const getAttributes = useCallback(
