@@ -4,6 +4,8 @@
 //
 // =============================================================================
 
+export const IS_PRODUCTION : boolean = (process.env?.NODE_ENV === 'production');
+
 // -- The current api version
 export const API_VERSION = 'v1';
 
@@ -16,6 +18,10 @@ export const NOTIFICATIONS_ROUTE = `/api/${API_VERSION}/notifications`;
 
 // -- Cookie ids
 export const SESSION_ID_COOKIE_ID = 'session_id';
+// -- Production cookie name enforces security
+export const SESSION_TOKEN_COOKIE_ID = IS_PRODUCTION ?
+  "__Host-psifi.x-csrf-token"
+  : "session_token";
 export const REFRESH_TOKEN_COOKIE_ID = 'refresh_token';
 export const ACCESS_TOKEN_COOKIE_ID = 'access_token';
 

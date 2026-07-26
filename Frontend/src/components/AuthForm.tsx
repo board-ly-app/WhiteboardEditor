@@ -34,7 +34,6 @@ import {
 
 import {
   APP_NAME,
-  LS_KEY_SESSION_TOKEN,
 } from '@/app.config';
 
 import {
@@ -124,8 +123,6 @@ const AuthForm = ({
         sessionToken,
       } = res.data;
 
-      localStorage.setItem(LS_KEY_SESSION_TOKEN, sessionToken);
-
       // -- Attempt to transfer temp whiteboard if applicable
       if (tempWhiteboardId) {
         try {
@@ -157,7 +154,7 @@ const AuthForm = ({
       }
 
       setUiStatus('ok'); // -- ensure fields are not highlighted as errors
-      handleLogin(user);
+      handleLogin(user, sessionToken);
 
       if (!isTransferring) {
         navigate(redirectUrl);

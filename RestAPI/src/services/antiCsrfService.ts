@@ -19,7 +19,9 @@ import {
 } from 'uuid';
 
 import {
+  IS_PRODUCTION,
   SESSION_ID_COOKIE_ID,
+  SESSION_TOKEN_COOKIE_ID,
   CSRF_TOKEN_HEADER,
   AUTH_ROUTE,
 } from '../app.config';
@@ -27,8 +29,6 @@ import {
 const SESSION_SECRET = process.env.SESSION_SECRET;
 
 if (! SESSION_SECRET) throw new Error('Env var SESSION_SECRET not provided');
-
-const IS_PRODUCTION : boolean = (process.env?.NODE_ENV === 'production');
 
 // -- Should only be set in some testing environments
 const IS_CSRF_DISABLED : boolean = (process.env?.CSRF_DISABLED === 'TRUE');
@@ -71,7 +71,7 @@ export const {
 
     return sessionId;
   },
-  cookieName: IS_PRODUCTION ? undefined : 'session-token',
+  cookieName: SESSION_TOKEN_COOKIE_ID,
   getCsrfTokenFromRequest(req: Request) {
     const tokenHeader = req.headers[CSRF_TOKEN_HEADER];
     if (! tokenHeader) return undefined;

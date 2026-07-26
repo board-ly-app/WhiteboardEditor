@@ -132,6 +132,7 @@ const WebSocketClientMessengerProvider = ({
 
   const {
     user,
+    getSessionToken,
   } = useUser();
 
   if (! user) {
@@ -635,24 +636,33 @@ const WebSocketClientMessengerProvider = ({
       // exists
       // -- if a new connection needs to be created, the ref should be reset to
       // null first
-      if (! webSocketRef.current) {
-        const wsUriScheme : 'ws' | 'wss' = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const wsUri = `${wsUriScheme}://${window.location.host}/ws/${whiteboardId}`;
-        const ws : WebSocket = new WebSocket(wsUri);
-
-        ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
-        webSocketRef.current = ws;
-      }
-
-      // -- Close web socket connection when page closed
-      return () => {
+      const handleClose = () => {
         if (webSocketRef.current) {
           webSocketRef.current.close();
           webSocketRef.current = null;
         }
-      };
+      };// -- end handleClose
+
+      if (webSocketRef.current) return handleClose;
+
+      const sessionToken = getSessionToken();
+      if (! sessionToken) return handleClose;
+
+      const wsUriScheme : 'ws' | 'wss' = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const wsUri = `${wsUriScheme}://${window.location.host}/ws/${encodeURIComponent(whiteboardId)}`;
+      const ws : WebSocket = new WebSocket(wsUri, ['soap', 'sessionToken', sessionToken]);
+
+      ws.onerror = (e: Event) => {
+        console.error('Could not open web socket connection:', e);
+        toast.error('Unable to reach web socket server');
+      };// -- end onerror
+      ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
+      webSocketRef.current = ws;
+
+      // -- Close web socket connection when page closed
+      return handleClose;
     },
-    [makeHandleWebSocketOpen, whiteboardId]
+    [makeHandleWebSocketOpen, whiteboardId, getSessionToken]
   );
 
   return (

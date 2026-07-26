@@ -53,7 +53,7 @@ const HeaderUnauthed = ({
       console.log("action after setAction: ", action);
       setConfirmationOpen(true);
     }
-  }, [pathname, navigate, setConfirmationOpen, setAction]);
+  }, [pathname, navigate, setConfirmationOpen, setAction, action]);
 
   return (
     <div>

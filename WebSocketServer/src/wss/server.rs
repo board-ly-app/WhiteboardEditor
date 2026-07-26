@@ -125,7 +125,7 @@ pub struct ClientStateBase {
     pub client_id: ClientIdType,
     pub whiteboard_id: WhiteboardIdType,
     pub whiteboard_ref: Arc<Mutex<Whiteboard>>,
-    pub jwt_secret: String,
+    pub access_token_secret: String,
     // The permission (view/edit/own) the user has on the current whiteboard
     // -- TODO: condense into just whiteboard, client, and edit mutexes
     // -- Replace separate loops with one check for unauthenticated vs authenticated
@@ -203,7 +203,8 @@ impl <'a> std::cmp::PartialEq for ClientStateAuthenticated <'a> {
 // ================================================================================================
 #[derive(Debug)]
 pub struct ConnectionState {
-    pub jwt_secret: String,
+    pub session_secret: String,
+    pub access_token_secret: String,
     pub mongo_client: Client,
     pub next_client_id_index: Mutex<i32>,
     pub program_state: ProgramState,
@@ -1323,7 +1324,7 @@ pub async fn handle_unauthenticated_client_message<
                 ClientSocketMessage::Login { jwt } => {
                     let user_id = match get_user_id_from_jwt(
                         jwt.as_str(),
-                        client_state.jwt_secret.as_str(),
+                        client_state.access_token_secret.as_str(),
                     ) {
                         Err(e) => {
                             println!("Error parsing user_id from jwt: {}", e);
@@ -1556,7 +1557,7 @@ mod unit_tests {
 
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -1728,7 +1729,7 @@ mod unit_tests {
 
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -1989,7 +1990,7 @@ mod unit_tests {
 
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -2194,14 +2195,14 @@ mod unit_tests {
         use utils::generate_unique_client_id;
         use crate::jwt::JWTClaims;
 
-        let jwt_secret = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz";
+        let access_token_secret = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz";
         let target_uid_s = "68d5e8d4829da666aece5f48";
         let target_uid = ObjectId::parse_str(target_uid_s).expect("UID to be valid");
         let target_email = "bob@example.com";
 
         // -- pre-generate jwt with desired uid
         let key: Hmac<Sha256> =
-            Hmac::new_from_slice(jwt_secret.as_bytes()).expect("Valid key to be generated");
+            Hmac::new_from_slice(access_token_secret.as_bytes()).expect("Valid key to be generated");
         let timestamp_iat_utc = chrono::Local::now().to_utc().timestamp() - 20;
         // expiration always in the future
         let timestamp_exp_utc = timestamp_iat_utc + 999999;
@@ -2252,7 +2253,7 @@ mod unit_tests {
 
         let client_state = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from(jwt_secret),
+            access_token_secret: String::from(access_token_secret),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -2520,7 +2521,7 @@ mod unit_tests {
 
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -2686,7 +2687,7 @@ mod unit_tests {
 
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -2882,7 +2883,7 @@ mod unit_tests {
 
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -3063,7 +3064,7 @@ mod unit_tests {
 
         let client_state_a_base = ClientStateBase {
             client_id: client_a_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::clone(&whiteboard_ref),
             active_clients: Arc::clone(&active_clients),
@@ -3083,7 +3084,7 @@ mod unit_tests {
 
         let client_state_b_base = ClientStateBase {
             client_id: client_b_id.clone(),
-            jwt_secret: String::from("defg"),
+            access_token_secret: String::from("defg"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::clone(&whiteboard_ref),
             active_clients: Arc::clone(&active_clients),

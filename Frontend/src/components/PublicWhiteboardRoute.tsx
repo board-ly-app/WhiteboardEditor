@@ -41,7 +41,7 @@ const PublicWhiteboardRoute = ({ children }: PropsWithChildren): React.JSX.Eleme
 
           if (!alreadyHasAccess) {
             const userResp = await api.post('/users/temp');
-            handleLogin(userResp.data.user);
+            handleLogin(userResp.data.user, userResp.data.sessionToken);
           }
 
           setStatus('allowed');

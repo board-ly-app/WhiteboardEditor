@@ -5,6 +5,7 @@ import {
 
 import {
   AUTH_ROUTE,
+  SESSION_ID_COOKIE_ID,
   REFRESH_TOKEN_COOKIE_ID,
   ACCESS_TOKEN_COOKIE_ID,
 } from '../app.config';
@@ -158,6 +159,10 @@ export const handleLogout = (
   // -- Don't bother verifying whether user has a valid refresh token; end
   // result will be the same regardless.
   return res.status(201)
+    .clearCookie(SESSION_ID_COOKIE_ID, {
+      sameSite: 'strict',
+      httpOnly: true,
+    })
     .clearCookie(REFRESH_TOKEN_COOKIE_ID, {
       path: `${AUTH_ROUTE}/refresh`,
       sameSite: 'strict',

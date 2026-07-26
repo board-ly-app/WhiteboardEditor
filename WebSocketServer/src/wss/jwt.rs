@@ -72,4 +72,4 @@ pub fn get_user_id_from_jwt(
     } else {
         Ok(ObjectId::parse_str(claims.sub.as_str())?)
     }
-}
+}// -- end get_user_id_from_jwt
