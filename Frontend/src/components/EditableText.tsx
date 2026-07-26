@@ -62,7 +62,9 @@ import {
 import {
   type CanvasObjectIdType,
   type ShapeModel,
+  type TextAlign,
   type TextRecord,
+  type TextVerticalAlign,
 } from "@/types/CanvasObjectModel";
 
 import {
@@ -91,6 +93,8 @@ export interface EditableTextProps extends EditableObjectProps {
   width: number;
   height: number;
   rotation: number;
+  align?: TextAlign;
+  verticalAlign?: TextVerticalAlign;
   draggable: boolean;
   record: TextRecord;
   onUpdateObject: (updatedObject: ShapeModel) => unknown;
@@ -107,6 +111,8 @@ const EditableText = ({
   width,
   height,
   rotation,
+  align,
+  verticalAlign,
   draggable,
   record,
   onUpdateObject,
@@ -434,6 +440,8 @@ const EditableText = ({
         width={width}
         height={height}
         rotation={rotation}
+        align={align ?? 'left'}
+        verticalAlign={verticalAlign ?? 'top'}
         draggable={draggable}
         onClick={handleSingleSelect}
         onTap={handleSingleSelect}

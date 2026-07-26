@@ -70,6 +70,23 @@ export interface ShapeAttributesMenuProps {
   dispatch: Dispatch<ShapeAttributesAction>;
 }
 
+// -- consecutive inline attribute definitions share a single menu row
+const groupIntoRows = (definitions: AttributeDefinition[]): AttributeDefinition[][] => {
+  const rows: AttributeDefinition[][] = [];
+
+  for (const definition of definitions) {
+    const lastRow = rows[rows.length - 1];
+
+    if (definition.inline && lastRow && lastRow[lastRow.length - 1].inline) {
+      lastRow.push(definition);
+    } else {
+      rows.push([definition]);
+    }
+  }
+
+  return rows;
+};
+
 const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   const { attributes, dispatch } = props;
 
@@ -168,20 +185,35 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
           ev.preventDefault();
         }}
       >
-        {attributeComponents.map(({ Component, key }) => (
-          <Component
-            key={key}
-            selectedShapeIds={selectedCanvasObjectIds}
-            dispatch={dispatch}
-            handleUpdateShapes={handleUpdateShapes}
-            canvasId={selectedCanvasId}
-            value={useSelectedShapeValues && firstShape 
-              ? firstShape[key as keyof CanvasObjectModel] 
-              : attributes[key]
-            }
-            className="rounded-lg border-border"
-          />
-        ))}
+        {groupIntoRows(attributeComponents).map((row) => {
+          const attributeElements = row.map(({ Component, key }) => (
+            <Component
+              key={key}
+              selectedShapeIds={selectedCanvasObjectIds}
+              dispatch={dispatch}
+              handleUpdateShapes={handleUpdateShapes}
+              canvasId={selectedCanvasId}
+              value={useSelectedShapeValues && firstShape
+                ? firstShape[key as keyof CanvasObjectModel]
+                : attributes[key]
+              }
+              className="rounded-lg border-border"
+            />
+          ));
+
+          if (row.length === 1) {
+            return attributeElements[0];
+          }
+
+          return (
+            <div
+              key={row.map(({ key }) => key).join('-')}
+              className="flex justify-center gap-2"
+            >
+              {attributeElements}
+            </div>
+          );
+        })}
       </form>
     </div>
   );

@@ -227,6 +227,8 @@ const Whiteboard = () => {
     strokeWidth: 1,
     fontSize: 20,
     color: '#003652',
+    align: 'left',
+    verticalAlign: 'top',
   });
 
   const name : string | null = useSelector(

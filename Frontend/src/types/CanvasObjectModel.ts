@@ -59,6 +59,9 @@ export interface VectorModel extends CanvasObjectBase {
 
 export interface VectorRecord extends VectorModel, RecordBase {}
 
+export type TextAlign = 'left' | 'center' | 'right';
+export type TextVerticalAlign = 'top' | 'middle' | 'bottom';
+
 // TODO: Pull out common fields and extend if possible
 export interface TextModel extends ShapeModelAttributes {
   type: 'text';
@@ -66,6 +69,9 @@ export interface TextModel extends ShapeModelAttributes {
   width: number;
   height: number;
   rotation: number;
+  // -- optional: text created before alignment has neither (treated as 'left'/'top')
+  align?: TextAlign;
+  verticalAlign?: TextVerticalAlign;
 }
 
 export interface TextRecord extends TextModel, RecordBase {}

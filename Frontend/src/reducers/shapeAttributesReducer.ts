@@ -6,21 +6,30 @@
 // =============================================================================
 
 // -- local imports
-import type { ShapeModelBase } from '@/types/CanvasObjectModel';
+import type {
+  ShapeModelBase,
+  TextAlign,
+  TextVerticalAlign,
+} from '@/types/CanvasObjectModel';
 
 // === ShapeAttributesState ====================================================
 //
 // Defines the basic attributes newly drawn shapes will have.
 //
 // =============================================================================
-export type ShapeAttributesState = ShapeModelBase;
+export type ShapeAttributesState = ShapeModelBase & {
+  align: TextAlign;
+  verticalAlign: TextVerticalAlign;
+};
 
-export type ShapeAttributesAction = 
+export type ShapeAttributesAction =
   | { type: 'SET_FILL_COLOR'; payload: string }
   | { type: 'SET_STROKE_COLOR'; payload: string }
   | { type: 'SET_STROKE_WIDTH'; payload: number }
   | { type: 'SET_FONT_SIZE'; payload: number }
   | { type: 'SET_FONT_COLOR'; payload: string }
+  | { type: 'SET_TEXT_ALIGN'; payload: TextAlign }
+  | { type: 'SET_TEXT_VERTICAL_ALIGN'; payload: TextVerticalAlign }
 ;
 
 const shapeAttributesReducer = (state: ShapeAttributesState, action: ShapeAttributesAction) => {
@@ -35,6 +44,10 @@ const shapeAttributesReducer = (state: ShapeAttributesState, action: ShapeAttrib
       return ({ ...state, fontSize: action.payload });
     case 'SET_FONT_COLOR':
       return ({ ...state, color: action.payload });
+    case 'SET_TEXT_ALIGN':
+      return ({ ...state, align: action.payload });
+    case 'SET_TEXT_VERTICAL_ALIGN':
+      return ({ ...state, verticalAlign: action.payload });
     default:
       return state;
   }// end switch (action.type)
