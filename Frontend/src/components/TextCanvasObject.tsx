@@ -46,6 +46,8 @@ export const TextCanvasObject = ({
     width,
     height,
     rotation,
+    align,
+    verticalAlign,
   } = record;
 
   return (
@@ -61,6 +63,8 @@ export const TextCanvasObject = ({
       height={height}
       draggable={isDraggable}
       rotation={rotation}
+      align={align}
+      verticalAlign={verticalAlign}
       record={record}
       onUpdateObject={onUpdateObject}
       {...editableObjectProps<TextRecord>(record, isDraggable, onUpdateObject)}

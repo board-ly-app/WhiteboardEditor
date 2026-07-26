@@ -74,6 +74,11 @@ pub enum CanvasObjectModel {
         width: f64,
         height: f64,
         rotation: f64,
+        // -- default covers documents/messages predating text alignment
+        #[serde(default)]
+        align: Option<String>,
+        #[serde(default)]
+        vertical_align: Option<String>,
         #[serde(default)]
         z_index: f64,
     },

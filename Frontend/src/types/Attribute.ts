@@ -32,6 +32,10 @@ import AttributeFillColor from "@/components/AttributeFillColor";
 import AttributeFontSize from "@/components/AttributeFontSize";
 import AttributeFontColor from "@/components/AttributeFontColor";
 import AttributeZOrder from "@/components/AttributeZOrder";
+import {
+  AttributeTextAlign,
+  AttributeTextVerticalAlign,
+} from "@/components/AttributeTextAlign";
 
 export type AttributeType =
   | "number"
@@ -82,6 +86,8 @@ export interface AttributeDefinition {
   name: string;
   Component: AttributeComponent;
   key: keyof ShapeAttributesState;
+  // -- consecutive inline definitions share a single menu row
+  inline?: boolean;
 }
 
 export type AttributeComponent = React.FC<AttributeProps>;
@@ -104,6 +110,8 @@ export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
   text: [
     AttributeFontSize,
     AttributeFontColor,
+    AttributeTextAlign,
+    AttributeTextVerticalAlign,
     AttributeZOrder,
   ],
   vector: [
