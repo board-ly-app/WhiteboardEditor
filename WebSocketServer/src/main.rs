@@ -259,7 +259,6 @@ async fn main() -> process::ExitCode {
                 ws.on_upgrade(move |socket| handle_connection(socket, wid, cookie_s, query, connection_state_ref))
             }
         )
-        .map(|reply| warp::reply::with_header(reply, "sec-websocket-protocol", "soap"))
         .recover(async |e| -> Result::<warp::reply::WithStatus<&str>, std::convert::Infallible> {
             eprintln!("Unexpected error parsing cookie header: {:?}", e);
 
@@ -364,7 +363,6 @@ async fn handle_connection(
                 break 'verify_session_success;
             };
 
-            eprintln!("!! SESSION_TOKEN_QUERY = {:?}, SESSION_TOKEN_COOKIE = {:?}", session_token_query, session_token_cookie);
             if session_token_query != *session_token_cookie {
                 eprintln!("Session token from query does not match session token from cookie; refusing connection.");
                 break 'verify_session_success;
