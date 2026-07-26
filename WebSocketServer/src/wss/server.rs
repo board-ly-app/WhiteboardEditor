@@ -1624,6 +1624,7 @@ mod unit_tests {
                 fill_color: String::from("#ff0000"),
                 rotation: 0.0,
                 z_index: 0.0,
+                shadow: Some(0.0),
             },
             CanvasObjectModel::Rect {
                 x: 200.0,
@@ -1635,6 +1636,7 @@ mod unit_tests {
                 fill_color: String::from("#ff0000"),
                 rotation: 0.0,
                 z_index: 0.0,
+                shadow: Some(0.0),
             },
             CanvasObjectModel::Rect {
                 x: 300.0,
@@ -1646,6 +1648,7 @@ mod unit_tests {
                 fill_color: String::from("#ff0000"),
                 rotation: 0.0,
                 z_index: 0.0,
+                shadow: Some(0.0),
             },
         ];
         let client_msg_s = format!(
@@ -1799,6 +1802,7 @@ mod unit_tests {
                                         fill_color,
                                         rotation,
                                         z_index,
+                                        shadow,
                                     },
                                     CanvasObjectModel::Rect {
                                         x: x_exp,
@@ -1810,6 +1814,7 @@ mod unit_tests {
                                         fill_color: fill_color_exp,
                                         rotation: rotation_exp,
                                         z_index: z_index_exp,
+                                        shadow: None,
                                     },
                                 ) => {
                                     if (x - x_exp).abs() > f64_prec {
@@ -1903,6 +1908,7 @@ mod unit_tests {
                     fill_color: String::from("#ff0000"),
                     rotation: 0.0,
                     z_index: 0.0,
+                    shadow: None,
                 },
             ),
             (
@@ -1917,6 +1923,7 @@ mod unit_tests {
                     fill_color: String::from("#ff0000"),
                     rotation: 0.0,
                     z_index: 0.0,
+                    shadow: None,
                 },
             ),
             (
@@ -1931,6 +1938,7 @@ mod unit_tests {
                     fill_color: String::from("#ff0000"),
                     rotation: 0.0,
                     z_index: 0.0,
+                    shadow: None,
                 },
             ),
         ];
