@@ -60,6 +60,7 @@ services:
     environment:
       # Make sure to set MONGO_URI in .env
       MONGO_URI: ${WHITEBOARD_EDITOR_MONGO_URI}
+      SESSION_SECRET: ${WHITEBOARD_EDITOR_SESSION_SECRET}
       ACCESS_TOKEN_SECRET: ${WHITEBOARD_EDITOR_ACCESS_TOKEN_SECRET}
     ports:
       # exposed for testing purposes

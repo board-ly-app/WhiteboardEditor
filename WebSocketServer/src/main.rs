@@ -45,7 +45,14 @@ async fn main() -> process::ExitCode {
     };
 
     let port = 3000u16;
-    let jwt_secret = match env::var("ACCESS_TOKEN_SECRET") {
+    let session_secret = match env::var("SESSION_SECRET") {
+        Err(e) => {
+            eprintln!("Could not find $SESSION_SECRET: {}", e);
+            return process::ExitCode::FAILURE;
+        },
+        Ok(secret) => secret,
+    };
+    let access_token_secret = match env::var("ACCESS_TOKEN_SECRET") {
         Err(e) => {
             eprintln!("Could not find $ACCESS_TOKEN_SECRET: {}", e);
             return process::ExitCode::FAILURE;
@@ -69,7 +76,8 @@ async fn main() -> process::ExitCode {
 
     // broadcaster for initial whiteboard
     let connection_state_ref = Arc::new(ConnectionState {
-        jwt_secret: jwt_secret.clone(),
+        session_secret: session_secret.clone(),
+        access_token_secret: access_token_secret.clone(),
         next_client_id_index: Mutex::new(0),
         mongo_client: mongo_client.clone(),
         program_state: ProgramState {
@@ -244,12 +252,14 @@ async fn main() -> process::ExitCode {
     let ws_route = warp::path!("ws" / WhiteboardIdType)
         .and(warp::ws())
         .and(warp::header::optional::<String>("cookie"))
+        .and(warp::header::optional::<String>("sec-websocket-protocol"))
         .and(connection_state_ref_filter)
-        .then(
-            async |wid, ws: warp::ws::Ws, cookie_s: Option<String>, connection_state_ref: Arc<ConnectionState>| {
-                ws.on_upgrade(move |socket| handle_connection(socket, wid, cookie_s, connection_state_ref))
+        .map(
+            |wid, ws: warp::ws::Ws, cookie_s: Option<String>, protocol_s: Option<String>, connection_state_ref: Arc<ConnectionState>| {
+                ws.on_upgrade(move |socket| handle_connection(socket, wid, cookie_s, protocol_s, connection_state_ref))
             }
         )
+        .map(|reply| warp::reply::with_header(reply, "sec-websocket-protocol", "soap"))
         .recover(async |e| -> Result::<warp::reply::WithStatus<&str>, std::convert::Infallible> {
             eprintln!("Unexpected error parsing cookie header: {:?}", e);
 
@@ -271,6 +281,7 @@ async fn handle_connection(
     ws: WebSocket,
     whiteboard_id: wss::models::WhiteboardIdType,
     cookie_s: Option<String>,
+    protocol_s: Option<String>,
     connection_state_ref: Arc<wss::server::ConnectionState>,
 ) {
     use wss::{
@@ -295,7 +306,9 @@ async fn handle_connection(
             handle_unauthenticated_client_message,
         },
         collections,
-        jwt::get_user_id_from_jwt,
+        jwt::{
+            get_user_id_from_jwt,
+        },
         utils::generate_unique_client_id,
     };
 
@@ -316,39 +329,79 @@ async fn handle_connection(
         Some(s) => s,
     };// -- end let cookie_s
 
+    // -- Transform cookie string into a key-value map
+    let cookies_by_name : HashMap<String, String>
+        = cookie::Cookie::split_parse(cookie_s.as_str())
+        .filter_map(|ck_res| match ck_res {
+            Err(_) => None,
+            Ok(ck) => Some((ck.name().to_string(), ck.value().to_string())),
+        })
+        .collect();
+
+    'verify_session_failure: {
+        'verify_session_success: {
+            // -- Make sure session token provided in protocol header matches session token in cookie
+            // -- There are two possible cookie names for the session token: one for production and the
+            // other for testing. Check both.
+            let session_token_cookie = if let Some(ck) = cookies_by_name.get("__Host-psifi.x-csrf-token") {
+                ck
+            } else if let Some(ck) = cookies_by_name.get("session_token") {
+                ck
+            } else {
+                // -- access token cookie not found; return 401 error
+                break 'verify_session_success;
+            };// -- end let session_token_cookie
+
+            let protocol_header_items : Vec<String> = if let Some(p) = protocol_s {
+                p.split(", ").map(|s| s.to_string()).collect()
+            } else {
+                break 'verify_session_success;
+            };
+            let session_token_header = if let Some(s) = protocol_header_items.get(2) {
+                s
+            } else {
+                break 'verify_session_success;
+            };
+
+            if session_token_header != session_token_cookie {
+                break 'verify_session_success;
+            }
+
+            // -- success
+            break 'verify_session_failure;
+        };// -- end 'verify_session_success
+
+        // -- Failed to verify; send 401 error message and return early
+        let err_msg = ServerSocketIndividualMessage::Error {
+            error: ClientError::NotAuthenticated,
+        };
+
+        let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
+
+        return;
+    };// -- end 'verify_session_failure:
+
     // -- Extract access_token cookie
-    let user_id : mongodb::bson::oid::ObjectId = 'val: {
-        for ck_res in cookie::Cookie::split_parse(cookie_s.as_str()) {
-            let token : String = match ck_res {
-                Err(_) => { continue; },
-                Ok(ck) => if ck.name() == "access_token" {
-                    ck.value().to_string()
-                } else {
-                    continue;
-                },
-            };// -- end match ck_res
+    let user_id : mongodb::bson::oid::ObjectId
+        = if let Some(token) = cookies_by_name.get("access_token") {
+        match get_user_id_from_jwt(
+            token.as_str(),
+            connection_state_ref.access_token_secret.as_str()
+        ) {
+            Err(e) => {
+                println!("Error parsing user_id from jwt: {}", e);
 
-            let user_id = match get_user_id_from_jwt(
-                token.as_str(),
-                connection_state_ref.jwt_secret.as_str()
-            ) {
-                Err(e) => {
-                    println!("Error parsing user_id from jwt: {}", e);
+                let err_msg = ServerSocketIndividualMessage::Error {
+                    error: ClientError::InternalServerError,
+                };
 
-                    let err_msg = ServerSocketIndividualMessage::Error {
-                        error: ClientError::InternalServerError,
-                    };
+                let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
 
-                    let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
-
-                    return;
-                }
-                Ok(user_id) => user_id,
-            };// -- end let user_id
-
-            break 'val user_id;
-        }// -- end for ck_res in cookie::Cookie::split_parse(cookie_s.as_str())
-        
+                return;
+            }
+            Ok(user_id) => user_id,
+        }// -- end match
+    } else {
         // -- access token cookie not found; return 401 error
         let err_msg = ServerSocketIndividualMessage::Error {
             error: ClientError::NotAuthenticated,
@@ -357,7 +410,7 @@ async fn handle_connection(
         let _ = user_tx.send(Message::text(serde_json::to_string(&err_msg).unwrap())).await;
 
         return;
-    };// -- end let user_id
+    };
 
     let db = match connection_state_ref.mongo_client.default_database() {
         None => {
@@ -573,7 +626,7 @@ async fn handle_connection(
     // -- create client state
     let client_state_base = ClientStateBase {
         client_id: current_client_id.clone(),
-        jwt_secret: connection_state_ref.jwt_secret.clone(),
+        access_token_secret: connection_state_ref.access_token_secret.clone(),
         whiteboard_id: whiteboard_id.clone(),
         whiteboard_ref: Arc::clone(&shared_whiteboard_entry.whiteboard_ref),
         active_clients: Arc::clone(&shared_whiteboard_entry.active_clients),

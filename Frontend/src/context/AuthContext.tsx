@@ -139,16 +139,25 @@ export const AuthProvider = ({
       const isAuthedVal = localStorage.getItem(LS_KEY_IS_AUTHED);
 
       if (isAuthedVal === LS_VAL_IS_AUTHED_TRUE) {
+        handleRefreshAccessToken();
         resetAccessTokenRefreshInterval();
       }
     },
     [handleRefreshAccessToken, setUserWrapper, resetAccessTokenRefreshInterval]
   );// -- end access token refresh interval
 
+  const getSessionToken = useCallback(
+    () => {
+      return localStorage.getItem(LS_KEY_SESSION_TOKEN);
+    },
+    []
+  );// -- end getSessionToken
+
   const handleLogin = useCallback(
-    (authedUser: User): void => {
+    (authedUser: User, sessionToken?: string): void => {
       setUserWrapper(authedUser);
       isAuthedRef.current = true;
+      if (sessionToken) localStorage.setItem(LS_KEY_SESSION_TOKEN, sessionToken);
       localStorage.setItem(LS_KEY_IS_AUTHED, LS_VAL_IS_AUTHED_TRUE);
       resetAccessTokenRefreshInterval();
     },
@@ -184,6 +193,7 @@ export const AuthProvider = ({
   return (
     <AuthContext.Provider value={{
       user,
+      getSessionToken,
       handleLogin,
       handleLogout,
     }}>

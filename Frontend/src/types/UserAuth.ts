@@ -4,6 +4,7 @@ import {
 
 export interface AuthContextType {
   user: User | null;
-  handleLogin: (authedUser: User) => unknown;
+  getSessionToken: () => string | null;
+  handleLogin: (authedUser: User, sessionToken?: string) => unknown;
   handleLogout: () => Promise<void>;
 }
