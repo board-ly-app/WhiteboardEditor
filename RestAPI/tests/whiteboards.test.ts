@@ -1,11 +1,15 @@
 import request from "supertest";
-import app from "../src/app";
 import mongoose, {
   Types,
 } from 'mongoose';
 import jwt from "jsonwebtoken";
 
 // -- imports from models
+import app from "../src/app";
+import {
+  ACCESS_TOKEN_COOKIE_ID,
+} from '../src/app.config';
+
 import {
   type IUser,
 } from '../src/models/User';
@@ -20,11 +24,11 @@ import {
 const MONGO_URI = 'mongodb://test_db:27017/testdb';
 
 const {
-  JWT_SECRET,
+  ACCESS_TOKEN_SECRET,
 } = process.env;
 
-if (! JWT_SECRET) {
-  throw new Error('JWT_SECRET not defined in process environment');
+if (! ACCESS_TOKEN_SECRET) {
+  throw new Error('ACCESS_TOKEN_SECRET not defined in process environment');
 }
 
 // handle database connection
@@ -145,7 +149,7 @@ const validateWhiteboardAttribView = (
 
 describe("Whiteboards API", () => {
   it("should allow an authenticated user to get their own whiteboard", async () => {
-    const jwtSecret = JWT_SECRET;
+    const jwtSecret = ACCESS_TOKEN_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -161,11 +165,11 @@ describe("Whiteboards API", () => {
       return;
     }
 
-    const targetUrl = `/api/v1/whiteboards/id/${whiteboard._id.toString()}`;
+    const targetUrl = `/api/v1/whiteboards/id/${whiteboard._id.toHexString()}`;
 
     // Generate signed JWT
     const authToken = jwt.sign(
-      { sub: owner._id.toString() },   // sub = subject claim
+      { sub: owner._id.toHexString() },   // sub = subject claim
       jwtSecret,
       { expiresIn: 999999999 }
     );
@@ -173,7 +177,7 @@ describe("Whiteboards API", () => {
     // -- Get whiteboard
     const wbRes = await request(app)
       .get(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(200);
 
@@ -194,7 +198,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should fetch an authenticated user's own whiteboards at GET /whiteboards/own", async () => {
-    const jwtSecret = JWT_SECRET;
+    const jwtSecret = ACCESS_TOKEN_SECRET;
     const userCollection = mongoose.connection.collection('users');
 
     const owner = await userCollection.findOne({ username: 'alice' });
@@ -219,7 +223,7 @@ describe("Whiteboards API", () => {
     // -- Get whiteboard
     const wbRes = await request(app)
       .get(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(200);
 
@@ -249,7 +253,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should create a new permanent whiteboard for an authenticated user", async () => {
-    const jwtSecret = JWT_SECRET;
+    const jwtSecret = ACCESS_TOKEN_SECRET;
     const userCollection = mongoose.connection.collection('users');
 
     const user = await userCollection.findOne({ username: 'alice' });
@@ -272,7 +276,7 @@ describe("Whiteboards API", () => {
     // -- Create whiteboard
     const wbRes = await request(app)
       .post("/api/v1/whiteboards")
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         name: "Alice's Whiteboard",
         width: 3000,
@@ -295,13 +299,13 @@ describe("Whiteboards API", () => {
     
     const authToken = jwt.sign(
       { sub: tempUser!._id.toString(), isTemp: true },
-      JWT_SECRET!,
+      ACCESS_TOKEN_SECRET!,
       { expiresIn: '1h' }
     );
 
     const res = await request(app)
       .post("/api/v1/whiteboards/temp")
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         name: "Temporary Session",
         width: 1920,
@@ -319,7 +323,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should allow setting collaborator permissions when creating a new whiteboard", async () => {
-    const jwtSecret = JWT_SECRET;
+    const jwtSecret = ACCESS_TOKEN_SECRET;
     const userCollection = mongoose.connection.collection('users');
 
     const creatingUser = await userCollection.findOne({ username: 'alice' });
@@ -374,7 +378,7 @@ describe("Whiteboards API", () => {
     // -- Create whiteboard
     const wbRes = await request(app)
       .post("/api/v1/whiteboards")
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         name: "Alice's Shared Whiteboard",
         width: 3000,
@@ -391,7 +395,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should allow an authenticated user to share their whiteboard", async () => {
-    const jwtSecret = JWT_SECRET;
+    const jwtSecret = ACCESS_TOKEN_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -421,7 +425,7 @@ describe("Whiteboards API", () => {
     // -- Share whiteboard
     const wbRes = await request(app)
       .post(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         userPermissions: [
           {
@@ -463,7 +467,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should not allow a user to share a whiteboard they don't own", async () => {
-    const jwtSecret = JWT_SECRET;
+    const jwtSecret = ACCESS_TOKEN_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -491,7 +495,7 @@ describe("Whiteboards API", () => {
     // -- Share whiteboard
     await request(app)
       .post(`/api/v1/whiteboards/${whiteboard._id}/user_permissions`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         userPermissions: [{
           type: 'user',
@@ -503,7 +507,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should not allow a user to share a whiteboard with user with a malformed user ID", async () => {
-    const jwtSecret = JWT_SECRET;
+    const jwtSecret = ACCESS_TOKEN_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -529,7 +533,7 @@ describe("Whiteboards API", () => {
     // -- Share whiteboard
     await request(app)
       .post(`/api/v1/whiteboards/${whiteboard._id}/user_permissions`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         // Not a real id
         userPermissions: [{
@@ -542,7 +546,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should not allow a user to share a whiteboard with a user that doesn't exist", async () => {
-    const jwtSecret = JWT_SECRET;
+    const jwtSecret = ACCESS_TOKEN_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -568,7 +572,7 @@ describe("Whiteboards API", () => {
     // -- Share whiteboard
     await request(app)
       .post(`/api/v1/whiteboards/${whiteboard._id}/user_permissions`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         // With timestamp at beginning of unix epoch
         userPermissions: [{
@@ -581,7 +585,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should allow a user to share a whiteboard with a user email that doesn't correspond to an existing account", async () => {
-    const jwtSecret = JWT_SECRET;
+    const jwtSecret = ACCESS_TOKEN_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -641,7 +645,7 @@ describe("Whiteboards API", () => {
     // -- Share whiteboard
     const wbRes = await request(app)
       .post(`/api/v1/whiteboards/${whiteboard._id}/user_permissions`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         userPermissions: userPermissionsReq
       })
@@ -653,7 +657,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should convert a shared user email to a shared user id if an account exists for the given email", async () => {
-    const jwtSecret = JWT_SECRET;
+    const jwtSecret = ACCESS_TOKEN_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -723,7 +727,7 @@ describe("Whiteboards API", () => {
     // -- Share whiteboard
     const wbRes = await request(app)
       .post(`/api/v1/whiteboards/${whiteboard._id}/user_permissions`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         userPermissions: userPermissionsReq
       })
@@ -740,7 +744,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should ensure that a request to change a whiteboard's shared users leaves at least one user with \"own\" permission", async () => {
-    const jwtSecret = JWT_SECRET;
+    const jwtSecret = ACCESS_TOKEN_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -777,7 +781,7 @@ describe("Whiteboards API", () => {
     // -- Attempt to reset shared users to exclude owner; should fail
     await request(app)
       .post(`/api/v1/whiteboards/${whiteboard._id}/user_permissions`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         userPermissions: userPermissionsReq
       })
@@ -785,7 +789,7 @@ describe("Whiteboards API", () => {
   });
 
   it("should ignore invalid user ids (i.e. from deleted users) in permissions when fetching a whiteboard", async () => {
-    const jwtSecret = JWT_SECRET;
+    const jwtSecret = ACCESS_TOKEN_SECRET;
     const userCollection = mongoose.connection.collection('users');
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
 
@@ -813,7 +817,7 @@ describe("Whiteboards API", () => {
     // -- Get whiteboard
     const wbRes = await request(app)
       .get(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(200);
 
@@ -854,14 +858,14 @@ describe("Whiteboards API", () => {
     // Generate signed JWT
     const authToken = jwt.sign(
       { sub: owner._id.toString() },   // sub = subject claim
-      JWT_SECRET,
+      ACCESS_TOKEN_SECRET,
       { expiresIn: 999999999 }
     );
 
     // -- Try to delete whiteboard
     await request(app)
       .delete(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(200);
 
@@ -890,14 +894,14 @@ describe("Whiteboards API", () => {
     // Generate signed JWT
     const authToken = jwt.sign(
       { sub: nonOwner._id.toString() },   // sub = subject claim
-      JWT_SECRET,
+      ACCESS_TOKEN_SECRET,
       { expiresIn: 999999999 }
     );
 
     // -- Try to delete whiteboard
     await request(app)
       .delete(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(403);
 
@@ -926,14 +930,14 @@ describe("Whiteboards API", () => {
     // Generate signed JWT
     const authToken = jwt.sign(
       { sub: nonMember._id.toString() },   // sub = subject claim
-      JWT_SECRET,
+      ACCESS_TOKEN_SECRET,
       { expiresIn: 999999999 }
     );
 
     // -- Try to delete whiteboard
     await request(app)
       .delete(targetUrl)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(403);
 
@@ -976,13 +980,13 @@ describe("Whiteboards API", () => {
       // Generate signed JWT
       const authToken = jwt.sign(
         { sub: owner._id.toHexString() },   // sub = subject claim
-        JWT_SECRET,
+        ACCESS_TOKEN_SECRET,
         { expiresIn: 999999999 }
       );
 
       const resp = await request(app)
         .get(`/api/v1/whiteboards/id/${whiteboardOrig._id.toHexString()}`)
-        .set("Authorization", `Bearer ${authToken}`)
+        .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
         .send()
         .expect(200);
 
@@ -1039,13 +1043,13 @@ describe("Whiteboards API", () => {
 
     const authToken = jwt.sign(
       { sub: tempUser!._id.toString(), isTemp: true },
-      JWT_SECRET!,
+      ACCESS_TOKEN_SECRET!,
       { expiresIn: '1h' }
     );
 
     await request(app)
       .post(`/api/v1/whiteboards/${tempWhiteboard._id}/convert_temp_to_perm`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         user: { _id: user._id }
       })
@@ -1090,13 +1094,13 @@ describe("Whiteboards API", () => {
 
     const authToken = jwt.sign(
       { sub: user._id.toString() },
-      JWT_SECRET!,
+      ACCESS_TOKEN_SECRET!,
       { expiresIn: '1h' }
     );
 
     await request(app)
       .post(`/api/v1/whiteboards/${tempWhiteboard._id}/convert_temp_to_perm`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
         user: { _id: user._id }
       })
@@ -1153,13 +1157,13 @@ describe("Whiteboards API", () => {
 
     const authToken = jwt.sign(
       { sub: alice._id.toString() },
-      JWT_SECRET!,
+      ACCESS_TOKEN_SECRET!,
       { expiresIn: '1h' }
     );
 
     const wbRes = await request(app)
       .get(`/api/v1/whiteboards/id/${whiteboard._id.toString()}`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(200);
 
@@ -1203,13 +1207,13 @@ describe("Whiteboards API", () => {
 
     const authToken = jwt.sign(
       { sub: alice._id.toString() },
-      JWT_SECRET!,
+      ACCESS_TOKEN_SECRET!,
       { expiresIn: '1h' }
     );
 
     await request(app)
       .get(`/api/v1/whiteboards/id/${whiteboard._id.toString()}`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send()
       .expect(403);
   });
@@ -1234,14 +1238,14 @@ describe("Whiteboards API", () => {
     // Generate signed JWT
     const authToken = jwt.sign(
       { sub: owner._id.toString() },   // sub = subject claim
-      JWT_SECRET,
+      ACCESS_TOKEN_SECRET,
       { expiresIn: 999999999 }
     );
 
     // -- Update thumbnail
     const wbRes = await request(app)
       .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({ thumbnailUrl })
       .expect(200);
 
@@ -1272,14 +1276,14 @@ describe("Whiteboards API", () => {
     // Generate signed JWT
     const authToken = jwt.sign(
       { sub: editor._id.toString() },   // sub = subject claim
-      JWT_SECRET,
+      ACCESS_TOKEN_SECRET,
       { expiresIn: 999999999 }
     );
 
     // -- Update thumbnail
     const wbRes = await request(app)
       .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({ thumbnailUrl })
       .expect(200);
 
@@ -1305,14 +1309,14 @@ describe("Whiteboards API", () => {
     // Generate signed JWT
     const authToken = jwt.sign(
       { sub: nonMember._id.toString() },   // sub = subject claim
-      JWT_SECRET,
+      ACCESS_TOKEN_SECRET,
       { expiresIn: 999999999 }
     );
 
     // -- Try to update thumbnail
     await request(app)
       .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({ thumbnailUrl: 'data:image/jpeg;base64,YXR0YWNrZXI=' })
       .expect(403);
 
@@ -1340,14 +1344,14 @@ describe("Whiteboards API", () => {
     // Generate signed JWT
     const authToken = jwt.sign(
       { sub: nonMember._id.toString() },   // sub = subject claim
-      JWT_SECRET,
+      ACCESS_TOKEN_SECRET,
       { expiresIn: 999999999 }
     );
 
     // -- Try to update thumbnail
     await request(app)
       .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({ thumbnailUrl: 'data:image/jpeg;base64,YXR0YWNrZXI=' })
       .expect(403);
 
@@ -1375,14 +1379,14 @@ describe("Whiteboards API", () => {
     // Generate signed JWT
     const authToken = jwt.sign(
       { sub: viewer._id.toString() },   // sub = subject claim
-      JWT_SECRET,
+      ACCESS_TOKEN_SECRET,
       { expiresIn: 999999999 }
     );
 
     // -- Try to update thumbnail
     await request(app)
       .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({ thumbnailUrl: 'data:image/jpeg;base64,dmlld2Vy' })
       .expect(403);
   });// -- end test case
@@ -1405,14 +1409,14 @@ describe("Whiteboards API", () => {
     // Generate signed JWT
     const authToken = jwt.sign(
       { sub: owner._id.toString() },   // sub = subject claim
-      JWT_SECRET,
+      ACCESS_TOKEN_SECRET,
       { expiresIn: 999999999 }
     );
 
     // -- Try to update thumbnail with no thumbnailUrl
     await request(app)
       .put(`/api/v1/whiteboards/${whiteboard._id.toString()}/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({})
       .expect(400);
   });// -- end test case
@@ -1432,14 +1436,14 @@ describe("Whiteboards API", () => {
     // Generate signed JWT
     const authToken = jwt.sign(
       { sub: owner._id.toString() },   // sub = subject claim
-      JWT_SECRET,
+      ACCESS_TOKEN_SECRET,
       { expiresIn: 999999999 }
     );
 
     // -- Try to update thumbnail on a malformed whiteboard id
     await request(app)
       .put(`/api/v1/whiteboards/zzzzzzz/thumbnail`)
-      .set("Authorization", `Bearer ${authToken}`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({ thumbnailUrl: 'data:image/jpeg;base64,dGVzdA==' })
       .expect(400);
   });// -- end test case

@@ -18,7 +18,6 @@ import {
 } from '@tanstack/react-query';
 
 import {
-  Bounce,
   toast,
 } from 'react-toastify';
 
@@ -165,23 +164,13 @@ const Dashboard = (): React.JSX.Element => {
 
         console.error('Create whiteboard failed:', apiErr.message);
 
-        if (apiErr.status === 403) {
+        if (apiErr.status === 401) {
           // -- redirect to login
           const locationEncoded : string = encodeURIComponent(`${location.pathname}${location.search}`);
 
           navigate(`/login?redirect=${locationEncoded}`);
         } else {
-          toast.error(`Create whiteboard failed: ${apiErr.message}`, {
-            position: "bottom-center",
-            autoClose: 10000,
-            hideProgressBar: false,
-            closeOnClick: false,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "colored",
-            transition: Bounce,
-          });
+          toast.error(`Create whiteboard failed: ${apiErr.message}`);
         }
 
         // -- propagate error to caller
@@ -204,15 +193,15 @@ const Dashboard = (): React.JSX.Element => {
     [searchQuery]
   );
 
-  // -- redirect to login on 403 (forbidden)
+  // -- redirect to login on 401 (forbidden)
   const locationEncoded : string = useMemo(
     () => encodeURIComponent(`${location.pathname}${location.search}`),
     [location.pathname, location.search]
   );
 
-  if (ownWhiteboardsError && ownWhiteboardsError.status === 403) {
+  if (ownWhiteboardsError && ownWhiteboardsError.status === 401) {
     navigate(`/login?redirect=${locationEncoded}`);
-  } else if (sharedWhiteboardsError && sharedWhiteboardsError.status === 403) {
+  } else if (sharedWhiteboardsError && sharedWhiteboardsError.status === 401) {
     navigate(`/login?redirect=${locationEncoded}`);
   }
 

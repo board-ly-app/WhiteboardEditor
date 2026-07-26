@@ -29,16 +29,21 @@ spec:
               secretKeyRef:
                 name: whiteboard-editor-config
                 key: WHITEBOARD_EDITOR_MONGO_URI
-          - name: JWT_SECRET
+          - name: ACCESS_TOKEN_SECRET
             valueFrom:
               secretKeyRef:
                 name: whiteboard-editor-config
-                key: WHITEBOARD_EDITOR_JWT_SECRET
-          - name: JWT_EXPIRATION_SECS
+                key: WHITEBOARD_EDITOR_ACCESS_TOKEN_SECRET
+          - name: ACCESS_TOKEN_EXPIRATION_SECS
             valueFrom:
               secretKeyRef:
                 name: whiteboard-editor-config
-                key: WHITEBOARD_EDITOR_JWT_EXPIRATION_SECS
+                key: WHITEBOARD_EDITOR_ACCESS_TOKEN_EXPIRATION_SECS
+          - name: REFRESH_TOKEN_EXPIRATION_SECS
+            valueFrom:
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_REFRESH_TOKEN_EXPIRATION_SECS
           - name: RATE_LIMIT
             valueFrom:
               secretKeyRef:

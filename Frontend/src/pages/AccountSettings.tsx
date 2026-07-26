@@ -62,7 +62,7 @@ export default function AccountSettings() {
   const locationEncoded = encodeURIComponent(`${location.pathname}${location.search}`);
   const navigate = useNavigate();
 
-  const { user, setUser } = useContext(AuthContext)!;
+  const { user, handleLogin, handleLogout } = useContext(AuthContext)!;
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // -- button statuses
@@ -85,7 +85,7 @@ export default function AccountSettings() {
 
         if (res.status === 201) {
           const updated = res.data;
-          setUser(updated);
+          handleLogin(updated);
           toast.success("Profile updated successfully!");
         }
       } catch (err: unknown) {
@@ -93,7 +93,7 @@ export default function AccountSettings() {
 
         console.error(err);
 
-        if (apiErr.status === 403) {
+        if (apiErr.status === 401) {
           // redirect to login
           navigate(`/login?redirect=${locationEncoded}`);
         }
@@ -101,7 +101,7 @@ export default function AccountSettings() {
         setUpdateProfileStatus('enabled');
       }
     },
-    [navigate, locationEncoded, setUser]
+    [navigate, locationEncoded, handleLogin]
   );
 
   const profileForm = useForm({
@@ -128,7 +128,7 @@ export default function AccountSettings() {
 
         if (res.status === 201) {
           const updated = res.data;
-          setUser(updated);
+          handleLogin(updated);
           toast.success("Security settings updated successfully!");
         }
       } catch (err: unknown) {
@@ -136,7 +136,7 @@ export default function AccountSettings() {
 
         console.error(err);
 
-        if (apiErr.status === 403) {
+        if (apiErr.status === 401) {
           // redirect to login
           navigate(`/login?redirect=${locationEncoded}`);
         }
@@ -144,7 +144,7 @@ export default function AccountSettings() {
         setUpdateSecuritySettingsStatus('enabled');
       }
     },
-    [setUser, navigate, locationEncoded]
+    [handleLogin, navigate, locationEncoded]
   );
 
   const defaultEmail : string = (() => {
@@ -190,18 +190,10 @@ export default function AccountSettings() {
         });
 
         if (res.status === 200) {
-          setUser(null);
-          localStorage.removeItem("user");
+          handleLogout();
           console.log('User account deleted successfully.');
           toast.success('Account deleted successfully', {
             position: "bottom-center",
-            hideProgressBar: true,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "colored",
-            transition: Bounce,
           });
           navigate('/');
         } else {
@@ -222,7 +214,7 @@ export default function AccountSettings() {
 
         console.error(err);
 
-        if (apiErr.status === 403) {
+        if (apiErr.status === 401) {
           // -- redirect to login
           navigate(`/login?redirect=${locationEncoded}`);
         }
@@ -230,7 +222,7 @@ export default function AccountSettings() {
         setDeleteAccountStatus('enabled');
       }
     },
-    [setUser, navigate, locationEncoded]
+    [handleLogout, navigate, locationEncoded]
   );
 
   const deleteForm = useForm({

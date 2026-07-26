@@ -1,4 +1,3 @@
-import { Request, Response } from "express";
 import {
   Types,
 } from "mongoose";
@@ -23,8 +22,11 @@ import {
   type IUser,
 } from '../models/User';
 
-import type {
-  AuthorizedRequestBody
+import {
+  type AuthorizedRequest,
+  type OptAuthorizedRequest,
+  type AuthorizedResponse,
+  type OptAuthorizedResponse,
 } from '../models/Auth';
 
 import {
@@ -35,7 +37,7 @@ import {
   removeDanglingUserPermissions,
 } from '../services/whiteboardService';
 
-export interface CreateWhiteboardRequest extends AuthorizedRequestBody {
+export interface CreateWhiteboardRequest {
   name: string;
   collaboratorPermissions?: IWhiteboardUserPermissionByEmail[];
   width: number;
@@ -44,11 +46,11 @@ export interface CreateWhiteboardRequest extends AuthorizedRequestBody {
 }
 
 export const handleGetWhiteboardById = async (
-  req: Request<{ whiteboardId: string }, any, AuthorizedRequestBody>,
-  res: Response
+  req: OptAuthorizedRequest<{ whiteboardId: string }, any>,
+  res: OptAuthorizedResponse,
 ) => {
-  const authUser = req.body?.authUser;
-  const userId = authUser?.id;
+  const authUser = res.locals?.authUser;
+  const userId = authUser?._id;
   const {
     whiteboardId,
   } = req.params;
@@ -89,7 +91,7 @@ export const handleGetWhiteboardById = async (
           }
         }
 
-        if (userId && permsByUserId[userId.toHexString()] === 'own') {
+        if (userId && permsByUserId[userId.toString()] === 'own') {
           // -- Return owner view
           const wbOwnerView = whiteboard.toOwnerView();
           return res.status(200).json(wbOwnerView);
@@ -105,12 +107,13 @@ export const handleGetWhiteboardById = async (
 };// -- end handleGetWhiteboardById
 
 export const handleCreateWhiteboard = async (
-  req: Request<{}, any, CreateWhiteboardRequest, {}>,
-  res: Response
+  req: AuthorizedRequest<{}, any, CreateWhiteboardRequest>,
+  res: AuthorizedResponse,
 ) => {
   try {
-    const { authUser, name, visibility } = req.body;
-    const { id: ownerId } = authUser;
+    const { authUser } = res.locals;
+    const { name, visibility } = req.body;
+    const { _id: ownerId } = authUser;
     console.log("handleCreateWhiteboard req.body: ", req.body);
     
     // Give owner 'own' permission for user_permissions
@@ -203,13 +206,13 @@ export const handleCreateWhiteboard = async (
 };// -- end handleCreateWhiteboard
 
 export const handleCreateTempWhiteboard = async (
-  req: Request<{}, any, CreateWhiteboardRequest, {}>,
-  res: Response
+  req: AuthorizedRequest<{}, any, CreateWhiteboardRequest>,
+  res: AuthorizedResponse,
 ) => {
   try {
-    const { authUser, name } = req.body;
-    const { id: ownerId } = authUser;
-    console.log("handleCreateTempWhiteboard req.body: ", req.body);
+    const { authUser } = res.locals;
+    const { name } = req.body;
+    const { _id: ownerId } = authUser;
     
     // Give owner 'own' permission for user_permissions
     const ownerPermission: IWhiteboardUserPermissionModel<Types.ObjectId> = {
@@ -256,11 +259,11 @@ export const handleCreateTempWhiteboard = async (
 };// -- end handleCreateTempWhiteboard
 
 export const handleConvertTempToPerm = async (
-  req: Request<{ whiteboardId: string }, any, { authUser: AuthorizedRequestBody['authUser'], user: IUserType }>,
-  res: Response
+  req: AuthorizedRequest<{ whiteboardId: string }, any, { user: IUserType }>,
+  res: AuthorizedResponse,
 ) => {
   const { whiteboardId } = req.params;
-  const tempUserId = req.body.authUser.id;
+  const tempUserId = res.locals.authUser._id;
   const permanentUserId = req.body.user._id || req.body.user.id;
 
   try {
@@ -333,12 +336,13 @@ export const handleConvertTempToPerm = async (
 };
 
 export const handleChangeWhiteboardName = async (
-  req: Request<{ whiteboardId: string }, any, AuthorizedRequestBody & { newName: string }>,
-  res: Response
+  req: AuthorizedRequest<{ whiteboardId: string }, any, { newName: string }>,
+  res: AuthorizedResponse,
 ) => {
   const { whiteboardId } = req.params;
-  const { newName, authUser } = req.body;
-  const userId = authUser.id;
+  const { authUser } = res.locals;
+  const { newName } = req.body;
+  const userId = authUser._id;
   
   try {
     const whiteboard = await Whiteboard.findById(whiteboardId);
@@ -381,14 +385,14 @@ export const handleChangeWhiteboardName = async (
 
 // -- Get user's own whiteboards
 export const handleGetOwnWhiteboards = async (
-  req: Request<{}, any, AuthorizedRequestBody>,
-  res: Response
+  _req: AuthorizedRequest<{}, any>,
+  res: AuthorizedResponse,
 ) => {
   const {
     authUser,
-  } = req.body;
+  } = res.locals;
   const {
-    id: ownerId,
+    _id: ownerId,
   } = authUser;
   // -- filter out dangling user permissions (user permissions for users who no
   // longer exist)
@@ -408,21 +412,22 @@ export interface WhiteboardPermissionRequest {
   permission: IWhiteboardPermissionEnum;
 }
 
-export interface ShareWhiteboardRequestBody extends AuthorizedRequestBody {
+export interface ShareWhiteboardRequestBody {
   userPermissions: IWhiteboardUserPermission<Types.ObjectId>[];
 }
 
 export const handleShareWhiteboard = async (
-  req: Request<{ id: WhiteboardIdType }, any, ShareWhiteboardRequestBody>,
-  res: Response
+  req: AuthorizedRequest<{ id: WhiteboardIdType }, any, ShareWhiteboardRequestBody>,
+  res: AuthorizedResponse,
 ) => {
   try {
     const { id: whiteboardId } = req.params;
-    const { authUser, userPermissions } = req.body;
+    const { authUser } = res.locals;
+    const { userPermissions } = req.body;
 
     const result = await setSharedUsers(
       whiteboardId,
-      authUser.id,
+      authUser._id,
       userPermissions
     );
 
@@ -467,12 +472,13 @@ export const handleShareWhiteboard = async (
 
 // -- Put the whiteboard's thumbnail
 export const handlePutThumbnail = async (
-  req: Request<{ whiteboardId: string }, any, AuthorizedRequestBody & { thumbnailUrl: string }>,
-  res: Response 
+  req: AuthorizedRequest<{ whiteboardId: string }, any, { thumbnailUrl: string }>,
+  res: AuthorizedResponse,
 ) => {
   try {
     const { whiteboardId } = req.params;
-    const { thumbnailUrl, authUser } = req.body;
+    const { authUser } = res.locals;
+    const { thumbnailUrl } = req.body;
 
     if (!thumbnailUrl || typeof thumbnailUrl != "string") {
       return res.status(400).json({ message: "thumbnailUrl string is required" })
@@ -494,7 +500,7 @@ export const handlePutThumbnail = async (
     const hasPermission = whiteboard.user_permissions.some(perm =>
       perm.type === 'user' &&
       perm.user &&
-      perm.user._id.toString() === authUser.id.toString() &&
+      perm.user._id.toString() === authUser._id.toString() &&
       (perm.permission === 'own' || perm.permission === 'edit')
     );
 
@@ -522,8 +528,8 @@ export const handlePutThumbnail = async (
 };// -- end handlePutThumbnail
 
 export const handleDeleteWhiteboard = async (
-  req: Request<{ whiteboardId: string }, any, AuthorizedRequestBody>,
-  res: Response 
+  req: AuthorizedRequest<{ whiteboardId: string }, any>,
+  res: AuthorizedResponse,
 ) => {
   try {
     const {
@@ -531,11 +537,11 @@ export const handleDeleteWhiteboard = async (
     } = req.params;
     const {
       authUser,
-    } = req.body;
+  } = res.locals;
 
     const resp = await deleteWhiteboardById(
       new Types.ObjectId(whiteboardId),
-      authUser.id
+      authUser._id
     );
 
     switch (resp.status) {

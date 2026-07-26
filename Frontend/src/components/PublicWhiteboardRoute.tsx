@@ -16,7 +16,10 @@ const PublicWhiteboardRoute = ({ children }: PropsWithChildren): React.JSX.Eleme
     throw new Error('No auth context provided');
   }
 
-  const { user, setUser, setAuthToken } = authContext;
+  const {
+    user,
+    handleLogin,
+  } = authContext;
 
   const [status, setStatus] = useState<AccessStatus>(user?.kind === 'permanent' ? 'allowed' : 'checking');
 
@@ -38,8 +41,7 @@ const PublicWhiteboardRoute = ({ children }: PropsWithChildren): React.JSX.Eleme
 
           if (!alreadyHasAccess) {
             const userResp = await api.post('/users/temp');
-            setAuthToken(userResp.data.accessToken);
-            setUser(userResp.data.user);
+            handleLogin(userResp.data.user, userResp.data.sessionToken);
           }
 
           setStatus('allowed');
@@ -50,7 +52,9 @@ const PublicWhiteboardRoute = ({ children }: PropsWithChildren): React.JSX.Eleme
       .catch(() => {
         setStatus('redirect_login');
       });
-  }, [whiteboardId]);
+    },
+    [whiteboardId, user, handleLogin]
+  );// -- end init useEffect
 
   if (status === 'checking') {
     return null;

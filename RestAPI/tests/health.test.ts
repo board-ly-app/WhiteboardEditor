@@ -5,8 +5,9 @@
 //
 // =============================================================================
 import request from "supertest";
-import app from "../src/app";
 import mongoose from 'mongoose';
+
+import app from "../src/app";
 
 const MONGO_URI = 'mongodb://test_db:27017/testdb';
 

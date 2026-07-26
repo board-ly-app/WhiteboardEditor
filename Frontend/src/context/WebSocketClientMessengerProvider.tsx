@@ -49,7 +49,6 @@ import {
 import {
   type ClientIdType,
   type UserIdType,
-  type ClientMessageLogin,
   type SocketServerMessage,
   type CanvasIdType,
   type CanvasAttribs,
@@ -133,15 +132,12 @@ const WebSocketClientMessengerProvider = ({
 
   const {
     user,
+    getSessionToken,
   } = useUser();
 
   if (! user) {
     throw new Error('No authenticated user provided.');
   }
-
-  const {
-    authToken,
-  } = authContext;
 
   const dispatch = store.dispatch;
 
@@ -621,16 +617,9 @@ const WebSocketClientMessengerProvider = ({
       // Send login/auth message with user ID, if currently logged in
       if (! user) {
         console.error('Cannot log into web socket server without authenticated user');
-      } else if (! authToken) {
-        console.error('Cannot log into web socket server without authentication token');
       } else {
         const messenger = new WhiteboardSocketMessenger(ws);
-        const loginMessage : ClientMessageLogin = {
-          type: "login",
-          jwt: authToken,
-        };
 
-        messenger.sendLogin(loginMessage);
         setClientMessenger(messenger);
       }
 
@@ -638,7 +627,7 @@ const WebSocketClientMessengerProvider = ({
 
       ws.onmessage = handleServerMessage;
     },
-    [authToken, handleServerMessage, setClientMessenger, user]
+    [handleServerMessage, setClientMessenger, user]
   );
 
   useEffect(
@@ -647,24 +636,32 @@ const WebSocketClientMessengerProvider = ({
       // exists
       // -- if a new connection needs to be created, the ref should be reset to
       // null first
-      if (! webSocketRef.current) {
-        const wsUriScheme : 'ws' | 'wss' = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const wsUri = `${wsUriScheme}://${window.location.host}/ws/${whiteboardId}`;
-        const ws : WebSocket = new WebSocket(wsUri);
-
-        ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
-        webSocketRef.current = ws;
-      }
-
-      // -- Close web socket connection when page closed
-      return () => {
+      const handleClose = () => {
         if (webSocketRef.current) {
           webSocketRef.current.close();
           webSocketRef.current = null;
         }
-      };
+      };// -- end handleClose
+
+      if (webSocketRef.current) return handleClose;
+
+      const sessionToken = getSessionToken();
+      if (! sessionToken) return handleClose;
+
+      const wsUriScheme : 'ws' | 'wss' = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const wsUri = `${wsUriScheme}://${window.location.host}/ws/${encodeURIComponent(whiteboardId)}?sessionToken=${encodeURIComponent(sessionToken)}`;
+      const ws : WebSocket = new WebSocket(wsUri);
+
+      ws.onerror = (e: Event) => {
+        console.error('Error opening web socket connection:', e);
+      };// -- end onerror
+      ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
+      webSocketRef.current = ws;
+
+      // -- Close web socket connection when page closed
+      return handleClose;
     },
-    [makeHandleWebSocketOpen, whiteboardId]
+    [makeHandleWebSocketOpen, whiteboardId, getSessionToken]
   );
 
   return (

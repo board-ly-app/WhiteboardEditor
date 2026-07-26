@@ -1,21 +1,26 @@
 import request from "supertest";
-import app from "../src/app";
-import {
-  type IWhiteboard,
-} from '../src/models/Whiteboard';
 import mongoose, {
   Types,
 } from 'mongoose';
 import jwt from "jsonwebtoken";
 
+import app from "../src/app";
+import {
+  ACCESS_TOKEN_COOKIE_ID,
+} from '../src/app.config';
+
+import {
+  type IWhiteboard,
+} from '../src/models/Whiteboard';
+
 const MONGO_URI = 'mongodb://test_db:27017/testdb';
 
 const {
-  JWT_SECRET,
+  ACCESS_TOKEN_SECRET,
 } = process.env;
 
-if (! JWT_SECRET) {
-  throw new Error('JWT_SECRET not defined in process environment');
+if (! ACCESS_TOKEN_SECRET) {
+  throw new Error('ACCESS_TOKEN_SECRET not defined in process environment');
 }
 
 // handle database connection
@@ -131,7 +136,7 @@ describe("Users API", () => {
       // Generate signed JWT
       const authToken = jwt.sign(
         { sub: user._id.toHexString() },   // sub = subject claim
-        JWT_SECRET,
+        ACCESS_TOKEN_SECRET,
         { expiresIn: 999999999 }
       );
 
@@ -145,7 +150,7 @@ describe("Users API", () => {
       // -- Perform patch
       const resp = await request(app)
         .patch(targetUrl)
-        .set("Authorization", `Bearer ${authToken}`)
+        .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
         .send(patchData)
         .expect(201);
 

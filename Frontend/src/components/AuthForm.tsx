@@ -18,7 +18,6 @@ import axios, {
 } from 'axios';
 
 import {
-  Bounce,
   toast,
 } from 'react-toastify';
 
@@ -62,7 +61,7 @@ const AuthForm = ({
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, setUser } = useUser();
+  const { user, handleLogin } = useUser();
   const tempUser = user?.kind === 'temp' ? user : null;
   const action = initialAction;
   const authContext = useContext(AuthContext);
@@ -71,10 +70,6 @@ const AuthForm = ({
   if (! authContext) {
     throw new Error('AuthContext not provided');
   }
-
-  const {
-    setAuthToken,
-  } = authContext;
 
   const [submitButtonStatus, setSubmitButtonStatus] = useState<ButtonStatus>('enabled');
 
@@ -125,7 +120,7 @@ const AuthForm = ({
       
       const {
         user,
-        token,
+        sessionToken,
       } = res.data;
 
       // -- Attempt to transfer temp whiteboard if applicable
@@ -158,9 +153,8 @@ const AuthForm = ({
         }
       }
 
-      setUiStatus('ok'); // -- ensure fields are not highlit as errors
-      setAuthToken(token);
-      setUser(user);
+      setUiStatus('ok'); // -- ensure fields are not highlighted as errors
+      handleLogin(user, sessionToken);
 
       if (!isTransferring) {
         navigate(redirectUrl);
@@ -179,17 +173,7 @@ const AuthForm = ({
           setUiStatus('err_user');
 
           // -- display popup alert
-          toast.error('Authentication Failed. Try again.', {
-            position: "bottom-center",
-            autoClose: 10000,
-            hideProgressBar: false,
-            closeOnClick: false,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "colored",
-            transition: Bounce,
-          });
+          toast.error('Authentication Failed. Try again.');
         } else {
           console.error('Error handling authentication:', err);
 
@@ -197,17 +181,7 @@ const AuthForm = ({
           setUiStatus('err_system');
 
           // -- display error to user
-          toast.error('Error handling authentication.', {
-            position: "bottom-center",
-            autoClose: 10000,
-            hideProgressBar: false,
-            closeOnClick: false,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "colored",
-            transition: Bounce,
-          });
+          toast.error('Error handling authentication.');
         }
       } finally {
         setSubmitButtonStatus('enabled');
@@ -218,24 +192,23 @@ const AuthForm = ({
       email,
       navigate,
       password,
-      setAuthToken,
-      setUser,
       username,
       setSubmitButtonStatus,
       setChangeNameOpen,
       tempUser,
       location.search,
+      handleLogin,
     ]
   );// -- end const handleSubmit
 
   const handleToggle = useCallback(
-      () => {
-        // -- remove highlighting
-        setUiStatus('ok');
+    () => {
+      // -- remove highlighting
+      setUiStatus('ok');
 
-        navigate(action === "login" ? "/signup" : "/login");
-      },
-      [setUiStatus, navigate, action]
+      navigate(action === "login" ? "/signup" : "/login");
+    },
+    [setUiStatus, navigate, action]
   );// -- end handleToggle
 
   const handleConfirmNameChange = useCallback(

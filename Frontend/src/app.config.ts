@@ -51,6 +51,12 @@ export const WB_CARD_COLLABORATORS_DISPLAY_LIMIT = 3;
 // -- Max title character lenght
 export const MAX_TITLE_LENGTH = 64;
 
+// -- Name of header for csrf session token
+export const HEADER_NAME_SESSION_TOKEN = 'x-session-token';
+
+// -- Key for csrf session token in localStorage
+export const LS_KEY_SESSION_TOKEN = 'session_token';
+
 // -- Name of current copied canvas object in localStorage
 export const LS_KEY_COPIED_CANVAS_OBJECTS = 'copied_canvas_objects';
 
@@ -66,3 +72,8 @@ export const MIN_WB_ZOOM = 0.5;
 
 // -- Maximum zoom level of the whiteboard editor
 export const MAX_WB_ZOOM = 4.0;
+
+// -- Interval at which to query for new access tokens, in seconds
+// NOTE: make sure WHITEBOARD_EDITOR_ACCESS_TOKEN_EXPIRATION_SECS in the .env
+// file is greater than this value.
+export const REFRESH_ACCESS_TOKEN_QUERY_SECS = 8 * 60;

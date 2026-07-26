@@ -36,6 +36,72 @@ pub struct SharedWhiteboardEntry {
     pub edits: Arc<Mutex<Vec<Edit>>>,
 } // -- end pub struct SharedWhiteboardEntry
 
+impl SharedWhiteboardEntry {
+    // === login_client ============================================================================
+    //
+    // Logs a specified client in, assuming a client with the specified client ID hasn't been logged
+    // in already.
+    //
+    // Handles broadcasting login message to existing clients.
+    //
+    // =============================================================================================
+    pub async fn login_client(&mut self, user_summ: &UserSummary) -> Result<(), ()> {
+        let mut active_clients = self.active_clients.lock().await;
+        let mut clients_by_user_id = self.clients_by_user_id.lock().await;
+
+        // -- Check if client already logged in
+        if active_clients.contains_key(&user_summ.client_id) {
+            return Err(());
+        }
+
+        let _ = active_clients.insert(user_summ.client_id.clone(), user_summ.clone());
+        clients_by_user_id.insert(user_summ.user_id.clone(), user_summ.client_id.clone());
+
+        // -- Broadcast login to clients
+        let login_msg = ServerSocketMessage::Broadcast {
+            msg: ServerSocketBroadcastMessage::LoginUsers {
+                users: vec![ user_summ.clone() ],
+            },
+        };
+
+        let _ = self.broadcaster.send(login_msg);
+
+        Ok(())
+    }// -- end pub fn login_client
+
+    // === logout_client ===========================================================================
+    //
+    // Logs out the client with the specified client ID, assuming such a client exists.
+    //
+    // Handles broadcasting logout message to clients.
+    //
+    // =============================================================================================
+    pub async fn logout_client(&mut self, client_id: &ClientIdType) -> Result<UserSummary, ()> {
+        let mut active_clients = self.active_clients.lock().await;
+        let mut clients_by_user_id = self.clients_by_user_id.lock().await;
+        let mut selectors_to_canvas_objects = self.selectors_to_canvas_objects.lock().await;
+
+        match active_clients.remove(client_id) {
+            None => Err(()),
+            Some(user_summ) => {
+                let _ = clients_by_user_id.remove_value(client_id);
+                let _ = selectors_to_canvas_objects.remove_key(client_id);
+
+                // -- Broadcast logout to clients
+                let logout_msg = ServerSocketMessage::Broadcast {
+                    msg: ServerSocketBroadcastMessage::LogoutUsers {
+                        clients: vec![ client_id.clone() ],
+                    },
+                };
+
+                let _ = self.broadcaster.send(logout_msg);
+
+                Ok(user_summ)
+            },
+        }// -- end match active_clients.remove(client_id)
+    }// -- end pub fn logout_client
+}// -- end impl SharedWhiteboardEntry
+
 // === Program State ==============================================================================
 //
 // Holds all program state that a web socket connection may need to manipulate.
@@ -59,7 +125,7 @@ pub struct ClientStateBase {
     pub client_id: ClientIdType,
     pub whiteboard_id: WhiteboardIdType,
     pub whiteboard_ref: Arc<Mutex<Whiteboard>>,
-    pub jwt_secret: String,
+    pub access_token_secret: String,
     // The permission (view/edit/own) the user has on the current whiteboard
     // -- TODO: condense into just whiteboard, client, and edit mutexes
     // -- Replace separate loops with one check for unauthenticated vs authenticated
@@ -78,20 +144,16 @@ impl ClientStateBase {
     //
     // =============================================================================================
     pub async fn authenticated_state<'a>(&'a self) -> Option<ClientStateAuthenticated<'a>> {
-        let wb = self.whiteboard_ref.lock().await;
         let active_clients = self.active_clients.lock().await;
 
         if let Some(user_summ) = active_clients.get(&self.client_id) {
-            if let Some(perm) = wb.metadata().permission_for_user(&user_summ.user_id) {
-                return Some(ClientStateAuthenticated {
-                    base: self,
-                    user_summary: user_summ.clone(),
-                    user_whiteboard_permission: perm.clone(),
-                })
-            }
+            Some(ClientStateAuthenticated {
+                base: self,
+                user_summary: user_summ.clone(),
+            })
+        } else {
+            None
         }
-
-        None
     }// -- end pub fn authenticated_state
 }// -- end impl ClientStateBase
 
@@ -104,7 +166,6 @@ impl ClientStateBase {
 pub struct ClientStateAuthenticated <'a> {
     pub base: &'a ClientStateBase,
     pub user_summary: UserSummary,
-    pub user_whiteboard_permission: WhiteboardPermissionEnum,
 }// -- end pub struct ClientStateAuthenticated
 
 impl <'a> ClientStateAuthenticated <'a> {
@@ -115,13 +176,19 @@ impl <'a> ClientStateAuthenticated <'a> {
             edit_kind,
         )
     }// -- end pub fn generate_edit
+
+    pub async fn user_permission(&self) -> WhiteboardPermissionEnum {
+        let user_id = &self.user_summary.user_id;
+        let whiteboard = self.base.whiteboard_ref.lock().await;
+
+        whiteboard.metadata().permission_for_user(user_id).unwrap()
+    }// -- end pub fn user_permission
 }// -- end impl <'a> ClientStateAuthenticated <'a>
 
 impl <'a> std::cmp::PartialEq for ClientStateAuthenticated <'a> {
     fn eq(&self, other: &Self) -> bool {
         return std::ptr::from_ref(self.base) == std::ptr::from_ref(other.base)
-            && self.user_summary == other.user_summary
-            && self.user_whiteboard_permission == other.user_whiteboard_permission;
+            && self.user_summary == other.user_summary;
     }// -- end fn eq
 
     fn ne(&self, other: &Self) -> bool {
@@ -136,7 +203,9 @@ impl <'a> std::cmp::PartialEq for ClientStateAuthenticated <'a> {
 // ================================================================================================
 #[derive(Debug)]
 pub struct ConnectionState {
-    pub jwt_secret: String,
+    #[allow(unused)]
+    pub session_secret: String,
+    pub access_token_secret: String,
     pub mongo_client: Client,
     pub next_client_id_index: Mutex<i32>,
     pub program_state: ProgramState,
@@ -183,7 +252,7 @@ pub async fn handle_authenticated_client_message<'a>(
             // All actions below require at least edit permission, since they all involve
             // mutating state in some way. Hence, we check permissions first, and send back an
             // error message if the user only has view permission.
-            match client_state.user_whiteboard_permission {
+            match client_state.user_permission().await {
                 WhiteboardPermissionEnum::View => {
                     let inspector = serde_json::from_str::<ClientMessageInspector>(client_msg_s)
                         .expect("Expected to find \"type\" tag in client message.");
@@ -1256,7 +1325,7 @@ pub async fn handle_unauthenticated_client_message<
                 ClientSocketMessage::Login { jwt } => {
                     let user_id = match get_user_id_from_jwt(
                         jwt.as_str(),
-                        client_state.jwt_secret.as_str(),
+                        client_state.access_token_secret.as_str(),
                     ) {
                         Err(e) => {
                             println!("Error parsing user_id from jwt: {}", e);
@@ -1473,7 +1542,13 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                &[],
+                &[WhiteboardPermission {
+                    permission_type: WhiteboardPermissionType::User {
+                        user: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
+                        email: None,
+                    },
+                    permission: WhiteboardPermissionEnum::Edit,
+                }],
             ),
             test_canvas_id,
             HashMap::new(),
@@ -1483,7 +1558,7 @@ mod unit_tests {
 
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -1499,7 +1574,6 @@ mod unit_tests {
                 user_id: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
                 username: String::from("Alice"),
             },
-            user_whiteboard_permission: WhiteboardPermissionEnum::View,
         };
 
         let resp = handle_authenticated_client_message(&client_state, client_msg_s).await;
@@ -1529,7 +1603,7 @@ mod unit_tests {
         use futures::lock::Mutex;
         use models::{
             Canvas, CanvasObjectModel, UserSummary, Whiteboard, WhiteboardMetadata,
-            WhiteboardPermissionEnum, WhiteboardVisibilityEnum
+            WhiteboardVisibilityEnum
         };
         use protocol::{ServerSocketMessage,ServerSocketBroadcastMessage};
         use server::{ClientStateBase, ClientStateAuthenticated, handle_authenticated_client_message};
@@ -1627,7 +1701,13 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                &[],
+                &[WhiteboardPermission {
+                    permission_type: WhiteboardPermissionType::User {
+                        user: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
+                        email: None,
+                    },
+                    permission: WhiteboardPermissionEnum::Own,
+                }],
             ),
             canvas_a_id,
             HashMap::from([(
@@ -1650,7 +1730,7 @@ mod unit_tests {
 
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -1666,7 +1746,6 @@ mod unit_tests {
                 user_id: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
                 username: String::from("Alice"),
             },
-            user_whiteboard_permission: WhiteboardPermissionEnum::Own,
         };
 
         let resp = handle_authenticated_client_message(&client_state, &client_msg_s).await;
@@ -1801,7 +1880,7 @@ mod unit_tests {
         use futures::lock::Mutex;
         use models::{
             Canvas, CanvasObjectModel, UserSummary, Whiteboard, WhiteboardMetadata,
-            WhiteboardPermissionEnum, WhiteboardVisibilityEnum
+            WhiteboardVisibilityEnum
         };
         use protocol::{ServerSocketMessage,ServerSocketBroadcastMessage};
         use server::{ClientStateBase, ClientStateAuthenticated, handle_authenticated_client_message};
@@ -1883,7 +1962,13 @@ mod unit_tests {
             WhiteboardMetadata::new(
                 String::from("Test"),
                 WhiteboardVisibilityEnum::Private,
-                &[],
+                &[WhiteboardPermission {
+                    permission_type: WhiteboardPermissionType::User {
+                        user: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
+                        email: None,
+                    },
+                    permission: WhiteboardPermissionEnum::Own,
+                }],
             ),
             canvas_a_id,
             HashMap::from([(
@@ -1906,7 +1991,7 @@ mod unit_tests {
 
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -1922,7 +2007,6 @@ mod unit_tests {
                 user_id: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
                 username: String::from("Alice"),
             },
-            user_whiteboard_permission: WhiteboardPermissionEnum::Own,
         };
 
         let resp = handle_authenticated_client_message(&client_state, &client_msg_s).await;
@@ -2112,14 +2196,14 @@ mod unit_tests {
         use utils::generate_unique_client_id;
         use crate::jwt::JWTClaims;
 
-        let jwt_secret = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz";
+        let access_token_secret = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz";
         let target_uid_s = "68d5e8d4829da666aece5f48";
         let target_uid = ObjectId::parse_str(target_uid_s).expect("UID to be valid");
         let target_email = "bob@example.com";
 
         // -- pre-generate jwt with desired uid
         let key: Hmac<Sha256> =
-            Hmac::new_from_slice(jwt_secret.as_bytes()).expect("Valid key to be generated");
+            Hmac::new_from_slice(access_token_secret.as_bytes()).expect("Valid key to be generated");
         let timestamp_iat_utc = chrono::Local::now().to_utc().timestamp() - 20;
         // expiration always in the future
         let timestamp_exp_utc = timestamp_iat_utc + 999999;
@@ -2170,7 +2254,7 @@ mod unit_tests {
 
         let client_state = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from(jwt_secret),
+            access_token_secret: String::from(access_token_secret),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -2259,7 +2343,6 @@ mod unit_tests {
                 user_id: target_uid.clone(),
                 username: String::from("bob"),
             },
-            user_whiteboard_permission: WhiteboardPermissionEnum::Edit,
         }));
     } // -- end fn fetch_permanent_user_from_mongodb_user_store
 
@@ -2390,7 +2473,7 @@ mod unit_tests {
         use utils::generate_unique_client_id;
 
         let test_client_id = generate_unique_client_id(ObjectId::new(), 0);
-        let test_user_id = ObjectId::new();
+        let test_user_id = ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap();
         let invalid_canvas_id = ObjectId::new();
         let client_msg_s = format!(
             r#"{{
@@ -2439,7 +2522,7 @@ mod unit_tests {
 
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -2452,10 +2535,9 @@ mod unit_tests {
             base: &client_state_base,
             user_summary: UserSummary {
                 client_id: test_client_id.clone(),
-                user_id: ObjectId::parse_str("68d5e8cf829da666aece0101").unwrap(),
+                user_id: test_user_id.clone(),
                 username: String::from("Alice"),
             },
-            user_whiteboard_permission: WhiteboardPermissionEnum::Edit,
         };
 
         let resp = handle_authenticated_client_message(&client_state, client_msg_s.as_str()).await;
@@ -2606,7 +2688,7 @@ mod unit_tests {
 
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -2622,7 +2704,6 @@ mod unit_tests {
                 user_id: test_user_id.clone(),
                 username: String::from("Tester"),
             },
-            user_whiteboard_permission: WhiteboardPermissionEnum::Own,
         };
 
         // -- Create initial canvas objects
@@ -2803,7 +2884,7 @@ mod unit_tests {
 
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::new(Mutex::new(whiteboard.clone())),
             active_clients: Arc::new(Mutex::new(HashMap::new())),
@@ -2819,7 +2900,6 @@ mod unit_tests {
                 user_id: test_user_id.clone(),
                 username: String::from("Tester"),
             },
-            user_whiteboard_permission: WhiteboardPermissionEnum::Own,
         };
 
         // -- Create initial canvas objects
@@ -2985,7 +3065,7 @@ mod unit_tests {
 
         let client_state_a_base = ClientStateBase {
             client_id: client_a_id.clone(),
-            jwt_secret: String::from("abcd"),
+            access_token_secret: String::from("abcd"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::clone(&whiteboard_ref),
             active_clients: Arc::clone(&active_clients),
@@ -3001,12 +3081,11 @@ mod unit_tests {
                 user_id: user_a_id.clone(),
                 username: String::from("Tester A"),
             },
-            user_whiteboard_permission: WhiteboardPermissionEnum::Own,
         };
 
         let client_state_b_base = ClientStateBase {
             client_id: client_b_id.clone(),
-            jwt_secret: String::from("defg"),
+            access_token_secret: String::from("defg"),
             whiteboard_id: whiteboard_id.clone(),
             whiteboard_ref: Arc::clone(&whiteboard_ref),
             active_clients: Arc::clone(&active_clients),
@@ -3022,7 +3101,6 @@ mod unit_tests {
                 user_id: user_b_id.clone(),
                 username: String::from("Tester B"),
             },
-            user_whiteboard_permission: WhiteboardPermissionEnum::Edit,
         };
 
         // -- Client A creates a rectangle
