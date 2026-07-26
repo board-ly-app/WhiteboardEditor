@@ -124,7 +124,7 @@ const UserAuth = ({
 
       <BackgroundVideo />
       
-      <div className="flex flex-col justify-center backdrop-blur-[1px] items-center pb-12">
+      <div className="flex flex-col justify-center backdrop-blur-[3px] items-center pb-12">
         {/** Main branding section **/}
         <div
           id="branding"
