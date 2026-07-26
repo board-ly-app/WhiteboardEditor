@@ -81,6 +81,7 @@ import {
   setClientCursorPos,
   addWhiteboard,
   updateWhiteboard,
+  clearWhiteboard,
   deleteWhiteboard,
   setWhiteboardStatus,
   setCanvasObjects,
@@ -655,7 +656,14 @@ const WebSocketClientMessengerProvider = ({
       ws.onerror = (e: Event) => {
         console.error('Error opening web socket connection:', e);
       };// -- end onerror
+
       ws.onopen = makeHandleWebSocketOpen(ws, wsUri);
+
+      // -- make sure to clear redux store on close
+      ws.onclose = () => {
+        clearWhiteboard(store.dispatch, whiteboardId);
+      };
+
       webSocketRef.current = ws;
 
       // -- Close web socket connection when page closed

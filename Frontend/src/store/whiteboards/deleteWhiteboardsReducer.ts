@@ -10,6 +10,8 @@ import {
   createAction,
 } from '@reduxjs/toolkit';
 
+import lodash from 'lodash';
+
 // -- local imports
 import {
   type RootState,
@@ -41,75 +43,83 @@ export const deleteWhiteboardsReducer = (
   //                                    => CanvasObject
   //              => ActiveUser
   //              => WhiteboardStatus
+  const draftState : RootState = lodash.cloneDeep(state);
   const whiteboardIds : WhiteboardIdType[] = action.payload;
 
   for (const whiteboardId of whiteboardIds) {
-    if (! (whiteboardId in state.whiteboards)) continue;
+    if (! (whiteboardId in draftState.whiteboards)) continue;
     
     const canvasIds : CanvasIdType[] = Object.keys(
-      state.canvasesByWhiteboard.canvasesByWhiteboard[whiteboardId]
+      draftState.canvasesByWhiteboard.canvasesByWhiteboard[whiteboardId]
     );
 
     for (const canvasId of canvasIds) {
-      if (! (canvasId in state.canvases)) continue;
+      if (! (canvasId in draftState.canvases)) continue;
 
       // -- remove current editor entry, if set
-      if (canvasId in state.currentEditorsByCanvas.currentEditorsByCanvas) {
-        const userId = state.currentEditorsByCanvas.currentEditorsByCanvas[canvasId];
-        delete state.currentEditorsByCanvas.canvasesByCurrentEditor[userId];
-        delete state.currentEditorsByCanvas.currentEditorsByCanvas[canvasId];
+      if (canvasId in draftState.currentEditorsByCanvas.currentEditorsByCanvas) {
+        const userId = draftState.currentEditorsByCanvas.currentEditorsByCanvas[canvasId];
+        delete draftState.currentEditorsByCanvas.canvasesByCurrentEditor[userId];
+        delete draftState.currentEditorsByCanvas.currentEditorsByCanvas[canvasId];
       }
 
       // -- delete allowed user entries, if set
-      if (canvasId in state.allowedUsersByCanvas) {
-        delete state.allowedUsersByCanvas[canvasId];
+      if (canvasId in draftState.allowedUsersByCanvas) {
+        delete draftState.allowedUsersByCanvas[canvasId];
       }
 
       // -- delete child canvas entries
-      if (canvasId in state.childCanvasesByCanvas.parentCanvasesByCanvas) {
-        delete state.childCanvasesByCanvas.parentCanvasesByCanvas[canvasId];
+      if (canvasId in draftState.childCanvasesByCanvas.parentCanvasesByCanvas) {
+        delete draftState.childCanvasesByCanvas.parentCanvasesByCanvas[canvasId];
       }
 
-      if (canvasId in state.childCanvasesByCanvas.childCanvasesByCanvas) {
-        delete state.childCanvasesByCanvas.childCanvasesByCanvas[canvasId];
+      if (canvasId in draftState.childCanvasesByCanvas.childCanvasesByCanvas) {
+        delete draftState.childCanvasesByCanvas.childCanvasesByCanvas[canvasId];
       }
 
       // -- delete associated canvas objects
-      if (canvasId in state.canvasObjectsByCanvas.canvasObjectsByCanvas) {
-        const objIds = Object.keys(state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId]);
+      if (canvasId in draftState.canvasObjectsByCanvas.canvasObjectsByCanvas) {
+        const objIds = Object.keys(draftState.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId]);
 
         for (const objId of objIds) {
-          delete state.canvasObjects[objId];
-          delete state.canvasObjectsByCanvas.canvasesByCanvasObjects[objId];
+          delete draftState.canvasObjects[objId];
+          delete draftState.canvasObjectsByCanvas.canvasesByCanvasObjects[objId];
+
+          // -- Remove selectors
+          if (objId in draftState.selectorsByCanvasObject.selectorsByCanvasObject) {
+            const selectorId = draftState.selectorsByCanvasObject.selectorsByCanvasObject[objId];
+
+            delete draftState.selectorsByCanvasObject.canvasObjectsBySelector[selectorId];
+            delete draftState.selectorsByCanvasObject.selectorsByCanvasObject[objId];
+          }
         }
 
-        delete state.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId];
+        delete draftState.canvasObjectsByCanvas.canvasObjectsByCanvas[canvasId];
       }
 
-      delete state.canvases[canvasId];
+      delete draftState.canvases[canvasId];
     }// -- end for canvasId
 
     // -- delete activeUser records
-    if (whiteboardId in state.activeUsersByWhiteboard.clientsByWhiteboard) {
+    if (whiteboardId in draftState.activeUsersByWhiteboard.clientsByWhiteboard) {
       const clientIds = Object.keys(
-        state.activeUsersByWhiteboard.clientsByWhiteboard[whiteboardId]
+        draftState.activeUsersByWhiteboard.clientsByWhiteboard[whiteboardId]
       );
 
       for (const clientId of clientIds) {
-        delete state.activeUsers[clientId];
-        delete state.activeUsersByWhiteboard.whiteboardsByClient[clientId];
+        delete draftState.activeUsers[clientId];
+        delete draftState.activeUsersByWhiteboard.whiteboardsByClient[clientId];
       }// -- end for clientId
 
-      delete state.activeUsersByWhiteboard.clientsByWhiteboard[whiteboardId];
+      delete draftState.activeUsersByWhiteboard.clientsByWhiteboard[whiteboardId];
     }
 
     // Don't bother updating whiteboardStatuses; we want a record of the
     // whiteboard having been deleted so the user will be redirected to their
     // dashboard if they try to return to the whiteboard page.
 
-    delete state.whiteboards[whiteboardId];
+    delete draftState.whiteboards[whiteboardId];
   }// -- end for whiteboardId
 
-
-  return state;
-};
+  return draftState;
+};// -- end deleteWhiteboardsReducer

@@ -19,6 +19,7 @@ import {
 
 import {
   addWhiteboard,
+  clearWhiteboard,
   deleteWhiteboard,
   setWhiteboardStatus,
   updateWhiteboard,
@@ -59,6 +60,7 @@ export {
   removeCurrentEditorsByCanvas,
   setSelectedCanvasByWhiteboard,
   addWhiteboard,
+  clearWhiteboard,
   deleteWhiteboard,
   setWhiteboardStatus,
   updateWhiteboard,
