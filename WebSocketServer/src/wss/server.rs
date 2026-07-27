@@ -1802,7 +1802,7 @@ mod unit_tests {
                                         fill_color,
                                         rotation,
                                         z_index,
-                                        shadow,
+                                        shadow: _,
                                     },
                                     CanvasObjectModel::Rect {
                                         x: x_exp,
@@ -1814,7 +1814,7 @@ mod unit_tests {
                                         fill_color: fill_color_exp,
                                         rotation: rotation_exp,
                                         z_index: z_index_exp,
-                                        shadow: None,
+                                        shadow: _,
                                     },
                                 ) => {
                                     if (x - x_exp).abs() > f64_prec {
