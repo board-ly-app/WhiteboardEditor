@@ -44,7 +44,7 @@ pub enum CanvasObjectModel {
         rotation: f64,
         // -- default covers documents/messages predating shadows
         #[serde(default)]
-        shadow: Option<bool>,
+        shadow: Option<f64>,
         // -- default covers documents/messages predating z-ordering
         #[serde(default)]
         z_index: f64,
@@ -60,7 +60,7 @@ pub enum CanvasObjectModel {
         rotation: f64,
         // -- default covers documents/messages predating shadows
         #[serde(default)]
-        shadow: Option<bool>,
+        shadow: Option<f64>,
         #[serde(default)]
         z_index: f64,
     },
@@ -75,7 +75,7 @@ pub enum CanvasObjectModel {
         arrow_end: Option<String>,
         // -- default covers documents/messages predating shadows
         #[serde(default)]
-        shadow: Option<bool>,
+        shadow: Option<f64>,
         #[serde(default)]
         z_index: f64,
     },
@@ -95,7 +95,7 @@ pub enum CanvasObjectModel {
         vertical_align: Option<String>,
         // -- default covers documents/messages predating shadows
         #[serde(default)]
-        shadow: Option<bool>,
+        shadow: Option<f64>,
         #[serde(default)]
         z_index: f64,
     },

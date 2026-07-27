@@ -231,7 +231,7 @@ const Whiteboard = () => {
     verticalAlign: 'top',
     arrowStart: 'none',
     arrowEnd: 'none',
-    shadow: false,
+    shadow: 0,
   });
 
   const name : string | null = useSelector(

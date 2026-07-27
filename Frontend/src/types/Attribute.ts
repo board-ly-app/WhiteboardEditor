@@ -45,8 +45,7 @@ import AttributeShadow from "@/components/AttributeShadow";
 export type AttributeType =
   | "number"
   | "color"
-  | "text"
-  | "boolean";
+  | "text";
 
 export interface BaseAttribute<T> {
   name: string;
@@ -69,15 +68,10 @@ export interface TextAttribute extends BaseAttribute<string> {
   type: "text";
 }
 
-export interface BooleanAttribute extends BaseAttribute<boolean> {
-  type: "boolean";
-}
-
 export type Attribute =
   | NumberAttribute
   | ColorAttribute
-  | TextAttribute
-  | BooleanAttribute;
+  | TextAttribute;
 
 export interface AttributeProps {
   selectedShapeIds: CanvasObjectIdType[];

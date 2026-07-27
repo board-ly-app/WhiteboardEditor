@@ -1,4 +1,10 @@
 import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
+
+import {
   useSelector,
 } from 'react-redux';
 
@@ -27,30 +33,47 @@ const ShadowComponent = ({
     (state: RootState) => selectCanvasObjectsByCanvas(state, canvasId),
     lodash.isEqual
   );
+  const [inputValue, setInputValue] = useState(value?.toString() ?? '0');
 
-  const onChangeShadow = (ev: React.ChangeEvent<HTMLInputElement>) => {
-    const shadow = ev.target.checked;
+  useEffect(() => {
+    setInputValue(value?.toString() ?? '0');
+  }, [value]);
 
-    dispatch({ type: 'SET_SHADOW', payload: shadow });
+  const onChangeShadow = useCallback(
+    (ev: React.ChangeEvent<HTMLInputElement>) => {
+      ev.preventDefault();
 
-    if (canvasObjectsById) {
-      handleUpdateShapes(
-        canvasId,
-        canvasObjectsById,
-        Object.fromEntries(selectedShapeIds.map(id => [id, { shadow }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
-      );
-    }
-  };
+      const val = ev.target.value;
+      setInputValue(val);
+
+      const shadowParsed = parseFloat(val);
+
+      if (!isNaN(shadowParsed) && shadowParsed >= 0) {
+        dispatch({ type: 'SET_SHADOW', payload: shadowParsed });
+
+        if (canvasObjectsById) {
+          handleUpdateShapes(
+            canvasId,
+            canvasObjectsById,
+            Object.fromEntries(selectedShapeIds.map(id => [id, { shadow: shadowParsed }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
+          );
+        }
+      }
+    },
+    [setInputValue, dispatch, handleUpdateShapes, canvasId, canvasObjectsById, selectedShapeIds]
+  );
 
   return (
     <div>
       <AttributeMenuItem title="Shadow">
         <input
           name="shadow"
-          type="checkbox"
-          checked={value === true}
+          type="number"
+          min={0}
+          step={1}
+          value={inputValue}
           onChange={onChangeShadow}
-          className="accent-primary"
+          className="w-16 mr-0"
         />
       </AttributeMenuItem>
     </div>

@@ -97,7 +97,7 @@ export interface EditableTextProps extends EditableObjectProps {
   rotation: number;
   align?: TextAlign;
   verticalAlign?: TextVerticalAlign;
-  shadow?: boolean;
+  shadow?: number;
   draggable: boolean;
   record: TextRecord;
   onUpdateObject: (updatedObject: ShapeModel) => unknown;
