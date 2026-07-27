@@ -60,12 +60,12 @@ const UserAuth = ({
 
         const userResp = await api.post('/users/temp');
 
-
         const {
           user,
+          sessionToken,
         } = userResp.data;
 
-        handleLogin(user);
+        handleLogin(user, sessionToken);
         
         const tempWhiteboardData: CreateWhiteboardFormData = {
           name: `${userResp.data.user.username}'s Whiteboard`,
