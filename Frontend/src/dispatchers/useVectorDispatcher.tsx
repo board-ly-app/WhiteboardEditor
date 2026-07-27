@@ -104,8 +104,8 @@ const useVectorDispatcher = ({
             points={[xA, yA, xB, yB]}
             stroke="#888888"
             fill="#888888"
-            pointerAtBeginning={shapeAttributes.arrowStart === 'arrow'}
-            pointerAtEnding={shapeAttributes.arrowEnd === 'arrow'}
+            pointerAtBeginning={shapeAttributes.arrowEnd === 'arrow'}
+            pointerAtEnding={shapeAttributes.arrowStart === 'arrow'}
           />
         );
       } else {

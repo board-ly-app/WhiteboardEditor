@@ -43,6 +43,7 @@ export const VectorCanvasObject = ({
 
   const pointerSize = Math.max(8, strokeWidth * 3);
 
+  // NOTE: Konva's pointerAtEnd/Beginning are opposite what we think of as end and beginning
   return (
     <EditableVector<VectorModel>
       id={id}
@@ -56,8 +57,8 @@ export const VectorCanvasObject = ({
         stroke={strokeColor}
         strokeWidth={strokeWidth}
         fill={strokeColor}
-        pointerAtBeginning={arrowStart === 'arrow'}
-        pointerAtEnding={arrowEnd === 'arrow'}
+        pointerAtBeginning={arrowEnd === 'arrow'}
+        pointerAtEnding={arrowStart === 'arrow'}
         pointerLength={pointerSize}
         pointerWidth={pointerSize}
       />
