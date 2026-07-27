@@ -42,6 +42,9 @@ pub enum CanvasObjectModel {
         stroke_color: String,
         fill_color: String,
         rotation: f64,
+        // -- default covers documents/messages predating shadows
+        #[serde(default)]
+        shadow: Option<bool>,
         // -- default covers documents/messages predating z-ordering
         #[serde(default)]
         z_index: f64,
@@ -55,6 +58,9 @@ pub enum CanvasObjectModel {
         stroke_color: String,
         fill_color: String,
         rotation: f64,
+        // -- default covers documents/messages predating shadows
+        #[serde(default)]
+        shadow: Option<bool>,
         #[serde(default)]
         z_index: f64,
     },
@@ -67,6 +73,9 @@ pub enum CanvasObjectModel {
         arrow_start: Option<String>,
         #[serde(default)]
         arrow_end: Option<String>,
+        // -- default covers documents/messages predating shadows
+        #[serde(default)]
+        shadow: Option<bool>,
         #[serde(default)]
         z_index: f64,
     },
@@ -84,6 +93,9 @@ pub enum CanvasObjectModel {
         align: Option<String>,
         #[serde(default)]
         vertical_align: Option<String>,
+        // -- default covers documents/messages predating shadows
+        #[serde(default)]
+        shadow: Option<bool>,
         #[serde(default)]
         z_index: f64,
     },

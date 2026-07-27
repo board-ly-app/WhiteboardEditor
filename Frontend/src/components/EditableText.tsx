@@ -55,6 +55,8 @@ import WhiteboardContext from '@/context/WhiteboardContext';
 
 import TextEditor from "./TextEditor";
 
+import { shadowProps } from '@/lib/shadowProps';
+
 import {
   type EditableObjectProps,
 } from "@/dispatchers/editableObjectProps";
@@ -95,6 +97,7 @@ export interface EditableTextProps extends EditableObjectProps {
   rotation: number;
   align?: TextAlign;
   verticalAlign?: TextVerticalAlign;
+  shadow?: boolean;
   draggable: boolean;
   record: TextRecord;
   onUpdateObject: (updatedObject: ShapeModel) => unknown;
@@ -113,6 +116,7 @@ const EditableText = ({
   rotation,
   align,
   verticalAlign,
+  shadow,
   draggable,
   record,
   onUpdateObject,
@@ -442,6 +446,7 @@ const EditableText = ({
         rotation={rotation}
         align={align ?? 'left'}
         verticalAlign={verticalAlign ?? 'top'}
+        {...shadowProps(shadow)}
         draggable={draggable}
         onClick={handleSingleSelect}
         onTap={handleSingleSelect}

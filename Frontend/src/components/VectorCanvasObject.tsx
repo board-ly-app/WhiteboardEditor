@@ -24,6 +24,8 @@ import {
 
 import EditableVector from '@/components/EditableVector';
 
+import { shadowProps } from '@/lib/shadowProps';
+
 export interface VectorCanvasObjectProps {
   id: CanvasObjectIdType;
   canvasId: CanvasIdType;
@@ -61,6 +63,7 @@ export const VectorCanvasObject = ({
         pointerAtEnding={arrowStart === 'arrow'}
         pointerLength={pointerSize}
         pointerWidth={pointerSize}
+        {...shadowProps(model.shadow)}
       />
     </EditableVector>
   );

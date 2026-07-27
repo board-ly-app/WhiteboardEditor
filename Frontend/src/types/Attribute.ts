@@ -40,11 +40,13 @@ import {
   AttributeArrowStart,
   AttributeArrowEnd,
 } from "@/components/AttributeArrowTips";
+import AttributeShadow from "@/components/AttributeShadow";
 
 export type AttributeType =
   | "number"
   | "color"
-  | "text";
+  | "text"
+  | "boolean";
 
 export interface BaseAttribute<T> {
   name: string;
@@ -67,10 +69,15 @@ export interface TextAttribute extends BaseAttribute<string> {
   type: "text";
 }
 
+export interface BooleanAttribute extends BaseAttribute<boolean> {
+  type: "boolean";
+}
+
 export type Attribute =
   | NumberAttribute
   | ColorAttribute
-  | TextAttribute;
+  | TextAttribute
+  | BooleanAttribute;
 
 export interface AttributeProps {
   selectedShapeIds: CanvasObjectIdType[];
@@ -103,12 +110,14 @@ export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
     AttributeStrokeWidth,
     AttributeStrokeColor,
     AttributeFillColor,
+    AttributeShadow,
     AttributeZOrder,
   ],
   ellipse: [
     AttributeStrokeWidth,
     AttributeStrokeColor,
     AttributeFillColor,
+    AttributeShadow,
     AttributeZOrder,
   ],
   text: [
@@ -116,6 +125,7 @@ export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
     AttributeFontColor,
     AttributeTextAlign,
     AttributeTextVerticalAlign,
+    AttributeShadow,
     AttributeZOrder,
   ],
   vector: [
@@ -123,6 +133,7 @@ export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
     AttributeStrokeColor,
     AttributeArrowStart,
     AttributeArrowEnd,
+    AttributeShadow,
     AttributeZOrder,
   ],
 }
