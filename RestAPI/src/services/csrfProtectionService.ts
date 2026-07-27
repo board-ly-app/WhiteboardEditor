@@ -1,4 +1,4 @@
-// === antiCsrfService.ts ======================================================
+// === csrfProtectionService.ts ================================================
 //
 // Utilities for securing authenticated requests using the Double Submit Cookie
 // Pattern. Implemented as a wrapper around the csrf-csrf package.

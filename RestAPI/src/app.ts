@@ -11,7 +11,7 @@ import {
 
 import {
   doubleCsrfProtection,
-} from './services/antiCsrfService';
+} from './services/csrfProtectionService';
 
 // === Routers =================================================================
 //

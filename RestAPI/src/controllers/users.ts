@@ -13,7 +13,7 @@ import {
 
 import {
   generateCsrfToken,
-} from '../services/antiCsrfService';
+} from '../services/csrfProtectionService';
 
 // -- local imports
 import {

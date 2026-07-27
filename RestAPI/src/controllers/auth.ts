@@ -20,7 +20,7 @@ import {
 } from "../services/authService";
 import {
   generateCsrfToken,
-} from '../services/antiCsrfService';
+} from '../services/csrfProtectionService';
 import {
   type AuthRequest,
 } from "../models/Auth";
