@@ -52,9 +52,14 @@ export interface EllipseModel extends ShapeModelBase {
 
 export interface EllipseRecord extends EllipseModel, RecordBase {}
 
+export type ArrowTip = 'none' | 'arrow';
+
 export interface VectorModel extends CanvasObjectBase {
   type: 'vector';
   points: number[];
+  // -- optional: vectors created before arrow tips have neither (treated as 'none')
+  arrowStart?: ArrowTip;
+  arrowEnd?: ArrowTip;
 }
 
 export interface VectorRecord extends VectorModel, RecordBase {}

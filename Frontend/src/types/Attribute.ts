@@ -36,6 +36,10 @@ import {
   AttributeTextAlign,
   AttributeTextVerticalAlign,
 } from "@/components/AttributeTextAlign";
+import {
+  AttributeArrowStart,
+  AttributeArrowEnd,
+} from "@/components/AttributeArrowTips";
 
 export type AttributeType =
   | "number"
@@ -117,6 +121,8 @@ export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
   vector: [
     AttributeStrokeWidth,
     AttributeStrokeColor,
+    AttributeArrowStart,
+    AttributeArrowEnd,
     AttributeZOrder,
   ],
 }

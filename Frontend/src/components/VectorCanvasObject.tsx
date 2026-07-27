@@ -9,7 +9,7 @@ import {
 } from 'react';
 
 import {
-  Line,
+  Arrow,
 } from 'react-konva';
 
 import {
@@ -39,8 +39,11 @@ export const VectorCanvasObject = ({
   isDraggable,
   onUpdateObject,
 }: VectorCanvasObjectProps): ReactNode => {
-  const { strokeColor, strokeWidth, points } = model;
+  const { strokeColor, strokeWidth, points, arrowStart, arrowEnd } = model;
 
+  const pointerSize = Math.max(8, strokeWidth * 3);
+
+  // NOTE: Konva's pointerAtEnd/Beginning are opposite what we think of as end and beginning
   return (
     <EditableVector<VectorModel>
       id={id}
@@ -49,10 +52,15 @@ export const VectorCanvasObject = ({
       model={model}
       onUpdateObject={onUpdateObject}
     >
-      <Line
+      <Arrow
         points={points}
         stroke={strokeColor}
         strokeWidth={strokeWidth}
+        fill={strokeColor}
+        pointerAtBeginning={arrowEnd === 'arrow'}
+        pointerAtEnding={arrowStart === 'arrow'}
+        pointerLength={pointerSize}
+        pointerWidth={pointerSize}
       />
     </EditableVector>
   );

@@ -62,6 +62,11 @@ pub enum CanvasObjectModel {
         points: Vec<f64>,
         stroke_width: f64,
         stroke_color: String,
+        // -- default covers documents/messages predating arrow tips
+        #[serde(default)]
+        arrow_start: Option<String>,
+        #[serde(default)]
+        arrow_end: Option<String>,
         #[serde(default)]
         z_index: f64,
     },
