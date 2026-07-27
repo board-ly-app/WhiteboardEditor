@@ -40,6 +40,7 @@ import {
   AttributeArrowStart,
   AttributeArrowEnd,
 } from "@/components/AttributeArrowTips";
+import AttributeShadow from "@/components/AttributeShadow";
 
 export type AttributeType =
   | "number"
@@ -103,12 +104,14 @@ export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
     AttributeStrokeWidth,
     AttributeStrokeColor,
     AttributeFillColor,
+    AttributeShadow,
     AttributeZOrder,
   ],
   ellipse: [
     AttributeStrokeWidth,
     AttributeStrokeColor,
     AttributeFillColor,
+    AttributeShadow,
     AttributeZOrder,
   ],
   text: [
@@ -116,6 +119,7 @@ export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
     AttributeFontColor,
     AttributeTextAlign,
     AttributeTextVerticalAlign,
+    AttributeShadow,
     AttributeZOrder,
   ],
   vector: [
@@ -123,6 +127,7 @@ export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
     AttributeStrokeColor,
     AttributeArrowStart,
     AttributeArrowEnd,
+    AttributeShadow,
     AttributeZOrder,
   ],
 }

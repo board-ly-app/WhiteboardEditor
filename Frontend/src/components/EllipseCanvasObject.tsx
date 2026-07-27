@@ -27,6 +27,8 @@ import {
 
 import EditableShape from '@/components/EditableShape';
 
+import { shadowProps } from '@/lib/shadowProps';
+
 export interface EllipseCanvasObjectProps {
   id: CanvasObjectIdType;
   canvasId: CanvasIdType;
@@ -92,6 +94,7 @@ export const EllipseCanvasObject = ({
         stroke={strokeColor}
         strokeWidth={strokeWidth}
         rotation={rotation}
+        {...shadowProps(model.shadow)}
       />
     </EditableShape>
   );

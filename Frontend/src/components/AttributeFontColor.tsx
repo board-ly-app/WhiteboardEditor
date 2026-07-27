@@ -57,7 +57,7 @@ const FontColorComponent = ({
         <input
           name="font-color"
           type="color"
-          value={value}
+          value={value as string | undefined}
           onChange={onChangeFontColor}
           className=""
         />

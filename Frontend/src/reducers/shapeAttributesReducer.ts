@@ -23,6 +23,7 @@ export type ShapeAttributesState = ShapeModelBase & {
   verticalAlign: TextVerticalAlign;
   arrowStart: ArrowTip;
   arrowEnd: ArrowTip;
+  shadow: number;
 };
 
 export type ShapeAttributesAction =
@@ -35,6 +36,7 @@ export type ShapeAttributesAction =
   | { type: 'SET_TEXT_VERTICAL_ALIGN'; payload: TextVerticalAlign }
   | { type: 'SET_ARROW_START'; payload: ArrowTip }
   | { type: 'SET_ARROW_END'; payload: ArrowTip }
+  | { type: 'SET_SHADOW'; payload: number }
 ;
 
 const shapeAttributesReducer = (state: ShapeAttributesState, action: ShapeAttributesAction) => {
@@ -57,6 +59,8 @@ const shapeAttributesReducer = (state: ShapeAttributesState, action: ShapeAttrib
       return ({ ...state, arrowStart: action.payload });
     case 'SET_ARROW_END':
       return ({ ...state, arrowEnd: action.payload });
+    case 'SET_SHADOW':
+      return ({ ...state, shadow: action.payload });
     default:
       return state;
   }// end switch (action.type)

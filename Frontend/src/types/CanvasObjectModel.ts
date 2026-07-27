@@ -22,6 +22,9 @@ export interface CanvasObjectBase {
   strokeWidth: number;
   // -- optional: objects created before z-ordering have no zIndex (treated as 0)
   zIndex?: number;
+  // -- optional: shadow blur radius in px; objects created before shadows
+  // -- have none (treated as 0 = no shadow)
+  shadow?: number;
 }
 
 export interface ShapeModelAttributes {
@@ -32,6 +35,7 @@ export interface ShapeModelAttributes {
   fontSize: number;
   color: ShapeColor;
   zIndex?: number;
+  shadow?: number;
 }
 
 export type ShapeModelBase = CanvasObjectBase & ShapeModelAttributes;

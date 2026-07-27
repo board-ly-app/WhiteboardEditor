@@ -83,7 +83,7 @@ const FillColorComponent = ({
       <input
         name="fill-color"
         type="color"
-        value={value}
+        value={value as string | undefined}
         onChange={onChangeFillColor}
         className=""
       />

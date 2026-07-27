@@ -58,7 +58,7 @@ const StrokeColorComponent = ({
         <input
           name="stroke-color"
           type="color"
-          value={value}
+          value={value as string | undefined}
           onChange={onChangeStrokeColor}
           className=""
         />
