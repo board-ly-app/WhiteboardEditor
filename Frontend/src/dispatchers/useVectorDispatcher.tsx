@@ -18,6 +18,8 @@ import type {
 } from '@/types/EventCoords';
 import { getAttributesByShape, type AttributeDefinition } from '@/types/Attribute';
 
+import { constrainToAngle } from '@/lib/dragConstraints';
+
 // === useVectorDispatcher =====================================================
 //
 // Tool for drawing vectors.
@@ -56,7 +58,10 @@ const useVectorDispatcher = ({
         const pos = ev.currentTarget.getRelativePointerPosition();
 
         if (pos) {
-          const { x, y } = pos;
+          // -- shift snaps the vector to horizontal, vertical, or 45 degrees
+          const { x, y } = ev.evt.shiftKey
+            ? constrainToAngle(mouseDownCoords, pos)
+            : pos;
 
           setMouseCoords({ x, y });
         }
@@ -70,7 +75,10 @@ const useVectorDispatcher = ({
       const pos = ev.currentTarget.getRelativePointerPosition();
 
       if (pos && mouseDownCoords) {
-        const { x: xA, y: yA } = pos;
+        // -- shift snaps the vector to horizontal, vertical, or 45 degrees
+        const { x: xA, y: yA } = ev.evt.shiftKey
+          ? constrainToAngle(mouseDownCoords, pos)
+          : pos;
         const { x: xB, y: yB } = mouseDownCoords;
 
         addShapes([{
@@ -123,7 +131,7 @@ const useVectorDispatcher = ({
   const getTooltipText = useCallback(
     () => {
       if (mouseDownCoords) {
-        return 'Drag to desired length, then release';
+        return 'Drag to desired length, then release (hold Shift to snap the angle)';
       } else {
         return 'Click to draw a vector';
       }
