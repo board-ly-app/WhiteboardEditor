@@ -297,6 +297,7 @@ const EditableText = ({
             case 'rect':
             case 'ellipse':
             case 'text':
+            case 'image':
             {
               const objUpdate = ({
                 ...prevObj,
@@ -354,6 +355,7 @@ const EditableText = ({
           case 'rect':
           case 'ellipse':
           case 'text':
+          case 'image':
           {
             obj.x(prevObj.x + translateX);
             obj.y(prevObj.y + translateY);

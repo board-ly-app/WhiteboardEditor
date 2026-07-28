@@ -54,6 +54,10 @@ import {
   TextCanvasObject,
 } from '@/components/TextCanvasObject';
 
+import {
+  ImageCanvasObject,
+} from '@/components/ImageCanvasObject';
+
 export interface CanvasObjectProps {
   id: CanvasObjectIdType;
   canvasId: CanvasIdType;
@@ -135,6 +139,16 @@ export const CanvasObject = ({
             id={id}
             canvasId={canvasId}
             record={canvasObject}
+            isDraggable={isDraggable}
+            onUpdateObject={handleUpdateObject}
+          />
+        );
+      case 'image':
+        return (
+          <ImageCanvasObject
+            id={id}
+            canvasId={canvasId}
+            model={canvasObject}
             isDraggable={isDraggable}
             onUpdateObject={handleUpdateObject}
           />

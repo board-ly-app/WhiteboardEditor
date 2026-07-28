@@ -98,7 +98,7 @@ export interface AttributeDefinition {
 
 export type AttributeComponent = React.FC<AttributeProps>;
 
-export type ShapeType = 'rect' | 'ellipse' | 'text' | 'vector';
+export type ShapeType = 'rect' | 'ellipse' | 'text' | 'vector' | 'image';
 
 export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
   rect: [
@@ -129,6 +129,10 @@ export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
     AttributeStrokeColor,
     AttributeArrowStart,
     AttributeArrowEnd,
+    AttributeShadow,
+    AttributeZOrder,
+  ],
+  image: [
     AttributeShadow,
     AttributeZOrder,
   ],

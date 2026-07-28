@@ -7,14 +7,16 @@ import {
   ALargeSmall,
   SquarePlus,
   BoxSelect,
+  Image,
 } from 'lucide-react';
 
 export type ToolChoice =
-  | 'hand' 
-  | 'rect' 
-  | 'ellipse' 
-  | 'vector' 
+  | 'hand'
+  | 'rect'
+  | 'ellipse'
+  | 'vector'
   | 'text'
+  | 'import_image'
   | 'create_canvas'
   | 'select'
 ;
@@ -31,6 +33,8 @@ const getToolChoiceLabel = (toolChoice: ToolChoice): LucideIcon => {
       return Circle;
     case 'text':
       return ALargeSmall;
+    case 'import_image':
+      return Image;
     case 'create_canvas':
       return SquarePlus;
     case 'select':
@@ -52,6 +56,8 @@ export const getTooltip = (toolChoice: ToolChoice): string => {
       return "Draw Ellipse";
     case 'text':
       return "Add Text";
+    case 'import_image':
+      return "Import an Image";
     case 'create_canvas':
       return "Create a new Canvas";
     case 'select':

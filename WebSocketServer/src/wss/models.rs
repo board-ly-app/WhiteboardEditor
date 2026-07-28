@@ -52,6 +52,19 @@ pub enum CanvasObjectModel {
         #[serde(default)]
         z_index: f64,
     },
+    Image {
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        // -- image content encoded as a data URL
+        src: String,
+        rotation: f64,
+        #[serde(default)]
+        shadow: Option<f64>,
+        #[serde(default)]
+        z_index: f64,
+    },
     Ellipse {
         x: f64,
         y: f64,
@@ -1167,7 +1180,8 @@ impl Whiteboard {
                             },
                             Rect { ref mut x, ref mut y, .. }
                             | Ellipse { ref mut x, ref mut y, .. }
-                            | Text { ref mut x, ref mut y, .. } => {
+                            | Text { ref mut x, ref mut y, .. }
+                            | Image { ref mut x, ref mut y, .. } => {
                                 *x += parent_ref.origin_x();
                                 *y += parent_ref.origin_y();
                             },
