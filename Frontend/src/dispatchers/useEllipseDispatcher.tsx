@@ -19,6 +19,8 @@ import type {
 
 import { getAttributesByShape, type AttributeDefinition } from '@/types/Attribute';
 
+import { constrainToSquare } from '@/lib/dragConstraints';
+
 // === useEllipseDispatcher ====================================================
 //
 // Tool for drawing ellipses.
@@ -59,7 +61,10 @@ const useEllipseDispatcher = ({
         const pos = ev.currentTarget.getRelativePointerPosition();
 
         if (pos) {
-          const { x, y } = pos;
+          // -- shift constrains the drag to a perfect circle
+          const { x, y } = ev.evt.shiftKey
+            ? constrainToSquare(mouseDownCoords, pos)
+            : pos;
 
           setMouseCoords({ x, y });
         }
@@ -75,7 +80,10 @@ const useEllipseDispatcher = ({
       const pos = ev.currentTarget.getRelativePointerPosition();
 
       if (pos && mouseDownCoords) {
-        const { x: xRelease, y: yRelease } = pos;
+        // -- shift constrains the drag to a perfect circle
+        const { x: xRelease, y: yRelease } = ev.evt.shiftKey
+          ? constrainToSquare(mouseDownCoords, pos)
+          : pos;
         const { x: xOrigin, y: yOrigin } = mouseDownCoords;
 
         const xCenter = (xOrigin + xRelease) / 2;
@@ -139,7 +147,7 @@ const useEllipseDispatcher = ({
   const getTooltipText = useCallback(
     () => {
       if (mouseDownCoords) {
-        return 'Drag to desired shape, then release';
+        return 'Drag to desired shape, then release (hold Shift for a circle)';
       } else {
         return 'Click to draw an ellipse';
       }
