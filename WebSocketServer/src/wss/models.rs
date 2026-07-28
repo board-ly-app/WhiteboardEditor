@@ -45,6 +45,9 @@ pub enum CanvasObjectModel {
         // -- default covers documents/messages predating shadows
         #[serde(default)]
         shadow: Option<f64>,
+        // -- default covers documents/messages predating rounded corners
+        #[serde(default)]
+        corner_radius: Option<f64>,
         // -- default covers documents/messages predating z-ordering
         #[serde(default)]
         z_index: f64,

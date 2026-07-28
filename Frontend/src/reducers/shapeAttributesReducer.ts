@@ -24,6 +24,7 @@ export type ShapeAttributesState = ShapeModelBase & {
   arrowStart: ArrowTip;
   arrowEnd: ArrowTip;
   shadow: number;
+  cornerRadius: number;
 };
 
 export type ShapeAttributesAction =
@@ -37,6 +38,7 @@ export type ShapeAttributesAction =
   | { type: 'SET_ARROW_START'; payload: ArrowTip }
   | { type: 'SET_ARROW_END'; payload: ArrowTip }
   | { type: 'SET_SHADOW'; payload: number }
+  | { type: 'SET_CORNER_RADIUS'; payload: number }
 ;
 
 const shapeAttributesReducer = (state: ShapeAttributesState, action: ShapeAttributesAction) => {
@@ -61,6 +63,8 @@ const shapeAttributesReducer = (state: ShapeAttributesState, action: ShapeAttrib
       return ({ ...state, arrowEnd: action.payload });
     case 'SET_SHADOW':
       return ({ ...state, shadow: action.payload });
+    case 'SET_CORNER_RADIUS':
+      return ({ ...state, cornerRadius: action.payload });
     default:
       return state;
   }// end switch (action.type)

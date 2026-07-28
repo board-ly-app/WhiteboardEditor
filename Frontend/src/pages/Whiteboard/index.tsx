@@ -232,6 +232,7 @@ const Whiteboard = () => {
     arrowStart: 'none',
     arrowEnd: 'none',
     shadow: 0,
+    cornerRadius: 0,
   });
 
   const name : string | null = useSelector(

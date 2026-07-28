@@ -1625,6 +1625,7 @@ mod unit_tests {
                 rotation: 0.0,
                 z_index: 0.0,
                 shadow: Some(0.0),
+                corner_radius: None,
             },
             CanvasObjectModel::Rect {
                 x: 200.0,
@@ -1637,6 +1638,7 @@ mod unit_tests {
                 rotation: 0.0,
                 z_index: 0.0,
                 shadow: Some(0.0),
+                corner_radius: None,
             },
             CanvasObjectModel::Rect {
                 x: 300.0,
@@ -1649,6 +1651,7 @@ mod unit_tests {
                 rotation: 0.0,
                 z_index: 0.0,
                 shadow: Some(0.0),
+                corner_radius: None,
             },
         ];
         let client_msg_s = format!(
@@ -1803,6 +1806,7 @@ mod unit_tests {
                                         rotation,
                                         z_index,
                                         shadow: _,
+                                        corner_radius: _,
                                     },
                                     CanvasObjectModel::Rect {
                                         x: x_exp,
@@ -1815,6 +1819,7 @@ mod unit_tests {
                                         rotation: rotation_exp,
                                         z_index: z_index_exp,
                                         shadow: _,
+                                        corner_radius: _,
                                     },
                                 ) => {
                                     if (x - x_exp).abs() > f64_prec {
@@ -1909,6 +1914,7 @@ mod unit_tests {
                     rotation: 0.0,
                     z_index: 0.0,
                     shadow: None,
+                    corner_radius: None,
                 },
             ),
             (
@@ -1924,6 +1930,7 @@ mod unit_tests {
                     rotation: 0.0,
                     z_index: 0.0,
                     shadow: None,
+                    corner_radius: None,
                 },
             ),
             (
@@ -1939,6 +1946,7 @@ mod unit_tests {
                     rotation: 0.0,
                     z_index: 0.0,
                     shadow: None,
+                    corner_radius: None,
                 },
             ),
         ];
