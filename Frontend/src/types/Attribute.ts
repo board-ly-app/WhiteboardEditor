@@ -134,6 +134,7 @@ export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
   ],
   image: [
     AttributeShadow,
+    AttributeCornerRadius,
     AttributeZOrder,
   ],
 }

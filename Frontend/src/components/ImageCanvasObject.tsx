@@ -53,6 +53,7 @@ export const ImageCanvasObject = ({
     height,
     rotation,
     src,
+    cornerRadius,
   } = model;
 
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
@@ -104,6 +105,7 @@ export const ImageCanvasObject = ({
         height={height}
         image={imageElement ?? undefined}
         rotation={rotation}
+        cornerRadius={cornerRadius ?? 0}
         {...shadowProps(model.shadow)}
       />
     </EditableShape>

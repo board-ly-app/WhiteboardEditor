@@ -132,6 +132,7 @@ const ImportImageMenu = () => {
             rotation: 0,
             src,
             shadow: 0,
+            cornerRadius: 0,
             zIndex: selectMaxZIndexByCanvas(currState, canvasId) + 1,
           };
 

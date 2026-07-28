@@ -62,6 +62,9 @@ pub enum CanvasObjectModel {
         rotation: f64,
         #[serde(default)]
         shadow: Option<f64>,
+        // -- default covers documents/messages predating rounded corners
+        #[serde(default)]
+        corner_radius: Option<f64>,
         #[serde(default)]
         z_index: f64,
     },
