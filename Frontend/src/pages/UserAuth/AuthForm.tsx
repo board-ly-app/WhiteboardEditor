@@ -23,7 +23,9 @@ import {
 
 // -- local imports
 import AuthContext from '@/context/AuthContext';
-import AuthInput from "@/components/AuthInput";
+
+import AuthInput from "./AuthInput";
+
 import { useUser } from "@/hooks/useUser";
 import api from '@/api/axios';
 

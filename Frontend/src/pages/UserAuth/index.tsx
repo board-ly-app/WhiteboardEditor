@@ -10,9 +10,11 @@ import {
 } from '@/app.config';
 
 import HeaderUnauthed from "@/components/HeaderUnauthed";
-import AuthForm from "@/components/AuthForm";
 import Page from '@/components/Page';
 import Footer from '@/components/Footer';
+
+import AuthForm from "./AuthForm";
+
 import api from '@/api/axios';
 import type { CreateWhiteboardFormData } from '@/components/CreateWhiteboardModal';
 import { useNavigate } from 'react-router';
