@@ -44,12 +44,30 @@ export interface RectModel extends ShapeModelBase {
   type: 'rect';
   width: number;
   height: number;
-  // -- optional: radius in px applied to all four corners; rects created
+  // -- optional: radius in px applied to all four corners; objects created
   // -- before rounded corners have none (treated as 0 = square corners)
   cornerRadius?: number;
 }
 
 export interface RectRecord extends RectModel, RecordBase {}
+
+export interface ImageModel {
+  type: 'image';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  // -- image content encoded as a data URL
+  src: string;
+  zIndex?: number;
+  shadow?: number;
+  // -- optional: radius in px applied to all four corners; objects created
+  // -- before rounded corners have none (treated as 0 = square corners)
+  cornerRadius?: number;
+}
+
+export interface ImageRecord extends ImageModel, RecordBase {}
 
 export interface EllipseModel extends ShapeModelBase {
   type: 'ellipse';
@@ -88,8 +106,8 @@ export interface TextModel extends ShapeModelAttributes {
 
 export interface TextRecord extends TextModel, RecordBase {}
 
-export type ShapeModel = RectModel | EllipseModel | TextModel;
-export type ShapeRecord = RectRecord | EllipseRecord | TextRecord;
+export type ShapeModel = RectModel | EllipseModel | TextModel | ImageModel;
+export type ShapeRecord = RectRecord | EllipseRecord | TextRecord | ImageRecord;
 
 export type CanvasObjectModel = ShapeModel | VectorModel;
 export type CanvasObjectRecord = ShapeRecord | VectorRecord;

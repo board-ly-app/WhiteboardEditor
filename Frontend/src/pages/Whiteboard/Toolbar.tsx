@@ -42,6 +42,7 @@ const tools: ToolChoice[] = [
   "rect",
   "ellipse",
   "text",
+  "import_image",
   "create_canvas",
 ];
 
@@ -95,14 +96,6 @@ const Toolbar = ({
     <div className="max-w-40 flex flex-col flex-shrink-0 text-center p-2 rounded-lg shadow-2xl backdrop-blur-md bg-bar-background/80 border-1 border-border">
       <h2 className="text-md text-h1-text font-bold mb-1">Tools</h2>
       {tools.map((tool) => renderToolChoice(tool))}
-
-      {/** Additional, non-tool choices **/}
-
-      {/** Import Image Button - Future implementation **/}
-      {/* <ToolbarButton
-        label="Import Image"
-        variant="default"
-      /> */}
     </div>
   )
 }

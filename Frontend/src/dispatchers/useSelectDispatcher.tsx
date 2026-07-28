@@ -162,6 +162,7 @@ const useSelectDispatcher = (): OperationDispatcher => {
           switch (obj.type) {
             case 'rect':
             case 'text':
+            case 'image':
             {
               const { x: objX, y: objY } = obj;
 

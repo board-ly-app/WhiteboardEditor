@@ -88,6 +88,7 @@ import type { ToolChoice } from '@/components/Tool';
 import CanvasCard from "@/pages/Whiteboard/CanvasCard";
 import Toolbar from "@/pages/Whiteboard/Toolbar";
 import ShapeAttributesMenu from "@/pages/Whiteboard/ShapeAttributesMenu";
+import ImportImageMenu from "@/pages/Whiteboard/ImportImageMenu";
 import DeleteShapesButton from '@/pages/Whiteboard/DeleteShapeButton';
 
 import {
@@ -593,7 +594,12 @@ const Whiteboard = () => {
                   <Toolbar
                     onToolChange={handleToolChange}
                   />
-      
+
+                  {/** Import Image Menu **/}
+                  {currentTool === 'import_image' && (
+                    <ImportImageMenu />
+                  )}
+
                   {/** Shape Attributes Menu **/}
                   <ShapeAttributesMenu
                     attributes={shapeAttributesState}

@@ -121,6 +121,7 @@ import useEllipseDispatcher from '@/dispatchers/useEllipseDispatcher';
 import useVectorDispatcher from '@/dispatchers/useVectorDispatcher';
 import useHandDispatcher from '@/dispatchers/useHandDispatcher';
 import useTextDispatcher from '@/dispatchers/useTextDispatcher';
+import useImportImageDispatcher from '@/dispatchers/useImportImageDispatcher';
 import useCreateCanvasDispatcher from '@/dispatchers/useCreateCanvasDispatcher';
 import useSelectDispatcher from '@/dispatchers/useSelectDispatcher';
 
@@ -293,6 +294,11 @@ const Canvas = ({
     onStartEditing: notifyStartEditing,
   });
 
+  const importImageDispatcher = useImportImageDispatcher({
+    shapeAttributes,
+    addShapes,
+  });
+
   const createCanvasDispatcher = useCreateCanvasDispatcher({
     shapeAttributes,
     addShapes,
@@ -319,6 +325,8 @@ const Canvas = ({
             return vectorDispatcher;
           case 'text':
             return textDispatcher;
+          case 'import_image':
+            return importImageDispatcher;
           case 'create_canvas':
             return createCanvasDispatcher;
           case 'select':
@@ -335,6 +343,7 @@ const Canvas = ({
       ellipseDispatcher,
       vectorDispatcher,
       textDispatcher,
+      importImageDispatcher,
       createCanvasDispatcher,
       selectDispatcher,
       defaultDispatcher,

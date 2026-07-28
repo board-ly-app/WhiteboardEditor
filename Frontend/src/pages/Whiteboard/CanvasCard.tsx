@@ -465,6 +465,7 @@ const CanvasCard = ({
                 case 'rect':
                 case 'text':
                 case 'ellipse':
+                case 'image':
                   return [
                     Math.min(currMinX, currObj.x),
                     Math.min(currMinY, currObj.y),
@@ -511,6 +512,7 @@ const CanvasCard = ({
               case 'rect':
               case 'ellipse':
               case 'text':
+              case 'image':
               {
                 createdObject.x -= minX;
                 createdObject.y -= minY;
@@ -656,6 +658,7 @@ const CanvasCard = ({
               case 'rect':
               case 'text':
               case 'ellipse':
+              case 'image':
                 attribs.x += selectedCanvasPointerPos.x;
                 attribs.y += selectedCanvasPointerPos.y;
                 break;
