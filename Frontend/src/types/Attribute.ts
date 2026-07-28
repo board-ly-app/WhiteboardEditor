@@ -41,6 +41,7 @@ import {
   AttributeArrowEnd,
 } from "@/components/AttributeArrowTips";
 import AttributeShadow from "@/components/AttributeShadow";
+import AttributeCornerRadius from "@/components/AttributeCornerRadius";
 
 export type AttributeType =
   | "number"
@@ -105,6 +106,7 @@ export const shapeAttributes: Record<ShapeType, AttributeDefinition[]> = {
     AttributeStrokeColor,
     AttributeFillColor,
     AttributeShadow,
+    AttributeCornerRadius,
     AttributeZOrder,
   ],
   ellipse: [

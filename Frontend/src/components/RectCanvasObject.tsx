@@ -53,6 +53,7 @@ export const RectCanvasObject = ({
     width,
     height,
     rotation,
+    cornerRadius,
   } = model;
 
   const handleTransformEnd = useCallback(
@@ -94,6 +95,7 @@ export const RectCanvasObject = ({
         stroke={strokeColor}
         strokeWidth={strokeWidth}
         rotation={rotation}
+        cornerRadius={cornerRadius ?? 0}
         {...shadowProps(model.shadow)}
       />
     </EditableShape>

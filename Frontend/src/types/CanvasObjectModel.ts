@@ -44,6 +44,9 @@ export interface RectModel extends ShapeModelBase {
   type: 'rect';
   width: number;
   height: number;
+  // -- optional: radius in px applied to all four corners; rects created
+  // -- before rounded corners have none (treated as 0 = square corners)
+  cornerRadius?: number;
 }
 
 export interface RectRecord extends RectModel, RecordBase {}
