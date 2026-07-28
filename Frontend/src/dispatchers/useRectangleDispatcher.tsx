@@ -19,6 +19,8 @@ import type {
 
 import { getAttributesByShape, type AttributeDefinition } from '@/types/Attribute';
 
+import { constrainToSquare } from '@/lib/dragConstraints';
+
 // === useRectangleDispatcher ==================================================
 //
 // Tool for drawing rectangles.
@@ -57,7 +59,10 @@ const useRectangleDispatcher = ({
         const pos = ev.currentTarget.getRelativePointerPosition();
 
         if (pos) {
-          const { x, y } = pos;
+          // -- shift constrains the drag to a perfect square
+          const { x, y } = ev.evt.shiftKey
+            ? constrainToSquare(mouseDownCoords, pos)
+            : pos;
 
           setMouseCoords({ x, y });
         }
@@ -71,7 +76,10 @@ const useRectangleDispatcher = ({
       const pos = ev.currentTarget.getRelativePointerPosition();
 
       if (pos && mouseDownCoords) {
-        const { x: xA, y: yA } = pos;
+        // -- shift constrains the drag to a perfect square
+        const { x: xA, y: yA } = ev.evt.shiftKey
+          ? constrainToSquare(mouseDownCoords, pos)
+          : pos;
         const { x: xB, y: yB } = mouseDownCoords;
         const xMin = Math.min(xA, xB);
         const yMin = Math.min(yA, yB);
@@ -122,7 +130,7 @@ const useRectangleDispatcher = ({
 
   const getTooltipText = () => {
     if (mouseDownCoords) {
-      return 'Drag to desired shape, then release';
+      return 'Drag to desired shape, then release (hold Shift for a square)';
     } else {
       return 'Click to draw a rectangle';
     }
