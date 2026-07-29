@@ -14,7 +14,6 @@ import {
 
 import axios, {
   type AxiosResponse,
-  type AxiosError,
 } from 'axios';
 
 import {
@@ -79,11 +78,10 @@ export const LoginForm = (): React.JSX.Element => {
 
       // -- derived state
       const searchParams = new URLSearchParams(location.search);
-      const tempWhiteboardId = searchParams.get('tempWhiteboardId');
+      const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
       const redirectUrl = searchParams.has('redirect') ?
         decodeURIComponent(searchParams.get('redirect') || '')
         : '/dashboard';
-      const endpoint = "/auth/login";
 
       setSubmitButtonStatus('pending');
 
@@ -95,13 +93,16 @@ export const LoginForm = (): React.JSX.Element => {
       });
 
       try {
-        let isTransferring = false;
+        const endpoint = "/auth/login";
         const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
+        let isTransferring = false;
         
         const {
           user,
           sessionToken,
         } = res.data;
+
+        handleLogin(user, sessionToken);
 
         // -- Attempt to transfer temp whiteboard if applicable
         if (tempWhiteboardId) {
@@ -124,9 +125,9 @@ export const LoginForm = (): React.JSX.Element => {
                   ? "You must be the owner of the whiteboard to add it to your account."
                   : "Could not transfer whiteboard.";
               
-              toast.warn(message);
+              toast.error(message);
             } else {
-              toast.warn("Could not transfer whiteboard.");
+              toast.error("Could not transfer whiteboard.");
             }
 
             console.error('Error transferring temp whiteboard');
@@ -134,16 +135,14 @@ export const LoginForm = (): React.JSX.Element => {
         }
 
         setUiStatus('ok'); // -- ensure fields are not highlighted as errors
-        handleLogin(user, sessionToken);
 
         if (!isTransferring) {
           navigate(redirectUrl);
         }
       } catch (err: unknown) {
-        const axiosErr = err as AxiosError;
-
-          if ((axiosErr?.response?.status) && (axiosErr.response.status >= 400) && (axiosErr.response.status < 500)) {
-            const status = axiosErr.response.status;
+        if (axios.isAxiosError(err)) {
+          if ((err?.response?.status) && (err.response.status >= 400) && (err.response.status < 500)) {
+            const status = err.response.status;
 
             console.error('Authentication request failed with status', status);
 
@@ -163,9 +162,12 @@ export const LoginForm = (): React.JSX.Element => {
             // -- display error to user
             toast.error('Error handling authentication.');
           }
-        } finally {
-          setSubmitButtonStatus('enabled');
         }
+
+        console.error('');
+      } finally {
+        setSubmitButtonStatus('enabled');
+      }
     },
     [
       email,
@@ -187,7 +189,7 @@ export const LoginForm = (): React.JSX.Element => {
 
       if (transferringWhiteboardId) {
         try {
-          await api.put(`/whiteboards/${transferringWhiteboardId}/newName`, {
+          await api.put(`/whiteboards/${encodeURIComponent(transferringWhiteboardId)}/newName`, {
             newName: nameFromModal,
           });
 

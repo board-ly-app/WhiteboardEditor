@@ -13,7 +13,12 @@ import HeaderUnauthed from "@/components/HeaderUnauthed";
 import Page from '@/components/Page';
 import Footer from '@/components/Footer';
 
-import AuthForm from "./AuthForm";
+import {
+  LoginForm,
+} from "./LoginForm";
+import {
+  SignupForm,
+} from "./SignupForm";
 
 import api from '@/api/axios';
 import type { CreateWhiteboardFormData } from '@/components/CreateWhiteboardModal';
@@ -35,13 +40,16 @@ const UserAuth = ({
   const navigate = useNavigate();
 
   let authActionLabel : string;
+  let AuthForm : () => React.ReactNode;
 
   switch (action) {
     case 'login':
       authActionLabel = 'Log in';
+      AuthForm = LoginForm;
       break;
     case 'signup':
       authActionLabel = 'Create an Account';
+      AuthForm = SignupForm;
       break;
     default:
       throw new Error(`unrecognized auth action: ${action}`);
@@ -140,9 +148,7 @@ const UserAuth = ({
 
         {/** Auth portal **/}
         <div className="rounded-lg border-border border-1 shadow-md bg-card-background py-5 px-2 sm:p-10">
-          <AuthForm
-            initialAction={action}
-          />
+          <AuthForm />
         </div>
       </div>
 

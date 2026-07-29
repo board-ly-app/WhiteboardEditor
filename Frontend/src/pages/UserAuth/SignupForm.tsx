@@ -81,7 +81,7 @@ export const SignupForm = (): React.JSX.Element => {
 
       // -- derived state
       const searchParams = new URLSearchParams(location.search);
-      const tempWhiteboardId = searchParams.get('tempWhiteboardId');
+      const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
       const redirectUrl = searchParams.has('redirect') ?
         decodeURIComponent(searchParams.get('redirect') || '')
         : '/dashboard';
@@ -105,6 +105,8 @@ export const SignupForm = (): React.JSX.Element => {
           user,
           sessionToken,
         } = res.data;
+
+        handleLogin(user, sessionToken);
 
         // -- Attempt to transfer temp whiteboard if applicable
         if (tempWhiteboardId) {
@@ -137,7 +139,6 @@ export const SignupForm = (): React.JSX.Element => {
         }
 
         setUiStatus('ok'); // -- ensure fields are not highlighted as errors
-        handleLogin(user, sessionToken);
 
         if (!isTransferring) {
           navigate(redirectUrl);
