@@ -732,6 +732,10 @@ impl WhiteboardMetadata {
         &self.name
     }
 
+    pub fn set_name(&mut self, name: &str) {
+        self.name = String::from(name);
+    }// -- end pub fn set_name
+
     pub fn visibility(&self) -> WhiteboardVisibilityEnum {
         self.visibility
     }
