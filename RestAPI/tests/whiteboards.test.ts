@@ -21,6 +21,11 @@ import {
   type IWhiteboardUserPermissionModel,
 } from '../src/models/Whiteboard';
 
+import {
+  createSignedTempConversionPayload,
+  verifySignedTempConversionPayload,
+} from '../src/services/whiteboardService';
+
 const MONGO_URI = 'mongodb://test_db:27017/testdb';
 
 const {
@@ -1020,6 +1025,48 @@ describe("Whiteboards API", () => {
     }
   );
 
+  it('should authorize conversion of a temporary whiteboard to a permanent whiteboard', async () => {
+    const whiteboardCollection = mongoose.connection.collection('whiteboards');
+    const userCollection = mongoose.connection.collection('users');
+
+    let tempWhiteboard = await whiteboardCollection.findOne({ name: "Temp Whiteboard 1"});
+    let user = await userCollection.findOne({ username: 'alice' });
+    
+    expect(tempWhiteboard).not.toBeNull();
+    expect(user).not.toBeNull();
+    
+    if ((! tempWhiteboard) || (! user)) {
+      return;
+    }
+    
+    expect(tempWhiteboard).toHaveProperty('createdAt');
+    expect(tempWhiteboard).not.toHaveProperty('time_created');
+    expect(tempWhiteboard.kind).toBe('temp_whiteboard');
+
+    // get the temp user that owns the temp whiteboard
+    let tempUser = tempWhiteboard.user_permissions.find((perm: any) => perm.permission === 'own' && perm.type === 'user')?.user;
+
+    const authToken = jwt.sign(
+      { sub: tempUser._id.toHexString() },
+      ACCESS_TOKEN_SECRET!,
+      { expiresIn: '1h' }
+    );
+
+    const res = await request(app)
+      .post(`/api/v1/whiteboards/${tempWhiteboard._id}/auth_convert_temp_to_perm`)
+      .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
+      .send({
+        permanentUserEmail: "alice@example.com",
+      })
+      .expect(201);
+
+    if (! ('signedConversionRequest' in res.body)) {
+      throw new Error('Response body missing field "signedConversionRequest"');
+    }
+    expect(verifySignedTempConversionPayload(res.body.signedConversionRequest))
+      .not.toBeNull();
+  });
+
   it('should convert a temporary whiteboard to a permanent whiteboard', async () => {
     const whiteboardCollection = mongoose.connection.collection('whiteboards');
     const userCollection = mongoose.connection.collection('users');
@@ -1042,18 +1089,23 @@ describe("Whiteboards API", () => {
     let tempUser = tempWhiteboard.user_permissions.find((perm: any) => perm.permission === 'own' && perm.type === 'user')?.user;
 
     const authToken = jwt.sign(
-      { sub: tempUser!._id.toString(), isTemp: true },
+      { sub: user._id.toHexString() },
       ACCESS_TOKEN_SECRET!,
       { expiresIn: '1h' }
     );
+    const signedConversionRequest = createSignedTempConversionPayload({
+      permanentUserEmail: 'alice@example.com',
+      tempUserId: tempUser._id.toHexString(),
+      whiteboardId: tempWhiteboard._id.toHexString(),
+    });
 
     await request(app)
       .post(`/api/v1/whiteboards/${tempWhiteboard._id}/convert_temp_to_perm`)
       .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
-        user: { _id: user._id }
+        signedConversionRequest,
       })
-      .expect(200);
+      .expect(201);
 
     const updatedBoard = await whiteboardCollection.findOne({ _id: tempWhiteboard._id });
 
@@ -1079,12 +1131,14 @@ describe("Whiteboards API", () => {
     const userCollection = mongoose.connection.collection('users');
 
     let tempWhiteboard = await whiteboardCollection.findOne({ name: "Temp Whiteboard 2"});
-    let user = await userCollection.findOne({ username: 'alice' });
+    const userA = await userCollection.findOne({ username: 'alice' });
+    const userB = await userCollection.findOne({ username: 'bob' });
     
     expect(tempWhiteboard).not.toBeNull();
-    expect(user).not.toBeNull();
+    expect(userA).not.toBeNull();
+    expect(userB).not.toBeNull();
     
-    if ((! tempWhiteboard) || (! user)) {
+    if ((! tempWhiteboard) || (! userA) || (! userB)) {
       return;
     }
 
@@ -1093,16 +1147,21 @@ describe("Whiteboards API", () => {
     expect(tempWhiteboard.kind).toBe('temp_whiteboard');
 
     const authToken = jwt.sign(
-      { sub: user._id.toString() },
+      { sub: userB._id.toString() },
       ACCESS_TOKEN_SECRET!,
       { expiresIn: '1h' }
     );
+    const signedConversionRequest = createSignedTempConversionPayload({
+      permanentUserEmail: 'bob@example.com',
+      tempUserId: userA._id.toHexString(),
+      whiteboardId: tempWhiteboard._id.toHexString(),
+    });
 
     await request(app)
       .post(`/api/v1/whiteboards/${tempWhiteboard._id}/convert_temp_to_perm`)
       .set("Cookie", `${ACCESS_TOKEN_COOKIE_ID}=${authToken}`)
       .send({
-        user: { _id: user._id }
+        signedConversionRequest,
       })
       .expect(403);
 

@@ -35,6 +35,8 @@ import {
   getWhiteboardsByOwner,
   deleteWhiteboardById,
   removeDanglingUserPermissions,
+  createSignedTempConversionPayload,
+  verifySignedTempConversionPayload,
 } from '../services/whiteboardService';
 
 export interface CreateWhiteboardRequest {
@@ -43,6 +45,12 @@ export interface CreateWhiteboardRequest {
   width: number;
   height: number;
   visibility: IWhiteboardVisibilityEnum;
+}
+
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
+
+if (! ACCESS_TOKEN_SECRET) {
+  throw new Error('Missing required env var ACCESS_TOKEN_SECRET');
 }
 
 export const handleGetWhiteboardById = async (
@@ -257,83 +265,6 @@ export const handleCreateTempWhiteboard = async (
     res.status(500).json({ message: "Unexpected server error" });
   }
 };// -- end handleCreateTempWhiteboard
-
-export const handleConvertTempToPerm = async (
-  req: AuthorizedRequest<{ whiteboardId: string }, any, { user: IUserType }>,
-  res: AuthorizedResponse,
-) => {
-  const { whiteboardId } = req.params;
-  const tempUserId = res.locals.authUser._id;
-  const permanentUserId = req.body.user._id || req.body.user.id;
-
-  try {
-    const whiteboard = await Whiteboard.findById(whiteboardId);
-
-    if (!whiteboard) {
-      return res.status(404).json({ message: "Whiteboard not found" });
-    }
-
-    if (whiteboard.kind !== 'temp_whiteboard') {
-      return res.status(400).json({ message: "Whiteboard is not a temporary whiteboard" });
-    }
-
-    // Check if user has 'own' permission of whiteboard
-    const isOwner = whiteboard.user_permissions.some(perm =>
-      perm.type === 'user' &&
-      perm.user.toString() === tempUserId.toString() &&
-      perm.permission === 'own'
-    )
-
-    if (!isOwner) {
-      return res.status(403).json({ message: `Not the owner of this whiteboard` });
-    }
-
-    const permUserObjectId = new Types.ObjectId(permanentUserId);
-
-    const updatedPermissions = whiteboard.user_permissions.map(perm => {
-      if (perm.type === 'user' && perm.user.toString() === tempUserId.toString()) {
-        return {
-          permission: 'own',
-          type: 'user',
-          user: permUserObjectId,
-          _id: new Types.ObjectId()
-        }
-      } else {
-        if (perm.type === 'user') {
-          perm.user = new Types.ObjectId(perm.user.toString());
-        }
-
-        return perm;
-      }
-    });
-
-    await Whiteboard.collection.updateOne(
-      { _id: new Types.ObjectId(whiteboardId) },
-      {
-        $set: {
-          name: 'Trial Whiteboard',
-          kind: 'permanent_whiteboard',
-          time_created: new Date(),
-          time_last_modified: new Date(),
-          user_permissions: updatedPermissions,
-        },
-        $unset: {
-          createdAt: ""
-        }
-      }
-    );
-
-    return res.status(200).json({ message: "Whiteboard converted to permanent successfully" });
-  } catch (err: unknown) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('Server error:', err);
-    } else {
-      console.error('Server error');
-    }
-
-    return res.status(500).json({ message: "Server error", err });
-  }
-};
 
 export const handleChangeWhiteboardName = async (
   req: AuthorizedRequest<{ whiteboardId: string }, any, { newName: string }>,
@@ -576,3 +507,174 @@ export const handleDeleteWhiteboard = async (
     return res.status(500).json({ message: 'Unexpected server error' });
   }
 };// -- end handleDeleteWhiteboard
+
+interface AuthTempConversionReqBody {
+  permanentUserEmail: string;
+}
+
+const isAuthTempConversionReqBody = (reqBody: unknown): reqBody is AuthTempConversionReqBody => {
+  if (! reqBody) return false;
+  if (typeof reqBody !== 'object') return false;
+  if (! ('permanentUserEmail' in reqBody)) return false;
+  if (typeof reqBody.permanentUserEmail !== 'string') return false;
+
+  return true;
+};// -- end isAuthTempConversionReqBody
+
+export const handleAuthorizeTempConversion = async (
+  req: AuthorizedRequest<{ whiteboardId: string }, any>,
+  res: AuthorizedResponse,
+) => {
+  try {
+    if (! isAuthTempConversionReqBody(req.body)) {
+      return res.status(400).json({ message: 'Bad request body' });
+    }
+
+    const tempUserId = res.locals.authUser._id;
+    const whiteboardId = req.params.whiteboardId;
+    const whiteboard = await Whiteboard.findById(whiteboardId);
+
+    if (! whiteboard) {
+      return res.status(404).json({ message: "Whiteboard not found" });
+    }
+
+    if (whiteboard.kind !== 'temp_whiteboard') {
+      return res.status(400).json({ message: "Whiteboard is not a temporary whiteboard" });
+    }
+
+    // Check if user has 'own' permission of whiteboard
+    const isOwner = whiteboard.user_permissions.some(perm =>
+      perm.type === 'user' &&
+      perm.user.toString() === tempUserId.toString() &&
+      perm.permission === 'own'
+    )
+
+    if (! isOwner) {
+      return res.status(403).json({ message: `Not the owner of this whiteboard` });
+    }
+
+    const signedConversionRequest = createSignedTempConversionPayload({
+      tempUserId: tempUserId.toHexString(),
+      permanentUserEmail: req.body.permanentUserEmail,
+      whiteboardId,
+    });
+
+    return res.status(201).json({
+      signedConversionRequest,
+    })
+  } catch (e: unknown) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('handleAuthorizeTempConversion failed:', e);
+    } else {
+      console.error('handleAuthorizeTempConversion failed');
+    }
+
+    return res.status(500).json({
+      message: 'Internal server error',
+    });
+  }
+};// -- end handleAuthorizeTempConversion
+
+interface ConvertTempToPermReqBody {
+  signedConversionRequest: string;
+}
+
+const isConvertTempToPermReqBody = (body: unknown): body is ConvertTempToPermReqBody => {
+  if (! body) return false;
+  if (typeof body !== 'object') return false;
+  if (! ('signedConversionRequest' in body)) return false;
+  if (typeof body.signedConversionRequest !== 'string') return false;
+
+  return true;
+};// -- end isConvertTempToPermReqBody
+
+// -- Authenticated user should be permanent user who is assuming ownership
+export const handleConvertTempToPerm = async (
+  req: AuthorizedRequest<{ whiteboardId: string }, any>,
+  res: AuthorizedResponse,
+) => {
+  try {
+    if (! isConvertTempToPermReqBody(req.body)) {
+      return res.status(400).json({ message: 'Bad request body' });
+    }
+
+    const conversionRequest = verifySignedTempConversionPayload(req.body.signedConversionRequest);
+    if (! conversionRequest) return res.status(400).json({ message: 'Invalid conversion request' });
+
+    const permanentUser = res.locals.authUser;
+    if (permanentUser.kind !== 'permanent') {
+      return res.status(403).json({ message: 'Can only transfer ownership to permanent user' });
+    } else if (conversionRequest.permanentUserEmail !== permanentUser.email) {
+      return res.status(403).json({ message: 'You are not the specified permanent user' });
+    }
+
+    const { whiteboardId } = req.params;
+    const tempUserId = conversionRequest.tempUserId;
+    const permanentUserId = permanentUser._id;
+    const whiteboard = await Whiteboard.findById(whiteboardId);
+
+    if (! whiteboard) {
+      return res.status(404).json({ message: "Whiteboard not found" });
+    }
+
+    if (whiteboard.kind !== 'temp_whiteboard') {
+      return res.status(400).json({ message: "Whiteboard is not a temporary whiteboard" });
+    }
+
+    // Check if user has 'own' permission of whiteboard
+    const isOwner = whiteboard.user_permissions.some(perm =>
+      perm.type === 'user' &&
+      perm.user.toString() === tempUserId.toString() &&
+      perm.permission === 'own'
+    )
+
+    if (! isOwner) {
+      return res.status(403).json({ message: `Not the owner of this whiteboard` });
+    }
+
+    const permUserObjectId = new Types.ObjectId(permanentUserId);
+
+    const updatedPermissions = whiteboard.user_permissions.map(perm => {
+      if (perm.type === 'user' && perm.user.toString() === tempUserId.toString()) {
+        return {
+          permission: 'own',
+          type: 'user',
+          user: permUserObjectId,
+          _id: new Types.ObjectId()
+        }
+      } else {
+        if (perm.type === 'user') {
+          perm.user = new Types.ObjectId(perm.user.toString());
+        }
+
+        return perm;
+      }
+    });
+
+    await Whiteboard.collection.updateOne(
+      { _id: new Types.ObjectId(whiteboardId) },
+      {
+        $set: {
+          name: 'Trial Whiteboard',
+          kind: 'permanent_whiteboard',
+          time_created: new Date(),
+          time_last_modified: new Date(),
+          user_permissions: updatedPermissions,
+        },
+        $unset: {
+          createdAt: ""
+        }
+      }
+    );
+
+    return res.status(201).json({ message: "Whiteboard converted to permanent successfully" });
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Server error:', err);
+    } else {
+      console.error('Server error');
+    }
+
+    return res.status(500).json({ message: "Server error", err });
+  }
+};// -- end handleConvertTempToPerm

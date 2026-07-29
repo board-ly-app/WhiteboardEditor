@@ -85,17 +85,40 @@ export const LoginForm = (): React.JSX.Element => {
 
       setSubmitButtonStatus('pending');
 
-      const payload: LoginPayload = ({
-        authSource,
-        email,
-        password,
-        transferWhiteboardId: tempWhiteboardId
-      });
+      // -- If we are going to convert a temporary whiteboard to permanent, we
+      // need to authorize the request as the owning temp user first.
+      let signedConversionRequest : string | null = null;
+
+      if (tempWhiteboardId) {
+        try {
+          const endpoint = `/whiteboards/${encodeURIComponent(tempWhiteboardId)}/auth_convert_temp_to_perm`;
+          const res = await api.post(endpoint, {
+            permanentUserEmail: email,
+          });
+
+          if (! ('signedConversionRequest' in res.data)) {
+            throw new Error('Response missing field "signedConversionRequest"');
+          }
+
+          signedConversionRequest = res.data.signedConversionRequest;
+        } catch (e: unknown) {
+          console.error('Authorization of temp whiteboard conversion failed:', e);
+          toast.error('Authorization of temp whiteboard conversion failed');
+
+          setSubmitButtonStatus('enabled');
+          return;
+        }
+      }
 
       try {
         const endpoint = "/auth/login";
+        const payload: LoginPayload = ({
+          authSource,
+          email,
+          password,
+          transferWhiteboardId: tempWhiteboardId
+        });
         const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
-        let isTransferring = false;
         
         const {
           user,
@@ -103,50 +126,12 @@ export const LoginForm = (): React.JSX.Element => {
         } = res.data;
 
         handleLogin(user, sessionToken);
-
-        // -- Attempt to transfer temp whiteboard if applicable
-        if (tempWhiteboardId) {
-          try {
-            await api.post(`/whiteboards/${encodeURIComponent(tempWhiteboardId)}/convert_temp_to_perm`, {
-              user: { _id: user.id }
-            });
-
-            setTransferringWhiteboardId(tempWhiteboardId);
-
-            // -- Prompt user to change name of whiteboard from default "Trial Whiteboard"
-            setChangeNameOpen(true);
-            isTransferring = true;
-
-            toast.success("Whiteboard added to your whiteboards!");
-          } catch (err: unknown) {
-            if (axios.isAxiosError(err)) {
-              const message = 
-                err.response?.status === 403
-                  ? "You must be the owner of the whiteboard to add it to your account."
-                  : "Could not transfer whiteboard.";
-              
-              toast.error(message);
-            } else {
-              toast.error("Could not transfer whiteboard.");
-            }
-
-            console.error('Error transferring temp whiteboard');
-          }
-        }
-
-        setUiStatus('ok'); // -- ensure fields are not highlighted as errors
-
-        if (!isTransferring) {
-          navigate(redirectUrl);
-        }
       } catch (err: unknown) {
         if (axios.isAxiosError(err)) {
           if ((err?.response?.status) && (err.response.status >= 400) && (err.response.status < 500)) {
             const status = err.response.status;
 
             console.error('Authentication request failed with status', status);
-
-            // === Display error to user ===========================================
 
             // -- ensure fields are highlighted
             setUiStatus('err_user');
@@ -164,10 +149,46 @@ export const LoginForm = (): React.JSX.Element => {
           }
         }
 
-        console.error('');
-      } finally {
         setSubmitButtonStatus('enabled');
+        return;
       }
+
+      // -- If applicable, fulfill conversion of temp whiteboard
+      if (tempWhiteboardId && signedConversionRequest) {
+        try {
+          await api.post(`/whiteboards/${encodeURIComponent(tempWhiteboardId)}/convert_temp_to_perm`, {
+            signedConversionRequest,
+          });
+
+          setTransferringWhiteboardId(tempWhiteboardId);
+
+          // -- Prompt user to change name of whiteboard from default "Trial Whiteboard"
+          setChangeNameOpen(true);
+
+          toast.success("Whiteboard added to your whiteboards!");
+        } catch (err: unknown) {
+          if (axios.isAxiosError(err)) {
+            const message = 
+              err.response?.status === 403
+                ? "You must be the owner of the whiteboard to add it to your account."
+                : "Could not transfer whiteboard.";
+            
+            toast.error(message);
+          } else {
+            toast.error("Could not transfer whiteboard.");
+          }
+
+          console.error('Error transferring temp whiteboard');
+
+          setSubmitButtonStatus('enabled');
+          return;
+        }
+      } else {
+        // If not converting temp whiteboard, navigate to redirect url
+        navigate(redirectUrl);
+      }
+
+      setSubmitButtonStatus('enabled');
     },
     [
       email,

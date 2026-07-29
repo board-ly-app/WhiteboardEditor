@@ -2,6 +2,8 @@ import {
   Types,
 } from "mongoose";
 
+import jwt from 'jsonwebtoken';
+
 // --- local imports
 import {
   Whiteboard,
@@ -24,6 +26,12 @@ import {
   type IUser,
   type UserIdType,
 } from '../models/User';
+
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
+
+if (! ACCESS_TOKEN_SECRET) {
+  throw new Error('Missing required env var ACCESS_TOKEN_SECRET');
+}
 
 export type GetWhiteboardRes = 
   | { status: 'ok'; whiteboard: IWhiteboard <IUser, ICanvas <IUser>>; }
@@ -375,3 +383,41 @@ export const deleteWhiteboardById = async (
   // -- success
   return { status: 'ok' };
 };// -- end deleteWhiteboardById
+
+export interface AuthTempConversionPayload {
+  tempUserId: string;
+  permanentUserEmail: string;
+  whiteboardId: string;
+}
+
+export const isAuthTempConversionPayload = (payload: unknown): payload is AuthTempConversionPayload => {
+  if (! payload) return false;
+  if (typeof payload !== 'object') return false;
+  if (! ('tempUserId' in payload)) return false;
+  if (typeof payload.tempUserId !== 'string') return false;
+  if (! ('permanentUserEmail' in payload)) return false;
+  if (typeof payload.permanentUserEmail !== 'string') return false;
+  if (! ('whiteboardId' in payload)) return false;
+  if (typeof payload.whiteboardId !== 'string') return false;
+
+  return true;
+};// -- end isAuthTempConversionPayload
+
+export const createSignedTempConversionPayload = (payload: AuthTempConversionPayload): string => {
+  return jwt.sign(payload, ACCESS_TOKEN_SECRET, {
+    algorithm: 'HS256',
+    // -- We want this to be extremely short lived
+    expiresIn: 60,
+  });
+};// -- end createSignedTempConversionPayload
+
+export const verifySignedTempConversionPayload = (token: string): AuthTempConversionPayload | null => {
+  try {
+    const payload = jwt.verify(token, ACCESS_TOKEN_SECRET);
+    if (! isAuthTempConversionPayload(payload)) return null;
+
+    return payload;
+  } catch (_e: unknown) {
+    return null;
+  }
+};// -- end verifySignedTempConversionPayload
