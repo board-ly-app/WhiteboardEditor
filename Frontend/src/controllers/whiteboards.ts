@@ -82,6 +82,8 @@ export const addWhiteboard = (
   }
 
   // -- add default whiteboard settings
+  dispatch(setCanvasObjects(canvasObjects));
+  dispatch(setCanvases(canvases));
   dispatch(setWhiteboards(Object.fromEntries(Object.entries(whiteboards).map(
     ([wid, attribs]) => [
       wid, {
@@ -95,8 +97,7 @@ export const addWhiteboard = (
       }
     ]
   ))));
-  dispatch(setCanvases(canvases));
-  dispatch(setCanvasObjects(canvasObjects));
+
   dispatch(setChildCanvasesByCanvas(childCanvasesByCanvas));
   dispatch(setObjectsByCanvas(canvasObjectsByCanvas));
   dispatch(setCanvasesByWhiteboard(canvasesByWhiteboard));
