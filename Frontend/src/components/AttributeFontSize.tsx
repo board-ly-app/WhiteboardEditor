@@ -1,6 +1,7 @@
 import {
   useCallback,
 } from 'react';
+
 import {
   useSelector,
 } from 'react-redux';
@@ -14,16 +15,20 @@ import {
 import {
   selectCanvasObjectsByCanvas,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
+
+import {
+  useNumericAttributeInput,
+} from '@/hooks/useNumericAttributeInput';
+
 import type { AttributeDefinition, AttributeProps } from "@/types/Attribute";
 import type { CanvasObjectIdType, CanvasObjectModel } from "@/types/CanvasObjectModel";
 import AttributeMenuItem from "./AttributeMenuItem";
-import { useEffect, useState } from "react";
 
 const FontSizeComponent = ({
-  selectedShapeIds, 
-  handleUpdateShapes, 
-  dispatch, 
-  canvasId, 
+  selectedShapeIds,
+  handleUpdateShapes,
+  dispatch,
+  canvasId,
   value,
 }: AttributeProps) => {
   const canvasObjectsById = useSelector(
@@ -31,36 +36,31 @@ const FontSizeComponent = ({
     lodash.isEqual
   );
 
-  const [inputValue, setInputValue] = useState(value?.toString() ?? '');
+  const commitFontSize = useCallback(
+    (fontSize: number) => {
+      dispatch({ type: 'SET_FONT_SIZE', payload: fontSize });
 
-  useEffect(() => {
-    setInputValue(value?.toString() ?? '');
-  }, [value]);
-  
-  const onChangeFontSize = useCallback(
-    (ev: React.ChangeEvent<HTMLInputElement>) => {
-      ev.preventDefault();
-
-      const val = ev.target.value;
-      setInputValue(val);
-
-      const size = parseFloat(val);
-      
-      if (!isNaN(size)) {
-        dispatch({ type: 'SET_FONT_SIZE', payload: size });
-
-        if (canvasObjectsById) {
-          handleUpdateShapes(
-            canvasId,
-            canvasObjectsById,
-            Object.fromEntries(selectedShapeIds.map(id => [id, { fontSize: size }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
-          );
-        }
+      if (canvasObjectsById) {
+        handleUpdateShapes(
+          canvasId,
+          canvasObjectsById,
+          Object.fromEntries(selectedShapeIds.map(id => [id, { fontSize }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
+        );
       }
     },
-    [dispatch, handleUpdateShapes, canvasObjectsById, canvasId, selectedShapeIds]
+    [dispatch, handleUpdateShapes, canvasId, canvasObjectsById, selectedShapeIds]
   );
- 
+
+  const {
+    inputValue,
+    onChange,
+    onFocus,
+    onBlur,
+  } = useNumericAttributeInput({
+    value,
+    commit: commitFontSize,
+  });
+
   return (
     <div>
       <AttributeMenuItem title="Font Size">
@@ -68,7 +68,9 @@ const FontSizeComponent = ({
           name="font-size"
           type="number"
           value={inputValue}
-          onChange={onChangeFontSize}
+          onChange={onChange}
+          onFocus={onFocus}
+          onBlur={onBlur}
           className="w-16 mr-0"
         />
       </AttributeMenuItem>
