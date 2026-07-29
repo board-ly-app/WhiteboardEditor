@@ -16,52 +16,51 @@ import {
   selectCanvasObjectsByCanvas,
 } from '@/store/canvasObjects/canvasObjectsSelectors';
 
+import {
+  useNumericAttributeInput,
+} from '@/hooks/useNumericAttributeInput';
+
 import type { AttributeDefinition, AttributeProps } from "@/types/Attribute";
 import type { CanvasObjectIdType, CanvasObjectModel } from "@/types/CanvasObjectModel";
 import AttributeMenuItem from "./AttributeMenuItem";
-import { useEffect, useState } from "react";
 
 const StrokeWidthComponent = ({
-  selectedShapeIds, 
-  handleUpdateShapes, 
-  dispatch, 
-  canvasId, 
+  selectedShapeIds,
+  handleUpdateShapes,
+  dispatch,
+  canvasId,
   value,
 }: AttributeProps) => {
   const canvasObjectsById = useSelector(
     (state: RootState) => selectCanvasObjectsByCanvas(state, canvasId),
     lodash.isEqual
   );
-  const [inputValue, setInputValue] = useState(value?.toString() ?? '');
 
-  useEffect(() => {
-    setInputValue(value?.toString() ?? '');
-  }, [value]);
+  const commitStrokeWidth = useCallback(
+    (strokeWidth: number) => {
+      dispatch({ type: 'SET_STROKE_WIDTH', payload: strokeWidth });
 
-  const onChangeStrokeWidth = useCallback(
-    (ev: React.ChangeEvent<HTMLInputElement>) => {
-      ev.preventDefault();
-
-      const val = ev.target.value;
-      setInputValue(val);
-
-      const widthParsed = parseFloat(val);  
-      
-      if (!isNaN(widthParsed)) {
-        dispatch({ type: 'SET_STROKE_WIDTH', payload: widthParsed });
-        
-        if (canvasObjectsById) {
-          handleUpdateShapes(
-            canvasId,
-            canvasObjectsById,
-            Object.fromEntries(selectedShapeIds.map(id => [id, { strokeWidth: widthParsed }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
-          );
-        }
+      if (canvasObjectsById) {
+        handleUpdateShapes(
+          canvasId,
+          canvasObjectsById,
+          Object.fromEntries(selectedShapeIds.map(id => [id, { strokeWidth }])) as Record<CanvasObjectIdType, Partial<CanvasObjectModel>>
+        );
       }
     },
-    [setInputValue, dispatch, handleUpdateShapes, canvasId, canvasObjectsById, selectedShapeIds]
+    [dispatch, handleUpdateShapes, canvasId, canvasObjectsById, selectedShapeIds]
   );
- 
+
+  const {
+    inputValue,
+    onChange,
+    onFocus,
+    onBlur,
+  } = useNumericAttributeInput({
+    value,
+    commit: commitStrokeWidth,
+  });
+
   return (
     <div>
       <AttributeMenuItem title="Stroke Width">
@@ -71,7 +70,9 @@ const StrokeWidthComponent = ({
           min={1}
           step={0.5}
           value={inputValue}
-          onChange={onChangeStrokeWidth}
+          onChange={onChange}
+          onFocus={onFocus}
+          onBlur={onBlur}
           className="w-16 mr-0"
         />
       </AttributeMenuItem>
