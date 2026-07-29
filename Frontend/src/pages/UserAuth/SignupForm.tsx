@@ -14,7 +14,6 @@ import {
 
 import axios, {
   type AxiosResponse,
-  type AxiosError,
 } from 'axios';
 
 import {
@@ -79,47 +78,94 @@ export const SignupForm = (): React.JSX.Element => {
     async (e: React.FormEvent) => {
       e.preventDefault();
 
-      // -- derived state
-      const searchParams = new URLSearchParams(location.search);
-      const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
-      const redirectUrl = searchParams.has('redirect') ?
-        decodeURIComponent(searchParams.get('redirect') || '')
-        : '/dashboard';
-
-      setSubmitButtonStatus('pending');
-
-      const payload: SignupPayload = ({
-        email,
-        username,
-        password,
-      });
-
       try {
-        const endpoint = (tempWhiteboardId && (tempUser !== null)) ?
-          "/users/convert_temp"
-          : "/users";
-        let isTransferring = false;
-        
-        const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
-        const {
-          user,
-          sessionToken,
-        } = res.data;
+        // -- derived state
+        const searchParams = new URLSearchParams(location.search);
+        const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
+        const redirectUrl = searchParams.has('redirect') ?
+          decodeURIComponent(searchParams.get('redirect') || '')
+          : '/dashboard';
 
-        handleLogin(user, sessionToken);
+        setSubmitButtonStatus('pending');
 
-        // -- Attempt to transfer temp whiteboard if applicable
+        // -- If we are going to convert a temporary whiteboard to permanent, we
+        // need to authorize the request as the owning temp user first.
+        let signedConversionRequest : string | null = null;
+
         if (tempWhiteboardId) {
-          const endpoint = `/whiteboards/${encodeURIComponent(tempWhiteboardId)}/convert_temp_to_perm`;
-
           try {
-            await api.post(endpoint, { user: { _id: user.id } });
+            const endpoint = `/whiteboards/${encodeURIComponent(tempWhiteboardId)}/auth_convert_temp_to_perm`;
+            const res = await api.post(endpoint, {
+              permanentUserEmail: email,
+            });
+
+            if (! ('signedConversionRequest' in res.data)) {
+              throw new Error('Response missing field "signedConversionRequest"');
+            }
+
+            signedConversionRequest = res.data.signedConversionRequest;
+          } catch (e: unknown) {
+            console.error('Authorization of temp whiteboard conversion failed:', e);
+            toast.error('Authorization of temp whiteboard conversion failed');
+
+            throw e;
+          }
+        }
+
+        try {
+          const endpoint = (tempWhiteboardId && (tempUser !== null)) ?
+            "/users/convert_temp"
+            : "/users";
+          const payload: SignupPayload = ({
+            email,
+            username,
+            password,
+          });
+          const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
+          
+          const {
+            user,
+            sessionToken,
+          } = res.data;
+
+          handleLogin(user, sessionToken);
+        } catch (err: unknown) {
+          if (axios.isAxiosError(err)) {
+            if ((err?.response?.status) && (err.response.status >= 400) && (err.response.status < 500)) {
+              const status = err.response.status;
+
+              console.error('Authentication request failed with status', status);
+
+              // -- ensure fields are highlighted
+              setUiStatus('err_user');
+
+              // -- display popup alert
+              toast.error('Authentication Failed. Try again.');
+            } else {
+              console.error('Error handling authentication:', err);
+
+              // -- notify user of a system error (fields not highlit)
+              setUiStatus('err_system');
+
+              // -- display error to user
+              toast.error('Error handling authentication.');
+            }
+          }
+
+          throw e;
+        }
+
+        // -- If applicable, fulfill conversion of temp whiteboard
+        if (tempWhiteboardId && signedConversionRequest) {
+          try {
+            await api.post(`/whiteboards/${encodeURIComponent(tempWhiteboardId)}/convert_temp_to_perm`, {
+              signedConversionRequest,
+            });
 
             setTransferringWhiteboardId(tempWhiteboardId);
 
             // -- Prompt user to change name of whiteboard from default "Trial Whiteboard"
             setChangeNameOpen(true);
-            isTransferring = true;
 
             toast.success("Whiteboard added to your whiteboards!");
           } catch (err: unknown) {
@@ -129,43 +175,18 @@ export const SignupForm = (): React.JSX.Element => {
                   ? "You must be the owner of the whiteboard to add it to your account."
                   : "Could not transfer whiteboard.";
               
-              toast.warn(message);
+              toast.error(message);
             } else {
-              toast.warn("Could not transfer whiteboard.");
+              toast.error("Could not transfer whiteboard.");
             }
 
             console.error('Error transferring temp whiteboard');
+
+            throw e;
           }
-        }
-
-        setUiStatus('ok'); // -- ensure fields are not highlighted as errors
-
-        if (!isTransferring) {
-          navigate(redirectUrl);
-        }
-      } catch (err: unknown) {
-        const axiosErr = err as AxiosError;
-
-        if ((axiosErr?.response?.status) && (axiosErr.response.status >= 400) && (axiosErr.response.status < 500)) {
-          const status = axiosErr.response.status;
-
-          console.error('Authentication request failed with status', status);
-
-          // === Display error to user ===========================================
-
-          // -- ensure fields are highlit
-          setUiStatus('err_user');
-
-          // -- display popup alert
-          toast.error('Authentication Failed. Try again.');
         } else {
-          console.error('Error handling authentication:', err);
-
-          // -- notify user of a system error (fields not highlit)
-          setUiStatus('err_system');
-
-          // -- display error to user
-          toast.error('Error handling authentication.');
+          // If not converting temp whiteboard, navigate to redirect url
+          navigate(redirectUrl);
         }
       } finally {
         setSubmitButtonStatus('enabled');

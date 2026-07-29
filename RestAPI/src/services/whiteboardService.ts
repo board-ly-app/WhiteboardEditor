@@ -395,10 +395,12 @@ export const isAuthTempConversionPayload = (payload: unknown): payload is AuthTe
   if (typeof payload !== 'object') return false;
   if (! ('tempUserId' in payload)) return false;
   if (typeof payload.tempUserId !== 'string') return false;
+  if (! Types.ObjectId.isValid(payload.tempUserId)) return false;
   if (! ('permanentUserEmail' in payload)) return false;
   if (typeof payload.permanentUserEmail !== 'string') return false;
   if (! ('whiteboardId' in payload)) return false;
   if (typeof payload.whiteboardId !== 'string') return false;
+  if (! Types.ObjectId.isValid(payload.whiteboardId)) return false;
 
   return true;
 };// -- end isAuthTempConversionPayload

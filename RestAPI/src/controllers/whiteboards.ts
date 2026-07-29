@@ -594,23 +594,32 @@ export const handleConvertTempToPerm = async (
   res: AuthorizedResponse,
 ) => {
   try {
-    if (! isConvertTempToPermReqBody(req.body)) {
-      return res.status(400).json({ message: 'Bad request body' });
-    }
-
-    const conversionRequest = verifySignedTempConversionPayload(req.body.signedConversionRequest);
-    if (! conversionRequest) return res.status(400).json({ message: 'Invalid conversion request' });
-
-    const permanentUser = res.locals.authUser;
-    if (permanentUser.kind !== 'permanent') {
-      return res.status(403).json({ message: 'Can only transfer ownership to permanent user' });
-    } else if (conversionRequest.permanentUserEmail !== permanentUser.email) {
-      return res.status(403).json({ message: 'You are not the specified permanent user' });
-    }
-
     const { whiteboardId } = req.params;
-    const tempUserId = conversionRequest.tempUserId;
+    const permanentUser = res.locals.authUser;
     const permanentUserId = permanentUser._id;
+    let origUserId : string;
+
+    if (isConvertTempToPermReqBody(req.body)) {
+      const conversionRequest = verifySignedTempConversionPayload(req.body.signedConversionRequest);
+
+      if (! conversionRequest) {
+        return res.status(400).json({ message: 'Bad request body' });
+      }
+      if (permanentUser.kind !== 'permanent') {
+        return res.status(403).json({ message: 'Can only transfer ownership to permanent user' });
+      } else if (conversionRequest.permanentUserEmail !== permanentUser.email) {
+        return res.status(403).json({ message: 'You are not the specified permanent user' });
+      }
+      if (conversionRequest.whiteboardId !== whiteboardId)  {
+        return res.status(403).json({ message: 'Not authorized to convert this whiteboard' });
+      }
+
+      origUserId = conversionRequest.tempUserId;
+    } else {
+      // -- Assume we aren't transferring ownership
+      origUserId = permanentUserId.toHexString();
+    }
+
     const whiteboard = await Whiteboard.findById(whiteboardId);
 
     if (! whiteboard) {
@@ -624,7 +633,7 @@ export const handleConvertTempToPerm = async (
     // Check if user has 'own' permission of whiteboard
     const isOwner = whiteboard.user_permissions.some(perm =>
       perm.type === 'user' &&
-      perm.user.toString() === tempUserId.toString() &&
+      perm.user.toString() === origUserId &&
       perm.permission === 'own'
     )
 
@@ -635,12 +644,12 @@ export const handleConvertTempToPerm = async (
     const permUserObjectId = new Types.ObjectId(permanentUserId);
 
     const updatedPermissions = whiteboard.user_permissions.map(perm => {
-      if (perm.type === 'user' && perm.user.toString() === tempUserId.toString()) {
+      if (perm.type === 'user' && perm.user.toString() === origUserId) {
         return {
+          _id: new Types.ObjectId(),
           permission: 'own',
           type: 'user',
           user: permUserObjectId,
-          _id: new Types.ObjectId()
         }
       } else {
         if (perm.type === 'user') {
