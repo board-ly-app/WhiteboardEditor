@@ -29,6 +29,11 @@ spec:
               secretKeyRef:
                 name: whiteboard-editor-config
                 key: WHITEBOARD_EDITOR_MONGO_URI
+          - name: SESSION_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_SESSION_SECRET
           - name: ACCESS_TOKEN_SECRET
             valueFrom:
               secretKeyRef:
