@@ -44,6 +44,11 @@ spec:
               secretKeyRef:
                 name: whiteboard-editor-config
                 key: WHITEBOARD_EDITOR_ACCESS_TOKEN_EXPIRATION_SECS
+          - name: REFRESH_TOKEN_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: whiteboard-editor-config
+                key: WHITEBOARD_EDITOR_REFRESH_TOKEN_SECRET
           - name: REFRESH_TOKEN_EXPIRATION_SECS
             valueFrom:
               secretKeyRef:
