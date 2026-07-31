@@ -70,7 +70,7 @@ describe("Users API", () => {
     expect(res.body.user).not.toHaveProperty("passwordHashed");
 
     // Verify Auth token is returned
-    expect(res.body).toHaveProperty("token");
+    expect(res.body).toHaveProperty("sessionToken");
   });
 
   // Temp User Tests

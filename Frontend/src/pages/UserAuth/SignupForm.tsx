@@ -14,7 +14,6 @@ import {
 
 import axios, {
   type AxiosResponse,
-  type AxiosError,
 } from 'axios';
 
 import {
@@ -23,7 +22,9 @@ import {
 
 // -- local imports
 import AuthContext from '@/context/AuthContext';
-import AuthInput from "@/components/AuthInput";
+
+import AuthInput from "./AuthInput";
+
 import { useUser } from "@/hooks/useUser";
 import api from '@/api/axios';
 
@@ -42,13 +43,14 @@ import {
 
 import ChangeNameTrialWhiteboard from "./ChangeNameTrialWhiteboard";
 
-interface AuthFormProps {
-    initialAction: "login" | "signup";
+interface SignupPayload { 
+  email: string; 
+  username: string; 
+  password: string; 
+  authUser?: { id: string } | null;
 }
 
-const AuthForm = ({
-  initialAction,
-}: AuthFormProps): React.JSX.Element => {
+export const SignupForm = (): React.JSX.Element => {
   // -- form fields
   const [email, setEmail] = useState<string>("");
   const [username, setUsername] = useState<string>("");
@@ -63,7 +65,6 @@ const AuthForm = ({
   const navigate = useNavigate();
   const { user, handleLogin } = useUser();
   const tempUser = user?.kind === 'temp' ? user : null;
-  const action = initialAction;
   const authContext = useContext(AuthContext);
   const [changeNameOpen, setChangeNameOpen] = useState(false);
 
@@ -73,122 +74,125 @@ const AuthForm = ({
 
   const [submitButtonStatus, setSubmitButtonStatus] = useState<ButtonStatus>('enabled');
 
-  // TODO: Make this dynamic to handle either email or username
-  const authSource = "email";
-
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
 
-      // -- derived state
-      const searchParams = new URLSearchParams(location.search);
-      const tempWhiteboardId = searchParams.get('tempWhiteboardId');
-      const redirectUrl = searchParams.has('redirect') ?
-        decodeURIComponent(searchParams.get('redirect') || '')
-        : '/dashboard';
-      let endpoint = (action === "login") ? "/auth/login" : "/users";
+      try {
+        // -- derived state
+        const searchParams = new URLSearchParams(location.search);
+        const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
+        const redirectUrl = searchParams.has('redirect') ?
+          decodeURIComponent(searchParams.get('redirect') || '')
+          : '/dashboard';
 
-      setSubmitButtonStatus('pending');
+        setSubmitButtonStatus('pending');
 
-    type LoginPayload = { 
-      authSource: string; 
-      email: string; 
-      password: string; 
-      transferWhiteboardId: string | null; 
-    };
-    type SignupPayload = { 
-      email: string; 
-      username: string; 
-      password: string; 
-      authUser?: { id: string } | null;
-    };
+        // -- If we are going to convert a temporary whiteboard to permanent, we
+        // need to authorize the request as the owning temp user first.
+        let signedConversionRequest : string | null = null;
 
-    const payload: LoginPayload | SignupPayload = 
-      action === "login"
-      ? { authSource, email, password, transferWhiteboardId: tempWhiteboardId }
-      : { email, username, password };
+        if (tempWhiteboardId) {
+          try {
+            const endpoint = `/whiteboards/${encodeURIComponent(tempWhiteboardId)}/auth_convert_temp_to_perm`;
+            const res = await api.post(endpoint, {
+              permanentUserEmail: email,
+            });
 
-    try {
-      let isTransferring = false;
-      const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
-      
-      if (tempWhiteboardId && action === "signup" && tempUser !== null) {
-        endpoint = "/users/convert_temp";
-      }
-      
-      const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
-      
-      const {
-        user,
-        sessionToken,
-      } = res.data;
+            if (! ('signedConversionRequest' in res.data)) {
+              throw new Error('Response missing field "signedConversionRequest"');
+            }
 
-      // -- Attempt to transfer temp whiteboard if applicable
-      if (tempWhiteboardId) {
+            signedConversionRequest = res.data.signedConversionRequest;
+          } catch (e: unknown) {
+            console.error('Authorization of temp whiteboard conversion failed:', e);
+            toast.error('Authorization of temp whiteboard conversion failed');
+
+            throw e;
+          }
+        }
+
         try {
-          await api.post(`/whiteboards/${tempWhiteboardId}/convert_temp_to_perm`, {
-            user: { _id: user.id }
+          const endpoint = (tempWhiteboardId && (tempUser !== null)) ?
+            "/users/convert_temp"
+            : "/users";
+          const payload: SignupPayload = ({
+            email,
+            username,
+            password,
           });
+          const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
+          
+          const {
+            user,
+            sessionToken,
+          } = res.data;
 
-          setTransferringWhiteboardId(tempWhiteboardId);
-
-          // -- Prompt user to change name of whiteboard from default "Trial Whiteboard"
-          setChangeNameOpen(true);
-          isTransferring = true;
-
-          toast.success("Whiteboard added to your whiteboards!");
+          handleLogin(user, sessionToken);
         } catch (err: unknown) {
           if (axios.isAxiosError(err)) {
-            const message = 
-              err.response?.status === 403
-                ? "You must be the owner of the whiteboard to add it to your account."
-                : "Could not transfer whiteboard.";
-            
-            toast.warn(message);
-          } else {
-            toast.warn("Could not transfer whiteboard.");
+            if ((err?.response?.status) && (err.response.status >= 400) && (err.response.status < 500)) {
+              const status = err.response.status;
+
+              console.error('Authentication request failed with status', status);
+
+              // -- ensure fields are highlighted
+              setUiStatus('err_user');
+
+              // -- display popup alert
+              toast.error('Authentication Failed. Try again.');
+            } else {
+              console.error('Error handling authentication:', err);
+
+              // -- notify user of a system error (fields not highlit)
+              setUiStatus('err_system');
+
+              // -- display error to user
+              toast.error('Error handling authentication.');
+            }
           }
 
-          console.error('Error transferring temp whiteboard');
+          throw e;
         }
-      }
 
-      setUiStatus('ok'); // -- ensure fields are not highlighted as errors
-      handleLogin(user, sessionToken);
+        // -- If applicable, fulfill conversion of temp whiteboard
+        if (tempWhiteboardId && signedConversionRequest) {
+          try {
+            await api.post(`/whiteboards/${encodeURIComponent(tempWhiteboardId)}/convert_temp_to_perm`, {
+              signedConversionRequest,
+            });
 
-      if (!isTransferring) {
-        navigate(redirectUrl);
-      }
-    } catch (err: unknown) {
-      const axiosErr = err as AxiosError;
+            setTransferringWhiteboardId(tempWhiteboardId);
 
-        if ((axiosErr?.response?.status) && (axiosErr.response.status >= 400) && (axiosErr.response.status < 500)) {
-          const status = axiosErr.response.status;
+            // -- Prompt user to change name of whiteboard from default "Trial Whiteboard"
+            setChangeNameOpen(true);
 
-          console.error('Authentication request failed with status', status);
+            toast.success("Whiteboard added to your whiteboards!");
+          } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+              const message = 
+                err.response?.status === 403
+                  ? "You must be the owner of the whiteboard to add it to your account."
+                  : "Could not transfer whiteboard.";
+              
+              toast.error(message);
+            } else {
+              toast.error("Could not transfer whiteboard.");
+            }
 
-          // === Display error to user ===========================================
+            console.error('Error transferring temp whiteboard');
 
-          // -- ensure fields are highlit
-          setUiStatus('err_user');
-
-          // -- display popup alert
-          toast.error('Authentication Failed. Try again.');
+            throw e;
+          }
         } else {
-          console.error('Error handling authentication:', err);
-
-          // -- notify user of a system error (fields not highlit)
-          setUiStatus('err_system');
-
-          // -- display error to user
-          toast.error('Error handling authentication.');
+          // If not converting temp whiteboard, navigate to redirect url
+          navigate(redirectUrl);
         }
       } finally {
         setSubmitButtonStatus('enabled');
       }
     },
     [
-      action,
       email,
       navigate,
       password,
@@ -203,12 +207,9 @@ const AuthForm = ({
 
   const handleToggle = useCallback(
     () => {
-      // -- remove highlighting
-      setUiStatus('ok');
-
-      navigate(action === "login" ? "/signup" : "/login");
+      navigate("/login");
     },
-    [setUiStatus, navigate, action]
+    [navigate]
   );// -- end handleToggle
 
   const handleConfirmNameChange = useCallback(
@@ -255,7 +256,7 @@ const AuthForm = ({
   return (
     <div className="flex flex-col w-75 sm:w-95 md:w-120">
       <h1 className="text-2xl text-h1-text font-bold text-center mb-6">
-        {action === "login" ? "Welcome Back!" : `Welcome to ${APP_NAME}!`}
+        Welcome to {APP_NAME}!
       </h1>
 
       {/* Entry Form */}
@@ -271,16 +272,14 @@ const AuthForm = ({
           placeholder="you@example.com"
           variant={uiStatus === 'err_user' ? 'error' : 'default'}
         />
-        {action === "signup" && (
-          <AuthInput 
-            name="Username"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="yourname"
-            variant={uiStatus === 'err_user' ? 'error' : 'default'}
-          />
-        )}
+        <AuthInput 
+          name="Username"
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="yourname"
+          variant={uiStatus === 'err_user' ? 'error' : 'default'}
+        />
         <AuthInput
           name="Password"
           type="password"
@@ -289,35 +288,33 @@ const AuthForm = ({
           placeholder="********"
           variant={uiStatus === 'err_user' ? 'error' : 'default'}
         />
-        {action === "signup" && (
-          <AuthInput
-            name="Confirm Password"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="********"
-            variant={uiStatus === 'err_user' ? 'error' : 'default'}
-          />
-        )}
+        <AuthInput
+          name="Confirm Password"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="********"
+          variant={uiStatus === 'err_user' ? 'error' : 'default'}
+        />
         <Button
           type="submit"
           status={submitButtonStatus}
           className="w-full font-medium text-h2-text py-2 my-2 rounded-lg border-border border-1 bg-button-300 hover:bg-button-hover hover:cursor-pointer shadow-md"
         >
-          {action === "login" ? "Log In" : "Sign Up"}
+          Sign Up
         </Button>
       </form>
 
       {/* Toggle Login/Signup */}
       <div className="flex justify-center mt-4 pt-6 border-t-1 border-border">
         <div className="text-h2-text p-2 text-center">
-          {action === "login" ? `New to ${APP_NAME}?` : "Already have an account?"}
+          Already have an account?
         </div>
         <button 
           onClick={handleToggle}
           className="text-h2-text font-medium rounded-lg border-border border-1 px-4 bg-button-600 hover:bg-button-hover hover:cursor-pointer shadow-md"
         >
-          {action === "login" ? "Create a New Account!" : "Log In"}
+          Log In
         </button>
       </div>
 
@@ -329,6 +326,4 @@ const AuthForm = ({
       />
     </div>
   );
-};// -- end AuthForm
-
-export default AuthForm;
+};// -- end SignupForm

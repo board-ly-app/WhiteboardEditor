@@ -1,4 +1,4 @@
-// === antiCsrfService.ts ======================================================
+// === csrfProtectionService.ts ================================================
 //
 // Utilities for securing authenticated requests using the Double Submit Cookie
 // Pattern. Implemented as a wrapper around the csrf-csrf package.
@@ -24,6 +24,7 @@ import {
   SESSION_TOKEN_COOKIE_ID,
   CSRF_TOKEN_HEADER,
   AUTH_ROUTE,
+  USERS_ROUTE,
 } from '../app.config';
 
 const SESSION_SECRET = process.env.SESSION_SECRET;
@@ -33,9 +34,23 @@ if (! SESSION_SECRET) throw new Error('Env var SESSION_SECRET not provided');
 // -- Should only be set in some testing environments
 const IS_CSRF_DISABLED : boolean = (process.env?.CSRF_DISABLED === 'TRUE');
 
-// -- Skips login route, in order to enable initial authentication
+// -- Skips login and account creation routes, in order to enable initial authentication
 const skipSelectedCsrf = (req: Request): boolean => {
-  return (req.path === `${AUTH_ROUTE}/login`);
+  switch (req.path) {
+    case `${AUTH_ROUTE}/login`:
+    case `${AUTH_ROUTE}/login/`:
+    case `${AUTH_ROUTE}/logout`:
+    case `${AUTH_ROUTE}/logout/`:
+    case `${USERS_ROUTE}`:
+    case `${USERS_ROUTE}/`:
+    case `${USERS_ROUTE}/temp`:
+    case `${USERS_ROUTE}/temp/`:
+      // -- The routes above are exempt from csrf protection
+      return true;
+    default:
+      // -- All other routes are protected
+      return false;
+  }// -- end switch (req.path)
 };// -- end skipSelectedCsrf
 
 // -- Skips all routes; used in selected testing environments

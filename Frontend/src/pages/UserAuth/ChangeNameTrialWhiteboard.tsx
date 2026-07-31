@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button } from "./ui/button";
-import { AppModal } from "./ui/app-modal";
+import { Button } from "@/components/ui/button";
+import { AppModal } from "@/components/ui/app-modal";
 
 const FORM_ID = 'change-name-trial-whiteboard-form';
 

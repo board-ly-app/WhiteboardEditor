@@ -2,6 +2,8 @@ import {
   Router,
 } from "express";
 
+// TODO: authorize transfer route
+
 // --- local imports
 import {
   authenticateJWT,
@@ -22,6 +24,7 @@ import {
   handleCreateTempWhiteboard,
   handleConvertTempToPerm,
   handleChangeWhiteboardName,
+  handleAuthorizeTempConversion,
 } from "../controllers/whiteboards";
 
 const router = Router();
@@ -43,6 +46,13 @@ router.post("/temp", handleCreateTempWhiteboard);
 
 // -- Get user's own whiteboards
 router.get("/own", handleGetOwnWhiteboards);
+
+// -- Authorize conversion of temp whiteboard to permanent whiteboard,
+// transferring ownership from a temp user to a permanent user
+router.post(
+  '/:whiteboardId/auth_convert_temp_to_perm',
+  handleAuthorizeTempConversion
+);
 
 // -- Convert a temp whiteboard to a permanent one
 router.post('/:whiteboardId/convert_temp_to_perm', handleConvertTempToPerm);

@@ -166,7 +166,6 @@ export const AuthProvider = ({
 
   const handleLogout = useCallback(
     async (): Promise<void> => {
-      setUserWrapper(null);
       isAuthedRef.current = false;
       localStorage.setItem(LS_KEY_IS_AUTHED, LS_VAL_IS_AUTHED_FALSE);
       localStorage.removeItem(LS_KEY_SESSION_TOKEN);
@@ -181,10 +180,11 @@ export const AuthProvider = ({
         .then(() => {
           console.log('Logout successful');
           toast.success("Successfully logged out");
+          setUserWrapper(null);
         })
         .catch((_err: unknown) => {
           console.error('Error logging out');
-          toast.error("Successfully logged out");
+          toast.error("Error logging out");
         });
     },
     [setUserWrapper]

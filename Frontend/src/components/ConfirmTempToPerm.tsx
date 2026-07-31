@@ -1,7 +1,13 @@
+import {
+  useCallback,
+  useContext,
+} from "react";
+
 import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { AppModal } from "./ui/app-modal";
-import { useCallback } from "react";
+
+import WhiteboardContext from '@/context/WhiteboardContext';
 
 const FORM_ID = 'confirm-temp-to-perm-form';
 
@@ -21,28 +27,35 @@ const ConfirmTempToPerm = ({
 
   const navigate = useNavigate();
 
-  const url = new URL(window.location.href);
-  const segments = url.pathname.split('/');
-  const whiteboardId = segments.pop() || segments.pop();
-
-  if (! whiteboardId) {
-    throw new Error('No whiteboardId found in URL');
-  }
+  const whiteboardContext = useContext(WhiteboardContext);
+  const whiteboardId = whiteboardContext?.whiteboardId ?? null;
 
   const encodedWhiteboardUrl = encodeURIComponent(`/whiteboard/${whiteboardId}`);
 
-  const handleLogin = useCallback((event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleLogin = useCallback((e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-    const redirectUrl = `/login/?transfer_temp_whiteboard=${whiteboardId}&redirect=${encodedWhiteboardUrl}`;
+    if (! whiteboardId) return;
+
+    const urlSearchParams = new URLSearchParams({
+      'transfer_temp_whiteboard': whiteboardId,
+      'redirect': encodedWhiteboardUrl,
+    });
+    const redirectUrl = `/login/?${urlSearchParams.toString()}`;
 
     navigate(redirectUrl);
   }, [navigate, whiteboardId, encodedWhiteboardUrl]);
 
-  const handleSingup = useCallback((event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleSignup = useCallback((e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-    const redirectUrl = `/signup/?transfer_temp_whiteboard=${whiteboardId}&redirect=${encodedWhiteboardUrl}`;
+    if (! whiteboardId) return;
+
+    const urlSearchParams = new URLSearchParams({
+      'transfer_temp_whiteboard': whiteboardId,
+      'redirect': encodedWhiteboardUrl,
+    });
+    const redirectUrl = `/signup/?${urlSearchParams.toString()}`;
 
     navigate(redirectUrl);
   }, [navigate, whiteboardId, encodedWhiteboardUrl]);
@@ -54,7 +67,7 @@ const ConfirmTempToPerm = ({
       break;
     case 'signup':
       message = "Signing up will transfer ownership of this whiteboard to your new account.";
-      handleSubmit = handleSingup;
+      handleSubmit = handleSignup;
       break;
     default:
       throw new Error(`unrecognized action: ${action}`);

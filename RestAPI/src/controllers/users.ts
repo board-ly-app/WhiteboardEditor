@@ -13,7 +13,7 @@ import {
 
 import {
   generateCsrfToken,
-} from '../services/antiCsrfService';
+} from '../services/csrfProtectionService';
 
 // -- local imports
 import {
@@ -64,8 +64,8 @@ interface PostUserRouteServerErrRes {
 }
 
 interface PostUserRouteOkRes {
-  token: string;
   user: IPermanentUserSelfView;
+  sessionToken: string;
 }
 
 export const handleCreateUser = async (
@@ -124,10 +124,14 @@ export const handleCreateUser = async (
         throw new Error(`Unexpected result type: ${JSON.stringify(loginResult)}`);
       case 'ok':
       {
+        const sessionToken = generateCsrfToken(req, res);
         const resp : PostUserRouteOkRes = ({
           user: loginResult.user.toSelfView(),
-          token: loginResult.accessToken,
+          sessionToken,
         });
+
+        setRefreshTokenCookie(res, loginResult.refreshToken);
+        setAccessTokenCookie(res, loginResult.accessToken);
 
         return res.status(201).json(resp);
       }
