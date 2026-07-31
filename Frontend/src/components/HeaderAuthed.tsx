@@ -38,11 +38,9 @@ const HeaderAuthed = ({
   } = useUser();
 
   const handleLogout = () => {
-    handleLogoutUtil()
-      .finally(() => {
-        navigate("/login");
-      });
-  };
+    navigate("/login");
+    handleLogoutUtil();
+  };// -- end handleLogout
 
   return (
     <Header

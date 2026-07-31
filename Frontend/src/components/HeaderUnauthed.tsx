@@ -34,8 +34,7 @@ const HeaderUnauthed = ({
     if (pathname.startsWith("/login") || pathname.startsWith("/signup")) {
       console.log("from login");
       navigate("/login");
-    }
-    else if (pathname.startsWith("/whiteboard")) {
+    } else if (pathname.startsWith("/whiteboard")) {
       console.log("log in from whiteboard, open modal");
       setConfirmationOpen(true);
     }
@@ -45,8 +44,7 @@ const HeaderUnauthed = ({
     if (pathname.startsWith("/login") || pathname.startsWith("/signup")) {
       console.log("from signup");
       navigate("/signup");
-    }
-    else if (pathname.startsWith("/whiteboard")) {
+    } else if (pathname.startsWith("/whiteboard")) {
       console.log("action: ", action);
       console.log("create account from whiteboard, open modal");
       setAction("signup");

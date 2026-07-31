@@ -126,11 +126,12 @@ async fn main() -> process::ExitCode {
 
                                 // -- check that permissions have changed
                                 'check_relevant_change: {
-                                    let wb_meta = wb.metadata();
+                                    let wb_meta = wb.metadata_mut();
                                     let n_prev_perms = wb_meta.permissions_by_user_id().len()
                                         + wb_meta.permissions_by_email().len();
 
                                     if wb_meta.name() != curr_doc.metadata.name {
+                                        wb_meta.set_name(&curr_doc.metadata.name);
                                         messages_to_clients.push(ServerSocketMessage::Broadcast {
                                             msg: ServerSocketBroadcastMessage::UpdateWhiteboardMetadata {
                                                 name: Some(curr_doc.metadata.name.clone()),
