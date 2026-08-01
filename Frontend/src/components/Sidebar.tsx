@@ -24,21 +24,10 @@ const Sidebar = ({
   // transparent background from interrupting pointer events to objects beneath it.
   return (
     <aside
-      className={`pointer-events-none fixed top-[20%] ${side}-2 flex flex-wrap flex-col items-start justify-center gap-2 max-h-[70vh]`}
+      className={`pointer-events-none fixed top-[20%] ${side}-2 flex flex-wrap flex-col items-start justify-center gap-1 max-h-[70vh] [&>*]:pointer-events-auto`}
       style={{ zIndex }}
     >
-      {/** Wrap child(ren) in individual containers which enable pointer events **/}
-      {Array.isArray(children)
-        && children.map((child, idx) => (
-          <div
-            key={idx}
-            className="pointer-events-auto"
-          >
-            {child}
-          </div>
-        ))
-        || (<div className="pointer-events-auto">{children}</div>)
-      }
+      {children}
     </aside>
   );
 };
