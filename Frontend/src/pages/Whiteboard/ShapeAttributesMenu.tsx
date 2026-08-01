@@ -177,7 +177,7 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
   if ((! attributeComponents) || (attributeComponents.length < 1)) return null;
 
   return (
-    <div className="flex flex-col flex-shrink-0 text-center p-4 pr-2 rounded-lg shadow-2xl backdrop-blur-md bg-bar-background/80 border-1 border-border">
+    <div className="toolbar-scale flex flex-col flex-shrink-0 text-center p-4 pr-2 rounded-lg shadow-2xl backdrop-blur-md bg-bar-background/80 border-1 border-border">
       <h2 className="text-md text-h1-text font-bold mb-1">Edit Attributes</h2>
       <form
         className="flex flex-col gap-1"

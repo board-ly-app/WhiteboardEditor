@@ -3,6 +3,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/**
+ * Uniformly scales a UI subtree -- fonts, icons, padding, borders and radii --
+ * the same way a browser zoom level would.
+ *
+ * Used by the whiteboard toolbars, which are sized to sit comfortably on screen
+ * at 100% browser zoom. Tune --toolbar-scale below to adjust all of them at
+ * once.
+ **/
+@utility toolbar-scale {
+  zoom: var(--toolbar-scale);
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -127,6 +139,9 @@
   --dark-blue-text: #142537; 
 
   --dropdown-background: #111820;
+
+  /* Scale factor applied to the whiteboard toolbars (see .toolbar-scale) */
+  --toolbar-scale: 0.9;
 }
 
 .dark {
