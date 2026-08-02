@@ -253,7 +253,7 @@ const CreateWhiteboardModal = ({
       open={isOpen}
       onOpenChange={setIsOpen}
       title="Create a new whiteboard"
-      className="w-xs sm:w-xl sm:ml-8 flex flex-col flex-shrink"
+      className="w-xs sm:w-xl sm:ml-8 flex flex-col flex-shrink shadow-2xl/80"
       trigger={
         <Button
           type="button"

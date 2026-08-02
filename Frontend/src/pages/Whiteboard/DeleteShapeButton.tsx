@@ -117,7 +117,7 @@ const DeleteShapesButton = () => {
           size="lg"
           onClick={handleSubmit}
           variant="destructive"
-          className="bg-header-button-background border-1 border-border hover:text-header-button-text-hover"
+          className="toolbar-scale flex-shrink-0 bg-header-button-background border-1 border-border hover:text-header-button-text-hover"
         >
           Delete Shape(s)
         </Button>
