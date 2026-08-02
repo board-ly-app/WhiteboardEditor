@@ -13,8 +13,11 @@ kubectl to use a service such as EKS.
 
 Before running deploy.sh, the following conditions should be true:
 
+- Docker has been installed
+- The current user is a member of the docker group
 - [kubectl](https://kubernetes.io/docs/reference/kubectl/) has been installed.
 - [kind](https://kind.sigs.k8s.io/) has been installed.
+- [helm](https://helm.sh) has been installed
 - All docker images are present locally on the machine (either built or pulled
   from a container registry).
 - The .env file in the repository root has been filled out completely, using
