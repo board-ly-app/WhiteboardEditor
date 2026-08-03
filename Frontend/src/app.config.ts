@@ -77,3 +77,6 @@ export const MAX_WB_ZOOM = 4.0;
 // NOTE: make sure WHITEBOARD_EDITOR_ACCESS_TOKEN_EXPIRATION_SECS in the .env
 // file is greater than this value.
 export const REFRESH_ACCESS_TOKEN_QUERY_SECS = 8 * 60;
+
+// -- Thumbnail quality; 0 is lowest 1.0 is highest
+export const THUMBNAIL_IMAGE_QUALITY : number = 0.08;

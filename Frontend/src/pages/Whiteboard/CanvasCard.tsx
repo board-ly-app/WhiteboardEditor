@@ -27,6 +27,7 @@ import {
 import {
   WB_ZOOM_FACTOR,
   LS_KEY_COPIED_CANVAS_OBJECTS,
+  THUMBNAIL_IMAGE_QUALITY,
 } from '@/app.config';
 
 import Canvas from "@/pages/Whiteboard/Canvas";
@@ -370,7 +371,6 @@ const CanvasCard = ({
   );
 
   const thumbnailType: ImageTypeEnum = "jpeg";
-  const thumbnailQuality: number = 0.2;
   const waitTime = 1000 * 20; // Capture & set thumbnail image every 20 seconds
 
   // Set the whiteboard thumbnail
@@ -385,7 +385,7 @@ const CanvasCard = ({
         canvasGroupRefsByIdRef,
         rootCanvas.id,
         thumbnailType,
-        thumbnailQuality,
+        THUMBNAIL_IMAGE_QUALITY,
       );
 
       if (!dataUrl) return;
