@@ -481,6 +481,7 @@ const EditableText = ({
           borderEnabled={true}
           borderStroke={editor.color}
           borderStrokeWidth={(! isSelected) && 4 || undefined}
+          borderDash={!isSelected && [4, 4] || undefined}
           resizeEnabled={isSelected}
           rotateEnabled={isSelected}
           flipEnabled={isSelected}
