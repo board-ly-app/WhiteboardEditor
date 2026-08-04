@@ -13,6 +13,6 @@ export const getHealthCheck = (
   res: Response
 ) => {
   res.status(200).json({
-    message: "service foobar"
+    message: "service healthy"
   });
 };// -- end getHealthCheck
