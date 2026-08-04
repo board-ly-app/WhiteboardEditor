@@ -13,4 +13,7 @@ kubectl -n whiteboard-editor delete secret ssl-key
 kubectl -n whiteboard-editor delete secret mailserver-config
 kubectl -n whiteboard-editor delete secret samba-credentials
 
-exec ./deploy.sh
+./deploy.sh
+
+# -- Trigger rollout of new images
+kubectl -n whiteboard-editor rollout restart deployment
