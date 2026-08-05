@@ -711,6 +711,8 @@ async fn handle_connection(
 
     let recv_task = {
         tokio::spawn({
+            use wss::models::NotificationClientView;
+
             let tx = tx.clone();
             let mongo_interface = MongoDBInterface::new(&db);
 
@@ -761,6 +763,28 @@ async fn handle_connection(
                                eprintln!("ERROR: failed to send message to client: {:?}", e);
                            }
                         }// -- end for r
+
+                        // -- send any notifications to clients
+                        {
+                            let clients_by_user_id = client_state_base.clients_by_user_id.lock().await;
+
+                            for notif in resp.notifications {
+                                if let Some(client_ids) = clients_by_user_id.get_values_by_key(&notif.recipient) {
+                                    for client_id in client_ids {
+                                        let msg = ServerSocketMessage::Individual {
+                                            target_client_id: client_id.clone(),
+                                            msg: ServerSocketIndividualMessage::Notify {
+                                                notification: NotificationClientView::from_notification(&notif),
+                                            },
+                                        };// -- end let msg
+
+                                        if let Err(e) = tx.send(msg) {
+                                            eprintln!("ERROR: could not send notification: {:?}", e);
+                                        }
+                                    }// -- end for client_id
+                                }
+                            }// -- end for notif
+                        }
                     }
                 }// -- end loop
             }
