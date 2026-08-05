@@ -28,6 +28,9 @@ import {
   WB_ZOOM_FACTOR,
   LS_KEY_COPIED_CANVAS_OBJECTS,
   THUMBNAIL_IMAGE_QUALITY,
+  DEFAULT_KEYED_SHIFT_DIST,
+  LONG_KEYED_SHIFT_DIST,
+  SHORT_KEYED_SHIFT_DIST,
 } from '@/app.config';
 
 import Canvas from "@/pages/Whiteboard/Canvas";
@@ -575,6 +578,132 @@ const CanvasCard = ({
                 type: 'unselected_canvas_objects',
                 canvasObjectIds: selectedCanvasObjects,
               });
+            }
+            break;
+            case 'ArrowUp':
+            case 'ArrowDown':
+            case 'ArrowLeft':
+            case 'ArrowRight':
+            {
+              if (! clientMessenger) return;
+              if (! selectedCanvasId) return;
+              if ((! selectedCanvasObjects) || (selectedCanvasObjects.length === 0)) return;
+
+              // -- Don't let the viewport shift
+              ev.preventDefault();
+
+              const canvas = selectCanvasById(currState, selectedCanvasId);
+              if (! canvas) throw new Error(`Canvas ${selectedCanvasId} not found`);
+
+              let incremX : number;
+              let incremY : number;
+
+              switch (ev.key) {
+                case 'ArrowUp':
+                  incremX = 0;
+                  incremY = -1.0;
+                  break;
+                case 'ArrowDown':
+                  incremX = 0;
+                  incremY = 1.0;
+                  break;
+                case 'ArrowLeft':
+                  incremX = -1.0;
+                  incremY = 0.0;
+                  break;
+                case 'ArrowRight':
+                  incremX = 1.0;
+                  incremY = 0.0;
+                  break;
+              }// -- end switch (ev.key)
+
+              if (ev.ctrlKey || ev.metaKey) {
+                // -- Make this a short shift
+                incremX *= SHORT_KEYED_SHIFT_DIST;
+                incremY *= SHORT_KEYED_SHIFT_DIST;
+              } else if (ev.shiftKey) {
+                incremX *= LONG_KEYED_SHIFT_DIST;
+                incremY *= LONG_KEYED_SHIFT_DIST;
+              } else {
+                incremX *= DEFAULT_KEYED_SHIFT_DIST;
+                incremY *= DEFAULT_KEYED_SHIFT_DIST;
+              }
+
+              try {
+                // -- Cancel the shift if shifting any object would bring it out
+                // of bounds
+                const updatedCanvasObjects = Object.fromEntries(
+                  selectedCanvasObjects.map(objId => {
+                    const obj = selectCanvasObjectById(currState, objId);
+
+                    if (! obj) throw new Error(`Canvas object ${objId} not found`);
+
+                    let update;
+
+                    switch (obj.type) {
+                      case 'rect':
+                      case 'text':
+                      case 'image':
+                      {
+                        const nextX = obj.x + incremX;
+                        const nextY = obj.y + incremY;
+
+                        if (nextX < 0) throw 'oob';
+                        if (nextY < 0) throw 'oob';
+                        if (nextX + obj.width > canvas.width) throw 'oob';
+                        if (nextY + obj.height > canvas.height) throw 'oob';
+
+                        update = ({ ...obj, x: nextX, y: nextY, });
+                      }
+                      break;
+                      case 'ellipse':
+                      {
+                        const nextX = obj.x + incremX;
+                        const nextY = obj.y + incremY;
+
+                        if (nextX - obj.radiusX < 0) throw 'oob';
+                        if (nextY - obj.radiusY < 0) throw 'oob';
+                        if (nextX + obj.radiusX > canvas.width) throw 'oob';
+                        if (nextY + obj.radiusY > canvas.height) throw 'oob';
+
+                        update = ({ ...obj, x: nextX, y: nextY, });
+                      }
+                      break;
+                      case 'vector':
+                      {
+                        const updatedPoints = obj.points.map((val, i) => {
+                          if (i % 2 === 0) {
+                            const nextX = val + incremX;
+
+                            if (nextX < 0 || nextX > canvas.width) throw 'oob';
+                            return nextX;
+                          } else {
+                            const nextY = val + incremY;
+
+                            if (nextY < 0 || nextY > canvas.height) throw 'oob';
+                            return nextY;
+                          }
+                        });// -- end const updatedPoints
+
+                        update = ({ ...obj, points: updatedPoints, });
+                      }
+                      break;
+                    }// -- end switch (obj.type)
+
+                    return [objId, update];
+                  })
+                );// -- end const updatedCanvasObjects
+
+                clientMessenger.sendUpdateCanvasObjects({
+                  type: 'update_canvas_objects',
+                  canvasId: selectedCanvasId,
+                  canvasObjects: updatedCanvasObjects,
+                });
+              } catch (e: unknown) {
+                // -- Re-throw error if it isn't our specified out-of-bounds
+                // error
+                if (e !== 'oob') throw e;
+              }
             }
             break;
             case 'z':
