@@ -769,6 +769,8 @@ async fn handle_connection(
                             let clients_by_user_id = client_state_base.clients_by_user_id.lock().await;
 
                             for notif in resp.notifications {
+                                mongo_interface.save_notification(&notif).await;
+
                                 if let Some(client_ids) = clients_by_user_id.get_values_by_key(&notif.recipient) {
                                     for client_id in client_ids {
                                         let msg = ServerSocketMessage::Individual {
