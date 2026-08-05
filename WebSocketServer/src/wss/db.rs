@@ -748,10 +748,10 @@ impl MongoDBInterface {
         }
     }// -- end pub async fn process_edit
 
-    // pub async fn save_notification(&self, notif: &Notification) {
-    //     let notif_view = NotificationMongoDBView::from_notification(&notif);
-    //     let _ = self.notification_coll.insert_one(notif_view).await;
-    // }// -- end save_notification
+    pub async fn save_notification(&self, notif: &Notification) {
+        let notif_view = NotificationMongoDBView::from_notification(&notif);
+        let _ = self.notification_coll.insert_one(notif_view).await;
+    }// -- end save_notification
 }// -- end impl MongoDBInterface
 
 impl UserStore for MongoDBInterface {
