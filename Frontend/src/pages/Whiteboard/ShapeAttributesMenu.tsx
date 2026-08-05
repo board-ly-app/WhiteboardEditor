@@ -92,17 +92,13 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
 
   const whiteboardContext = useContext(WhiteboardContext);
 
-  if (! whiteboardContext) {
-    throw new Error('No whiteboard context');
-  }
+  if (! whiteboardContext) throw new Error('No whiteboard context');
 
   const {
     user,
   } = useUser();
 
-  if (! user) {
-    throw new Error('No authenticated user provided');
-  }
+  if (! user) throw new Error('No authenticated user provided');
 
   const {
     whiteboardId,
@@ -115,9 +111,7 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
     lodash.isEqual
   );
 
-  if (! currentTool) {
-    throw new Error('no current tool provided');
-  }
+  if (! currentTool) throw new Error('no current tool provided');
 
   const clientId : ClientIdType | null = useSelector(
     (state: RootState) => selectClientId(state),
@@ -136,7 +130,6 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
     lodash.isEqual
   );
 
-  // TODO: Change this for multiple select, right now only handles one shape
   const firstShapeId = selectedCanvasObjectIds[0];
 
   const shapeType = useSelector((state: RootState) => 
@@ -150,13 +143,8 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
     lodash.isEqual
   );
 
-  if (! clientId) {
-    return null;
-  }
-
-  if (! selectedCanvasId) {
-    return null;
-  }
+  if (! clientId) return null;
+  if (! selectedCanvasId) return null;
   
   let attributeComponents: AttributeDefinition[];
   let useSelectedShapeValues = false;
@@ -167,9 +155,7 @@ const ShapeAttributesMenu = (props: ShapeAttributesMenuProps) => {
     useSelectedShapeValues = true;
   } else {
     // Tool mode
-    if (currentTool === "hand") {
-      return null;
-    }
+    if (currentTool === "hand") return null;
 
     attributeComponents = currentDispatcherRef.current?.getAttributes() ?? [];
   }
