@@ -305,6 +305,9 @@ export class SnappingMonitor {
 
     layer.find(".guide-line").forEach(l => l.destroy());
 
+    // -- Turn off snapping when ctrl or meta key pressed
+    if (e.evt.ctrlKey || e.evt.metaKey) return;
+
     const node = e.target;
     const stage = node.getStage();
     if (!stage) return;
@@ -313,7 +316,7 @@ export class SnappingMonitor {
     const itemBounds = this.getObjectSnappingEdges(node as SnapObject);
     const guides = this.getGuides(lineGuideStops, itemBounds);
 
-    if (!guides.length) return;
+    if (! guides.length) return;
 
     this.drawGuides(guides, layer);
 
@@ -341,7 +344,6 @@ export class SnappingMonitor {
       y: nodePos.y + dy
     });
   }// -- end onDragMove
-
 
   onDragEnd(e: Konva.KonvaEventObject<DragEvent>): void {
     e.target.getLayer()?.find(".guide-line").forEach(l => l.destroy());
