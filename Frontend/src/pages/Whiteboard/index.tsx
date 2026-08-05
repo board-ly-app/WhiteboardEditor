@@ -145,6 +145,7 @@ import {
   updateWhiteboard,
   setNotifications,
   scaleWhiteboardZoom,
+  clearWhiteboard,
 } from '@/controllers';
 
 type ComponentStatus = 
@@ -165,9 +166,7 @@ const Whiteboard = () => {
   const navigate = useNavigate();
   const { user } = useUser();
 
-  if (!user) {
-    throw new Error('No authenticated user found');
-  }
+  if (!user) throw new Error('No authenticated user found');
 
   const dispatch = store.dispatch;
 
@@ -176,17 +175,9 @@ const Whiteboard = () => {
   const authContext = useContext(AuthContext);
   const clientMessengerContext = useContext(ClientMessengerContext);
 
-  if (! whiteboardContext) {
-    throw new Error('No WhiteboardContext provided to Whiteboard');
-  }
-
-  if (! authContext) {
-    throw new Error('No AuthContext provided to Whiteboard');
-  }
-
-  if (! clientMessengerContext) {
-    throw new Error('No ClientMessengerContext provided to Whiteboard');
-  }
+  if (! whiteboardContext) throw new Error('No WhiteboardContext provided to Whiteboard');
+  if (! authContext) throw new Error('No AuthContext provided to Whiteboard');
+  if (! clientMessengerContext) throw new Error('No ClientMessengerContext provided to Whiteboard');
 
   const {
     whiteboardId,
@@ -200,6 +191,14 @@ const Whiteboard = () => {
     (state: RootState) => selectWhiteboardPermissionByUser(state, whiteboardId, user.id),
     lodash.isEqual
   );
+
+  // -- Ensure whiteboard data is cleared from store on exit
+  useEffect(
+    () => () => {
+      clearWhiteboard(store.dispatch, whiteboardId);
+    },
+    [whiteboardId]
+  );// -- end useEffect
 
   // -- fetch unread notifications
   useEffect(
