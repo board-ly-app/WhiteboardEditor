@@ -293,6 +293,7 @@ async fn handle_connection(
             WhiteboardMetadataMongoDBView,
             WhiteboardVisibilityEnum,
             WhiteboardPermissionType,
+            Edit,
         },
         protocol::{
             ClientError,
@@ -745,15 +746,20 @@ async fn handle_connection(
 
                         // -- update database, if there are edits
                         {
-                            let mut edits = client_state_base.edits.lock().await;
+                            let mongo_interface_copy = MongoDBInterface::new(&db);
+                            let mut state_edits = client_state_base.edits.lock().await;
+                            let mut curr_edits = Vec::<Edit>::new();
 
+                            std::mem::swap(&mut *state_edits, &mut curr_edits);
+
+                            tokio::spawn(async move {
+                                for edit in curr_edits.iter() {
+                                    mongo_interface_copy.process_edit(edit).await;
+                                }// -- end for edit in edits.iter()
+                            });
                             // -- update local edit history
-                            
-                            for edit in edits.iter() {
-                                mongo_interface.process_edit(edit).await;
-                            }// -- end for edit in edits.iter()
 
-                            edits.clear();
+                            state_edits.clear();
                         }
 
 
