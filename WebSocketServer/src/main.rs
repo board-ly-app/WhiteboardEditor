@@ -230,9 +230,14 @@ async fn main() -> process::ExitCode {
                                                 .send(ServerSocketMessage::Broadcast {
                                                     msg: ServerSocketBroadcastMessage::DeleteWhiteboard,
                                                 });
+
+                                            // -- terminate db writer thread
+                                            if let Err(e) = whiteboard_entry.db_edit_channel.send(None) {
+                                                eprintln!("Could not send to database writer task: {:?}", e);
+                                            }
                                         }
 
-                                        // delete entry
+                                        // -- delete entry
                                         whiteboards.remove(wb_id);
                                     }
                                 }
@@ -568,16 +573,40 @@ async fn handle_connection(
                         let whiteboard_id = *whiteboard.id();
                         let whiteboard_ref = Arc::new(Mutex::new(whiteboard));
 
-                        // sender
                         // TODO: replace 100 with value from a config
-                        let (tx, _rx) = broadcast::channel::<ServerSocketMessage>(100);
+                        let (broadcaster_tx, _) = broadcast::channel::<ServerSocketMessage>(100);
+                        let (db_edit_tx, mut db_edit_rx) = broadcast::channel::<Option<Edit>>(100);
+
+                        // -- Spawn a thread to write edits to the database
+                        let db_edit_write_task = {
+                            let mongo_interface = MongoDBInterface::new(&db);
+
+                            tokio::spawn(async move {
+                                loop {
+                                    match db_edit_rx.recv().await {
+                                        Err(e) => {
+                                            eprintln!("Error receiving edit: {:?}", e);
+                                        },
+                                        Ok(Some(edit)) => {
+                                            mongo_interface.process_edit(&edit).await;
+                                        },
+                                        Ok(None) => {
+                                            // -- terminate thread
+                                            break;
+                                        },
+                                    };// -- end match rec
+                                };// -- end loop
+                            })// -- end tokio::spawn
+                        };// -- end let db_edit_write_task
+
                         let shared_whiteboard_entry = SharedWhiteboardEntry {
                             whiteboard_ref: Arc::clone(&whiteboard_ref),
-                            broadcaster: tx.clone(),
+                            broadcaster: broadcaster_tx,
                             active_clients: Arc::new(Mutex::new(HashMap::new())),
                             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
                             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
-                            edits: Arc::new(Mutex::new(Vec::new())),
+                            db_edit_channel: db_edit_tx,
+                            db_edit_write_task: Arc::new(db_edit_write_task),
                         };
 
                         // insert whiteboard into cache
@@ -632,12 +661,12 @@ async fn handle_connection(
         access_token_secret: connection_state_ref.access_token_secret.clone(),
         whiteboard_id: whiteboard_id.clone(),
         whiteboard_ref: Arc::clone(&shared_whiteboard_entry.whiteboard_ref),
+        db_edit_channel: shared_whiteboard_entry.db_edit_channel.clone(),
         active_clients: Arc::clone(&shared_whiteboard_entry.active_clients),
         clients_by_user_id: Arc::clone(&shared_whiteboard_entry.clients_by_user_id),
         selectors_to_canvas_objects: Arc::clone(
             &shared_whiteboard_entry.selectors_to_canvas_objects
         ),
-        edits: Arc::clone(&shared_whiteboard_entry.edits),
     };
 
     // -- Initialize client
@@ -743,25 +772,6 @@ async fn handle_connection(
                                 .await
                                 .base
                         };// -- end let resp
-
-                        // -- update database, if there are edits
-                        {
-                            let mongo_interface_copy = MongoDBInterface::new(&db);
-                            let mut state_edits = client_state_base.edits.lock().await;
-                            let mut curr_edits = Vec::<Edit>::new();
-
-                            std::mem::swap(&mut *state_edits, &mut curr_edits);
-
-                            tokio::spawn(async move {
-                                for edit in curr_edits.iter() {
-                                    mongo_interface_copy.process_edit(edit).await;
-                                }// -- end for edit in edits.iter()
-                            });
-                            // -- update local edit history
-
-                            state_edits.clear();
-                        }
-
 
                         // -- send response to clients, if requested
                         for r in resp.messages.iter() {

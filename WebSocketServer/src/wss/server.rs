@@ -33,7 +33,9 @@ pub struct SharedWhiteboardEntry {
     pub clients_by_user_id: Arc<Mutex<OneToMany<UserIdType, ClientIdType>>>,
     // -- tracking which client is selecting, thereby currently owns, a given canvas object
     pub selectors_to_canvas_objects: Arc<Mutex<OneToMany<ClientIdType, CanvasObjectIdType>>>,
-    pub edits: Arc<Mutex<Vec<Edit>>>,
+    #[allow(unused)]
+    pub db_edit_write_task: Arc<tokio::task::JoinHandle<()>>,
+    pub db_edit_channel: broadcast::Sender<Option<Edit>>,
 } // -- end pub struct SharedWhiteboardEntry
 
 impl SharedWhiteboardEntry {
@@ -126,6 +128,7 @@ pub struct ClientStateBase {
     pub whiteboard_id: WhiteboardIdType,
     pub whiteboard_ref: Arc<Mutex<Whiteboard>>,
     pub access_token_secret: String,
+    pub db_edit_channel: broadcast::Sender<Option<Edit>>,
     // The permission (view/edit/own) the user has on the current whiteboard
     // -- TODO: condense into just whiteboard, client, and edit mutexes
     // -- Replace separate loops with one check for unauthenticated vs authenticated
@@ -133,7 +136,6 @@ pub struct ClientStateBase {
     pub clients_by_user_id: Arc<Mutex<OneToMany<UserIdType, ClientIdType>>>,
     // -- tracking which client is selecting, thereby currently owns, a given canvas object
     pub selectors_to_canvas_objects: Arc<Mutex<OneToMany<ClientIdType, CanvasObjectIdType>>>,
-    pub edits: Arc<Mutex<Vec<Edit>>>,
 } // -- end pub struct ClientStateBase
 
 impl ClientStateBase {
@@ -515,11 +517,9 @@ pub async fn handle_authenticated_client_message<'a>(
 
                             whiteboard.force_commit_edit(&edit);
 
-                            // -- Write edits to buffer
-                            {
-                                let mut edits = client_state.base.edits.lock().await;
-
-                                edits.push(edit);
+                            // -- Write edits to database
+                            if let Err(e) = client_state.base.db_edit_channel.send(Some(edit.clone())) {
+                                eprintln!("Error sending edit to database writer: {:?}", e);
                             }
 
                             ClientMessageResponse {
@@ -632,11 +632,8 @@ pub async fn handle_authenticated_client_message<'a>(
 
                             whiteboard.force_commit_edit(&edit);
 
-                            // -- write edits to buffer
-                            {
-                                let mut edits = client_state.base.edits.lock().await;
-
-                                edits.push(edit);
+                            if let Err(e) = client_state.base.db_edit_channel.send(Some(edit.clone())) {
+                                eprintln!("Error sending edit to database writer: {:?}", e);
                             }
 
                             ClientMessageResponse {
@@ -712,11 +709,8 @@ pub async fn handle_authenticated_client_message<'a>(
 
                     whiteboard.force_commit_edit(&edit);
 
-                    // -- write edits to buffer
-                    {
-                        let mut edits = client_state.base.edits.lock().await;
-
-                        edits.push(edit);
+                    if let Err(e) = client_state.base.db_edit_channel.send(Some(edit.clone())) {
+                        eprintln!("Error sending edit to database writer: {:?}", e);
                     }
 
                     ClientMessageResponse {
@@ -789,11 +783,8 @@ pub async fn handle_authenticated_client_message<'a>(
 
                     whiteboard.force_commit_edit(&edit);
 
-                    // -- write edits to buffer
-                    {
-                        let mut edits = client_state.base.edits.lock().await;
-
-                        edits.push(edit);
+                    if let Err(e) = client_state.base.db_edit_channel.send(Some(edit.clone())) {
+                        eprintln!("Error sending edit to database writer: {:?}", e);
                     }
 
                     ClientMessageResponse {
@@ -852,11 +843,8 @@ pub async fn handle_authenticated_client_message<'a>(
 
                     whiteboard.force_commit_edit(&edit);
 
-                    // -- write edits to buffer
-                    {
-                        let mut edits = client_state.base.edits.lock().await;
-
-                        edits.push(edit);
+                    if let Err(e) = client_state.base.db_edit_channel.send(Some(edit.clone())) {
+                        eprintln!("Error sending edit to database writer: {:?}", e);
                     }
 
                     ClientMessageResponse {
@@ -1036,11 +1024,8 @@ pub async fn handle_authenticated_client_message<'a>(
 
                     whiteboard.force_commit_edit(&edit);
 
-                    // -- write edits to buffer
-                    {
-                        let mut edits = client_state.base.edits.lock().await;
-
-                        edits.push(edit);
+                    if let Err(e) = client_state.base.db_edit_channel.send(Some(edit.clone())) {
+                        eprintln!("Error sending edit to database writer: {:?}", e);
                     }
 
                     // -- broadcast to all users
@@ -1153,11 +1138,8 @@ pub async fn handle_authenticated_client_message<'a>(
 
                     whiteboard.force_commit_edit(&edit);
 
-                    // -- write edits to buffer
-                    {
-                        let mut edits = client_state.base.edits.lock().await;
-
-                        edits.push(edit);
+                    if let Err(e) = client_state.base.db_edit_channel.send(Some(edit.clone())) {
+                        eprintln!("Error sending edit to database writer: {:?}", e);
                     }
 
                     // Tell clients to merge canvases on their end
@@ -1179,13 +1161,12 @@ pub async fn handle_authenticated_client_message<'a>(
                     if let Some(reversed_edit) = whiteboard.reverse_edit_by_author(user_id) {
                         let edit_reverse = reversed_edit.generate_reverse(user_id);
 
-                        // -- Leave edit to instruct database to remove edit from database
-                        {
-                            let mut edits = client_state.base.edits.lock().await;
-
-                            edits.push(client_state.generate_edit(EditKind::UndoEdit {
-                                target_edit_id: reversed_edit.id().clone(),
-                            }));
+                        // -- Send edit to instruct database to remove edit from database
+                        let undo_edit = client_state.generate_edit(EditKind::UndoEdit {
+                            target_edit_id: reversed_edit.id().clone(),
+                        });
+                        if let Err(e) = client_state.base.db_edit_channel.send(Some(undo_edit)) {
+                            eprintln!("Error sending edit to database writer: {:?}", e);
                         }
 
                         ClientMessageResponse {
@@ -1518,6 +1499,7 @@ mod unit_tests {
     use mongodb::bson::oid::ObjectId;
 
     use chrono::Utc;
+    use tokio::sync::broadcast;
 
     #[tokio::test]
     async fn handle_invalid_client_message() {
@@ -1556,6 +1538,7 @@ mod unit_tests {
             Vec::new(),
         );
 
+        let (dummy_tx, _) = broadcast::channel::<Option<Edit>>(100);
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
             access_token_secret: String::from("abcd"),
@@ -1564,7 +1547,7 @@ mod unit_tests {
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
-            edits: Arc::new(Mutex::new(Vec::new())),
+            db_edit_channel: dummy_tx,
         };
 
         let client_state = ClientStateAuthenticated {
@@ -1734,6 +1717,7 @@ mod unit_tests {
             Vec::new(),
         );
 
+        let (dummy_tx, _) = broadcast::channel::<Option<Edit>>(100);
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
             access_token_secret: String::from("abcd"),
@@ -1742,7 +1726,7 @@ mod unit_tests {
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
-            edits: Arc::new(Mutex::new(Vec::new())),
+            db_edit_channel: dummy_tx,
         };
 
         let client_state = ClientStateAuthenticated {
@@ -2005,6 +1989,7 @@ mod unit_tests {
             Vec::new(),
         );
 
+        let (dummy_tx, _) = broadcast::channel::<Option<Edit>>(100);
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
             access_token_secret: String::from("abcd"),
@@ -2013,7 +1998,7 @@ mod unit_tests {
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
-            edits: Arc::new(Mutex::new(Vec::new())),
+            db_edit_channel: dummy_tx,
         };
 
         let client_state = ClientStateAuthenticated {
@@ -2268,6 +2253,7 @@ mod unit_tests {
             Vec::new(),
         );
 
+        let (dummy_tx, _) = broadcast::channel::<Option<Edit>>(100);
         let client_state = ClientStateBase {
             client_id: test_client_id.clone(),
             access_token_secret: String::from(access_token_secret),
@@ -2276,7 +2262,7 @@ mod unit_tests {
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
-            edits: Arc::new(Mutex::new(Vec::new())),
+            db_edit_channel: dummy_tx,
         };
 
         // -- create authentication message (json)
@@ -2536,6 +2522,7 @@ mod unit_tests {
             Vec::new(),
         );
 
+        let (dummy_tx, _) = broadcast::channel::<Option<Edit>>(100);
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
             access_token_secret: String::from("abcd"),
@@ -2544,7 +2531,7 @@ mod unit_tests {
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
-            edits: Arc::new(Mutex::new(Vec::new())),
+            db_edit_channel: dummy_tx,
         };
 
         let client_state = ClientStateAuthenticated {
@@ -2702,6 +2689,7 @@ mod unit_tests {
             Vec::new(),
         );
 
+        let (dummy_tx, _) = broadcast::channel::<Option<Edit>>(100);
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
             access_token_secret: String::from("abcd"),
@@ -2710,7 +2698,7 @@ mod unit_tests {
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
-            edits: Arc::new(Mutex::new(Vec::new())),
+            db_edit_channel: dummy_tx,
         };
 
         let client_state = ClientStateAuthenticated {
@@ -2898,6 +2886,7 @@ mod unit_tests {
             Vec::new(),
         );
 
+        let (dummy_tx, _) = broadcast::channel::<Option<Edit>>(100);
         let client_state_base = ClientStateBase {
             client_id: test_client_id.clone(),
             access_token_secret: String::from("abcd"),
@@ -2906,7 +2895,7 @@ mod unit_tests {
             active_clients: Arc::new(Mutex::new(HashMap::new())),
             clients_by_user_id: Arc::new(Mutex::new(collections::OneToMany::new())),
             selectors_to_canvas_objects: Arc::new(Mutex::new(collections::OneToMany::new())),
-            edits: Arc::new(Mutex::new(Vec::new())),
+            db_edit_channel: dummy_tx,
         };
 
         let client_state = ClientStateAuthenticated {
@@ -3077,8 +3066,8 @@ mod unit_tests {
         let active_clients = Arc::new(Mutex::new(HashMap::new()));
         let clients_by_user_id = Arc::new(Mutex::new(collections::OneToMany::new()));
         let selectors_to_canvas_objects = Arc::new(Mutex::new(collections::OneToMany::new()));
-        let edits = Arc::new(Mutex::new(Vec::new()));
 
+        let (dummy_tx, _) = broadcast::channel::<Option<Edit>>(100);
         let client_state_a_base = ClientStateBase {
             client_id: client_a_id.clone(),
             access_token_secret: String::from("abcd"),
@@ -3087,7 +3076,7 @@ mod unit_tests {
             active_clients: Arc::clone(&active_clients),
             clients_by_user_id: Arc::clone(&clients_by_user_id),
             selectors_to_canvas_objects: Arc::clone(&selectors_to_canvas_objects),
-            edits: Arc::clone(&edits),
+            db_edit_channel: dummy_tx,
         };
 
         let client_state_a = ClientStateAuthenticated {
@@ -3099,6 +3088,7 @@ mod unit_tests {
             },
         };
 
+        let (dummy_tx, _) = broadcast::channel::<Option<Edit>>(100);
         let client_state_b_base = ClientStateBase {
             client_id: client_b_id.clone(),
             access_token_secret: String::from("defg"),
@@ -3107,7 +3097,7 @@ mod unit_tests {
             active_clients: Arc::clone(&active_clients),
             clients_by_user_id: Arc::clone(&clients_by_user_id),
             selectors_to_canvas_objects: Arc::clone(&selectors_to_canvas_objects),
-            edits: Arc::clone(&edits),
+            db_edit_channel: dummy_tx,
         };
 
         let client_state_b = ClientStateAuthenticated {
