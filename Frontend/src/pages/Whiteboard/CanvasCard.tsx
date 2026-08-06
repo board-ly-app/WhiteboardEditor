@@ -736,6 +736,8 @@ const CanvasCard = ({
             case 'ArrowLeft':
             case 'ArrowRight':
             {
+              if ((! selectedCanvasObjects) || (selectedCanvasObjects.length === 0)) return;
+
               ev.preventDefault();
 
               let incremX : number;
