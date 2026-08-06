@@ -28,6 +28,9 @@ import {
   WB_ZOOM_FACTOR,
   LS_KEY_COPIED_CANVAS_OBJECTS,
   THUMBNAIL_IMAGE_QUALITY,
+  DEFAULT_KEYED_SHIFT_DIST,
+  LONG_KEYED_SHIFT_DIST,
+  SHORT_KEYED_SHIFT_DIST,
 } from '@/app.config';
 
 import Canvas from "@/pages/Whiteboard/Canvas";
@@ -425,6 +428,156 @@ const CanvasCard = ({
     [clientMessenger, selectedCanvasObjects]
   );// -- end handleUnselect
 
+  // -- When shifting objects with arrow keys, debounce the calls so keypresses in
+  // quick succession don't cancel each other out
+  interface ShiftAmount {
+    x: number;
+    y: number;
+  }
+
+  const totalShiftAmtRef = useRef<ShiftAmount | null>(null);
+  const debouncedShiftHandleRef = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (debouncedShiftHandleRef.current) {
+        window.clearInterval(debouncedShiftHandleRef.current);
+      }
+    },
+    []
+  );// -- end useEffect
+
+  const incrementSelectedObjectShift = useCallback(
+    (amt: ShiftAmount) => {
+      const handleDebouncedShift = () => {
+        const totalShiftAmt = totalShiftAmtRef.current;
+        const debouncedShiftHandle = debouncedShiftHandleRef.current;
+
+        // -- Stop interval if no updates
+        if (! totalShiftAmt) {
+          if (debouncedShiftHandle) {
+            window.clearInterval(debouncedShiftHandle);
+            debouncedShiftHandleRef.current = null;
+          }
+          return;
+        }
+
+        // -- reset totalShiftAmt
+        const currentShiftAmt = totalShiftAmt;
+        totalShiftAmtRef.current = null;
+
+        if (! clientMessenger) return;
+
+        const currState : RootState = store.getState();
+        const selectedCanvasObjects = selectSelectedCanvasObjectsByWhiteboard(
+          currState, whiteboardId, clientId
+        );
+        const selectedCanvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+
+        if (! selectedCanvasId) return;
+        if (! selectedCanvasObjects) return;
+
+        const canvas = selectCanvasById(currState, selectedCanvasId);
+        if (! canvas) throw new Error(`Canvas ${selectedCanvasId} not found`);
+
+        // -- Calculate updates of selected shapes
+        try {
+          // -- Cancel the shift if shifting any object would bring it out
+          // of bounds
+          const updatedCanvasObjects = Object.fromEntries(
+            selectedCanvasObjects.map(objId => {
+              const obj = selectCanvasObjectById(currState, objId);
+
+              if (! obj) throw new Error(`Canvas object ${objId} not found`);
+
+              let update;
+
+              switch (obj.type) {
+                case 'rect':
+                case 'text':
+                case 'image':
+                {
+                  const nextX = obj.x + currentShiftAmt.x;
+                  const nextY = obj.y + currentShiftAmt.y;
+
+                  if (nextX < 0) throw 'oob';
+                  if (nextY < 0) throw 'oob';
+                  if (nextX + obj.width > canvas.width) throw 'oob';
+                  if (nextY + obj.height > canvas.height) throw 'oob';
+
+                  update = ({ ...obj, x: nextX, y: nextY, });
+                }
+                break;
+                case 'ellipse':
+                {
+                  const nextX = obj.x + currentShiftAmt.x;
+                  const nextY = obj.y + currentShiftAmt.y;
+
+                  if (nextX - obj.radiusX < 0) throw 'oob';
+                  if (nextY - obj.radiusY < 0) throw 'oob';
+                  if (nextX + obj.radiusX > canvas.width) throw 'oob';
+                  if (nextY + obj.radiusY > canvas.height) throw 'oob';
+
+                  update = ({ ...obj, x: nextX, y: nextY, });
+                }
+                break;
+                case 'vector':
+                {
+                  const updatedPoints = obj.points.map((val, i) => {
+                    if (i % 2 === 0) {
+                      const nextX = val + currentShiftAmt.x;
+
+                      if (nextX < 0 || nextX > canvas.width) throw 'oob';
+                      return nextX;
+                    } else {
+                      const nextY = val + currentShiftAmt.y;
+
+                      if (nextY < 0 || nextY > canvas.height) throw 'oob';
+                      return nextY;
+                    }
+                  });// -- end const updatedPoints
+
+                  update = ({ ...obj, points: updatedPoints, });
+                }
+                break;
+              }// -- end switch (obj.type)
+
+              return [objId, update];
+            })
+          );// -- end const updatedCanvasObjects
+
+          clientMessenger.sendUpdateCanvasObjects({
+            type: 'update_canvas_objects',
+            canvasId: selectedCanvasId,
+            canvasObjects: updatedCanvasObjects,
+          });
+        } catch (e: unknown) {
+          // -- Re-throw error if it isn't our specified out-of-bounds
+          // error
+          if (e !== 'oob') throw e;
+        }
+        // -- If shift valid, send message
+      };// -- end handleDebouncedShift
+
+      const totalShiftAmt = totalShiftAmtRef.current;
+      const debouncedShiftHandle = debouncedShiftHandleRef.current;
+
+      if (! totalShiftAmt) {
+        totalShiftAmtRef.current = { ...amt };
+
+        if (debouncedShiftHandle) {
+          window.clearInterval(debouncedShiftHandle);
+        }
+
+        debouncedShiftHandleRef.current = window.setInterval(handleDebouncedShift, 100);
+      } else {
+        totalShiftAmt.x += amt.x;
+        totalShiftAmt.y += amt.y;
+      }
+    },
+    [clientId, whiteboardId, clientMessenger]
+  );// -- end incrementSelectedObjectShift
+
   useEffect(
     () => {
       if (containerRef.current) {
@@ -443,6 +596,7 @@ const CanvasCard = ({
         container.addEventListener('pointerdown', handlePointerEvent);
         container.addEventListener('pointerup', handlePointerEvent);
 
+        // -- TODO: reimplement debounced shift using useCallback, useRef
         const handleCopyObject = () => {
           const currState = store.getState();
           const selectedCanvasObjectIds = selectSelectedCanvasObjectsByWhiteboard(
@@ -574,6 +728,55 @@ const CanvasCard = ({
               clientMessenger?.sendUnselectedCanvasObjects({
                 type: 'unselected_canvas_objects',
                 canvasObjectIds: selectedCanvasObjects,
+              });
+            }
+            break;
+            case 'ArrowUp':
+            case 'ArrowDown':
+            case 'ArrowLeft':
+            case 'ArrowRight':
+            {
+              if ((! selectedCanvasObjects) || (selectedCanvasObjects.length === 0)) return;
+
+              ev.preventDefault();
+
+              let incremX : number;
+              let incremY : number;
+
+              switch (ev.key) {
+                case 'ArrowUp':
+                  incremX = 0;
+                  incremY = -1.0;
+                  break;
+                case 'ArrowDown':
+                  incremX = 0;
+                  incremY = 1.0;
+                  break;
+                case 'ArrowLeft':
+                  incremX = -1.0;
+                  incremY = 0.0;
+                  break;
+                case 'ArrowRight':
+                  incremX = 1.0;
+                  incremY = 0.0;
+                  break;
+              }// -- end switch (ev.key)
+
+              if (ev.ctrlKey || ev.metaKey) {
+                // -- Make this a short shift
+                incremX *= SHORT_KEYED_SHIFT_DIST;
+                incremY *= SHORT_KEYED_SHIFT_DIST;
+              } else if (ev.shiftKey) {
+                incremX *= LONG_KEYED_SHIFT_DIST;
+                incremY *= LONG_KEYED_SHIFT_DIST;
+              } else {
+                incremX *= DEFAULT_KEYED_SHIFT_DIST;
+                incremY *= DEFAULT_KEYED_SHIFT_DIST;
+              }
+
+              incrementSelectedObjectShift({
+                x: incremX,
+                y: incremY,
               });
             }
             break;
@@ -756,6 +959,7 @@ const CanvasCard = ({
       clientMessenger,
       currentDispatcherRef,
       canvasGroupRefsByIdRef,
+      incrementSelectedObjectShift,
       width,
       height,
     ]
