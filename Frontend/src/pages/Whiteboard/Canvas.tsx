@@ -109,10 +109,6 @@ import type {
   OperationDispatcher,
 } from '@/types/OperationDispatcher';
 
-import {
-  type NewCanvasDimensions,
-} from '@/types/CreateCanvas';
-
 // -- dispatchers
 import useMockDispatcher from '@/dispatchers/useMockDispatcher';
 import useInaccessibleDispatcher from '@/dispatchers/useInaccessibleDispatcher';
@@ -128,25 +124,18 @@ import useSelectDispatcher from '@/dispatchers/useSelectDispatcher';
 export interface CanvasProps {
   id: CanvasIdType;
   shapeAttributes: ShapeAttributesState;
-  onSelectCanvasDimensions: (canvasId: CanvasIdType, dimensions: NewCanvasDimensions) => void;
 }
 
 const Canvas = ({
   id : canvasId,
   shapeAttributes,
-  onSelectCanvasDimensions,
 }: CanvasProps) => {
   const whiteboardContext = useContext(WhiteboardContext);
 
-  if (! whiteboardContext) {
-    throw new Error('No whiteboard context');
-  }
+  if (! whiteboardContext) throw new Error('No whiteboard context');
 
   const clientMessengerContext = useContext(ClientMessengerContext);
-
-  if (! clientMessengerContext) {
-    throw new Error('No Client Messenger context provided');
-  }
+  if (! clientMessengerContext) throw new Error('No Client Messenger context provided');
 
   const dispatch = store.dispatch;
 
@@ -299,13 +288,7 @@ const Canvas = ({
     addShapes,
   });
 
-  const createCanvasDispatcher = useCreateCanvasDispatcher({
-    shapeAttributes,
-    addShapes,
-    onCreate: (dimensions: NewCanvasDimensions) => {
-      onSelectCanvasDimensions(canvasId, dimensions);
-    },
-  });
+  const createCanvasDispatcher = useCreateCanvasDispatcher();
 
   const selectDispatcher = useSelectDispatcher();
 
@@ -601,7 +584,6 @@ const Canvas = ({
             key={childCanvasId}
             id={childCanvasId}
             shapeAttributes={shapeAttributes}
-            onSelectCanvasDimensions={onSelectCanvasDimensions}
           />
         ))
       )}

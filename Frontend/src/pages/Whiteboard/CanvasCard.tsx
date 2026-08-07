@@ -105,9 +105,6 @@ import {
   updateWhiteboard,
 } from '@/controllers';
 
-import {
-  type NewCanvasDimensions,
-} from '@/types/CreateCanvas';
 import WhiteboardContext from '@/context/WhiteboardContext';
 import {
   useUser,
@@ -118,14 +115,11 @@ import api from '@/api/axios';
 export interface CanvasCardProps {
   rootCanvasId: CanvasIdType,
   shapeAttributes: ShapeAttributesState;
-  // -- editor identified by user id
-  onSelectCanvasDimensions: (canvasId: CanvasIdType, dimensions: NewCanvasDimensions) => void;
 }
 
 const CanvasCard = ({
   rootCanvasId,
   shapeAttributes,
-  onSelectCanvasDimensions,
 }: CanvasCardProps) => {
   const userCacheContext = useContext(UserCacheContext);
 
@@ -995,7 +989,6 @@ const CanvasCard = ({
               {...{
                 id: rootCanvasId,
                 shapeAttributes,
-                onSelectCanvasDimensions,
               }}
             />
           </Layer>
