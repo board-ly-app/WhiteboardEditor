@@ -6,12 +6,15 @@ import {
 } from 'react';
 
 // --- third-party imports
+import {
+  useSelector,
+} from 'react-redux';
 import Konva from 'konva';
 import { Rect } from 'react-konva';
 
 // --- local imports
-import type {
-  OperationDispatcher,
+import {
+  type OperationDispatcher,
 } from '@/types/OperationDispatcher';
 
 import type {
@@ -20,8 +23,13 @@ import type {
 import type { AttributeDefinition } from '@/types/Attribute';
 
 import {
+  type RootState,
   store,
 } from '@/store';
+
+import {
+  selectCreateCanvasFlowState,
+} from '@/store/userFlows/createCanvas/createCanvasSelectors';
 
 import {
   setCreateCanvasReady,
@@ -30,10 +38,6 @@ import {
 import {
   selectSelectedCanvasByWhiteboard,
 } from '@/store/canvases/canvasesSelectors';
-
-import {
-  updateWhiteboard,
-} from '@/controllers';
 
 import WhiteboardContext from '@/context/WhiteboardContext';
 
@@ -49,6 +53,10 @@ const useCreateCanvasDispatcher = (): OperationDispatcher => {
   const {
     whiteboardId,
   } = whiteboardContext;
+
+  const componentState = useSelector(
+    (state: RootState) => selectCreateCanvasFlowState(state)
+  );
   const [mouseDownCoords, setMouseDownCoords] = useState<EventCoords | null>(null);
   const [mouseCoords, setMouseCoords] = useState<EventCoords | null>(null);
 
@@ -107,11 +115,6 @@ const useCreateCanvasDispatcher = (): OperationDispatcher => {
         originY: yMin,
       }));
       setMouseDownCoords(null);
-
-      // Switch to hand tool after creating canvas
-      updateWhiteboard(store.dispatch, whiteboardId, {
-        currentTool: "hand",
-      });
     },
     [whiteboardId, mouseDownCoords]
   );// -- end handlePointerUp
@@ -140,10 +143,25 @@ const useCreateCanvasDispatcher = (): OperationDispatcher => {
           />
         );
       } else {
-        return null;
+        switch (componentState.status) {
+          case 'inactive':
+            return null;
+          case 'ready':
+          case 'requesting':
+            return (
+              <Rect
+                x={componentState.originX}
+                y={componentState.originY}
+                width={componentState.width}
+                height={componentState.height}
+                stroke="black"
+                dash={[10, 10]}
+              />
+            );
+        }// -- end switch (componentState.status)
       }
     },
-    [mouseCoords, mouseDownCoords]
+    [componentState, mouseCoords, mouseDownCoords]
   );// -- end getPreview
 
   const getAttributes = useCallback(

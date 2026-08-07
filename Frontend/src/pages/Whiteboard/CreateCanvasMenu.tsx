@@ -32,6 +32,12 @@ import {
 } from '@/store/userFlows/createCanvas/createCanvasSelectors';
 
 import {
+  updateWhiteboard,
+} from '@/controllers';
+
+import WhiteboardContext from '@/context/WhiteboardContext';
+
+import {
   ClientMessengerContext,
 } from '@/context/ClientMessengerContext';
 
@@ -48,6 +54,12 @@ const CreateCanvasMenu = () => {
     (state: RootState) => selectCreateCanvasFlowState(state)
   );
 
+  const whiteboardContext = useContext(WhiteboardContext);
+  if (! whiteboardContext) throw new Error('No WhiteboardContext provided');
+  const {
+    whiteboardId,
+  } = whiteboardContext;
+
   const clientMessengerContext = useContext(ClientMessengerContext);
   if (! clientMessengerContext) throw new Error('No ClientMessengerContext provided');
   const {
@@ -61,8 +73,13 @@ const CreateCanvasMenu = () => {
   const closeModal = useCallback(
     () => {
       store.dispatch(setCreateCanvasInactive({}));
+
+      // Switch to hand tool after creating canvas
+      updateWhiteboard(store.dispatch, whiteboardId, {
+        currentTool: "hand",
+      });
     },
-    []
+    [whiteboardId]
   );// -- end handleSetClosed
 
   const handleCreateCanvas = useCallback(
@@ -162,7 +179,12 @@ const CreateCanvasMenu = () => {
           throw new Error('Unrecognized component state');
       }// -- end switch (currComponentState.status)
     },
-    [closeModal, handleCreateCanvas, canvasName, newCanvasAllowedUsers]
+    [
+      closeModal,
+      handleCreateCanvas,
+      canvasName,
+      newCanvasAllowedUsers,
+    ]
   );// -- end handleSubmit
 
   const isCreateDisabled : boolean = useMemo(
