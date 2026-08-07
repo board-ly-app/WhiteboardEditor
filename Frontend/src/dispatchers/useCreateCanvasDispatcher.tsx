@@ -2,38 +2,61 @@
 import {
   useState,
   useCallback,
+  useContext,
 } from 'react';
 
 // --- third-party imports
+import {
+  useSelector,
+} from 'react-redux';
 import Konva from 'konva';
 import { Rect } from 'react-konva';
 
 // --- local imports
-import type {
-  OperationDispatcher,
-  OperationDispatcherProps
-} from '@/types/OperationDispatcher';
-
 import {
-  type NewCanvasDimensions,
-} from '@/types/CreateCanvas';
+  type OperationDispatcher,
+} from '@/types/OperationDispatcher';
 
 import type {
   EventCoords
 } from '@/types/EventCoords';
 import type { AttributeDefinition } from '@/types/Attribute';
 
+import {
+  type RootState,
+  store,
+} from '@/store';
+
+import {
+  selectCreateCanvasFlowState,
+} from '@/store/userFlows/createCanvas/createCanvasSelectors';
+
+import {
+  setCreateCanvasReady,
+} from '@/store/userFlows/createCanvas/createCanvasSlice';
+
+import {
+  selectSelectedCanvasByWhiteboard,
+} from '@/store/canvases/canvasesSelectors';
+
+import WhiteboardContext from '@/context/WhiteboardContext';
+
 // === useCreateCanvasDispatcher ===============================================
 //
 // Tool for drawing rectangles.
 //
 // =============================================================================
-const useCreateCanvasDispatcher = ({
-  shapeAttributes: _shapeAttributes,
-  addShapes: _addShapes,
-  onCreate: onCreateCanvas,
-}: OperationDispatcherProps<NewCanvasDimensions>
-): OperationDispatcher => {
+const useCreateCanvasDispatcher = (): OperationDispatcher => {
+  const whiteboardContext = useContext(WhiteboardContext);
+  if (! whiteboardContext) throw new Error('No WhiteboardContext provided');
+
+  const {
+    whiteboardId,
+  } = whiteboardContext;
+
+  const componentState = useSelector(
+    (state: RootState) => selectCreateCanvasFlowState(state)
+  );
   const [mouseDownCoords, setMouseDownCoords] = useState<EventCoords | null>(null);
   const [mouseCoords, setMouseCoords] = useState<EventCoords | null>(null);
 
@@ -68,32 +91,32 @@ const useCreateCanvasDispatcher = ({
 
   const handlePointerUp = useCallback(
     (ev: Konva.KonvaEventObject<MouseEvent>) => {
-      if (! onCreateCanvas) {
-        throw new Error('CreateCanvasDispatcher requires an onCreate callback function');
-      }
-
       const pos = ev.currentTarget.getRelativePointerPosition();
 
-      if (pos && mouseDownCoords) {
-        const { x: xA, y: yA } = pos;
-        const { x: xB, y: yB } = mouseDownCoords;
-        const xMin = Math.min(xA, xB);
-        const yMin = Math.min(yA, yB);
-        const width = Math.abs(xA - xB);
-        const height = Math.abs(yA - yB);
+      if (! pos) return;
+      if (! mouseDownCoords) return;
 
-        const newCanvasData : NewCanvasDimensions = {
-          originX: xMin,
-          originY: yMin,
-          width,
-          height,
-        };
+      const currState = store.getState();
+      const currCanvasId = selectSelectedCanvasByWhiteboard(currState, whiteboardId);
+      if (! currCanvasId) throw new Error('No canvas currently selected');
 
-        onCreateCanvas(newCanvasData);
-        setMouseDownCoords(null);
-      }
+      const { x: xA, y: yA } = pos;
+      const { x: xB, y: yB } = mouseDownCoords;
+      const xMin = Math.min(xA, xB);
+      const yMin = Math.min(yA, yB);
+      const width = Math.abs(xA - xB);
+      const height = Math.abs(yA - yB);
+
+      store.dispatch(setCreateCanvasReady({
+        width,
+        height,
+        parentCanvasId: currCanvasId,
+        originX: xMin,
+        originY: yMin,
+      }));
+      setMouseDownCoords(null);
     },
-    [mouseDownCoords, onCreateCanvas]
+    [whiteboardId, mouseDownCoords]
   );// -- end handlePointerUp
 
   const handleCancel = useCallback(
@@ -120,10 +143,25 @@ const useCreateCanvasDispatcher = ({
           />
         );
       } else {
-        return null;
+        switch (componentState.status) {
+          case 'inactive':
+            return null;
+          case 'ready':
+          case 'requesting':
+            return (
+              <Rect
+                x={componentState.originX}
+                y={componentState.originY}
+                width={componentState.width}
+                height={componentState.height}
+                stroke="black"
+                dash={[10, 10]}
+              />
+            );
+        }// -- end switch (componentState.status)
       }
     },
-    [mouseCoords, mouseDownCoords]
+    [componentState, mouseCoords, mouseDownCoords]
   );// -- end getPreview
 
   const getAttributes = useCallback(

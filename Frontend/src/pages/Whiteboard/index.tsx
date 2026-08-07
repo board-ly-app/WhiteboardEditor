@@ -109,22 +109,15 @@ import type {
   CanvasObjectModel,
 } from '@/types/CanvasObjectModel';
 
-import CreateCanvasMenu, {
-  type NewCanvas,
-} from '@/components/CreateCanvasMenu'
+import CreateCanvasMenu from './CreateCanvasMenu'
 
 import {
   DeleteWhiteboardForm,
 } from '@/components/DeleteWhiteboardForm';
 
 import {
-  type NewCanvasDimensions,
-} from '@/types/CreateCanvas';
-
-import type {
-  ClientMessageCreateCanvas,
-  CanvasIdType,
-  WhiteboardIdType,
+  type CanvasIdType,
+  type WhiteboardIdType,
 } from '@/types/WebSocketProtocol';
 
 import {
@@ -286,11 +279,7 @@ const Whiteboard = () => {
   );
 
   const [shareOpen, setShareOpen] = useState(false);
-  const [createCanvasOpen, setCreateCanvasOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-
-  const [newCanvasDimensions, setNewCanvasDimensions] = useState<NewCanvasDimensions | null>(null);
-  const [newCanvasParentId, setNewCanvasParentId] = useState<CanvasIdType | null>(null);
 
   // Used within Toolbar
   const handleToolChange = useCallback(
@@ -387,51 +376,6 @@ const Whiteboard = () => {
   );// -- end handleSubmitDeleteWhiteboard
 
   // -- derived state
-      
-  // --- misc functions
-  const handleCreateCanvasDimensions = useCallback(
-    (parentCanvasId: CanvasIdType, dimensions: NewCanvasDimensions) => {
-        setNewCanvasDimensions(dimensions);
-        setNewCanvasParentId(parentCanvasId);
-        setCreateCanvasOpen(true);
-    },
-    [setNewCanvasDimensions, setCreateCanvasOpen]
-  );
-
-  const handleNewCanvas = useCallback(
-    (canvas: NewCanvas) => {
-      // Send message to server.
-      // Server will echo response back, and actually inserting the new canvas
-      // will be handled by handleServerMessage.
-      // TODO: allow setting custom canvas sizes
-      if (clientMessenger && newCanvasParentId && newCanvasDimensions) {
-        const createCanvasMsg : ClientMessageCreateCanvas = ({
-          type: 'create_canvas',
-          width: newCanvasDimensions.width,
-          height: newCanvasDimensions.height,
-          name: canvas.canvasName,
-          parentCanvas: {
-            canvasId: newCanvasParentId,
-            originX: newCanvasDimensions.originX,
-            originY: newCanvasDimensions.originY,
-          },
-          allowedUsers: canvas.allowedUsers,
-        });
-    
-        clientMessenger.sendCreateCanvas(createCanvasMsg);
-        setNewCanvasParentId(null);
-        setNewCanvasDimensions(null);
-      }
-    },
-    [
-      clientMessenger,
-      newCanvasDimensions,
-      newCanvasParentId,
-      setNewCanvasParentId,
-      setNewCanvasDimensions,
-    ]
-  );
-
   let status : ComponentStatus;
 
   if ((! name) || (! rootCanvas)) {
@@ -632,7 +576,6 @@ const Whiteboard = () => {
                   <CanvasCard
                     rootCanvasId={rootCanvasId}
                     shapeAttributes={shapeAttributesState}
-                    onSelectCanvasDimensions={handleCreateCanvasDimensions}
                   />
                 </div>
               </div>
@@ -645,11 +588,7 @@ const Whiteboard = () => {
             />
 
             {/** Create Canvas Modal **/}
-            <CreateCanvasMenu
-              open={createCanvasOpen}
-              onOpenChange={setCreateCanvasOpen}
-              onCreate={handleNewCanvas}
-            />
+            <CreateCanvasMenu />
 
             {/** Delete Whiteboard Modal **/}
             <DeleteWhiteboardForm
@@ -676,12 +615,6 @@ const Whiteboard = () => {
       } = currWhiteboard;
       
       const title = `[DELETED] ${currWhiteboard.name}`;
-      
-      // --- misc functions
-      const handleCreateCanvasDimensions = (_parentCanvasId: CanvasIdType, _dimensions: NewCanvasDimensions) => {
-          // do nothing; functionality disabled
-      };
-
       const pageTitle = `${title} | ${APP_NAME}`;
 
       return (
@@ -728,7 +661,6 @@ const Whiteboard = () => {
                   <CanvasCard
                     rootCanvasId={rootCanvasId}
                     shapeAttributes={shapeAttributesState}
-                    onSelectCanvasDimensions={handleCreateCanvasDimensions}
                   />
                 </div>
               </div>
