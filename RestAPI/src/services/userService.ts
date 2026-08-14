@@ -13,10 +13,10 @@ import type {
 } from '../utils';
 
 import {
-  User,
-  PatchPermanentUserData,
   type IUserType,
-  IPermanentUser,
+  type PatchPermanentUserData,
+  type IPermanentUser,
+  User,
 } from "../models/User";
 
 import {

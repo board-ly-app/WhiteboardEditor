@@ -86,9 +86,12 @@ services:
       target: release
       <<: *cache_settings
     image: ${WHITEBOARD_EDITOR_CR_URI-whiteboard_editor}/rest_api:${WHITEBOARD_EDITOR_TAG-latest}
+    env_file:
+      - .secrets/mail.env
     environment:
       # make sure to set values in .env
       MONGO_URI: ${WHITEBOARD_EDITOR_MONGO_URI}
+      DOMAIN_NAME: ${WHITEBOARD_EDITOR_DOMAIN}
       SESSION_SECRET: ${WHITEBOARD_EDITOR_SESSION_SECRET}
       ACCESS_TOKEN_SECRET: ${WHITEBOARD_EDITOR_ACCESS_TOKEN_SECRET}
       REFRESH_TOKEN_SECRET: ${WHITEBOARD_EDITOR_REFRESH_TOKEN_SECRET}
@@ -113,6 +116,7 @@ services:
     environment:
       # make sure to set values in .env
       MONGO_URI: ${WHITEBOARD_EDITOR_MONGO_URI}
+      DOMAIN_NAME: ${WHITEBOARD_EDITOR_DOMAIN}
       CSRF_DISABLED: "TRUE"
       SESSION_SECRET: ${WHITEBOARD_EDITOR_SESSION_SECRET}
       ACCESS_TOKEN_SECRET: ${WHITEBOARD_EDITOR_ACCESS_TOKEN_SECRET}
@@ -122,6 +126,14 @@ services:
       RATE_LIMIT: ${WHITEBOARD_EDITOR_RATE_LIMIT}
       TEMP_USER_EXPIRATION_SECS: ${WHITEBOARD_EDITOR_TEMP_EXPIRATION_SECS}
       TEMP_WHITEBOARD_EXPIRATION_SECS: ${WHITEBOARD_EDITOR_TEMP_EXPIRATION_SECS}
+      SKIP_EMAIL_VERIFICATION: "TRUE"
+      # -- Dummy values to allow mailTransporter to initialize without error
+      SMTP_HOST: "mail.example.com"
+      SMTP_USER: "tester"
+      SMTP_PASS: "tester"
+      EMAIL_DOMAIN_NAME: "example.com"
+      EMAIL_VERIFICATION_SECRET: "abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890"
+      EMAIL_VERIFICATION_EXPIRATION_SECS: 600
     depends_on:
       test_db:
         condition: service_healthy

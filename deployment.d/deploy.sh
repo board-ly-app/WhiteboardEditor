@@ -91,6 +91,9 @@ kubectl -n whiteboard-editor create secret generic ssl-cert \
 kubectl -n whiteboard-editor create secret generic ssl-key \
   --from-file=../.secrets/key.pem
 
+kubectl -n whiteboard-editor create secret generic mail-config \
+  --from-env-file ../.secrets/mail.env
+
 # -- Set up mailserver secrets
 kubectl -n whiteboard-editor create secret generic mailserver-config \
   --from-env-file ../.secrets/mailserver.env

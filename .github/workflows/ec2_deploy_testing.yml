@@ -26,13 +26,16 @@ on:
         description: ".env file to be placed in .env"
         required: true
       EC2_TEST_SSL_KEY:
-        description: "Private SSL key to be placed in ReverseProxy/key.pem"
+        description: "Private SSL key to be placed in .secrets/key.pem"
         required: true
       EC2_TEST_SSL_CERT:
-        description: "Certificate to be placed in ReverseProxy/cert.pem"
+        description: "Certificate to be placed in .secrets/cert.pem"
+        required: true
+      EC2_TEST_MAIL_ENV:
+        description: "Contents of mail.env file to be placed in .secrets/mail.env"
         required: true
       EC2_TEST_MAILSERVER_ENV:
-        description: "Contents of mailserver.env file to be placed in deployment.d/mailserver.env"
+        description: "Contents of mailserver.env file to be placed in .secrets/mailserver.env"
         required: true
       EC2_TEST_SAMBA_CREDENTIALS:
         description: "Contents of samba credentials file for mail server; must contain username and password"
@@ -239,6 +242,10 @@ jobs:
 
             cat > .secrets/cert.pem << '_EOF_'
             ${{ secrets.EC2_TEST_SSL_CERT }}
+            _EOF_
+
+            cat > .secrets/mail.env << '_EOF_'
+            ${{ secrets.EC2_TEST_MAIL_ENV }}
             _EOF_
 
             cat > .secrets/mailserver.env << '_EOF_'

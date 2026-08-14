@@ -6,18 +6,28 @@ import {
 
 // -- third-party imports
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 import {
   Types,
 } from 'mongoose';
 
+// -- local imports
+import {
+  IS_DEVELOPMENT,
+} from '../app.config';
+
+import {
+  transporter,
+} from '../services/mailTransporter';
+
 import {
   generateCsrfToken,
 } from '../services/csrfProtectionService';
 
-// -- local imports
 import {
   SetInclusionOptionType,
+  escapeEncode,
 } from '../utils';
 
 import {
@@ -30,6 +40,7 @@ import {
 
 import {
   loginPermanentUser,
+  forceLoginPermanentUser,
   loginTempUser,
   setRefreshTokenCookie,
   setAccessTokenCookie,
@@ -41,13 +52,17 @@ import {
 } from "../models/Auth";
 
 import {
-  type PatchPermanentUserRequest,
-  type CreatePermanentUserRequest,
-  type DeletePermanentUserRequest,
   type IPermanentUserSelfView,
+  type ConfirmPermanentUserPayload,
+  type ConvertTempUserReqBody,
+  type PatchPermanentUserReqBody,
+  type DeletePermanentUserReqBody,
   User,
   isIPermanentUser,
-  ConvertTempUserRequest,
+  CreatePermanentUserReqBody,
+  isCreatePermanentUserReqBody,
+  isConfirmPermanentUserReqBody,
+  isConfirmPermanentUserPayload,
 } from "../models/User";
 
 import {
@@ -63,95 +78,328 @@ interface PostUserRouteServerErrRes {
   message: 'An unexpected error occurred';
 }
 
-interface PostUserRouteOkRes {
+interface PostUserRouteOkEmailRes {
+  kind: 'email';
+  email: string;
+  message: 'Check your email to confirm account creation';
+}
+
+interface PostUserRouteOkNoEmailRes {
+  kind: 'no_email';
   user: IPermanentUserSelfView;
   sessionToken: string;
 }
 
-export const handleCreateUser = async (
-  req: Request<{}, {}, CreatePermanentUserRequest>,
-  res: Response
-) => {
-  try {
-    const { email, username, password } = req.body;
+// -- POST /users works differently based on whether email verification is
+// turned on or off. When email verificatio nis enabled, the endpoint sends
+// email to the email address provided by the user, including a signed jwt the
+// form enclosed in the email will use to confirm account creation.
+export const {
+  handleCreateUser,
+  handleConfirmUser,
+} = (() => {
+  const {
+    SKIP_EMAIL_VERIFICATION,
+    DOMAIN_NAME,
+    EMAIL_DOMAIN_NAME,
+    EMAIL_VERIFICATION_SECRET,
+    EMAIL_VERIFICATION_EXPIRATION_SECS: S_EMAIL_VERIFICATION_EXPIRATION_SECS,
+  } = process.env;
 
-    // --- Validate input ---
-    if (!email || !username || !password) {
-      const resp : PostUserRouteBadRequestErrRes = ({
-        message: "Email, username, and password are required.",
-      });
-      return res.status(400).json(resp);
-    }
-
-    // --- Check for existing user ---
-    const existingEmail = await User.findOne({ email });
-    if (existingEmail) {
-      const resp : PostUserRouteBadRequestErrRes = ({
-        message: "Email already in use.",
-      });
-      return res.status(400).json(resp);
-    }
-
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      const resp : PostUserRouteBadRequestErrRes = ({
-        message: "Username already in use.",
-      });
-      return res.status(400).json(resp);
-    }
-
-    // --- Hash password ---
-    const hashed = await bcrypt.hash(password, 10);
-    
-    const user = new User({
-      kind: 'permanent',
-      username,
-      email,
-      passwordHashed: hashed,
-    });
-
-    await user.save();
-
-    // --- Automatically log in user via service ---
-    const loginResult = await loginPermanentUser("username", username, password);
-
-    switch (loginResult.kind) {
-      case 'other_err':
-      // -- If user creation logic has been implemented correctly, these cases should never happen
-      case 'no_user':
-      case 'no_perm_user':
-      case 'bad_pass':
-        throw new Error(`Unexpected result type: ${JSON.stringify(loginResult)}`);
-      case 'ok':
-      {
-        const sessionToken = generateCsrfToken(req, res);
-        const resp : PostUserRouteOkRes = ({
-          user: loginResult.user.toSelfView(),
-          sessionToken,
-        });
-
-        setRefreshTokenCookie(res, loginResult.refreshToken);
-        setAccessTokenCookie(res, loginResult.accessToken);
-
-        return res.status(201).json(resp);
-      }
-      default:
-        throw new Error(`Unexpected result type: ${JSON.stringify(loginResult)}`);
-    }// -- end switch (loginResult.kind)
-  } catch (err: any) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.error("Create user failed: ", err);
-    } else {
-      console.error("Create user failed");
-    }
-
-    const resp : PostUserRouteServerErrRes = ({
-      message: 'An unexpected error occurred',
-    });
-
-    return res.status(500).json(resp);
+  if (! EMAIL_DOMAIN_NAME) throw new Error('Env var EMAIL_DOMAIN_NAME not provided');
+  if (! EMAIL_VERIFICATION_SECRET) throw new Error('Env var EMAIL_VERIFICATION_SECRET not provided');
+  if (! S_EMAIL_VERIFICATION_EXPIRATION_SECS) {
+    throw new Error('Env var EMAIL_VERIFICATION_EXPIRATION_SECS not provided');
   }
-};
+
+  const EMAIL_VERIFICATION_EXPIRATION_SECS = parseInt(S_EMAIL_VERIFICATION_EXPIRATION_SECS);
+
+  if (Number.isNaN(EMAIL_VERIFICATION_EXPIRATION_SECS)) {
+    throw new Error('Env var EMAIL_VERIFICATION_EXPIRATION_SECS not a valid number');
+  }
+  
+  // -- Validate new user, sending an error response if user data invalid
+  const isNewUserValid = async (
+    req: CreatePermanentUserReqBody,
+    res: Response
+  ): Promise<boolean> => {
+    try {
+      const { email, username } = req;
+
+      // --- Check for existing user ---
+      const existingEmail = await User.findOne({ email });
+      if (existingEmail) {
+        const resp : PostUserRouteBadRequestErrRes = ({
+          message: "Email already in use.",
+        });
+        res.status(400).json(resp);
+        return false;
+      }
+
+      const existingUser = await User.findOne({ username });
+      if (existingUser) {
+        const resp : PostUserRouteBadRequestErrRes = ({
+          message: "Username already in use.",
+        });
+        res.status(400).json(resp);
+        return false;
+      }
+
+      return true;
+    } catch (e: unknown) {
+      if (IS_DEVELOPMENT) {
+        console.error('Unexpected error:', e);
+      } else {
+        console.error('Unexpected error');
+      }
+
+      const resp : PostUserRouteServerErrRes = ({
+        message: "An unexpected error occurred",
+      });
+      res.status(500).json(resp);
+
+      return false;
+    }
+  };// -- end isNewUserValid
+
+  const handleConfirmUser = async (
+    req: Request,
+    res: Response,
+  ) => {
+    try {
+      if (! isConfirmPermanentUserReqBody(req.body)) {
+        return res.status(400).json({
+          message: 'Malformed request body',
+        });
+      }
+
+      const {
+        token,
+      } = req.body;
+      const payload : unknown = jwt.verify(token, EMAIL_VERIFICATION_SECRET);
+
+      if (! isConfirmPermanentUserPayload(payload)) {
+        return res.status(400).json({
+          message: "Malformed request body",
+        });
+      }
+
+      const { email, username, passwordHashed } = payload;
+      const newUser = new User({
+        kind: 'permanent',
+        email,
+        username,
+        passwordHashed,
+      });
+      await newUser.save();
+
+      // -- Should have created a permanent user
+      if (! isIPermanentUser(newUser)) throw new Error('New user not created as permanent');
+
+      // -- Automatically log user in
+      const loginResult = forceLoginPermanentUser(newUser);
+
+      switch (loginResult.kind) {
+        case 'other_err':
+          return res.status(500).json({
+            message: 'Unexpected server error',
+          });
+        case 'ok':
+        {
+          const sessionToken = generateCsrfToken(req, res);
+          const resp : PostUserRouteOkNoEmailRes = ({
+            kind: 'no_email',
+            user: newUser.toSelfView(),
+            sessionToken,
+          });
+
+          setRefreshTokenCookie(res, loginResult.refreshToken);
+          setAccessTokenCookie(res, loginResult.accessToken);
+
+          return res.status(201).json(resp);
+        }
+      }// -- end switch (loginResult.kind)
+    } catch (e: unknown) {
+      if (IS_DEVELOPMENT) {
+        console.error('Unexpected server error:', e);
+      } else {
+        console.error('Unexpected server error');
+      }
+
+      return res.status(500).json({
+        message: 'Unexpected server error',
+      });
+    }
+  };// -- end handleConfirmUser
+
+  switch (SKIP_EMAIL_VERIFICATION) {
+    case 'TRUE':
+    {
+      // -- Immediately create account and log user in
+      const handleCreateUser = async (
+        req: Request,
+        res: Response,
+      ) => {
+        try {
+          if (! isCreatePermanentUserReqBody(req.body)) {
+            return res.status(400).json({
+              message: 'Email, username, and password are required',
+            });
+          }
+
+          if (! isNewUserValid(req.body, res)) {
+            return res.end();
+          }
+
+          const { email, username, password, } = req.body;
+          const passwordHashed = await bcrypt.hash(password, 10);
+          
+          const user = new User({
+            kind: 'permanent',
+            username,
+            email,
+            passwordHashed,
+          });
+
+          const newUser = await user.save();
+
+          // --- Automatically log in user via service ---
+          if (! isIPermanentUser(newUser)) throw new Error('New user not created as permanent');
+
+          // -- Automatically log user in
+          const loginResult = forceLoginPermanentUser(newUser);
+
+          switch (loginResult.kind) {
+            case 'other_err':
+              return res.status(500).json({
+                message: 'Unexpected server error',
+              });
+            case 'ok':
+            {
+              const sessionToken = generateCsrfToken(req, res);
+              const resp : PostUserRouteOkNoEmailRes = ({
+                kind: 'no_email',
+                user: newUser.toSelfView(),
+                sessionToken,
+              });
+
+              setRefreshTokenCookie(res, loginResult.refreshToken);
+              setAccessTokenCookie(res, loginResult.accessToken);
+
+              return res.status(201).json(resp);
+            }
+          }// -- end switch (loginResult.kind)
+        } catch (err: any) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.error("Create user failed: ", err);
+          } else {
+            console.error("Create user failed");
+          }
+
+          const resp : PostUserRouteServerErrRes = ({
+            message: 'An unexpected error occurred',
+          });
+
+          return res.status(500).json(resp);
+        }
+      };// -- end handleCreateUser
+
+      return ({
+        handleConfirmUser,
+        handleCreateUser,
+      });
+    }
+    case 'FALSE':
+    {
+      // -- Create signed jwt containing prospective user info
+      const handleCreateUser = async (
+        req: Request,
+        res: Response,
+      ) => {
+        try {
+          if (! isCreatePermanentUserReqBody(req.body)) {
+            return res.status(400).json({
+              message: 'Email, username, and password are required',
+            });
+          }
+
+          if (! isNewUserValid(req.body, res)) {
+            return res.end();
+          }
+
+          const { email, username, password, whiteboardConversionRequest, } = req.body;
+          const passwordHashed = await bcrypt.hash(password, 10);
+
+          // -- Create and sign confirmation payload
+          const payload : ConfirmPermanentUserPayload = ({
+            email, username, passwordHashed,
+          });
+          const token = jwt.sign(payload, EMAIL_VERIFICATION_SECRET, {
+            algorithm: 'HS256',
+            expiresIn: EMAIL_VERIFICATION_EXPIRATION_SECS,
+          });
+
+          // -- Send verification email; TODO: actually implement form
+          const emailSubject = `Please confirm your account at ${DOMAIN_NAME}`;
+          const emailText = 'Please submit the form to confirm creation of your account.';
+
+          const emailBody = (
+            `<main>
+              <h1>Welcome to Board-ly!</h1>
+
+              <p safe>
+                Please click the button below to confirm creation of your account, ${escapeEncode(username)}.
+              </p>
+              <form method="GET" action="http://${DOMAIN_NAME}/confirm_account_creation">
+                <input name="token" value=${encodeURIComponent(token)} type="hidden" />
+                ${whiteboardConversionRequest && (
+                  `<input name="wb_conversion_req" value="${encodeURIComponent(whiteboardConversionRequest)}" type="hidden" />`
+                ) || ""}
+                <button type="submit">Create Account</button>
+              </form>
+            </main>`
+          );// -- end const emailBody
+
+          const info = await transporter.sendMail({
+            from: `admin@${EMAIL_DOMAIN_NAME}`,
+            to: email,
+            subject: emailSubject,
+            text: emailText,
+            html: emailBody,
+          });
+
+          console.log('Message sent:', info.messageId);
+
+          // -- Send confirmation response to client
+          const resp : PostUserRouteOkEmailRes = ({
+            kind: 'email',
+            email,
+            message: 'Check your email to confirm account creation',
+          });
+
+          return res.status(201).json(resp);
+        } catch (e: unknown) {
+          if (IS_DEVELOPMENT) {
+            console.error('Unexpected server error:', e);
+          } else {
+            console.error('Unexpected server error');
+          }
+
+          return res.status(500).json({
+            message: "Unexpected server error",
+          });
+        }
+      };// -- end handleCreateUser
+
+      return ({
+        handleConfirmUser,
+        handleCreateUser,
+      });
+    }
+    default:
+      throw new Error('Environment variable SKIP_EMAIL_VERIFICATION must be set to either "TRUE" or "FALSE".');
+  }// -- end switch (process.env.SKIP_EMAIL_VERIFICATION)
+})();
 
 interface PostConvertTempRouteBadRequestErrRes {
   message: string;
@@ -172,7 +420,7 @@ interface PostConvertTempRouteOkRes {
 //
 // =============================================================================
 export const handleConvertTempUser = async (
-  req: AuthorizedRequest<{}, {}, ConvertTempUserRequest>,
+  req: AuthorizedRequest<{}, {}, ConvertTempUserReqBody>,
   res: AuthorizedResponse,
 ) => {
   try {
@@ -345,13 +593,13 @@ export const handleGetUserById = async (
 //
 // =============================================================================
 export const handlePatchOwnUser = async (
-  req: AuthorizedRequest<{}, any, PatchPermanentUserRequest>,
+  req: AuthorizedRequest<{}, any, PatchPermanentUserReqBody>,
   res: AuthorizedResponse,
 ) => {
   const {
     authUser,
   } = res.locals;
-  const patchData: Partial<PatchPermanentUserRequest> = ({
+  const patchData: Partial<PatchPermanentUserReqBody> = ({
     ...req.body
   });
   const {
@@ -425,7 +673,7 @@ export const handlePatchOwnUser = async (
 // 
 // =============================================================================
 export const handleDeleteOwnUser = async (
-  req: AuthorizedRequest<{}, any, DeletePermanentUserRequest>,
+  req: AuthorizedRequest<{}, any, DeletePermanentUserReqBody>,
   res: AuthorizedResponse,
 ) => {
   const {

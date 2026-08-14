@@ -33,3 +33,19 @@ export type SetInclusionOptionType <FieldType> =
   | { type: 'include'; included: FieldType[];  }
   | { type: 'exclude'; excluded: FieldType[];  }
 ;
+
+// === escapeEncode ============================================================
+//
+// Encodes a string using HTML character references, in order to protect against
+// XSS injection attacks.
+//
+// =============================================================================
+export const escapeEncode = (s: string): string => {
+  let out : string = '';
+
+  for (let i = 0; i < s.length; ++i) {
+    out += `&#${s.codePointAt(i)};`;
+  }// -- end for i
+
+  return out;
+};// -- end escapeEncode

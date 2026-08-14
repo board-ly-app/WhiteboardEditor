@@ -1,10 +1,13 @@
 // -- std imports
-import { Request, Response, Router } from "express";
+import {
+  Router,
+} from "express";
 
 // -- local imports
 import {
   handleGetUserById,
   handleCreateUser,
+  handleConfirmUser,
   handlePatchOwnUser,
   handleDeleteOwnUser,
   handleGetSharedWhiteboardsByUser,
@@ -20,21 +23,13 @@ import {
   globalRateLimiter,
 } from '../middleware/rateLimit';
 
-import type {
-  CreatePermanentUserRequest,
-} from "../models/User";
-
 const router = Router();
 
 // -- apply rate limiting
 router.use(globalRateLimiter);
 
-router.post("/", async (
-  req: Request<{}, {}, CreatePermanentUserRequest>,
-  res: Response
-) => {
-    await handleCreateUser(req, res);
-});
+router.post("/", handleCreateUser);
+router.post("/confirm_account_creation", handleConfirmUser);
 
 // === POST /users/temp ========================================================
 //

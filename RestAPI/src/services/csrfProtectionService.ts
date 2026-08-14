@@ -43,6 +43,8 @@ const skipSelectedCsrf = (req: Request): boolean => {
     case `${AUTH_ROUTE}/logout/`:
     case `${USERS_ROUTE}`:
     case `${USERS_ROUTE}/`:
+    case `${USERS_ROUTE}/confirm_account_creation`:
+    case `${USERS_ROUTE}/confirm_account_creation/`:
     case `${USERS_ROUTE}/temp`:
     case `${USERS_ROUTE}/temp/`:
       // -- The routes above are exempt from csrf protection

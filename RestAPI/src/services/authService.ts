@@ -17,6 +17,7 @@ import {
 
 // -- local imports
 import {
+  IS_DEVELOPMENT,
   AUTH_ROUTE,
   REFRESH_TOKEN_COOKIE_ID,
   ACCESS_TOKEN_COOKIE_ID,
@@ -198,6 +199,49 @@ export const createRefreshToken = (userId: Types.ObjectId): string => {
 
   return token;
 };// -- end createRefreshToken
+
+export interface ForceLoginPermanentUserOkRes {
+  kind: 'ok';
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface ForceLoginPermanentUserOtherErrRes {
+  kind: 'other_err';
+  err: unknown;
+}
+
+export type ForceLoginPermanentUserRes =
+  | ForceLoginPermanentUserOkRes
+  | ForceLoginPermanentUserOtherErrRes
+;
+
+export const forceLoginPermanentUser = (
+  user: IPermanentUser
+): ForceLoginPermanentUserRes => {
+  try {
+    const userId = user._id;
+    const accessToken = createAccessToken(userId);
+    const refreshToken = createRefreshToken(userId);
+
+    return ({
+      kind: 'ok',
+      accessToken,
+      refreshToken,
+    });
+  } catch (e: unknown) {
+    if (IS_DEVELOPMENT) {
+      console.error('Unexpected server error:', e);
+    } else {
+      console.error('Unexpected server error');
+    }
+
+    return ({
+      kind: 'other_err',
+      err: e,
+    });
+  }
+};// -- end forceLoginPermanentUser
 
 export interface LoginPermanentUserOkRes {
   kind: 'ok';

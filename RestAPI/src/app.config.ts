@@ -4,6 +4,10 @@
 //
 // =============================================================================
 
+// -- Whether or not the app is being run in development mode
+export const IS_DEVELOPMENT : boolean = (process.env?.NODE_ENV === 'development');
+// -- TODO: deprecate IS_PRODUCTION; best to default to production, requiring
+// development mode to be specified explicitly.
 export const IS_PRODUCTION : boolean = (process.env?.NODE_ENV === 'production');
 
 // -- The current api version

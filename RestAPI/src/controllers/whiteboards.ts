@@ -4,8 +4,6 @@ import {
 
 // --- local imports
 import {
-  Whiteboard,
-  Canvas,
   type WhiteboardIdType,
   type IWhiteboardPermissionEnum,
   type IWhiteboardUserPermission,
@@ -13,6 +11,8 @@ import {
   type IWhiteboardUserPermissionById,
   type IWhiteboardUserPermissionByEmail,
   type IWhiteboardVisibilityEnum,
+  Whiteboard,
+  Canvas,
 } from '../models/Whiteboard';
 
 import {

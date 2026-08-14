@@ -198,40 +198,6 @@ export type IUserTypeWBOwnerView =
   | ITempUserWBOwnerView
 ;
 
-// === REST Request Body Definitions ===========================================
-//
-// Definitions for REST API request bodies.
-//
-// =============================================================================
-
-// -- for POST
-export interface CreatePermanentUserRequest extends IPermanentUserModel {
-  password: string;
-}
-
-export interface ConvertTempUserRequest extends IPermanentUserModel {
-  password: string;
-}
-
-// -- for PATCH
-export type PatchPermanentUserData = Partial<CreatePermanentUserRequest>;
-
-// -- (must be authorized)
-export type PatchPermanentUserRequest = PatchPermanentUserData;
-
-// -- for PUT
-export type PutPermanentUserData = IPermanentUserDocument;
-
-export type PutPermanentUserRequest = PutPermanentUserData;
-
-// -- for DELETE
-export interface DeletePermanentUserData {
-  // requires additional password confirmation
-  password?: string;
-}
-
-export type DeletePermanentUserRequest = DeletePermanentUserData;
-
 // === Data Transfer Mappings ==================================================
 //
 // Maps a full Permanent User model into various views (i.e. public, attrib)
@@ -453,3 +419,85 @@ export const isIPermanentUser = (user: IUserType): user is IPermanentUser => {
 export const isITempUser = (user: IUserType): user is ITempUser => {
   return user.kind === 'temp';
 }
+
+// === REST API Protocol =======================================================
+//
+// =============================================================================
+
+// -- for POST
+export interface CreatePermanentUserReqBody {
+  email: string;
+  username: string;
+  password: string;
+  // -- A signed jwt permitting a newly created user to convert a temp
+  // whiteboard into a permanent whiteboard.
+  whiteboardConversionRequest?: string;
+}
+
+export interface ConfirmPermanentUserPayload {
+  email: string;
+  username: string;
+  passwordHashed: string;
+}
+
+export const isConfirmPermanentUserPayload = (payload: unknown): payload is ConfirmPermanentUserPayload => {
+  if (! payload) return false;
+  if (typeof payload !== 'object') return false;
+  if (! ('email' in payload)) return false;
+  if (typeof 'email' !== 'string') return false;
+  if (! ('username' in payload)) return false;
+  if (typeof 'username' !== 'string') return false;
+  if (! ('passwordHashed' in payload)) return false;
+  if (typeof 'passwordHashed' !== 'string') return false;
+
+  return true;
+};// -- end isConfirmPermanentUserPayload
+
+export interface ConfirmPermanentUserReqBody {
+  token: string;
+}
+
+export const isConfirmPermanentUserReqBody = (body: unknown): body is ConfirmPermanentUserReqBody => {
+  if (! body) return false;
+  if (typeof body !== 'object') return false;
+  if (! ('token' in body)) return false;
+  if (typeof body.token !== 'string') return false;
+
+  return true;
+};// -- end isConfirmPermanentUserReqBody
+
+export const isCreatePermanentUserReqBody = (body: unknown): body is CreatePermanentUserReqBody => {
+  if (! body) return false;
+  if (typeof body !== 'object') return false;
+  if (! ('email' in body)) return false;
+  if (typeof body.email !== 'string') return false;
+  if (! ('username' in body)) return false;
+  if (typeof body.username !== 'string') return false;
+  if (! ('password' in body)) return false;
+  if (typeof body.password !== 'string') return false;
+
+  return true;
+};// -- end isCreatePermanentUserReqBody
+
+export interface ConvertTempUserReqBody extends IPermanentUserModel {
+  password: string;
+}
+
+// -- for PATCH
+export type PatchPermanentUserData = Partial<CreatePermanentUserReqBody>;
+
+// -- (must be authorized)
+export type PatchPermanentUserReqBody = PatchPermanentUserData;
+
+// -- for PUT
+export type PutPermanentUserData = IPermanentUserDocument;
+
+export type PutPermanentUserReqBody = PutPermanentUserData;
+
+// -- for DELETE
+export interface DeletePermanentUserData {
+  // requires additional password confirmation
+  password?: string;
+}
+
+export type DeletePermanentUserReqBody = DeletePermanentUserData;
