@@ -54,6 +54,12 @@ import notificationsReducer, {
 import createCanvasFlowReducer, {
   type CreateCanvasActions,
 } from './userFlows/createCanvas/createCanvasSlice';
+import loginFlowReducer, {
+  type LoginActions,
+} from './userFlows/login/loginSlice';
+import signupFlowReducer, {
+  type SignupActions,
+} from './userFlows/signup/signupSlice';
 
 // -- root reducers
 import {
@@ -86,6 +92,8 @@ const rootReducer = combineReducers({
   whiteboardStatus: whiteboardStatusReducer,
   notifications: notificationsReducer,
   createCanvasFlow: createCanvasFlowReducer,
+  loginFlow: loginFlowReducer,
+  signupFlow: signupFlowReducer,
 });// -- end rootReducer
 
 type ActionType =
@@ -106,6 +114,8 @@ type ActionType =
   | WhiteboardStatusActions
   | NotificationsActions
   | CreateCanvasActions
+  | LoginActions
+  | SignupActions
   | MergeCanvasActionType
   | DeleteWhiteboardsActionType
 ;

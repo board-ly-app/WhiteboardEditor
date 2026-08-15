@@ -38,7 +38,7 @@ import {
 } from '@/app.config';
 
 import {
-  type AuthLoginSuccessResponse,
+  type LoginSuccessResponse,
 } from '@/types/APIProtocol';
 
 import ChangeNameTrialWhiteboard from "./ChangeNameTrialWhiteboard";
@@ -121,7 +121,7 @@ export const SignupForm = (): React.JSX.Element => {
             username,
             password,
           });
-          const res : AxiosResponse<AuthLoginSuccessResponse> = await api.post(endpoint, payload);
+          const res : AxiosResponse<LoginSuccessResponse> = await api.post(endpoint, payload);
           
           const {
             user,

@@ -84,14 +84,49 @@ export type Whiteboard =
   | PermanentWhiteboard
 ;
 
-// === AuthLoginSuccessResponse ================================================
+export interface LoginReqBody {
+  authSource: string; 
+  email: string; 
+  password: string; 
+}
+
+// === LoginSuccessResponse ====================================================
 //
 // Defines the body of a response to a successful login request.
 //
 // =============================================================================
-export interface AuthLoginSuccessResponse {
+export interface LoginSuccessResponse {
   user: User;
   sessionToken: string;
+}
+
+export interface AuthTempConversionPayload {
+  tempUserId: string;
+  permanentUserEmail: string;
+  whiteboardId: string;
+}
+
+export const isAuthTempConversionPayload = (
+  payload: unknown
+): payload is AuthTempConversionPayload => {
+  if (! payload) return false;
+  if (typeof payload !== 'object') return false;
+  if (! ('tempUserId' in payload)) return false;
+  if (typeof payload.tempUserId !== 'string') return false;
+  if (! ('permanentUserEmail' in payload)) return false;
+  if (typeof payload.permanentUserEmail !== 'string') return false;
+  if (! ('whiteboardId' in payload)) return false;
+  if (typeof payload.whiteboardId !== 'string') return false;
+
+  return true;
+};// -- end isAuthTempConversionPayload
+
+export interface WhiteboardConvertTempToPermReqBody {
+  signedConversionRequest: string;
+}
+
+export interface WhiteboardNewNameReqBody {
+  newName: string;
 }
 
 // === ErrorResponse ===========================================================
