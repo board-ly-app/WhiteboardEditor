@@ -19,6 +19,10 @@ import {
 // -- third-party imports
 
 import {
+  type GetFieldType,
+} from 'lodash';
+
+import {
   type AxiosResponse,
   type AxiosError,
 } from 'axios';
@@ -44,8 +48,8 @@ import {
   setSignupError,
   setSignupRequestingWhiteboardTransferAuth,
   setSignupRequesting,
-  setSignupStatePendingConfirmation,
-  setSignupStateRequestingConfirmation,
+  setSignupPendingConfirmation,
+  setSignupRequestingConfirmation,
   setSignupRequestingWhiteboardTransfer,
   setSignupRenamingWhiteboard,
   setSignupRequestingWhiteboardRename,
@@ -74,7 +78,9 @@ import {
 } from '@/types/APIProtocol';
 
 import ChangeNameTrialWhiteboard from "./ChangeNameTrialWhiteboard";
-import ConfirmAccountCreationModal from "./ConfirmAccountCreationModal";
+import ConfirmAccountCreationModal, {
+  type ConfirmAccountCreationModalProps,
+} from "./ConfirmAccountCreationModal";
 
 export const SignupForm = (): React.JSX.Element => {
   // -- core component state
@@ -269,7 +275,7 @@ export const SignupForm = (): React.JSX.Element => {
                 {
                   console.log('Email confirmation requested');
 
-                  store.dispatch(setSignupStatePendingConfirmation({
+                  store.dispatch(setSignupPendingConfirmation({
                     email, whiteboardToTransfer,
                   }));
                 }
@@ -314,13 +320,22 @@ export const SignupForm = (): React.JSX.Element => {
             });
         }
         break;
-        // -- Nothing to do here for PendingConfirmation status
-        // case 'pending_confirmation':
-        // break;
+        case 'pending_confirmation':
+        {
+          const {
+            error,
+          } = componentState;
+
+          if (error && error.reason) {
+            toast.error(error.reason);
+          }
+        }
+        break;
         case 'requesting_confirmation':
         {
           const {
             accountCreationToken,
+            email,
             whiteboardToTransfer,
           } = componentState;
 
@@ -349,15 +364,23 @@ export const SignupForm = (): React.JSX.Element => {
 
               if (e.status && (e.status >= 400 && e.status < 500)) {
                 // -- User error
-                store.dispatch(setSignupError({
-                  errorKind: 'user',
-                  reason: 'Invalid or expired account confirmation token',
+                store.dispatch(setSignupPendingConfirmation({
+                  email,
+                  whiteboardToTransfer,
+                  error: {
+                    kind: 'user',
+                    reason: 'Invalid or expired account confirmation token',
+                  },
                 }));
               } else {
                 // -- System error
-                store.dispatch(setSignupError({
-                  errorKind: 'system',
-                  reason: 'Failed to confirm account creation',
+                store.dispatch(setSignupPendingConfirmation({
+                  email,
+                  whiteboardToTransfer,
+                  error: {
+                    kind: 'system',
+                    reason: 'Failed to confirm account creation',
+                  },
                 }));
               }
             });
@@ -532,11 +555,13 @@ export const SignupForm = (): React.JSX.Element => {
         case 'pending_confirmation':
         {
           const {
+            email,
             whiteboardToTransfer,
           } = componentState;
 
-          store.dispatch(setSignupStateRequestingConfirmation({
+          store.dispatch(setSignupRequestingConfirmation({
             accountCreationToken: token,
+            email,
             whiteboardToTransfer,
           }));
         }
@@ -637,14 +662,42 @@ export const SignupForm = (): React.JSX.Element => {
       </div>
 
       {/* Modal for confirming account creation via token sent via email */}
-      {(componentState.status === 'pending_confirmation') && (
-        <ConfirmAccountCreationModal
-          open={true}
-          email={componentState.email}
-          onSubmitToken={handleSubmitAccountConfirmation}
-          onSkip={handleSkipAccountConfirmation}
-        />
-      )}
+      {
+        (() => {
+          switch (componentState.status) {
+            case 'pending_confirmation':
+            case 'requesting_confirmation':
+            {
+              let variant : GetFieldType<ConfirmAccountCreationModalProps, 'variant'>;
+
+              switch (componentState.status) {
+                case 'pending_confirmation':
+                  if (componentState.error?.kind === 'user') {
+                    variant = 'error';
+                  } else {
+                    variant = 'normal';
+                  }
+                  break;
+                case 'requesting_confirmation':
+                  variant = 'pending';
+                  break;
+              }// -- end switch (componentState.status)
+
+              return (
+                <ConfirmAccountCreationModal
+                  open={true}
+                  email={componentState.email}
+                  onSubmitToken={handleSubmitAccountConfirmation}
+                  onSkip={handleSkipAccountConfirmation}
+                  variant={variant}
+                />
+              );
+            }
+            default:
+              return null;
+          }// -- end switch (componentState.status)
+        })()
+      }
 
       {/* Modal for changing the name of converted temp to permanent whiteboard */}
       <ChangeNameTrialWhiteboard

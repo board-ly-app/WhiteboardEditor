@@ -48,6 +48,10 @@ export interface SignupStateRequesting extends SignupPayloadRequesting {
 
 export interface SignupPayloadPendingConfirmation {
   email: string;
+  error?: {
+    kind: 'user' | 'system';
+    reason?: string;
+  };
   whiteboardToTransfer?: {
     whiteboardId: string;
     transferAuthToken: string;
@@ -61,6 +65,7 @@ extends SignupPayloadPendingConfirmation {
 
 export interface SignupPayloadRequestingConfirmation {
   accountCreationToken: string;
+  email: string;
   whiteboardToTransfer?: {
     whiteboardId: string;
     transferAuthToken: string;
@@ -158,7 +163,7 @@ const signupSlice = createSlice({
 
       return newState;
     },
-    setSignupStatePendingConfirmation(
+    setSignupPendingConfirmation(
       _state,
       action: PayloadAction<SignupPayloadPendingConfirmation>
     ) {
@@ -169,7 +174,7 @@ const signupSlice = createSlice({
 
       return newState;
     },
-    setSignupStateRequestingConfirmation(
+    setSignupRequestingConfirmation(
       _state,
       action: PayloadAction<SignupPayloadRequestingConfirmation>
     ) {
@@ -222,8 +227,8 @@ export const {
   setSignupError,
   setSignupRequestingWhiteboardTransferAuth,
   setSignupRequesting,
-  setSignupStatePendingConfirmation,
-  setSignupStateRequestingConfirmation,
+  setSignupPendingConfirmation,
+  setSignupRequestingConfirmation,
   setSignupRequestingWhiteboardTransfer,
   setSignupRenamingWhiteboard,
   setSignupRequestingWhiteboardRename,
@@ -235,8 +240,8 @@ export type SignupActions =
   | ReturnType<typeof setSignupError>
   | ReturnType<typeof setSignupRequestingWhiteboardTransferAuth>
   | ReturnType<typeof setSignupRequesting>
-  | ReturnType<typeof setSignupStatePendingConfirmation>
-  | ReturnType<typeof setSignupStateRequestingConfirmation>
+  | ReturnType<typeof setSignupPendingConfirmation>
+  | ReturnType<typeof setSignupRequestingConfirmation>
   | ReturnType<typeof setSignupRequestingWhiteboardTransfer>
   | ReturnType<typeof setSignupRenamingWhiteboard>
   | ReturnType<typeof setSignupRequestingWhiteboardRename>

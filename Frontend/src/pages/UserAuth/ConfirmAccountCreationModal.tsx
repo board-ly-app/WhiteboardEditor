@@ -17,6 +17,7 @@ export interface ConfirmAccountCreationModalProps {
   onSubmitToken: (token: string) => void;
   onSkip: () => void;
   email: string;
+  variant: 'normal' | 'pending' | 'error';
 }
 
 const ConfirmAccountCreationModal = ({
@@ -24,6 +25,7 @@ const ConfirmAccountCreationModal = ({
   onSubmitToken,
   onSkip,
   email,
+  variant,
 }: ConfirmAccountCreationModalProps) => {
   const [token, setToken] = useState<string>('');
 
@@ -46,7 +48,12 @@ const ConfirmAccountCreationModal = ({
       title="Confirm creation of your account"
       footer={
         <>
-          <Button type="button" variant="secondary" onClick={onSkip}>
+          <Button
+            type="button"
+            variant="secondary"
+            status={variant === 'pending' && 'disabled' || 'enabled'}
+            onClick={onSkip}
+          >
             I'll do it later
           </Button>
           <Button 
@@ -54,6 +61,7 @@ const ConfirmAccountCreationModal = ({
             type="submit"
             className="border bg-card-background"
             disabled={token.trim().length <= 0}
+            status={variant === 'pending' && 'pending' || 'enabled'}
           >
             Confirm account creation
           </Button>
@@ -77,7 +85,7 @@ const ConfirmAccountCreationModal = ({
           onChange={(e) => setToken(e.target.value)}
           rows={10}
           cols={10}
-          className={"border p-2 w-full my-2 rounded-md"}
+          className={`border ${(variant === 'error') && 'border-red-600' || ''} p-2 w-full my-2 rounded-md`}
           autoFocus
           required
         />
