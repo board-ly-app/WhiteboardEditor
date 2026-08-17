@@ -220,15 +220,25 @@ export const {
         }
       }// -- end switch (loginResult.kind)
     } catch (e: unknown) {
-      if (IS_DEVELOPMENT) {
-        console.error('Unexpected server error:', e);
+      if (e instanceof jwt.JsonWebTokenError) {
+        return res.status(400).json({
+          message: 'Invalid account creation token',
+        });
+      } else if (e instanceof jwt.TokenExpiredError) {
+        return res.status(400).json({
+          message: 'Expired account creation token',
+        });
       } else {
-        console.error('Unexpected server error');
-      }
+        if (IS_DEVELOPMENT) {
+          console.error('Unexpected server error:', e);
+        } else {
+          console.error('Unexpected server error');
+        }
 
-      return res.status(500).json({
-        message: 'Unexpected server error',
-      });
+        return res.status(500).json({
+          message: 'Unexpected server error',
+        });
+      }
     }
   };// -- end handleConfirmUser
 
