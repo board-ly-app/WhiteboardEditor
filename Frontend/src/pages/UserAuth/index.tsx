@@ -154,9 +154,7 @@ const UserAuth = ({
         </div>
 
         {/** Auth portal **/}
-        <div className="rounded-lg border-border border-1 shadow-md bg-card-background py-5 px-2 sm:p-10">
-          <AuthForm />
-        </div>
+        <AuthForm />
       </div>
 
       <Footer />

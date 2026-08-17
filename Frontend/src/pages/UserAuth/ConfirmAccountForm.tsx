@@ -347,11 +347,19 @@ export const ConfirmAccountForm = (): React.ReactNode => {
     [componentState, navigate]
   );// -- end handleSkipAccountConfirmation
 
+  // -- Need a vertical spacer element to make sure footer isn't awkwardly in the middle
+  // of the page, since there is no statically displayed form.
+  const Spacer = (): React.ReactNode => {
+    return (
+      <div className="invisible my-64"></div>
+    );
+  };// -- end Spacer
+
   // -- "Form" is just a container for modals
   switch (componentState.status) {
     case 'requesting_whiteboard_transfer':
     case 'logging_in':
-      return null;
+      return <Spacer />;
     case 'pending_confirmation':
     case 'requesting_confirmation':
     {
@@ -371,22 +379,28 @@ export const ConfirmAccountForm = (): React.ReactNode => {
       }// -- end switch (componentState.status)
 
       return (
-        <ConfirmAccountCreationModal
-          open={true}
-          onSubmitToken={handleSubmitAccountConfirmation}
-          onSkip={handleSkipAccountConfirmation}
-          variant={variant}
-        />
+        <>
+          <Spacer />
+          <ConfirmAccountCreationModal
+            open={true}
+            onSubmitToken={handleSubmitAccountConfirmation}
+            onSkip={handleSkipAccountConfirmation}
+            variant={variant}
+          />
+        </>
       );
     }
     case 'renaming_whiteboard':
     case 'requesting_whiteboard_rename':
       return (
-        <ChangeNameTrialWhiteboard
-          open={true}
-          onConfirm={handleConfirmNameChange}
-          onSkip={handleSkipNameChange}
-        />
+        <>
+          <Spacer />
+          <ChangeNameTrialWhiteboard
+            open={true}
+            onConfirm={handleConfirmNameChange}
+            onSkip={handleSkipNameChange}
+          />
+        </>
       );
   }// -- end switch (componentState.status)
 };// -- end ConfirmAccountForm

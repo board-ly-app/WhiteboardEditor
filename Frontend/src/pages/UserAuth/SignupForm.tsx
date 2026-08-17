@@ -82,6 +82,9 @@ import ChangeNameTrialWhiteboard from "./ChangeNameTrialWhiteboard";
 import ConfirmAccountCreationModal, {
   type ConfirmAccountCreationModalProps,
 } from "./ConfirmAccountCreationModal";
+import {
+  AuthFormWrapper,
+} from './AuthFormWrapper';
 
 export const SignupForm = (): React.JSX.Element => {
   // -- core component state
@@ -598,129 +601,131 @@ export const SignupForm = (): React.JSX.Element => {
   );// -- end handleToggle
 
   return (
-    <div className="flex flex-col w-75 sm:w-95 md:w-120">
-      <h1 className="text-2xl text-h1-text font-bold text-center mb-6">
-        Welcome to {APP_NAME}!
-      </h1>
+    <AuthFormWrapper>
+      <div className="flex flex-col w-75 sm:w-95 md:w-120">
+        <h1 className="text-2xl text-h1-text font-bold text-center mb-6">
+          Welcome to {APP_NAME}!
+        </h1>
 
-      {/* Entry Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4"
-      >
-        <AuthInput
-          name="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          variant={uiStatus === 'err_user' ? 'error' : 'default'}
-        />
-        <AuthInput 
-          name="Username"
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="yourname"
-          variant={uiStatus === 'err_user' ? 'error' : 'default'}
-        />
-        <AuthInput
-          name="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="********"
-          variant={uiStatus === 'err_user' ? 'error' : 'default'}
-        />
-        <AuthInput
-          name="Confirm Password"
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          placeholder="********"
-          variant={uiStatus === 'err_user' ? 'error' : 'default'}
-        />
-        <Button
-          type="submit"
-          status={submitButtonStatus}
-          className="w-full font-medium text-h2-text py-2 my-2 rounded-lg border-border border-1 bg-button-300 hover:bg-button-hover hover:cursor-pointer shadow-md"
+        {/* Entry Form */}
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
         >
-          Sign Up
-        </Button>
-      </form>
-
-      <div className="flex flex-col mt-4 pt-6 border-t-1 border-border">
-        {/* Toggle Login/Signup */}
-        <div className="flex justify-center">
-          <div className="text-h2-text p-2 text-center">
-            Already have an account?
-          </div>
-          <button 
-            onClick={handleToggle}
-            className="text-h2-text font-medium rounded-lg border-border border-1 px-4 bg-button-600 hover:bg-button-hover hover:cursor-pointer shadow-md"
+          <AuthInput
+            name="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            variant={uiStatus === 'err_user' ? 'error' : 'default'}
+          />
+          <AuthInput 
+            name="Username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="yourname"
+            variant={uiStatus === 'err_user' ? 'error' : 'default'}
+          />
+          <AuthInput
+            name="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="********"
+            variant={uiStatus === 'err_user' ? 'error' : 'default'}
+          />
+          <AuthInput
+            name="Confirm Password"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="********"
+            variant={uiStatus === 'err_user' ? 'error' : 'default'}
+          />
+          <Button
+            type="submit"
+            status={submitButtonStatus}
+            className="w-full font-medium text-h2-text py-2 my-2 rounded-lg border-border border-1 bg-button-300 hover:bg-button-hover hover:cursor-pointer shadow-md"
           >
-            Log In
-          </button>
+            Sign Up
+          </Button>
+        </form>
+
+        <div className="flex flex-col mt-4 pt-6 border-t-1 border-border">
+          {/* Toggle Login/Signup */}
+          <div className="flex justify-center">
+            <div className="text-h2-text p-2 text-center">
+              Already have an account?
+            </div>
+            <button 
+              onClick={handleToggle}
+              className="text-h2-text font-medium rounded-lg border-border border-1 px-4 bg-button-600 hover:bg-button-hover hover:cursor-pointer shadow-md"
+            >
+              Log In
+            </button>
+          </div>
+
+          {/** Confirm account via token **/}
+          <div className="flex justify-center items-center">
+            <div className="text-h2-text p-2 text-center">
+              Received a confirmation email?
+            </div>
+            <Link
+              to="/confirm_account_creation"
+              className="text-blue-600 hover:text-blue-300 underline"
+            >
+              Confirm Account Creation
+            </Link>
+          </div>
         </div>
 
-        {/** Confirm account via token **/}
-        <div className="flex justify-center items-center">
-          <div className="text-h2-text p-2 text-center">
-            Received a confirmation email?
-          </div>
-          <Link
-            to="/confirm_account_creation"
-            className="text-blue-600 hover:text-blue-300 underline"
-          >
-            Confirm Account Creation
-          </Link>
-        </div>
+        {/* Modal for confirming account creation via token sent via email */}
+        {
+          (() => {
+            switch (componentState.status) {
+              case 'pending_confirmation':
+              case 'requesting_confirmation':
+              {
+                let variant : GetFieldType<ConfirmAccountCreationModalProps, 'variant'>;
+
+                switch (componentState.status) {
+                  case 'pending_confirmation':
+                    if (componentState.error?.kind === 'user') {
+                      variant = 'error';
+                    } else {
+                      variant = 'normal';
+                    }
+                    break;
+                  case 'requesting_confirmation':
+                    variant = 'pending';
+                    break;
+                }// -- end switch (componentState.status)
+
+                return (
+                  <ConfirmAccountCreationModal
+                    open={true}
+                    email={componentState.email}
+                    onSubmitToken={handleSubmitAccountConfirmation}
+                    onSkip={handleSkipAccountConfirmation}
+                    variant={variant}
+                  />
+                );
+              }
+              default:
+                return null;
+            }// -- end switch (componentState.status)
+          })()
+        }
+
+        {/* Modal for changing the name of converted temp to permanent whiteboard */}
+        <ChangeNameTrialWhiteboard
+          open={changeNameOpen}
+          onConfirm={handleConfirmNameChange}
+          onSkip={handleSkipNameChange}
+        />
       </div>
-
-      {/* Modal for confirming account creation via token sent via email */}
-      {
-        (() => {
-          switch (componentState.status) {
-            case 'pending_confirmation':
-            case 'requesting_confirmation':
-            {
-              let variant : GetFieldType<ConfirmAccountCreationModalProps, 'variant'>;
-
-              switch (componentState.status) {
-                case 'pending_confirmation':
-                  if (componentState.error?.kind === 'user') {
-                    variant = 'error';
-                  } else {
-                    variant = 'normal';
-                  }
-                  break;
-                case 'requesting_confirmation':
-                  variant = 'pending';
-                  break;
-              }// -- end switch (componentState.status)
-
-              return (
-                <ConfirmAccountCreationModal
-                  open={true}
-                  email={componentState.email}
-                  onSubmitToken={handleSubmitAccountConfirmation}
-                  onSkip={handleSkipAccountConfirmation}
-                  variant={variant}
-                />
-              );
-            }
-            default:
-              return null;
-          }// -- end switch (componentState.status)
-        })()
-      }
-
-      {/* Modal for changing the name of converted temp to permanent whiteboard */}
-      <ChangeNameTrialWhiteboard
-        open={changeNameOpen}
-        onConfirm={handleConfirmNameChange}
-        onSkip={handleSkipNameChange}
-      />
-    </div>
+    </AuthFormWrapper>
   );
 };// -- end SignupForm

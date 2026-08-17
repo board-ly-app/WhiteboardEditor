@@ -70,6 +70,9 @@ import {
   type WhiteboardNewNameReqBody,
 } from '@/types/APIProtocol';
 
+import {
+  AuthFormWrapper,
+} from './AuthFormWrapper';
 import ChangeNameTrialWhiteboard from "./ChangeNameTrialWhiteboard";
 
 export const LoginForm = (): React.JSX.Element => {
@@ -439,60 +442,62 @@ export const LoginForm = (): React.JSX.Element => {
   );// -- end handleToggle
 
   return (
-    <div className="flex flex-col w-75 sm:w-95 md:w-120">
-      <h1 className="text-2xl text-h1-text font-bold text-center mb-6">
-        Welcome Back!
-      </h1>
+    <AuthFormWrapper>
+      <div className="flex flex-col w-75 sm:w-95 md:w-120">
+        <h1 className="text-2xl text-h1-text font-bold text-center mb-6">
+          Welcome Back!
+        </h1>
 
-      {/* Entry Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4"
-      >
-        <AuthInput
-          name="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          variant={uiStatus === 'err_user' ? 'error' : 'default'}
-        />
-        <AuthInput
-          name="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="********"
-          variant={uiStatus === 'err_user' ? 'error' : 'default'}
-        />
-        <Button
-          type="submit"
-          status={submitButtonStatus}
-          className="w-full font-medium text-h2-text py-2 my-2 rounded-lg border-border border-1 bg-button-300 hover:bg-button-hover hover:cursor-pointer shadow-md"
+        {/* Entry Form */}
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
         >
-          Log In
-        </Button>
-      </form>
+          <AuthInput
+            name="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            variant={uiStatus === 'err_user' ? 'error' : 'default'}
+          />
+          <AuthInput
+            name="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="********"
+            variant={uiStatus === 'err_user' ? 'error' : 'default'}
+          />
+          <Button
+            type="submit"
+            status={submitButtonStatus}
+            className="w-full font-medium text-h2-text py-2 my-2 rounded-lg border-border border-1 bg-button-300 hover:bg-button-hover hover:cursor-pointer shadow-md"
+          >
+            Log In
+          </Button>
+        </form>
 
-      {/* Toggle Login/Signup */}
-      <div className="flex justify-center mt-4 pt-6 border-t-1 border-border">
-        <div className="text-h2-text p-2 text-center">
-          New to {APP_NAME}?
+        {/* Toggle Login/Signup */}
+        <div className="flex justify-center mt-4 pt-6 border-t-1 border-border">
+          <div className="text-h2-text p-2 text-center">
+            New to {APP_NAME}?
+          </div>
+          <button 
+            onClick={handleToggle}
+            className="text-h2-text font-medium rounded-lg border-border border-1 px-4 bg-button-600 hover:bg-button-hover hover:cursor-pointer shadow-md"
+          >
+            Create a New Account!
+          </button>
         </div>
-        <button 
-          onClick={handleToggle}
-          className="text-h2-text font-medium rounded-lg border-border border-1 px-4 bg-button-600 hover:bg-button-hover hover:cursor-pointer shadow-md"
-        >
-          Create a New Account!
-        </button>
-      </div>
 
-      {/* Modal for changing the name of converted temp to permanent whiteboard */}
-      <ChangeNameTrialWhiteboard
-        open={changeNameOpen}
-        onConfirm={handleConfirmNameChange}
-        onSkip={handleSkipNameChange}
-      />
-    </div>
+        {/* Modal for changing the name of converted temp to permanent whiteboard */}
+        <ChangeNameTrialWhiteboard
+          open={changeNameOpen}
+          onConfirm={handleConfirmNameChange}
+          onSkip={handleSkipNameChange}
+        />
+      </div>
+    </AuthFormWrapper>
   );
 };// -- end LoginForm
