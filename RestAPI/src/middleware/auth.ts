@@ -31,7 +31,7 @@ if (! ACCESS_TOKEN_SECRET) {
 }
 
 export const authenticateJWT = async (
-  req: Request,
+  req: Request<{}>,
   res: Response,
   next: NextFunction
 ) => {

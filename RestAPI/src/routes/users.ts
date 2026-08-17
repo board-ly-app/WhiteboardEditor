@@ -25,7 +25,53 @@ import {
 
 const router = Router();
 
-// -- The following routes are free from signup-specific rate limiting
+const rateLimitedPipeline = [signupRateLimiter];
+const authedPipeline = [authenticateJWT];
+const authedRateLimitedPipeline = [signupRateLimiter, authenticateJWT];
+
+// -- Apply signup-specific limiting for routes below
+
+router.post("/", rateLimitedPipeline, handleCreateUser);
+router.post("/confirm_account_creation", rateLimitedPipeline, handleConfirmUser);
+
+// === POST /users/temp ========================================================
+//
+// Create a temporary user account for trial whiteboard use.
+//
+// =============================================================================
+router.post("/temp", rateLimitedPipeline, handleCreateTempUser);
+
+// --- Routes below are authenticated
+
+// === POST /users/convert_temp ================================================
+//
+// Converts a temporary user account to a permanent one.
+//
+// =============================================================================
+router.post("/convert_temp", authedRateLimitedPipeline, handleConvertTempUser);
+
+// === GET /users/:userId ======================================================
+//
+// Fetch the authenticated user's data.
+//
+// =============================================================================
+router.get("/:userId", authedRateLimitedPipeline, handleGetUserById);
+
+// === PATCH /users/me =========================================================
+//
+// Update one or more fields in the authenticated user's data.
+//
+// =============================================================================
+router.patch("/me", authedRateLimitedPipeline, handlePatchOwnUser);
+
+// === DELETE /users/me ========================================================
+//
+// Deletes the user's own account.
+// 
+// =============================================================================
+router.delete('/me', authedRateLimitedPipeline, handleDeleteOwnUser);
+
+// -- The following routes are exempt from signup-specific rate limiting
 
 // === GET /users/:userId:/shared_whiteboards ==================================
 //
@@ -36,50 +82,6 @@ const router = Router();
 // TODO: implement queries to filter by permission type.
 //
 // =============================================================================
-router.get('/:userId/shared_whiteboards', handleGetSharedWhiteboardsByUser);
-
-// -- Apply signup-specific limiting for routes below
-router.use(signupRateLimiter);
-
-router.post("/", handleCreateUser);
-router.post("/confirm_account_creation", handleConfirmUser);
-
-// === POST /users/temp ========================================================
-//
-// Create a temporary user account for trial whiteboard use.
-//
-// =============================================================================
-router.post("/temp", handleCreateTempUser);
-
-// --- Routes below are authenticated
-router.use(authenticateJWT);
-
-// === POST /users/convert_temp ================================================
-//
-// Converts a temporary user account to a permanent one.
-//
-// =============================================================================
-router.post("/convert_temp", handleConvertTempUser);
-
-// === GET /users/:userId ======================================================
-//
-// Fetch the authenticated user's data.
-//
-// =============================================================================
-router.get("/:userId", handleGetUserById);
-
-// === PATCH /users/me =========================================================
-//
-// Update one or more fields in the authenticated user's data.
-//
-// =============================================================================
-router.patch("/me", handlePatchOwnUser);
-
-// === DELETE /users/me ========================================================
-//
-// Deletes the user's own account.
-// 
-// =============================================================================
-router.delete('/me', handleDeleteOwnUser);
+router.get('/:userId/shared_whiteboards', authedPipeline, handleGetSharedWhiteboardsByUser);
 
 export default router;

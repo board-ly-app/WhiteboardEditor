@@ -1,3 +1,9 @@
+import {
+  type Request,
+  type Response,
+  type NextFunction,
+} from 'express';
+
 import rateLimit from 'express-rate-limit';
 
 const {
@@ -37,12 +43,15 @@ if (Number.isNaN(authRateLimitWindowSecs)) {
   throw new Error("AUTH_RATE_LIMIT_WINDOW_SECS is not a valid number");
 }
 
+export type DefaultMiddlewareType
+  = (req: Request<{}>, res: Response, next: NextFunction) => unknown;
+
 export const globalRateLimiter = rateLimit({
   windowMs: globalRateLimitWindowSecs * 1000,
   max: globalRateLimit,
   standardHeaders: true,
   legacyHeaders: false,
-});// -- end globalRateLimiter
+}) as DefaultMiddlewareType;// -- end globalRateLimiter
 
 // === signupRateLimiter =======================================================
 //
@@ -55,7 +64,7 @@ export const signupRateLimiter = rateLimit({
   max: signupRateLimit,
   standardHeaders: true,
   legacyHeaders: false,
-});// -- end signupRateLimiter
+}) as DefaultMiddlewareType;// -- end signupRateLimiter
 
 // === authRateLimiter =========================================================
 //
@@ -68,4 +77,4 @@ export const authRateLimiter = rateLimit({
   max: authRateLimit,
   standardHeaders: true,
   legacyHeaders: false,
-});// -- end authRateLimiter
+}) as DefaultMiddlewareType;// -- end authRateLimiter
