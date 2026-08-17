@@ -26,6 +26,10 @@ import {
 } from '../services/csrfProtectionService';
 
 import {
+  isAuthTempConversionPayload,
+} from '../services/whiteboardService';
+
+import {
   SetInclusionOptionType,
   escapeEncode,
 } from '../utils';
@@ -337,6 +341,18 @@ export const {
 
           const { email, username, password, whiteboardConversionRequest, } = req.body;
           const passwordHashed = await bcrypt.hash(password, 10);
+          const whiteboardId : string | null = (() => {
+            if (! whiteboardConversionRequest) return null;
+
+            try {
+              const payload : unknown = jwt.decode(whiteboardConversionRequest);
+
+              if (! isAuthTempConversionPayload(payload)) return null;
+              return payload.whiteboardId;
+            } catch (_e) {
+              return null;
+            }
+          })();
 
           // -- Create and sign confirmation payload
           const payload : ConfirmPermanentUserPayload = ({
@@ -365,6 +381,9 @@ export const {
 
               <form method="GET" action="http://${DOMAIN_NAME}/confirm_account_creation">
                 <input name="token" value=${encodeURIComponent(token)} type="hidden" />
+                ${whiteboardId && (
+                  `<input name="wb_conversion_id" value="${encodeURIComponent(whiteboardId)}" type="hidden" />`
+                ) || ""}
                 ${whiteboardConversionRequest && (
                   `<input name="wb_conversion_req" value="${encodeURIComponent(whiteboardConversionRequest)}" type="hidden" />`
                 ) || ""}

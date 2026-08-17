@@ -48,6 +48,10 @@ const App = () => {
             {/** Public Routes **/}
             <Route path="/login" element={<UserAuth action="login"/>} />
             <Route path="/signup" element={<UserAuth action="signup"/>} />
+            <Route
+              path="/confirm_account_creation"
+              element={<UserAuth action="confirm_account"/>}
+            />
             <Route path="/aboutUs" element={<AboutUs />} />
 
             {/** Protected Routes **/}

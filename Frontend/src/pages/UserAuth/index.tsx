@@ -19,6 +19,9 @@ import {
 import {
   SignupForm,
 } from "./SignupForm";
+import {
+  ConfirmAccountForm,
+} from './ConfirmAccountForm';
 
 import api from '@/api/axios';
 import type { CreateWhiteboardFormData } from '@/components/CreateWhiteboardModal';
@@ -30,8 +33,8 @@ import {
 } from '@/components/ui/button';
 import BackgroundVideo from '@/components/BackgroundVideo';
 
-interface UserAuthProps {
-  action: "login" | "signup";
+export interface UserAuthProps {
+  action: "login" | "signup" | "confirm_account";
 }
 
 const UserAuth = ({
@@ -50,6 +53,10 @@ const UserAuth = ({
     case 'signup':
       authActionLabel = 'Create an Account';
       AuthForm = SignupForm;
+      break;
+    case 'confirm_account':
+      authActionLabel = "Confirm account creation";
+      AuthForm = ConfirmAccountForm;
       break;
     default:
       throw new Error(`unrecognized auth action: ${action}`);

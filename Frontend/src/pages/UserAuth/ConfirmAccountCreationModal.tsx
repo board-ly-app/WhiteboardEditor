@@ -1,6 +1,7 @@
 import {
   useState,
   useCallback,
+  useMemo,
 } from "react";
 import {
   Button,
@@ -10,13 +11,13 @@ import {
 } from "@/components/ui/app-modal";
 
 const FORM_ID = 'confirm-account-creation-form';
-const ACCOUNT_CREATION_INPUT_ID = 'account-creation-token'
+const ACCOUNT_CREATION_TOKEN_INPUT_ID = 'account-creation-token'
 
 export interface ConfirmAccountCreationModalProps {
   open: boolean;
   onSubmitToken: (token: string) => void;
   onSkip: () => void;
-  email: string;
+  email?: string;
   variant: 'normal' | 'pending' | 'error';
 }
 
@@ -28,6 +29,16 @@ const ConfirmAccountCreationModal = ({
   variant,
 }: ConfirmAccountCreationModalProps) => {
   const [token, setToken] = useState<string>('');
+  const labelText : string = useMemo(
+    () => {
+      if (! email) {
+        return "Copy and paste the account creation token received at your email address"
+      } else {
+        return `Copy and paste the account creation token received at ${email}`
+      }
+    },
+    [email]
+  );// -- end const labelText
 
   const handleFormSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -73,13 +84,9 @@ const ConfirmAccountCreationModal = ({
         onSubmit={handleFormSubmit}
         className="flex flex-col"
       >
-        <label
-          htmlFor={ACCOUNT_CREATION_INPUT_ID}
-        >
-          Copy and paste the account creation token received at {email}:
-        </label>
+        <label htmlFor={ACCOUNT_CREATION_TOKEN_INPUT_ID}>{labelText}</label>
         <textarea
-          id={ACCOUNT_CREATION_INPUT_ID}
+          id={ACCOUNT_CREATION_TOKEN_INPUT_ID}
           placeholder="Account creation token"
           value={token}
           onChange={(e) => setToken(e.target.value)}

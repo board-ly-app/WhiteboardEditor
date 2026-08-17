@@ -1,15 +1,15 @@
 import {
+  type Document,
+  type Model,
   Schema,
   model,
   Types,
-  type Document,
-  type Model,
 } from "mongoose";
 
-import type {
-  DocumentVirtualBase,
-  DocumentViewMethods,
-  ViewDocument,
+import {
+  type DocumentVirtualBase,
+  type DocumentViewMethods,
+  type ViewDocument,
 } from './Model';
 
 import {
