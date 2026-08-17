@@ -38,6 +38,8 @@ const LS_KEY_IS_AUTHED = 'is_authed';
 const LS_VAL_IS_AUTHED_TRUE = 'true';
 const LS_VAL_IS_AUTHED_FALSE = 'false';
 
+const LS_KEY_LAST_REFRESH_TIMESTAMP = 'last_refresh';
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -47,6 +49,7 @@ export const AuthProvider = ({
 }: AuthProviderProps) => {
   const navigate = useNavigate();
 
+  const initRefreshAccessTokenTimeoutRef = useRef<number | null>(null);
   const refreshAccessTokenIntervalRef = useRef<number | null>(null);
 
   const [user, setUser] = useState<User | null>((): User | null => {
@@ -68,6 +71,12 @@ export const AuthProvider = ({
 
   const handleRefreshAccessToken = useCallback(
     () => {
+      const refreshTimestamp : number = Date.now();
+
+      localStorage.setItem(
+        LS_KEY_LAST_REFRESH_TIMESTAMP, JSON.stringify(refreshTimestamp)
+      );
+
       api.post('/auth/refresh')
         .catch((_e: unknown) => {
           console.error('Access token refresh failed');
@@ -137,14 +146,40 @@ export const AuthProvider = ({
   useEffect(
     () => {
       const isAuthedVal = localStorage.getItem(LS_KEY_IS_AUTHED);
+      const lastRefreshTimestampStr = localStorage.getItem(LS_KEY_LAST_REFRESH_TIMESTAMP);
 
-      if (isAuthedVal === LS_VAL_IS_AUTHED_TRUE) {
+      if (isAuthedVal !== LS_VAL_IS_AUTHED_TRUE) return;
+
+      const startRefreshInterval = () => {
+        initRefreshAccessTokenTimeoutRef.current = null;
         handleRefreshAccessToken();
         resetAccessTokenRefreshInterval();
+      };// -- end startRefreshInterval
+
+      if (lastRefreshTimestampStr) {
+        const lastRefreshTimestamp = parseInt(lastRefreshTimestampStr);
+
+        if (Number.isNaN(lastRefreshTimestamp)) {
+          startRefreshInterval();
+        } else {
+          const nextRefreshTimestamp
+            = lastRefreshTimestamp+ (REFRESH_ACCESS_TOKEN_QUERY_SECS * 1_000);
+          const currTimestamp = Date.now();
+
+          if (currTimestamp >= nextRefreshTimestamp) {
+            startRefreshInterval();
+          } else {
+            const msRemaining = nextRefreshTimestamp - currTimestamp;
+
+            initRefreshAccessTokenTimeoutRef.current = window.setTimeout(startRefreshInterval, msRemaining);
+          }
+        }
+      } else {
+        startRefreshInterval();
       }
     },
     [handleRefreshAccessToken, setUserWrapper, resetAccessTokenRefreshInterval]
-  );// -- end access token refresh interval
+  );// -- end useEffect
 
   const getSessionToken = useCallback(
     () => {
@@ -173,6 +208,11 @@ export const AuthProvider = ({
       if (refreshAccessTokenIntervalRef.current !== null) {
         window.clearInterval(refreshAccessTokenIntervalRef.current);
         refreshAccessTokenIntervalRef.current = null;
+      }
+
+      if (initRefreshAccessTokenTimeoutRef.current !== null) {
+        window.clearTimeout(initRefreshAccessTokenTimeoutRef.current);
+        initRefreshAccessTokenTimeoutRef.current = null;
       }
 
       // -- Call api logout endpoint to remove token cookies
