@@ -204,6 +204,8 @@ export const AuthProvider = ({
       isAuthedRef.current = false;
       localStorage.setItem(LS_KEY_IS_AUTHED, LS_VAL_IS_AUTHED_FALSE);
       localStorage.removeItem(LS_KEY_SESSION_TOKEN);
+      localStorage.removeItem(LS_KEY_USER);
+      localStorage.removeItem(LS_KEY_LAST_REFRESH_TIMESTAMP);
 
       if (refreshAccessTokenIntervalRef.current !== null) {
         window.clearInterval(refreshAccessTokenIntervalRef.current);
