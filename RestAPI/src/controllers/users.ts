@@ -323,9 +323,7 @@ export const {
             });
           }
 
-          if (! isNewUserValid(req.body, res)) {
-            return res.end();
-          }
+          if (! isNewUserValid(req.body, res)) return res.end();
 
           const { email, username, password, whiteboardConversionRequest, } = req.body;
           const passwordHashed = await bcrypt.hash(password, 10);
@@ -348,8 +346,13 @@ export const {
               <h1>Welcome to Board-ly!</h1>
 
               <p safe>
-                Please click the button below to confirm creation of your account, ${escapeEncode(username)}.
+                Either copy and paste the following token into the previous window
+                or click the button below to confirm creation of your account,
+                ${escapeEncode(username)}.
               </p>
+              <h3>Token:</h3>
+              <pre>${escapeEncode(token)}</pre>
+
               <form method="GET" action="http://${DOMAIN_NAME}/confirm_account_creation">
                 <input name="token" value=${encodeURIComponent(token)} type="hidden" />
                 ${whiteboardConversionRequest && (
@@ -361,7 +364,7 @@ export const {
           );// -- end const emailBody
 
           const info = await transporter.sendMail({
-            from: `admin@${EMAIL_DOMAIN_NAME}`,
+            from: `"Board-ly" <admin@${EMAIL_DOMAIN_NAME}>`,
             to: email,
             subject: emailSubject,
             text: emailText,
