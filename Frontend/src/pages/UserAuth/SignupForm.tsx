@@ -10,6 +10,7 @@ import {
 import {
   useNavigate,
   useLocation,
+  Link,
 } from 'react-router-dom';
 
 import {
@@ -648,17 +649,32 @@ export const SignupForm = (): React.JSX.Element => {
         </Button>
       </form>
 
-      {/* Toggle Login/Signup */}
-      <div className="flex justify-center mt-4 pt-6 border-t-1 border-border">
-        <div className="text-h2-text p-2 text-center">
-          Already have an account?
+      <div className="flex flex-col mt-4 pt-6 border-t-1 border-border">
+        {/* Toggle Login/Signup */}
+        <div className="flex justify-center">
+          <div className="text-h2-text p-2 text-center">
+            Already have an account?
+          </div>
+          <button 
+            onClick={handleToggle}
+            className="text-h2-text font-medium rounded-lg border-border border-1 px-4 bg-button-600 hover:bg-button-hover hover:cursor-pointer shadow-md"
+          >
+            Log In
+          </button>
         </div>
-        <button 
-          onClick={handleToggle}
-          className="text-h2-text font-medium rounded-lg border-border border-1 px-4 bg-button-600 hover:bg-button-hover hover:cursor-pointer shadow-md"
-        >
-          Log In
-        </button>
+
+        {/** Confirm account via token **/}
+        <div className="flex justify-center items-center">
+          <div className="text-h2-text p-2 text-center">
+            Received a confirmation email?
+          </div>
+          <Link
+            to="/confirm_account_creation"
+            className="text-blue-600 hover:text-blue-300 underline"
+          >
+            Confirm Account Creation
+          </Link>
+        </div>
       </div>
 
       {/* Modal for confirming account creation via token sent via email */}
