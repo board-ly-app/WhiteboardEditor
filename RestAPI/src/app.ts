@@ -10,6 +10,10 @@ import {
 } from './app.config';
 
 import {
+  globalRateLimiter,
+} from './middleware/rateLimit';
+
+import {
   doubleCsrfProtection,
 } from './services/csrfProtectionService';
 
@@ -30,6 +34,9 @@ app.use(express.urlencoded({
 }));
 app.use(cookieParser());
 app.use(doubleCsrfProtection);
+
+// Apply global rate limit
+app.use(globalRateLimiter);
 
 // Mount routers
 app.use(HEALTH_ROUTE, healthRouter);

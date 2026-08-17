@@ -8,19 +8,12 @@ import {
 } from '../middleware/auth';
 
 import {
-  globalRateLimiter,
-} from '../middleware/rateLimit';
-
-import {
   handleGetAllNotifications,
   handleGetNotification,
   handleDeleteNotification,
 } from '../controllers/notifications';
 
 const router = Router();
-
-// -- apply rate limiting
-router.use(globalRateLimiter);
 
 // -- all routes authenticated
 router.use(authenticateJWT);

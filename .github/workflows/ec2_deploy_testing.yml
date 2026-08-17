@@ -31,6 +31,9 @@ on:
       EC2_TEST_SSL_CERT:
         description: "Certificate to be placed in .secrets/cert.pem"
         required: true
+      EC2_TEST_REST_API_ENV:
+        description: "Rest API config env to be placed in .secrets/rest_api.env"
+        required: true
       EC2_TEST_MAIL_ENV:
         description: "Contents of mail.env file to be placed in .secrets/mail.env"
         required: true
@@ -242,6 +245,10 @@ jobs:
 
             cat > .secrets/cert.pem << '_EOF_'
             ${{ secrets.EC2_TEST_SSL_CERT }}
+            _EOF_
+
+            cat > .secrets/rest_api.env << '_EOF_'
+            ${{ secrets.EC2_TEST_REST_API_ENV }}
             _EOF_
 
             cat > .secrets/mail.env << '_EOF_'

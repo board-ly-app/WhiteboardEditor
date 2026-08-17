@@ -11,10 +11,6 @@ import {
 } from '../middleware/auth';
 
 import {
-  globalRateLimiter,
-} from '../middleware/rateLimit';
-
-import {
   handleGetOwnWhiteboards,
   handleGetWhiteboardById,
   handleCreateWhiteboard,
@@ -28,9 +24,6 @@ import {
 } from "../controllers/whiteboards";
 
 const router = Router();
-
-// -- apply rate limiting
-router.use(globalRateLimiter);
 
 // -- Get whiteboard by id
 router.get('/id/:whiteboardId', authenticateJWTOptional, handleGetWhiteboardById);

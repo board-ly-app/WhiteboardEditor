@@ -20,13 +20,26 @@ import {
 } from '../middleware/auth';
 
 import {
-  globalRateLimiter,
+  signupRateLimiter,
 } from '../middleware/rateLimit';
 
 const router = Router();
 
-// -- apply rate limiting
-router.use(globalRateLimiter);
+// -- The following routes are free from signup-specific rate limiting
+
+// === GET /users/:userId:/shared_whiteboards ==================================
+//
+// Get summaries (attribute views) of all whiteboards shared with a given user.
+// If passed "me" as the userId, fetches for the authenticated user.
+// By default, spans all permissions.
+//
+// TODO: implement queries to filter by permission type.
+//
+// =============================================================================
+router.get('/:userId/shared_whiteboards', handleGetSharedWhiteboardsByUser);
+
+// -- Apply signup-specific limiting for routes below
+router.use(signupRateLimiter);
 
 router.post("/", handleCreateUser);
 router.post("/confirm_account_creation", handleConfirmUser);
@@ -68,16 +81,5 @@ router.patch("/me", handlePatchOwnUser);
 // 
 // =============================================================================
 router.delete('/me', handleDeleteOwnUser);
-
-// === GET /users/:userId:/shared_whiteboards ==================================
-//
-// Get summaries (attribute views) of all whiteboards shared with a given user.
-// If passed "me" as the userId, fetches for the authenticated user.
-// By default, spans all permissions.
-//
-// TODO: implement queries to filter by permission type.
-//
-// =============================================================================
-router.get('/:userId/shared_whiteboards', handleGetSharedWhiteboardsByUser);
 
 export default router;

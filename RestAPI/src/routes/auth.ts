@@ -6,20 +6,22 @@ import {
 } from "../controllers/auth";
 
 import {
-  globalRateLimiter,
+  authRateLimiter,
 } from '../middleware/rateLimit';
 
 const router = Router();
 
-// -- apply rate limiting
-router.use(globalRateLimiter);
+// -- Exempt the following routes from auth-specific rate limiting ---
+
+// -- Clear cookies, including refresh token
+router.post('/logout', handleLogout);
+
+// -- Apply auth-specific rate limiting for the routes below
+router.use(authRateLimiter);
 
 // -- Authenticate with username/email and password, receiving both refresh
 // token and access token
 router.post("/login", handleLogin);
-
-// -- Clear cookies, including refresh token
-router.post('/logout', handleLogout);
 
 // -- Request a new access token, given a valid refresh token.
 router.post('/refresh', handleRefreshAccessToken);
