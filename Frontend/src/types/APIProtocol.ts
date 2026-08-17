@@ -90,12 +90,39 @@ export interface LoginReqBody {
   password: string; 
 }
 
+export interface SignupReqBody {
+  email: string; 
+  username: string;
+  password: string; 
+}
+
 // === LoginSuccessResponse ====================================================
 //
 // Defines the body of a response to a successful login request.
 //
 // =============================================================================
 export interface LoginSuccessResponse {
+  user: User;
+  sessionToken: string;
+}
+
+export interface SignupSuccessNoEmailResponse {
+  kind: 'no_email';
+  user: User;
+  sessionToken: string;
+}
+
+export interface SignupSuccessEmailResponse {
+  kind: 'email';
+  email: string;
+}
+
+export type SignupSuccessResponse =
+  | SignupSuccessNoEmailResponse
+  | SignupSuccessEmailResponse
+;
+
+export interface SignupConfirmationSuccessResponse {
   user: User;
   sessionToken: string;
 }

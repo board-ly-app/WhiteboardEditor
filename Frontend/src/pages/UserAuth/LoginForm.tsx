@@ -18,8 +18,9 @@ import {
 
 // -- third-party imports
 
-import axios, {
+import {
   type AxiosResponse,
+  type AxiosError,
 } from 'axios';
 
 import {
@@ -205,15 +206,11 @@ export const LoginForm = (): React.JSX.Element => {
                 },
               }));
             })
-            .catch((e) => {
-              if (axios.isAxiosError(e)) {
-                console.error(
-                  'Failed to request whiteboard transfer authorization; statusCode:',
-                  e.code
-                );
-              } else {
-                console.error('Failed to request whiteboard transfer authorization');
-              }
+            .catch((e: AxiosError) => {
+              console.error(
+                'Failed to request whiteboard transfer authorization; statusCode:',
+                e.status
+              );
 
               store.dispatch(setLoginError({
                 errorKind: 'system',
@@ -257,24 +254,15 @@ export const LoginForm = (): React.JSX.Element => {
                 store.dispatch(setLoginLoggingIn({}));
               }
             })
-            .catch((e: unknown) => {
-              if (axios.isAxiosError(e)) {
-                console.error('Request to log in failed with status', e.code);
+            .catch((e: AxiosError) => {
+              console.error('Request to log in failed with status', e.status);
 
-                if (e.status && (e.status >= 400 && e.status < 500)) {
-                  store.dispatch(setLoginError({
-                    errorKind: 'user',
-                    reason: 'Invalid login credentials',
-                  }));
-                } else {
-                  store.dispatch(setLoginError({
-                    errorKind: 'system',
-                    reason: 'Failed to log in',
-                  }));
-                }
+              if (e.status && (e.status >= 400 && e.status < 500)) {
+                store.dispatch(setLoginError({
+                  errorKind: 'user',
+                  reason: 'Invalid login credentials',
+                }));
               } else {
-                console.error('Failed to log in');
-
                 store.dispatch(setLoginError({
                   errorKind: 'system',
                   reason: 'Failed to log in',
@@ -306,12 +294,8 @@ export const LoginForm = (): React.JSX.Element => {
                 whiteboardId,
               }));
             })
-            .catch((e: unknown) => {
-              if (axios.isAxiosError(e)) {
-                console.error('Temp whiteboard conversion failed with status code', e.code);
-              } else {
-                console.error('Temp whiteboard conversion failed:', e);
-              }
+            .catch((e: AxiosError) => {
+              console.error('Temp whiteboard conversion failed with status code', e.code);
 
               store.dispatch(setLoginError({
                 errorKind: 'system',
@@ -342,23 +326,15 @@ export const LoginForm = (): React.JSX.Element => {
 
               store.dispatch(setLoginLoggingIn({}));
             })
-            .catch((e: unknown) => {
-              if (axios.isAxiosError(e)) {
-                console.error('Whiteboard renaming failed with status', e.code);
+            .catch((e: AxiosError) => {
+              console.error('Whiteboard renaming failed with status', e.code);
 
-                if (e.status && (e.status >= 400 && e.status < 500)) {
-                  store.dispatch(setLoginError({
-                    errorKind: 'user',
-                    reason: 'Bad request to rename whiteboard',
-                  }));
-                } else {
-                  store.dispatch(setLoginError({
-                    errorKind: 'system',
-                    reason: 'Failed to rename whiteboard',
-                  }));
-                }
+              if (e.status && (e.status >= 400 && e.status < 500)) {
+                store.dispatch(setLoginError({
+                  errorKind: 'user',
+                  reason: 'Bad request to rename whiteboard',
+                }));
               } else {
-                console.error('Whiteboard renaming failed:', e);
                 store.dispatch(setLoginError({
                   errorKind: 'system',
                   reason: 'Failed to rename whiteboard',

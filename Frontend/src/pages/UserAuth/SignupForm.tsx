@@ -3,6 +3,8 @@ import {
   useState,
   useContext,
   useCallback,
+  useEffect,
+  useMemo,
 } from "react";
 
 import {
@@ -10,10 +12,15 @@ import {
   useLocation,
 } from 'react-router-dom';
 
+import {
+  useSelector,
+} from 'react-redux';
+
 // -- third-party imports
 
-import axios, {
+import {
   type AxiosResponse,
+  type AxiosError,
 } from 'axios';
 
 import {
@@ -25,8 +32,29 @@ import AuthContext from '@/context/AuthContext';
 
 import AuthInput from "./AuthInput";
 
-import { useUser } from "@/hooks/useUser";
 import api from '@/api/axios';
+
+import {
+  type RootState,
+  store,
+} from '@/store';
+
+import {
+  setSignupInactive,
+  setSignupError,
+  setSignupRequestingWhiteboardTransferAuth,
+  setSignupRequesting,
+  setSignupStatePendingConfirmation,
+  setSignupStateRequestingConfirmation,
+  setSignupRequestingWhiteboardTransfer,
+  setSignupRenamingWhiteboard,
+  setSignupRequestingWhiteboardRename,
+  setSignupLoggingIn,
+} from '@/store/userFlows/signup/signupSlice';
+
+import {
+  selectSignupFlowState,
+} from '@/store/userFlows/signup/signupSelectors';
 
 import {
   Button,
@@ -38,172 +66,503 @@ import {
 } from '@/app.config';
 
 import {
-  type LoginSuccessResponse,
+  type SignupReqBody,
+  type SignupSuccessResponse,
+  type SignupConfirmationSuccessResponse,
+  type WhiteboardConvertTempToPermReqBody,
+  type WhiteboardNewNameReqBody,
 } from '@/types/APIProtocol';
 
 import ChangeNameTrialWhiteboard from "./ChangeNameTrialWhiteboard";
-
-interface SignupPayload { 
-  email: string; 
-  username: string; 
-  password: string; 
-  authUser?: { id: string } | null;
-}
+import ConfirmAccountCreationModal from "./ConfirmAccountCreationModal";
 
 export const SignupForm = (): React.JSX.Element => {
+  // -- core component state
+  const componentState = useSelector((state: RootState) => selectSignupFlowState(state));
+
   // -- form fields
   const [email, setEmail] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
-  const [transferringWhiteboardId, setTransferringWhiteboardId] = useState<string | null>(null);
 
   // -- ui state
-  const [uiStatus, setUiStatus] = useState<'ok' | 'err_user' | 'err_system'>('ok');
+  const uiStatus : 'ok' | 'err_user' | 'err_system' = useMemo(
+    () => {
+      switch (componentState.status) {
+        case 'error':
+          switch (componentState.errorKind) {
+            case 'user':
+              return 'err_user';
+            case 'system':
+              return 'err_system';
+          }// -- end switch (componentState.errorKind)
+          break;
+        case 'inactive':
+        case 'requesting':
+        case 'requesting_confirmation':
+        case 'pending_confirmation':
+        case 'renaming_whiteboard':
+        case 'requesting_whiteboard_rename':
+        case 'requesting_whiteboard_transfer':
+        case 'requesting_whiteboard_transfer_auth':
+        case 'logging_in':
+          return 'ok';
+      }// -- end switch (componentState.status)
+    },
+    [componentState]
+  );// -- end const uiState
+
+  const submitButtonStatus : ButtonStatus = useMemo(
+    () => {
+      switch (componentState.status) {
+        case 'inactive':
+        case 'error':
+        {
+          if (email.length < 1) return 'disabled';
+          if (username.length < 1) return 'disabled';
+          if (password.length < 1) return 'disabled';
+          if (password !== confirmPassword) return 'disabled';
+
+          return 'enabled';
+        }
+        case 'renaming_whiteboard':
+        case 'pending_confirmation':
+        case 'logging_in':
+          return 'disabled';
+        case 'requesting':
+        case 'requesting_confirmation':
+        case 'requesting_whiteboard_transfer_auth':
+        case 'requesting_whiteboard_transfer':
+        case 'requesting_whiteboard_rename':
+          return 'pending';
+      }// -- end switch (componentState.status)
+    },
+    [componentState, email, username, password, confirmPassword]
+  );// -- end const submitButtonStatus
+
+  const changeNameOpen : boolean = useMemo(
+    () => {
+      switch (componentState.status) {
+        case 'renaming_whiteboard':
+          return true;
+        default:
+          return false;
+      }// -- end switch (componentState.status)
+    },
+    [componentState]
+  );// -- end const changeNameOpen
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, handleLogin } = useUser();
-  const tempUser = user?.kind === 'temp' ? user : null;
+
   const authContext = useContext(AuthContext);
-  const [changeNameOpen, setChangeNameOpen] = useState(false);
+  if (! authContext) throw new Error('AuthContext not provided');
+  const {
+    handleLogin,
+    user,
+  } = authContext;
 
-  if (! authContext) {
-    throw new Error('AuthContext not provided');
-  }
+  // -- Initialize state to inactive on page load
+  useEffect(
+    () => {
+      // -- Reset inputs
+      setEmail('');
+      setUsername('');
+      setPassword('');
 
-  const [submitButtonStatus, setSubmitButtonStatus] = useState<ButtonStatus>('enabled');
+      store.dispatch(setSignupInactive({}));
+    },
+    [location]
+  );// -- end useEffect
+
+  // -- Handle state transitions
+  useEffect(
+    () => {
+      switch (componentState.status) {
+        // -- Nothing to do for inactive case
+        // case 'inactive':
+        // {
+        // }
+        // break;
+        case 'error':
+        {
+          const {
+            reason,
+          } = componentState;
+
+          // -- Display a reason, if given
+          toast.error(reason);
+        }
+        break;
+        case 'requesting_whiteboard_transfer_auth':
+        {
+          const {
+            whiteboardId,
+            email,
+            username,
+            password,
+          } = componentState;
+
+          // -- Request transfer auth asynchronously
+          const endpoint = `/whiteboards/${encodeURIComponent(whiteboardId)}/auth_convert_temp_to_perm`;
+          const payload = ({
+            permanentUserEmail: email,
+          });
+
+          api.post(endpoint, payload)
+            .then((res: AxiosResponse) => {
+              if (! ('signedConversionRequest' in res.data)) {
+                throw new Error('Response missing field "signedConversionRequest"');
+              }
+
+              store.dispatch(setSignupRequesting({
+                email, username, password,
+                whiteboardToTransfer: {
+                  whiteboardId,
+                  transferAuthToken: res.data.signedConversionRequest,
+                },
+              }));
+            })
+            .catch((e: AxiosError) => {
+              console.error(
+                'Failed to request whiteboard transfer authorization; statusCode:',
+                e.status
+              );
+
+              store.dispatch(setSignupError({
+                errorKind: 'system',
+                reason: 'Failed to get authorization to transfer temp whiteboard',
+              }));
+            });
+        }
+        break;
+        case 'requesting':
+        {
+          const {
+            email,
+            username,
+            password,
+            whiteboardToTransfer,
+          } = componentState;
+
+          // -- API request triggered on rising edge
+          const convertingTempUser : boolean = (!! user)
+            && (user.kind === 'temp')
+            && (!whiteboardToTransfer);
+          const endpoint = convertingTempUser ?
+            "/users/convert_temp"
+            : "/users";
+
+          const payload: SignupReqBody = ({
+            email,
+            username,
+            password,
+          });
+
+          api.post(endpoint, payload)
+            .then((res: AxiosResponse<SignupSuccessResponse>) => {
+              console.log('Signup successful');
+
+              switch (res.data.kind) {
+                case 'email':
+                {
+                  console.log('Email confirmation requested');
+
+                  store.dispatch(setSignupStatePendingConfirmation({
+                    email, whiteboardToTransfer,
+                  }));
+                }
+                break;
+                case 'no_email':
+                {
+                  console.log('No email confirmation requested');
+
+                  handleLogin(res.data.user, res.data.sessionToken);
+
+                  // -- If there is a whiteboard transfer auth token, start the
+                  // whiteboard renaming process. Otherwise, proceed immediately to
+                  // login.
+                  if (whiteboardToTransfer) {
+                    store.dispatch(setSignupRequestingWhiteboardTransfer({
+                      whiteboardId: whiteboardToTransfer.whiteboardId,
+                      whiteboardTransferAuthToken: whiteboardToTransfer.transferAuthToken,
+                    }));
+                  } else {
+                    store.dispatch(setSignupLoggingIn({}));
+                  }
+                }
+                break;
+                default:
+                  throw new Error('Unrecognized response type');
+              }// -- end switch (res.data.kind)
+            })
+            .catch((e: AxiosError) => {
+              console.error('Request to sign up failed with status', e.status);
+
+              if (e.status && (e.status >= 400 && e.status < 500)) {
+                store.dispatch(setSignupError({
+                  errorKind: 'user',
+                  reason: 'Invalid signup credentials',
+                }));
+              } else {
+                store.dispatch(setSignupError({
+                  errorKind: 'system',
+                  reason: 'Failed to create account',
+                }));
+              }
+            });
+        }
+        break;
+        // -- Nothing to do here for PendingConfirmation status
+        // case 'pending_confirmation':
+        // break;
+        case 'requesting_confirmation':
+        {
+          const {
+            accountCreationToken,
+            whiteboardToTransfer,
+          } = componentState;
+
+          const endpoint = '/users/confirm_account_creation';
+          const payload = ({
+            token: accountCreationToken,
+          });
+
+          api.post(endpoint, payload)
+            .then((res: AxiosResponse<SignupConfirmationSuccessResponse>) => {
+              handleLogin(res.data.user, res.data.sessionToken);
+
+              if (whiteboardToTransfer) {
+                // -- Proceed to whiteboard transfer
+                store.dispatch(setSignupRequestingWhiteboardTransfer({
+                  whiteboardId: whiteboardToTransfer.whiteboardId,
+                  whiteboardTransferAuthToken: whiteboardToTransfer.transferAuthToken,
+                }));
+              } else {
+                // -- Immediately log in
+                store.dispatch(setSignupLoggingIn({}));
+              }
+            })
+            .catch((e: AxiosError) => {
+              console.error('Account confirmation failed with status code %s', e.status);
+
+              if (e.status && (e.status >= 400 && e.status < 500)) {
+                // -- User error
+                store.dispatch(setSignupError({
+                  errorKind: 'user',
+                  reason: 'Invalid or expired account confirmation token',
+                }));
+              } else {
+                // -- System error
+                store.dispatch(setSignupError({
+                  errorKind: 'system',
+                  reason: 'Failed to confirm account creation',
+                }));
+              }
+            });
+        }
+        break;
+        case 'requesting_whiteboard_transfer':
+        {
+          const {
+            whiteboardId,
+            whiteboardTransferAuthToken,
+          } = componentState;
+
+          const endpoint = `/whiteboards/${encodeURIComponent(whiteboardId)}/convert_temp_to_perm`;
+          const payload : WhiteboardConvertTempToPermReqBody = ({
+            signedConversionRequest: whiteboardTransferAuthToken,
+          });
+
+          api.post(endpoint, payload)
+            .then((_res) => {
+              console.log(
+                'Temp whiteboard %s successfully converted to permanent',
+                whiteboardId
+              );
+
+              store.dispatch(setSignupRenamingWhiteboard({
+                whiteboardId,
+              }));
+            })
+            .catch((e: AxiosError) => {
+              console.error('Temp whiteboard conversion failed with status code', e.status);
+
+              store.dispatch(setSignupError({
+                errorKind: 'system',
+                reason: 'Failed to convert whiteboard to permanent',
+              }));
+            });
+        }
+        break;
+        // -- Nothing to do for RenamingWhiteboard case
+        // case 'renaming_whiteboard':
+        // break;
+        case 'requesting_whiteboard_rename':
+        {
+          const {
+            whiteboardId,
+            name,
+          } = componentState;
+
+          // -- Send request
+          const endpoint = `/whiteboards/${encodeURIComponent(whiteboardId)}/newName`;
+          const payload : WhiteboardNewNameReqBody = ({
+            newName: name,
+          });
+
+          api.put(endpoint, payload)
+            .then((_res) => {
+              console.log('Whiteboard renaming successful');
+
+              store.dispatch(setSignupLoggingIn({}));
+            })
+            .catch((e: AxiosError) => {
+              console.error('Whiteboard renaming failed with status', e.status);
+
+              if (e.status && (e.status >= 400 && e.status < 500)) {
+                store.dispatch(setSignupError({
+                  errorKind: 'user',
+                  reason: 'Bad request to rename whiteboard',
+                }));
+              } else {
+                store.dispatch(setSignupError({
+                  errorKind: 'system',
+                  reason: 'Failed to rename whiteboard',
+                }));
+              }
+            });
+        }
+        break;
+        case 'logging_in':
+        {
+          // -- Navigate to either specified redirect url or dashboard
+          const searchParams = new URLSearchParams(location.search);
+          const redirectUrl = searchParams.has('redirect') ?
+            decodeURIComponent(searchParams.get('redirect') || '')
+            : '/dashboard';
+
+          toast.success('Successfully logged in');
+          navigate(redirectUrl);
+        }
+        break;
+      }// -- end switch (componentState.status)
+    },
+    [componentState, location, user, handleLogin, navigate]
+  );// -- end useEffect
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
 
-      try {
-        // -- derived state
-        const searchParams = new URLSearchParams(location.search);
-        const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
-        const redirectUrl = searchParams.has('redirect') ?
-          decodeURIComponent(searchParams.get('redirect') || '')
-          : '/dashboard';
+      // -- derived state
+      const searchParams = new URLSearchParams(location.search);
+      const tempWhiteboardId = searchParams.get('transfer_temp_whiteboard');
 
-        setSubmitButtonStatus('pending');
-
-        // -- If we are going to convert a temporary whiteboard to permanent, we
-        // need to authorize the request as the owning temp user first.
-        let signedConversionRequest : string | null = null;
-
-        if (tempWhiteboardId) {
-          try {
-            const endpoint = `/whiteboards/${encodeURIComponent(tempWhiteboardId)}/auth_convert_temp_to_perm`;
-            const res = await api.post(endpoint, {
-              permanentUserEmail: email,
-            });
-
-            if (! ('signedConversionRequest' in res.data)) {
-              throw new Error('Response missing field "signedConversionRequest"');
-            }
-
-            signedConversionRequest = res.data.signedConversionRequest;
-          } catch (e: unknown) {
-            console.error('Authorization of temp whiteboard conversion failed:', e);
-            toast.error('Authorization of temp whiteboard conversion failed');
-
-            throw e;
-          }
-        }
-
-        try {
-          const endpoint = (tempWhiteboardId && (tempUser !== null)) ?
-            "/users/convert_temp"
-            : "/users";
-          const payload: SignupPayload = ({
-            email,
-            username,
-            password,
-          });
-          const res : AxiosResponse<LoginSuccessResponse> = await api.post(endpoint, payload);
-          
-          const {
-            user,
-            sessionToken,
-          } = res.data;
-
-          handleLogin(user, sessionToken);
-        } catch (err: unknown) {
-          if (axios.isAxiosError(err)) {
-            if ((err?.response?.status) && (err.response.status >= 400) && (err.response.status < 500)) {
-              const status = err.response.status;
-
-              console.error('Authentication request failed with status', status);
-
-              // -- ensure fields are highlighted
-              setUiStatus('err_user');
-
-              // -- display popup alert
-              toast.error('Authentication Failed. Try again.');
-            } else {
-              console.error('Error handling authentication:', err);
-
-              // -- notify user of a system error (fields not highlit)
-              setUiStatus('err_system');
-
-              // -- display error to user
-              toast.error('Error handling authentication.');
-            }
-          }
-
-          throw e;
-        }
-
-        // -- If applicable, fulfill conversion of temp whiteboard
-        if (tempWhiteboardId && signedConversionRequest) {
-          try {
-            await api.post(`/whiteboards/${encodeURIComponent(tempWhiteboardId)}/convert_temp_to_perm`, {
-              signedConversionRequest,
-            });
-
-            setTransferringWhiteboardId(tempWhiteboardId);
-
-            // -- Prompt user to change name of whiteboard from default "Trial Whiteboard"
-            setChangeNameOpen(true);
-
-            toast.success("Whiteboard added to your whiteboards!");
-          } catch (err: unknown) {
-            if (axios.isAxiosError(err)) {
-              const message = 
-                err.response?.status === 403
-                  ? "You must be the owner of the whiteboard to add it to your account."
-                  : "Could not transfer whiteboard.";
-              
-              toast.error(message);
-            } else {
-              toast.error("Could not transfer whiteboard.");
-            }
-
-            console.error('Error transferring temp whiteboard');
-
-            throw e;
-          }
-        } else {
-          // If not converting temp whiteboard, navigate to redirect url
-          navigate(redirectUrl);
-        }
-      } finally {
-        setSubmitButtonStatus('enabled');
+      if (tempWhiteboardId) {
+        store.dispatch(setSignupRequestingWhiteboardTransferAuth({
+          whiteboardId: tempWhiteboardId,
+          email,
+          username,
+          password,
+        }));
+      } else {
+        store.dispatch(setSignupRequesting({
+          email,
+          username,
+          password,
+        }));
       }
     },
     [
       email,
-      navigate,
-      password,
       username,
-      setSubmitButtonStatus,
-      setChangeNameOpen,
-      tempUser,
+      password,
       location.search,
-      handleLogin,
     ]
   );// -- end const handleSubmit
+
+  const handleConfirmNameChange = useCallback(
+    (nameFromModal: string) => {
+      const currState : RootState = store.getState();
+      const componentState = selectSignupFlowState(currState);
+
+      switch (componentState.status) {
+        case 'renaming_whiteboard':
+        {
+          const {
+            whiteboardId,
+          } = componentState;
+
+          store.dispatch(setSignupRequestingWhiteboardRename({
+            whiteboardId,
+            name: nameFromModal,
+          }));
+        }
+        break;
+        default:
+          throw new Error(`Cannot confirm name change from state ${componentState.status}`);
+      }// -- end switch (componentState.status)
+    },
+    []
+  );// -- end handleConfirmNameChange
+  
+  const handleSkipNameChange = useCallback(
+    () => {
+      const currState : RootState = store.getState();
+      const componentState = selectSignupFlowState(currState);
+
+      switch (componentState.status) {
+        case 'renaming_whiteboard':
+        {
+          store.dispatch(setSignupLoggingIn({}));
+        }
+        break;
+        default:
+          throw new Error(`Cannot skip name change from state ${componentState.status}`);
+      }// -- end switch (componentState.status)
+    },
+    []
+  );// -- end handleSkipNameChange
+
+  const handleSubmitAccountConfirmation = useCallback(
+    (token: string) => {
+      switch (componentState.status) {
+        case 'pending_confirmation':
+        {
+          const {
+            whiteboardToTransfer,
+          } = componentState;
+
+          store.dispatch(setSignupStateRequestingConfirmation({
+            accountCreationToken: token,
+            whiteboardToTransfer,
+          }));
+        }
+        break;
+        default:
+          throw new Error(`Cannot submit account confirmation in state "${componentState.status}"`);
+      }// -- end switch (componentState.status)
+    },
+    [componentState]
+  );// -- end handleSubmitAccountConfirmation
+
+  const handleSkipAccountConfirmation = useCallback(
+    () => {
+      switch (componentState.status) {
+        case 'pending_confirmation':
+        {
+          // -- Redirect to login page
+          navigate('/login');
+        }
+        break;
+        default:
+          throw new Error(`Cannot skip account confirmation in state "${componentState.status}"`);
+      }// -- end switch (componentState.status)
+    },
+    [componentState, navigate]
+  );// -- end handleSkipAccountConfirmation
 
   const handleToggle = useCallback(
     () => {
@@ -211,47 +570,6 @@ export const SignupForm = (): React.JSX.Element => {
     },
     [navigate]
   );// -- end handleToggle
-
-  const handleConfirmNameChange = useCallback(
-    async (nameFromModal: string) => {
-      const searchParams = new URLSearchParams(location.search);
-      const redirectUrl = searchParams.has('redirect') ?
-        decodeURIComponent(searchParams.get('redirect') || '')
-        : '/dashboard';
-
-      if (transferringWhiteboardId) {
-        try {
-          await api.put(`/whiteboards/${transferringWhiteboardId}/newName`, {
-            newName: nameFromModal,
-          });
-
-          toast.success("Whiteboard name updated!");
-        } catch (err) {
-          console.error('Error changing whiteboard name:', err);
-
-          const toastMessage = "Whiteboard added to your account, but there was an error updating its name.";
-          toast.warn(toastMessage);
-        }
-      }
-
-      setChangeNameOpen(false);
-      navigate(redirectUrl);
-    },
-    [location.search, setChangeNameOpen, navigate, transferringWhiteboardId]
-  );// -- end handleConfirmNameChange
-  
-  const handleSkipNameChange = useCallback(
-    () => {
-      const searchParams = new URLSearchParams(location.search);
-      const redirectUrl = searchParams.has('redirect') ?
-        decodeURIComponent(searchParams.get('redirect') || '')
-        : '/dashboard';
-
-      setChangeNameOpen(false);
-      navigate(redirectUrl);
-    },
-    [location.search, setChangeNameOpen, navigate]
-  );// -- end handleSkipNameChange
 
   return (
     <div className="flex flex-col w-75 sm:w-95 md:w-120">
@@ -317,6 +635,16 @@ export const SignupForm = (): React.JSX.Element => {
           Log In
         </button>
       </div>
+
+      {/* Modal for confirming account creation via token sent via email */}
+      {(componentState.status === 'pending_confirmation') && (
+        <ConfirmAccountCreationModal
+          open={true}
+          email={componentState.email}
+          onSubmitToken={handleSubmitAccountConfirmation}
+          onSkip={handleSkipAccountConfirmation}
+        />
+      )}
 
       {/* Modal for changing the name of converted temp to permanent whiteboard */}
       <ChangeNameTrialWhiteboard
