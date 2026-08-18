@@ -1,4 +1,11 @@
 import request from "supertest";
+import {
+  expect,
+  beforeAll,
+  afterAll,
+  describe,
+  it,
+} from 'vitest';
 import mongoose, {
   Types,
 } from 'mongoose';

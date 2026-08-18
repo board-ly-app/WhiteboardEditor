@@ -22,6 +22,10 @@ import {
 } from '../services/mailTransporter';
 
 import {
+  AccountConfirmationTemplate,
+} from '../services/emailService';
+
+import {
   generateCsrfToken,
 } from '../services/csrfProtectionService';
 
@@ -415,37 +419,22 @@ export const {
             // -- Send verification email
             const emailSubject = `Please confirm your account at ${DOMAIN_NAME}`;
             const emailText = `Hello ${username},${"\n\n"}Please copy/paste the following token into the form at https://${DOMAIN_NAME}/confirm_account_creation to finish creating your new account.${"\n\n"}Token:${"\n"}${token}`;
-            const emailBody = (
-              `<main>
-                <h1>Welcome to Board-ly!</h1>
-
-                <p>
-                  Either copy and paste the following token into the previous window
-                  or click the button below to confirm creation of your account,
-                  ${escapeEncode(username)}.
-                </p>
-                <h3>Token:</h3>
-                <pre>${escapeEncode(token)}</pre>
-
-                <form method="GET" action="http://${DOMAIN_NAME}/confirm_account_creation">
-                  <input name="token" value=${encodeURIComponent(token)} type="hidden" />
-                  ${whiteboardId && (
-                    `<input name="wb_conversion_id" value="${encodeURIComponent(whiteboardId)}" type="hidden" />`
-                  ) || ""}
-                  ${whiteboardConversionRequest && (
-                    `<input name="wb_conversion_req" value="${encodeURIComponent(whiteboardConversionRequest)}" type="hidden" />`
-                  ) || ""}
-                  <button type="submit">Create Account</button>
-                </form>
-              </main>`
-            );// -- end const emailBody
+            const emailBody = AccountConfirmationTemplate({
+              username,
+              accountCreationToken: token,
+              expirationSecs: EMAIL_VERIFICATION_EXPIRATION_SECS,
+              whiteboardToTransfer: whiteboardId && whiteboardConversionRequest && ({
+                whiteboardId,
+                whiteboardConversionToken: whiteboardConversionRequest,
+              }) || undefined
+            });
 
             transporter.sendMail({
               from: `"Board-ly" <admin@${EMAIL_DOMAIN_NAME}>`,
               to: email,
               subject: emailSubject,
               text: emailText,
-              html: emailBody,
+              html: emailBody.toString(),
             })
             .then((info) => {
               console.log('Message sent to %s:', email, info.messageId);

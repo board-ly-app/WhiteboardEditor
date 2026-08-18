@@ -5,6 +5,12 @@
 //
 // =============================================================================
 import request from "supertest";
+import {
+  beforeAll,
+  afterAll,
+  describe,
+  it,
+} from 'vitest';
 import mongoose from 'mongoose';
 
 import app from "../src/app";

@@ -21,7 +21,7 @@ RUN \
   --mount=type=cache,id=rest_api.yarn_home,target=${HOME}/.yarn \
   --mount=type=cache,id=rest_api.node_modules,target=${BUILD_DIR}/node_modules \
   yarn install --prefer-offline && \
-  yarn tsc && \
+  yarn build && \
   cp -rp . ${DEST_DIR}
 
 # Set up testers to run from ${DEST_DIR}
