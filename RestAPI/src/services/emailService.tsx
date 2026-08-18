@@ -4,16 +4,11 @@
 //
 // =============================================================================
 
-const {
-  DOMAIN_NAME,
-} = process.env;
-
-if (! DOMAIN_NAME) throw new Error('Env var DOMAIN_NAME not provided');
-
 // === AccountConfirmationTemplate =============================================
 //
 // =============================================================================
 export interface AccountConfirmationTemplateProps {
+  domainName: string;
   username: string;
   accountCreationToken: string;
   expirationSecs?: number;
@@ -24,12 +19,13 @@ export interface AccountConfirmationTemplateProps {
 }
 
 export const AccountConfirmationTemplate = ({
+  domainName,
   username,
   accountCreationToken,
   expirationSecs,
   whiteboardToTransfer,
 }: AccountConfirmationTemplateProps) => {
-  const formAction : string = `http://${DOMAIN_NAME}/confirm_account_creation`;
+  const formAction : string = `http://${domainName}/confirm_account_creation`;
   const expirationNotif = (() => {
     if (! expirationSecs) return null;
 
@@ -41,7 +37,8 @@ export const AccountConfirmationTemplate = ({
 
     return <p>You have <strong>{timeDesc}</strong> to confirm creation of your account.</p>;
   })();
-  const out = (
+
+  return (
     <main>
       <h1 safe>Welcome to Board-ly, {username}!</h1>
 
@@ -93,6 +90,30 @@ export const AccountConfirmationTemplate = ({
       </table>
     </main>
   );
+};// -- end AccountConfirmationTemplate
 
-  return out;
-};// -- end mailTemplate
+export interface AccountConfirmationDuplicateEmailTemplateProps {
+  domainName: string;
+  username: string;
+}
+
+export const AccountConfirmationDuplicateEmailTemplate = ({
+  domainName,
+  username,
+}: AccountConfirmationDuplicateEmailTemplateProps) => {
+  return (
+    <main>
+      <h1 safe>Hello {username},</h1>
+
+      <p>
+        You are receiving this email because someone tried to
+        create a new account at {domainName} with this email address.
+      </p>
+      <p>
+        If you want to access the account you already created, please go
+        to {domainName} to request a new password.
+        Otherwise, you can disregard this email.
+      </p>
+    </main>
+  );
+};

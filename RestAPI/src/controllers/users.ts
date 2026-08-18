@@ -23,6 +23,7 @@ import {
 
 import {
   AccountConfirmationTemplate,
+  AccountConfirmationDuplicateEmailTemplate,
 } from '../services/emailService';
 
 import {
@@ -35,7 +36,6 @@ import {
 
 import {
   SetInclusionOptionType,
-  escapeEncode,
 } from '../utils';
 
 import {
@@ -386,28 +386,17 @@ export const {
           if (existingEmail) {
             const emailSubject = `Someone tried to create a new account at ${DOMAIN_NAME}`;
             const emailText = `You are receiving this email because someone tried to create a new account at ${DOMAIN_NAME} with this email address.${"\n\n"}If you want to access the account you already created, please go to ${DOMAIN_NAME} to request a new password. Otherwise, you can disregard this email.`;
-            const emailBody = (
-              `<main>
-                <h1>Hello ${escapeEncode(existingEmail.username)},</h1>
-
-                <p>
-                  You are receiving this email because someone tried to
-                  create a new account at ${escapeEncode(DOMAIN_NAME)} with this email address.
-                </p>
-                <p>
-                  If you want to access the account you already created, please go
-                  to ${escapeEncode(DOMAIN_NAME)} to request a new password.
-                  Otherwise, you can disregard this email.
-                </p>
-              </main>`
-            );// -- end const emailBody
+            const emailBody = AccountConfirmationDuplicateEmailTemplate({
+              domainName: DOMAIN_NAME,
+              username: existingEmail.username,
+            });
 
             transporter.sendMail({
               from: `"Board-ly" <admin@${EMAIL_DOMAIN_NAME}>`,
               to: email,
               subject: emailSubject,
               text: emailText,
-              html: emailBody,
+              html: emailBody.toString(),
             })
             .then((info) => {
               console.log('Message sent to %s:', email, info.messageId);
@@ -420,6 +409,7 @@ export const {
             const emailSubject = `Please confirm your account at ${DOMAIN_NAME}`;
             const emailText = `Hello ${username},${"\n\n"}Please copy/paste the following token into the form at https://${DOMAIN_NAME}/confirm_account_creation to finish creating your new account.${"\n\n"}Token:${"\n"}${token}`;
             const emailBody = AccountConfirmationTemplate({
+              domainName: DOMAIN_NAME,
               username,
               accountCreationToken: token,
               expirationSecs: EMAIL_VERIFICATION_EXPIRATION_SECS,
