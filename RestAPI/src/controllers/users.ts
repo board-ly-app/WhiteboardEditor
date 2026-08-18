@@ -110,6 +110,7 @@ export const {
     EMAIL_VERIFICATION_EXPIRATION_SECS: S_EMAIL_VERIFICATION_EXPIRATION_SECS,
   } = process.env;
 
+  if (! DOMAIN_NAME) throw new Error('Env var DOMAIN_NAME not provided');
   if (! EMAIL_DOMAIN_NAME) throw new Error('Env var EMAIL_DOMAIN_NAME not provided');
   if (! EMAIL_VERIFICATION_SECRET) throw new Error('Env var EMAIL_VERIFICATION_SECRET not provided');
   if (! S_EMAIL_VERIFICATION_EXPIRATION_SECS) {
@@ -121,11 +122,11 @@ export const {
   if (Number.isNaN(EMAIL_VERIFICATION_EXPIRATION_SECS)) {
     throw new Error('Env var EMAIL_VERIFICATION_EXPIRATION_SECS not a valid number');
   }
-  
+
   // -- Validate new user, sending an error response if user data invalid
   const isNewUserValid = async (
     req: CreatePermanentUserReqBody,
-    res: Response
+    res: Response,
   ): Promise<boolean> => {
     try {
       const { email, username } = req;
@@ -337,9 +338,17 @@ export const {
             });
           }
 
-          if (! isNewUserValid(req.body, res)) return res.end();
-
           const { email, username, password, whiteboardConversionRequest, } = req.body;
+
+          // --- Check for existing user ---
+          const existingUser = await User.findOne({ username });
+          if (existingUser) {
+            const resp : PostUserRouteBadRequestErrRes = ({
+              message: "Username already in use.",
+            });
+            return res.status(400).json(resp);
+          }
+
           const passwordHashed = await bcrypt.hash(password, 10);
           const whiteboardId : string | null = (() => {
             if (! whiteboardConversionRequest) return null;
@@ -363,44 +372,88 @@ export const {
             expiresIn: EMAIL_VERIFICATION_EXPIRATION_SECS,
           });
 
-          // -- Send verification email; TODO: actually implement form
-          const emailSubject = `Please confirm your account at ${DOMAIN_NAME}`;
-          const emailText = 'Please submit the form to confirm creation of your account.';
+          // -- We don't want users to be able to use this endpoint to detect
+          // whether a user with the given email address exists; if user with
+          // given email address already exists, just send an email indicating
+          // that an account with this email address already exists. In either
+          // case, send the client the same 201 success response.
+          const existingEmail = await User.findOne({ email });
 
-          const emailBody = (
-            `<main>
-              <h1>Welcome to Board-ly!</h1>
+          if (existingEmail) {
+            const emailSubject = `Someone tried to create a new account at ${DOMAIN_NAME}`;
+            const emailText = `You are receiving this email because someone tried to create a new account at ${DOMAIN_NAME} with this email address.${"\n\n"}If you want to access the account you already created, please go to ${DOMAIN_NAME} to request a new password. Otherwise, you can disregard this email.`;
+            const emailBody = (
+              `<main>
+                <h1>Hello ${escapeEncode(existingEmail.username)},</h1>
 
-              <p safe>
-                Either copy and paste the following token into the previous window
-                or click the button below to confirm creation of your account,
-                ${escapeEncode(username)}.
-              </p>
-              <h3>Token:</h3>
-              <pre>${escapeEncode(token)}</pre>
+                <p>
+                  You are receiving this email because someone tried to
+                  create a new account at ${escapeEncode(DOMAIN_NAME)} with this email address.
+                </p>
+                <p>
+                  If you want to access the account you already created, please go
+                  to ${escapeEncode(DOMAIN_NAME)} to request a new password.
+                  Otherwise, you can disregard this email.
+                </p>
+              </main>`
+            );// -- end const emailBody
 
-              <form method="GET" action="http://${DOMAIN_NAME}/confirm_account_creation">
-                <input name="token" value=${encodeURIComponent(token)} type="hidden" />
-                ${whiteboardId && (
-                  `<input name="wb_conversion_id" value="${encodeURIComponent(whiteboardId)}" type="hidden" />`
-                ) || ""}
-                ${whiteboardConversionRequest && (
-                  `<input name="wb_conversion_req" value="${encodeURIComponent(whiteboardConversionRequest)}" type="hidden" />`
-                ) || ""}
-                <button type="submit">Create Account</button>
-              </form>
-            </main>`
-          );// -- end const emailBody
+            transporter.sendMail({
+              from: `"Board-ly" <admin@${EMAIL_DOMAIN_NAME}>`,
+              to: email,
+              subject: emailSubject,
+              text: emailText,
+              html: emailBody,
+            })
+            .then((info) => {
+              console.log('Message sent to %s:', email, info.messageId);
+            })
+            .catch((e: unknown) => {
+              console.error('Failed to send email to %s:', email, e);
+            });
+          } else {
+            // -- Send verification email
+            const emailSubject = `Please confirm your account at ${DOMAIN_NAME}`;
+            const emailText = `Hello ${username},${"\n\n"}Please copy/paste the following token into the form at https://${DOMAIN_NAME}/confirm_account_creation to finish creating your new account.${"\n\n"}Token:${"\n"}${token}`;
+            const emailBody = (
+              `<main>
+                <h1>Welcome to Board-ly!</h1>
 
-          const info = await transporter.sendMail({
-            from: `"Board-ly" <admin@${EMAIL_DOMAIN_NAME}>`,
-            to: email,
-            subject: emailSubject,
-            text: emailText,
-            html: emailBody,
-          });
+                <p>
+                  Either copy and paste the following token into the previous window
+                  or click the button below to confirm creation of your account,
+                  ${escapeEncode(username)}.
+                </p>
+                <h3>Token:</h3>
+                <pre>${escapeEncode(token)}</pre>
 
-          console.log('Message sent:', info.messageId);
+                <form method="GET" action="http://${DOMAIN_NAME}/confirm_account_creation">
+                  <input name="token" value=${encodeURIComponent(token)} type="hidden" />
+                  ${whiteboardId && (
+                    `<input name="wb_conversion_id" value="${encodeURIComponent(whiteboardId)}" type="hidden" />`
+                  ) || ""}
+                  ${whiteboardConversionRequest && (
+                    `<input name="wb_conversion_req" value="${encodeURIComponent(whiteboardConversionRequest)}" type="hidden" />`
+                  ) || ""}
+                  <button type="submit">Create Account</button>
+                </form>
+              </main>`
+            );// -- end const emailBody
+
+            transporter.sendMail({
+              from: `"Board-ly" <admin@${EMAIL_DOMAIN_NAME}>`,
+              to: email,
+              subject: emailSubject,
+              text: emailText,
+              html: emailBody,
+            })
+            .then((info) => {
+              console.log('Message sent to %s:', email, info.messageId);
+            })
+            .catch((e: unknown) => {
+              console.error('Failed to send email to %s:', email, e);
+            });
+          }
 
           // -- Send confirmation response to client
           const resp : PostUserRouteOkEmailRes = ({
