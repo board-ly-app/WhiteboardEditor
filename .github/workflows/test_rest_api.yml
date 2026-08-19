@@ -75,6 +75,9 @@ jobs:
             WHITEBOARD_EDITOR_REFRESH_TOKEN_SECRET=5poXcI2er+t3dnmHnD3nxQXsSW60kHtdibXq2Z7IBUDi/1aobzmkNj8mNh9E8HtLy0w8qRkK4JXvcowqCI6sgA==
             WHITEBOARD_EDITOR_ACCESS_TOKEN_SECRET=2KUU6DNUY6XGBL2NQFXDXGGVOJ63A75RYSZ5SKD3PMYPCXC6L3I3WRDZER5JA4GC2SOQ2K6W66JUQ3XMM3QT6PXC4UKAFXDDDIIRP4A=
 
+            # Domain name which directs to this server
+            WHITEBOARD_EDITOR_DOMAIN=example.com
+
             # URI to access Mongo database
             # Format: mongodb+srv://<USER>:<PASSWORD>@<URL>/<DATABASE>
             WHITEBOARD_EDITOR_MONGO_URI=mongodb://test_db:27017/testdb
