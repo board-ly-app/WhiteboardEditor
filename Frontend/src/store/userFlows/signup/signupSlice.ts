@@ -65,6 +65,7 @@ extends SignupPayloadPendingConfirmation {
 
 export interface SignupPayloadRequestingConfirmation {
   accountCreationToken: string;
+  password: string;
   email: string;
   whiteboardToTransfer?: {
     whiteboardId: string;

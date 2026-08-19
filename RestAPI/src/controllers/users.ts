@@ -65,10 +65,11 @@ import {
   type ConvertTempUserReqBody,
   type PatchPermanentUserReqBody,
   type DeletePermanentUserReqBody,
+  type CreatePermanentUserReqBody,
   User,
   isIPermanentUser,
-  CreatePermanentUserReqBody,
   isCreatePermanentUserReqBody,
+  isCreatePermanentUserNoEmailReqBody,
   isConfirmPermanentUserReqBody,
   isConfirmPermanentUserPayload,
 } from "../models/User";
@@ -184,6 +185,7 @@ export const {
 
       const {
         token,
+        password,
       } = req.body;
       const payload : unknown = jwt.verify(token, EMAIL_VERIFICATION_SECRET);
 
@@ -193,7 +195,8 @@ export const {
         });
       }
 
-      const { email, username, passwordHashed } = payload;
+      const { email, username, } = payload;
+      const passwordHashed = await bcrypt.hash(password, 10);
       const newUser = new User({
         kind: 'permanent',
         email,
@@ -260,7 +263,7 @@ export const {
         res: Response,
       ) => {
         try {
-          if (! isCreatePermanentUserReqBody(req.body)) {
+          if (! isCreatePermanentUserNoEmailReqBody(req.body)) {
             return res.status(400).json({
               message: 'Email, username, and password are required',
             });
@@ -342,7 +345,7 @@ export const {
             });
           }
 
-          const { email, username, password, whiteboardConversionRequest, } = req.body;
+          const { email, username, whiteboardConversionRequest, } = req.body;
 
           // --- Check for existing user ---
           const existingUser = await User.findOne({ username });
@@ -353,7 +356,6 @@ export const {
             return res.status(400).json(resp);
           }
 
-          const passwordHashed = await bcrypt.hash(password, 10);
           const whiteboardId : string | null = (() => {
             if (! whiteboardConversionRequest) return null;
 
@@ -369,7 +371,7 @@ export const {
 
           // -- Create and sign confirmation payload
           const payload : ConfirmPermanentUserPayload = ({
-            email, username, passwordHashed,
+            email, username,
           });
           const token = jwt.sign(payload, EMAIL_VERIFICATION_SECRET, {
             algorithm: 'HS256',

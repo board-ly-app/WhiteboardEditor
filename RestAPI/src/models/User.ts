@@ -424,20 +424,43 @@ export const isITempUser = (user: IUserType): user is ITempUser => {
 //
 // =============================================================================
 
-// -- for POST
 export interface CreatePermanentUserReqBody {
   email: string;
   username: string;
-  password: string;
   // -- A signed jwt permitting a newly created user to convert a temp
   // whiteboard into a permanent whiteboard.
   whiteboardConversionRequest?: string;
 }
 
+export const isCreatePermanentUserReqBody = (body: unknown): body is CreatePermanentUserReqBody => {
+  if (! body) return false;
+  if (typeof body !== 'object') return false;
+  if (! ('email' in body)) return false;
+  if (typeof body.email !== 'string') return false;
+  if (! ('username' in body)) return false;
+  if (typeof body.username !== 'string') return false;
+
+  return true;
+};// -- end isCreatePermanentUserReqBody
+
+export interface CreatePermanentUserNoEmailReqBody
+extends CreatePermanentUserReqBody {
+  password: string;
+}
+
+export const isCreatePermanentUserNoEmailReqBody = (
+  body: unknown
+): body is CreatePermanentUserNoEmailReqBody => {
+  if (! isCreatePermanentUserReqBody(body)) return false;
+  if (! ('password' in body)) return false;
+  if (typeof body.password !== 'string') return false;
+
+  return true;
+};// -- end isCreatePermanentUserNoEmailReqBody
+
 export interface ConfirmPermanentUserPayload {
   email: string;
   username: string;
-  passwordHashed: string;
 }
 
 export const isConfirmPermanentUserPayload = (payload: unknown): payload is ConfirmPermanentUserPayload => {
@@ -447,14 +470,13 @@ export const isConfirmPermanentUserPayload = (payload: unknown): payload is Conf
   if (typeof 'email' !== 'string') return false;
   if (! ('username' in payload)) return false;
   if (typeof 'username' !== 'string') return false;
-  if (! ('passwordHashed' in payload)) return false;
-  if (typeof 'passwordHashed' !== 'string') return false;
 
   return true;
 };// -- end isConfirmPermanentUserPayload
 
 export interface ConfirmPermanentUserReqBody {
   token: string;
+  password: string;
 }
 
 export const isConfirmPermanentUserReqBody = (body: unknown): body is ConfirmPermanentUserReqBody => {
@@ -462,29 +484,22 @@ export const isConfirmPermanentUserReqBody = (body: unknown): body is ConfirmPer
   if (typeof body !== 'object') return false;
   if (! ('token' in body)) return false;
   if (typeof body.token !== 'string') return false;
-
-  return true;
-};// -- end isConfirmPermanentUserReqBody
-
-export const isCreatePermanentUserReqBody = (body: unknown): body is CreatePermanentUserReqBody => {
-  if (! body) return false;
-  if (typeof body !== 'object') return false;
-  if (! ('email' in body)) return false;
-  if (typeof body.email !== 'string') return false;
-  if (! ('username' in body)) return false;
-  if (typeof body.username !== 'string') return false;
   if (! ('password' in body)) return false;
   if (typeof body.password !== 'string') return false;
 
   return true;
-};// -- end isCreatePermanentUserReqBody
+};// -- end isConfirmPermanentUserReqBody
 
 export interface ConvertTempUserReqBody extends IPermanentUserModel {
   password: string;
 }
 
 // -- for PATCH
-export type PatchPermanentUserData = Partial<CreatePermanentUserReqBody>;
+export interface PatchPermanentUserData {
+  email?: string;
+  username?: string;
+  password?: string;
+}
 
 // -- (must be authorized)
 export type PatchPermanentUserReqBody = PatchPermanentUserData;

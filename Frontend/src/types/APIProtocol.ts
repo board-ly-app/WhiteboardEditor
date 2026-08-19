@@ -106,6 +106,24 @@ export interface LoginSuccessResponse {
   sessionToken: string;
 }
 
+export interface ConfirmAccountReqBody {
+  token: string;
+  password: string;
+}
+
+export const isConfirmAccountReqBody = (
+  body: unknown
+): body is ConfirmAccountReqBody => {
+  if (! body) return false;
+  if (typeof body !== 'object') return false;
+  if (! ('token' in body)) return false;
+  if (typeof body.token !== 'string') return false;
+  if (! ('password' in body)) return false;
+  if (typeof body.password !== 'string') return false;
+
+  return true;
+};// -- end isConfirmAccountReqBody
+
 export interface SignupSuccessNoEmailResponse {
   kind: 'no_email';
   user: User;

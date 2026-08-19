@@ -56,6 +56,7 @@ import {
   type SignupConfirmationSuccessResponse,
   type WhiteboardConvertTempToPermReqBody,
   type WhiteboardNewNameReqBody,
+  type ConfirmAccountReqBody,
 } from '@/types/APIProtocol';
 
 import ChangeNameTrialWhiteboard from "./ChangeNameTrialWhiteboard";
@@ -88,16 +89,10 @@ export const ConfirmAccountForm = (): React.ReactNode => {
         transferAuthToken: whiteboardConversionReq,
       }) || undefined;
 
-      if (accountCreationToken) {
-        store.dispatch(setConfirmAccountRequestingConfirmation({
-          accountCreationToken,
-          whiteboardToTransfer,
-        }));
-      } else {
-        store.dispatch(setConfirmAccountPendingConfirmation({
-          whiteboardToTransfer,
-        }));
-      }
+      store.dispatch(setConfirmAccountPendingConfirmation({
+        initToken: accountCreationToken || undefined,
+        whiteboardToTransfer,
+      }));
     },
     [location]
   );// -- end useEffect
@@ -106,6 +101,9 @@ export const ConfirmAccountForm = (): React.ReactNode => {
   useEffect(
     () => {
       switch (componentState.status) {
+        // -- Nothing to do for inactive case
+        // case 'inactive':
+        // break;
         case 'pending_confirmation':
         {
           const {
@@ -121,12 +119,14 @@ export const ConfirmAccountForm = (): React.ReactNode => {
         {
           const {
             accountCreationToken,
+            password,
             whiteboardToTransfer,
           } = componentState;
 
           const endpoint = '/users/confirm_account_creation';
-          const payload = ({
+          const payload : ConfirmAccountReqBody = ({
             token: accountCreationToken,
+            password,
           });
 
           api.post(endpoint, payload)
@@ -151,6 +151,7 @@ export const ConfirmAccountForm = (): React.ReactNode => {
                 // -- User error
                 store.dispatch(setConfirmAccountPendingConfirmation({
                   whiteboardToTransfer,
+                  initToken: accountCreationToken,
                   error: {
                     kind: 'user',
                     reason: 'Invalid or expired account confirmation token',
@@ -310,16 +311,21 @@ export const ConfirmAccountForm = (): React.ReactNode => {
   );// -- end handleSkipNameChange
 
   const handleSubmitAccountConfirmation = useCallback(
-    (token: string) => {
+    (req: ConfirmAccountReqBody) => {
       switch (componentState.status) {
         case 'pending_confirmation':
         {
           const {
             whiteboardToTransfer,
           } = componentState;
+          const {
+            token,
+            password,
+          } = req;
 
           store.dispatch(setConfirmAccountRequestingConfirmation({
             accountCreationToken: token,
+            password,
             whiteboardToTransfer,
           }));
         }
@@ -357,12 +363,14 @@ export const ConfirmAccountForm = (): React.ReactNode => {
 
   // -- "Form" is just a container for modals
   switch (componentState.status) {
+    case 'inactive':
     case 'requesting_whiteboard_transfer':
     case 'logging_in':
       return <Spacer />;
     case 'pending_confirmation':
     case 'requesting_confirmation':
     {
+      let initToken : string | undefined = undefined;
       let variant : GetFieldType<ConfirmAccountCreationModalProps, 'variant'>;
 
       switch (componentState.status) {
@@ -372,9 +380,11 @@ export const ConfirmAccountForm = (): React.ReactNode => {
           } else {
             variant = 'normal';
           }
+          initToken = componentState.initToken;
           break;
         case 'requesting_confirmation':
           variant = 'pending';
+          initToken = componentState.accountCreationToken;
           break;
       }// -- end switch (componentState.status)
 
@@ -383,9 +393,10 @@ export const ConfirmAccountForm = (): React.ReactNode => {
           <Spacer />
           <ConfirmAccountCreationModal
             open={true}
-            onSubmitToken={handleSubmitAccountConfirmation}
+            onSubmit={handleSubmitAccountConfirmation}
             onSkip={handleSkipAccountConfirmation}
             variant={variant}
+            initToken={initToken}
           />
         </>
       );

@@ -74,6 +74,7 @@ import {
   type SignupReqBody,
   type SignupSuccessResponse,
   type SignupConfirmationSuccessResponse,
+  type ConfirmAccountReqBody,
   type WhiteboardConvertTempToPermReqBody,
   type WhiteboardNewNameReqBody,
 } from '@/types/APIProtocol';
@@ -339,13 +340,15 @@ export const SignupForm = (): React.JSX.Element => {
         {
           const {
             accountCreationToken,
+            password,
             email,
             whiteboardToTransfer,
           } = componentState;
 
           const endpoint = '/users/confirm_account_creation';
-          const payload = ({
+          const payload : ConfirmAccountReqBody = ({
             token: accountCreationToken,
+            password,
           });
 
           api.post(endpoint, payload)
@@ -554,7 +557,7 @@ export const SignupForm = (): React.JSX.Element => {
   );// -- end handleSkipNameChange
 
   const handleSubmitAccountConfirmation = useCallback(
-    (token: string) => {
+    (req: ConfirmAccountReqBody) => {
       switch (componentState.status) {
         case 'pending_confirmation':
         {
@@ -562,9 +565,14 @@ export const SignupForm = (): React.JSX.Element => {
             email,
             whiteboardToTransfer,
           } = componentState;
+          const {
+            token,
+            password,
+          } = req;
 
           store.dispatch(setSignupRequestingConfirmation({
             accountCreationToken: token,
+            password,
             email,
             whiteboardToTransfer,
           }));
@@ -707,7 +715,7 @@ export const SignupForm = (): React.JSX.Element => {
                   <ConfirmAccountCreationModal
                     open={true}
                     email={componentState.email}
-                    onSubmitToken={handleSubmitAccountConfirmation}
+                    onSubmit={handleSubmitAccountConfirmation}
                     onSkip={handleSkipAccountConfirmation}
                     variant={variant}
                   />

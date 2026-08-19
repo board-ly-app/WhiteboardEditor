@@ -7,7 +7,12 @@ import {
   type WhiteboardIdType,
 } from '@/types/WebSocketProtocol';
 
+export interface ConfirmAccountStateInactive {
+  status: 'inactive';
+}
+
 export interface ConfirmAccountPayloadPendingConfirmation {
+  initToken?: string;
   error?: {
     kind: 'user' | 'system';
     reason?: string;
@@ -25,6 +30,7 @@ extends ConfirmAccountPayloadPendingConfirmation {
 
 export interface ConfirmAccountPayloadRequestingConfirmation {
   accountCreationToken: string;
+  password: string;
   whiteboardToTransfer?: {
     whiteboardId: string;
     transferAuthToken: string;
@@ -73,6 +79,7 @@ export interface ConfirmAccountStateLoggingIn {
 }
 
 export type ConfirmAccountState =
+  | ConfirmAccountStateInactive
   | ConfirmAccountStatePendingConfirmation
   | ConfirmAccountStateRequestingConfirmation
   | ConfirmAccountStateRequestingWhiteboardTransfer
@@ -82,13 +89,20 @@ export type ConfirmAccountState =
 ;
 
 const initialState : ConfirmAccountState = ({
-  status: 'pending_confirmation',
+  status: 'inactive',
 });
 
 const confirmAccountSlice = createSlice({
   name: 'userFlows/confirmAccount',
   initialState: initialState as ConfirmAccountState,
   reducers: {
+    setConfirmAccountInactive(_state, _action) {
+      const newState : ConfirmAccountStateInactive = ({
+        status: 'inactive',
+      });
+
+      return newState;
+    },
     setConfirmAccountPendingConfirmation(
       _state,
       action: PayloadAction<ConfirmAccountPayloadPendingConfirmation>
@@ -152,6 +166,7 @@ const confirmAccountSlice = createSlice({
 });// -- end confirmAccountSlice
 
 export const {
+  setConfirmAccountInactive,
   setConfirmAccountPendingConfirmation,
   setConfirmAccountRequestingConfirmation,
   setConfirmAccountRequestingWhiteboardTransfer,
@@ -161,6 +176,7 @@ export const {
 } = confirmAccountSlice.actions;
 
 export type ConfirmAccountActions =
+  | ReturnType<typeof setConfirmAccountInactive>
   | ReturnType<typeof setConfirmAccountPendingConfirmation>
   | ReturnType<typeof setConfirmAccountRequestingConfirmation>
   | ReturnType<typeof setConfirmAccountRequestingWhiteboardTransfer>
