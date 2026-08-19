@@ -40,6 +40,7 @@ import {
 } from '@/store';
 
 import {
+  setConfirmAccountInactive,
   setConfirmAccountPendingConfirmation,
   setConfirmAccountRequestingConfirmation,
   setConfirmAccountRequestingWhiteboardTransfer,
@@ -93,6 +94,11 @@ export const ConfirmAccountForm = (): React.ReactNode => {
         initToken: accountCreationToken || undefined,
         whiteboardToTransfer,
       }));
+
+      // -- Ensure state returns to inactive on navigating off page
+      return () => {
+        store.dispatch(setConfirmAccountInactive({}));
+      };
     },
     [location]
   );// -- end useEffect

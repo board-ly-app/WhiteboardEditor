@@ -158,6 +158,11 @@ export const LoginForm = (): React.JSX.Element => {
       setPassword('');
 
       store.dispatch(setLoginInactive({}));
+
+      // -- Ensure state returns to inactive on navigating off page
+      return () => {
+        store.dispatch(setLoginInactive({}));
+      };
     },
     [location]
   );// -- end useEffect

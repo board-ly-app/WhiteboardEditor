@@ -183,6 +183,11 @@ export const SignupForm = (): React.JSX.Element => {
       setPassword('');
 
       store.dispatch(setSignupInactive({}));
+
+      // -- Ensure state returns to inactive on navigating off page
+      return () => {
+        store.dispatch(setSignupInactive({}));
+      };
     },
     [location]
   );// -- end useEffect
