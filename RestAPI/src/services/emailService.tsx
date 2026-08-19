@@ -69,25 +69,21 @@ export const AccountConfirmationTemplate = ({
         <button type="submit">Create Account</button>
       </form>
 
-      <table>
-        <thead>
-          <tr>
-            <th
-              scope="col"
-              style={{ fontSize: 'large', fontWeight: 'bold', textAlign: 'left', }}
-            >
-              Token:
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style={{ width: '20em', }}>
-              {accountCreationToken}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div style={{ marginTop: '2em', }}>
+        <label for="account-creation-token" style={{
+          fontSize: 'medium', fontWeight: 'bold', marginRight: '0.5em',
+        }}>
+          Token:
+        </label>
+        <input
+          id="account-creation-token"
+          type="password"
+          value={accountCreationToken}
+          size="20"
+          readonly
+        />
+        <p>(Triple click or press ctrl+a to select the entire token)</p>
+      </div>
     </main>
   );
 };// -- end AccountConfirmationTemplate

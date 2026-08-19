@@ -58,13 +58,13 @@ const ConfirmAccountCreationModal = ({
     },
     [email]
   );// -- end const labelText
-  const textareaClassname : string = useMemo(
+  const tokenInputClassname : string = useMemo(
     () => {
       switch (variant) {
         case 'error':
-          return "border border-red-600 p-2 w-full rounded-md"
+          return "border-red-600"
         default:
-          return "border p-2 w-full rounded-md"
+          return "";
       }// -- end 
     },
     [variant]
@@ -137,14 +137,13 @@ const ConfirmAccountCreationModal = ({
       >
         <div className="flex flex-col gap-2">
           <Label htmlFor={TOKEN_INPUT_ID}>{labelText}</Label>
-          <textarea
+          <Input
             id={TOKEN_INPUT_ID}
+            type="password"
             placeholder="Account creation token"
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            rows={10}
-            cols={10}
-            className={textareaClassname}
+            className={tokenInputClassname}
             autoFocus
             required
           />
