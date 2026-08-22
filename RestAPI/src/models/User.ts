@@ -459,6 +459,7 @@ export const isCreatePermanentUserNoEmailReqBody = (
 };// -- end isCreatePermanentUserNoEmailReqBody
 
 export interface ConfirmPermanentUserPayload {
+  action: 'POST:/users';
   email: string;
   username: string;
 }
@@ -466,6 +467,8 @@ export interface ConfirmPermanentUserPayload {
 export const isConfirmPermanentUserPayload = (payload: unknown): payload is ConfirmPermanentUserPayload => {
   if (! payload) return false;
   if (typeof payload !== 'object') return false;
+  if (! ('action' in payload)) return false;
+  if (payload.action !== 'POST:/users') return false;
   if (! ('email' in payload)) return false;
   if (typeof 'email' !== 'string') return false;
   if (! ('username' in payload)) return false;

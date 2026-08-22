@@ -393,7 +393,7 @@ export const {
 
         // -- Create and sign confirmation payload
         const payload : ConfirmPermanentUserPayload = ({
-          email, username,
+          action: "POST:/users", email, username,
         });
         const token = jwt.sign(payload, EMAIL_VERIFICATION_SECRET, {
           algorithm: 'HS256',
