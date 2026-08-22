@@ -802,8 +802,6 @@ export const handlePatchOwnUserConfirm = async (
       Object.entries(payloadData).filter(([_k, v]) => v)
     );
 
-    console.log('!! PATCH update:', update);
-
     targetUser.set(update);
     const updatedUser = await targetUser.save();
     const resp : PatchPermanentUserConfirmedResBody = ({
