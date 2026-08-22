@@ -109,15 +109,7 @@ const ConfirmAccountCreationModal = ({
       onOpenChange={(nextOpen) => { if (! nextOpen) onSkip(); }}
       title="Confirm creation of your account"
       footer={
-        <>
-          <Button
-            type="button"
-            variant="secondary"
-            status={variant === 'pending' && 'disabled' || 'enabled'}
-            onClick={onSkip}
-          >
-            I'll do it later
-          </Button>
+        <div className="flex flex-row-reverse">
           <Button 
             form={FORM_ID} 
             type="submit"
@@ -127,7 +119,15 @@ const ConfirmAccountCreationModal = ({
           >
             Confirm account creation
           </Button>
-        </>
+          <Button
+            type="button"
+            variant="secondary"
+            status={variant === 'pending' && 'disabled' || 'enabled'}
+            onClick={onSkip}
+          >
+            I'll do it later
+          </Button>
+        </div>
       }
     >
       <form

@@ -110,15 +110,7 @@ const ConfirmUpdateModal = ({
       onOpenChange={(nextOpen) => { if (! nextOpen) onSkip(); }}
       title="Confirm account update"
       footer={
-        <>
-          <Button
-            type="button"
-            variant="secondary"
-            status={variant === 'pending' && 'disabled' || 'enabled'}
-            onClick={onSkip}
-          >
-            I'll do it later
-          </Button>
+        <div className="flex flex-row-reverse">
           <Button 
             form={FORM_ID} 
             type="submit"
@@ -128,7 +120,15 @@ const ConfirmUpdateModal = ({
           >
             Confirm account update
           </Button>
-        </>
+          <Button
+            type="button"
+            variant="secondary"
+            status={variant === 'pending' && 'disabled' || 'enabled'}
+            onClick={onSkip}
+          >
+            I'll do it later
+          </Button>
+        </div>
       }
     >
       <form
