@@ -232,12 +232,24 @@ export const AuthProvider = ({
     [setUserWrapper]
   );
 
+  const updateUser = useCallback(
+    (newUser: User) => {
+      setUserWrapper((prevUser: User | null) => {
+        if (! prevUser) throw new Error('Cannot update null user');
+
+        return newUser;
+      });
+    },
+    [setUserWrapper]
+  );// -- end updateUser
+
   return (
     <AuthContext.Provider value={{
       user,
       getSessionToken,
       handleLogin,
       handleLogout,
+      updateUser,
     }}>
       {children}
     </AuthContext.Provider>

@@ -63,6 +63,9 @@ import signupFlowReducer, {
 import confirmAccountFlowReducer, {
   type ConfirmAccountActions,
 } from './userFlows/confirmAccount/confirmAccountSlice';
+import updateAccountFlowReducer, {
+  type UpdateAccountActions,
+} from './userFlows/updateAccount/updateAccountSlice';
 
 // -- root reducers
 import {
@@ -98,6 +101,7 @@ const rootReducer = combineReducers({
   loginFlow: loginFlowReducer,
   signupFlow: signupFlowReducer,
   confirmAccountFlow: confirmAccountFlowReducer,
+  updateAccountFlow: updateAccountFlowReducer,
 });// -- end rootReducer
 
 type ActionType =
@@ -121,6 +125,7 @@ type ActionType =
   | LoginActions
   | SignupActions
   | ConfirmAccountActions
+  | UpdateAccountActions
   | MergeCanvasActionType
   | DeleteWhiteboardsActionType
 ;

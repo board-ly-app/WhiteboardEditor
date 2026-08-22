@@ -24,6 +24,7 @@ import {
 import {
   AccountConfirmationTemplate,
   AccountConfirmationDuplicateEmailTemplate,
+  PatchAccountEmailTemplate,
 } from '../services/emailService';
 
 import {
@@ -40,7 +41,6 @@ import {
 
 import {
   getUserById,
-  patchUser,
   deleteUser,
   getSharedWhiteboardsByUser,
   isUserOwnerCollaborator,
@@ -60,23 +60,29 @@ import {
 } from "../models/Auth";
 
 import {
+  type IPermanentUser,
   type IPermanentUserSelfView,
   type ConfirmPermanentUserPayload,
   type ConvertTempUserReqBody,
-  type PatchPermanentUserReqBody,
+  type PatchPermanentUserReqPayloadSigned,
+  type PatchPermanentUserConfirmReqBody,
+  type PatchPermanentUserPendingConfirmationResBody,
+  type PatchPermanentUserConfirmedResBody,
   type DeletePermanentUserReqBody,
   type CreatePermanentUserReqBody,
+  type PatchPermanentUserInitialReqBody,
   User,
   isIPermanentUser,
   isCreatePermanentUserReqBody,
   isCreatePermanentUserNoEmailReqBody,
   isConfirmPermanentUserReqBody,
   isConfirmPermanentUserPayload,
+  isPatchPermanentUserReqBody,
+  isPatchPermanentUserReqPayloadSigned,
 } from "../models/User";
 
 import {
   type IWhiteboardPermissionEnum,
-  Whiteboard,
 } from '../models/Whiteboard';
 
 interface PostUserRouteBadRequestErrRes {
@@ -99,6 +105,47 @@ interface PostUserRouteOkNoEmailRes {
   sessionToken: string;
 }
 
+const {
+  DOMAIN_NAME,
+  EMAIL_DOMAIN_NAME,
+  EMAIL_VERIFICATION_SECRET,
+  EMAIL_VERIFICATION_EXPIRATION_SECS: S_EMAIL_VERIFICATION_EXPIRATION_SECS,
+} = process.env;
+
+if (! DOMAIN_NAME) throw new Error('Env var DOMAIN_NAME not provided');
+if (! EMAIL_DOMAIN_NAME) throw new Error('Env var EMAIL_DOMAIN_NAME not provided');
+if (! EMAIL_VERIFICATION_SECRET) {
+  throw new Error('Env var EMAIL_VERIFICATION_SECRET not provided');
+}
+if (! S_EMAIL_VERIFICATION_EXPIRATION_SECS) {
+  throw new Error('Env var EMAIL_VERIFICATION_EXPIRATION_SECS not provided');
+}
+
+const EMAIL_VERIFICATION_EXPIRATION_SECS = parseInt(S_EMAIL_VERIFICATION_EXPIRATION_SECS);
+
+if (Number.isNaN(EMAIL_VERIFICATION_EXPIRATION_SECS)) {
+  throw new Error('Env var EMAIL_VERIFICATION_EXPIRATION_SECS not a valid number');
+}
+
+const SHOULD_SKIP_EMAIL_VERIFICATION : boolean = (() => {
+  const {
+    SKIP_EMAIL_VERIFICATION,
+  } = process.env;
+
+  if (! SKIP_EMAIL_VERIFICATION) {
+    throw new Error('Env var SKIP_EMAIL_VERIFICATION not provided');
+  }
+
+  switch (SKIP_EMAIL_VERIFICATION) {
+    case 'TRUE':
+      return true;
+    case 'FALSE':
+      return false;
+    default:
+      throw new Error(`Unrecognized value "${SKIP_EMAIL_VERIFICATION}" for env var SKIP_EMAIL_VERIFICATION`);
+  }// -- end switch (SKIP_EMAIL_VERIFICATION)
+})();
+
 // -- POST /users works differently based on whether email verification is
 // turned on or off. When email verificatio nis enabled, the endpoint sends
 // email to the email address provided by the user, including a signed jwt the
@@ -107,27 +154,6 @@ export const {
   handleCreateUser,
   handleConfirmUser,
 } = (() => {
-  const {
-    SKIP_EMAIL_VERIFICATION,
-    DOMAIN_NAME,
-    EMAIL_DOMAIN_NAME,
-    EMAIL_VERIFICATION_SECRET,
-    EMAIL_VERIFICATION_EXPIRATION_SECS: S_EMAIL_VERIFICATION_EXPIRATION_SECS,
-  } = process.env;
-
-  if (! DOMAIN_NAME) throw new Error('Env var DOMAIN_NAME not provided');
-  if (! EMAIL_DOMAIN_NAME) throw new Error('Env var EMAIL_DOMAIN_NAME not provided');
-  if (! EMAIL_VERIFICATION_SECRET) throw new Error('Env var EMAIL_VERIFICATION_SECRET not provided');
-  if (! S_EMAIL_VERIFICATION_EXPIRATION_SECS) {
-    throw new Error('Env var EMAIL_VERIFICATION_EXPIRATION_SECS not provided');
-  }
-
-  const EMAIL_VERIFICATION_EXPIRATION_SECS = parseInt(S_EMAIL_VERIFICATION_EXPIRATION_SECS);
-
-  if (Number.isNaN(EMAIL_VERIFICATION_EXPIRATION_SECS)) {
-    throw new Error('Env var EMAIL_VERIFICATION_EXPIRATION_SECS not a valid number');
-  }
-
   // -- Validate new user, sending an error response if user data invalid
   const isNewUserValid = async (
     req: CreatePermanentUserReqBody,
@@ -254,217 +280,210 @@ export const {
     }
   };// -- end handleConfirmUser
 
-  switch (SKIP_EMAIL_VERIFICATION) {
-    case 'TRUE':
-    {
-      // -- Immediately create account and log user in
-      const handleCreateUser = async (
-        req: Request,
-        res: Response,
-      ) => {
-        try {
-          if (! isCreatePermanentUserNoEmailReqBody(req.body)) {
-            return res.status(400).json({
-              message: 'Email, username, and password are required',
+  if (SHOULD_SKIP_EMAIL_VERIFICATION) {
+    // -- Immediately create account and log user in
+    const handleCreateUser = async (
+      req: Request,
+      res: Response,
+    ) => {
+      try {
+        if (! isCreatePermanentUserNoEmailReqBody(req.body)) {
+          return res.status(400).json({
+            message: 'Email, username, and password are required',
+          });
+        }
+
+        if (! isNewUserValid(req.body, res)) {
+          return res.end();
+        }
+
+        const { email, username, password, } = req.body;
+        const passwordHashed = await bcrypt.hash(password, 10);
+        
+        const user = new User({
+          kind: 'permanent',
+          username,
+          email,
+          passwordHashed,
+        });
+
+        const newUser = await user.save();
+
+        // --- Automatically log in user via service ---
+        if (! isIPermanentUser(newUser)) throw new Error('New user not created as permanent');
+
+        // -- Automatically log user in
+        const loginResult = forceLoginPermanentUser(newUser);
+
+        switch (loginResult.kind) {
+          case 'other_err':
+            return res.status(500).json({
+              message: 'Unexpected server error',
             });
-          }
+          case 'ok':
+          {
+            const sessionToken = generateCsrfToken(req, res);
+            const resp : PostUserRouteOkNoEmailRes = ({
+              kind: 'no_email',
+              user: newUser.toSelfView(),
+              sessionToken,
+            });
 
-          if (! isNewUserValid(req.body, res)) {
-            return res.end();
-          }
+            setRefreshTokenCookie(res, loginResult.refreshToken);
+            setAccessTokenCookie(res, loginResult.accessToken);
 
-          const { email, username, password, } = req.body;
-          const passwordHashed = await bcrypt.hash(password, 10);
-          
-          const user = new User({
-            kind: 'permanent',
+            return res.status(201).json(resp);
+          }
+        }// -- end switch (loginResult.kind)
+      } catch (err: any) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error("Create user failed: ", err);
+        } else {
+          console.error("Create user failed");
+        }
+
+        const resp : PostUserRouteServerErrRes = ({
+          message: 'An unexpected error occurred',
+        });
+
+        return res.status(500).json(resp);
+      }
+    };// -- end handleCreateUser
+
+    return ({
+      handleConfirmUser,
+      handleCreateUser,
+    });
+  } else {
+    // -- Create signed jwt containing prospective user info
+    const handleCreateUser = async (
+      req: Request,
+      res: Response,
+    ) => {
+      try {
+        if (! isCreatePermanentUserReqBody(req.body)) {
+          return res.status(400).json({
+            message: 'Email, username, and password are required',
+          });
+        }
+
+        const { email, username, whiteboardConversionRequest, } = req.body;
+
+        // --- Check for existing user ---
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+          const resp : PostUserRouteBadRequestErrRes = ({
+            message: "Username already in use.",
+          });
+          return res.status(400).json(resp);
+        }
+
+        const whiteboardId : string | null = (() => {
+          if (! whiteboardConversionRequest) return null;
+
+          try {
+            const payload : unknown = jwt.decode(whiteboardConversionRequest);
+
+            if (! isAuthTempConversionPayload(payload)) return null;
+            return payload.whiteboardId;
+          } catch (_e) {
+            return null;
+          }
+        })();
+
+        // -- Create and sign confirmation payload
+        const payload : ConfirmPermanentUserPayload = ({
+          email, username,
+        });
+        const token = jwt.sign(payload, EMAIL_VERIFICATION_SECRET, {
+          algorithm: 'HS256',
+          expiresIn: EMAIL_VERIFICATION_EXPIRATION_SECS,
+        });
+
+        // -- We don't want users to be able to use this endpoint to detect
+        // whether a user with the given email address exists; if user with
+        // given email address already exists, just send an email indicating
+        // that an account with this email address already exists. In either
+        // case, send the client the same 201 success response.
+        const existingEmail = await User.findOne({ email });
+
+        if (existingEmail) {
+          const emailSubject = `Someone tried to create a new account at ${DOMAIN_NAME}`;
+          const emailText = `You are receiving this email because someone tried to create a new account at ${DOMAIN_NAME} with this email address.${"\n\n"}If you want to access the account you already created, please go to ${DOMAIN_NAME} to request a new password. Otherwise, you can disregard this email.`;
+          const emailBody = AccountConfirmationDuplicateEmailTemplate({
+            domainName: DOMAIN_NAME,
+            username: existingEmail.username,
+          });
+
+          transporter.sendMail({
+            from: `"Board-ly" <admin@${EMAIL_DOMAIN_NAME}>`,
+            to: email,
+            subject: emailSubject,
+            text: emailText,
+            html: emailBody.toString(),
+          })
+          .then((info) => {
+            console.log('Message sent to %s:', email, info.messageId);
+          })
+          .catch((e: unknown) => {
+            console.error('Failed to send email to %s:', email, e);
+          });
+        } else {
+          // -- Send verification email
+          const emailSubject = `Please confirm your account at ${DOMAIN_NAME}`;
+          const emailText = `Hello ${username},${"\n\n"}Please copy/paste the following token into the form at https://${DOMAIN_NAME}/confirm_account_creation to finish creating your new account.${"\n\n"}Token:${"\n"}${token}`;
+          const emailBody = AccountConfirmationTemplate({
+            domainName: DOMAIN_NAME,
             username,
-            email,
-            passwordHashed,
+            accountCreationToken: token,
+            expirationSecs: EMAIL_VERIFICATION_EXPIRATION_SECS,
+            whiteboardToTransfer: whiteboardId && whiteboardConversionRequest && ({
+              whiteboardId,
+              whiteboardConversionToken: whiteboardConversionRequest,
+            }) || undefined
           });
 
-          const newUser = await user.save();
-
-          // --- Automatically log in user via service ---
-          if (! isIPermanentUser(newUser)) throw new Error('New user not created as permanent');
-
-          // -- Automatically log user in
-          const loginResult = forceLoginPermanentUser(newUser);
-
-          switch (loginResult.kind) {
-            case 'other_err':
-              return res.status(500).json({
-                message: 'Unexpected server error',
-              });
-            case 'ok':
-            {
-              const sessionToken = generateCsrfToken(req, res);
-              const resp : PostUserRouteOkNoEmailRes = ({
-                kind: 'no_email',
-                user: newUser.toSelfView(),
-                sessionToken,
-              });
-
-              setRefreshTokenCookie(res, loginResult.refreshToken);
-              setAccessTokenCookie(res, loginResult.accessToken);
-
-              return res.status(201).json(resp);
-            }
-          }// -- end switch (loginResult.kind)
-        } catch (err: any) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.error("Create user failed: ", err);
-          } else {
-            console.error("Create user failed");
-          }
-
-          const resp : PostUserRouteServerErrRes = ({
-            message: 'An unexpected error occurred',
-          });
-
-          return res.status(500).json(resp);
-        }
-      };// -- end handleCreateUser
-
-      return ({
-        handleConfirmUser,
-        handleCreateUser,
-      });
-    }
-    case 'FALSE':
-    {
-      // -- Create signed jwt containing prospective user info
-      const handleCreateUser = async (
-        req: Request,
-        res: Response,
-      ) => {
-        try {
-          if (! isCreatePermanentUserReqBody(req.body)) {
-            return res.status(400).json({
-              message: 'Email, username, and password are required',
-            });
-          }
-
-          const { email, username, whiteboardConversionRequest, } = req.body;
-
-          // --- Check for existing user ---
-          const existingUser = await User.findOne({ username });
-          if (existingUser) {
-            const resp : PostUserRouteBadRequestErrRes = ({
-              message: "Username already in use.",
-            });
-            return res.status(400).json(resp);
-          }
-
-          const whiteboardId : string | null = (() => {
-            if (! whiteboardConversionRequest) return null;
-
-            try {
-              const payload : unknown = jwt.decode(whiteboardConversionRequest);
-
-              if (! isAuthTempConversionPayload(payload)) return null;
-              return payload.whiteboardId;
-            } catch (_e) {
-              return null;
-            }
-          })();
-
-          // -- Create and sign confirmation payload
-          const payload : ConfirmPermanentUserPayload = ({
-            email, username,
-          });
-          const token = jwt.sign(payload, EMAIL_VERIFICATION_SECRET, {
-            algorithm: 'HS256',
-            expiresIn: EMAIL_VERIFICATION_EXPIRATION_SECS,
-          });
-
-          // -- We don't want users to be able to use this endpoint to detect
-          // whether a user with the given email address exists; if user with
-          // given email address already exists, just send an email indicating
-          // that an account with this email address already exists. In either
-          // case, send the client the same 201 success response.
-          const existingEmail = await User.findOne({ email });
-
-          if (existingEmail) {
-            const emailSubject = `Someone tried to create a new account at ${DOMAIN_NAME}`;
-            const emailText = `You are receiving this email because someone tried to create a new account at ${DOMAIN_NAME} with this email address.${"\n\n"}If you want to access the account you already created, please go to ${DOMAIN_NAME} to request a new password. Otherwise, you can disregard this email.`;
-            const emailBody = AccountConfirmationDuplicateEmailTemplate({
-              domainName: DOMAIN_NAME,
-              username: existingEmail.username,
-            });
-
-            transporter.sendMail({
-              from: `"Board-ly" <admin@${EMAIL_DOMAIN_NAME}>`,
-              to: email,
-              subject: emailSubject,
-              text: emailText,
-              html: emailBody.toString(),
-            })
-            .then((info) => {
-              console.log('Message sent to %s:', email, info.messageId);
-            })
-            .catch((e: unknown) => {
-              console.error('Failed to send email to %s:', email, e);
-            });
-          } else {
-            // -- Send verification email
-            const emailSubject = `Please confirm your account at ${DOMAIN_NAME}`;
-            const emailText = `Hello ${username},${"\n\n"}Please copy/paste the following token into the form at https://${DOMAIN_NAME}/confirm_account_creation to finish creating your new account.${"\n\n"}Token:${"\n"}${token}`;
-            const emailBody = AccountConfirmationTemplate({
-              domainName: DOMAIN_NAME,
-              username,
-              accountCreationToken: token,
-              expirationSecs: EMAIL_VERIFICATION_EXPIRATION_SECS,
-              whiteboardToTransfer: whiteboardId && whiteboardConversionRequest && ({
-                whiteboardId,
-                whiteboardConversionToken: whiteboardConversionRequest,
-              }) || undefined
-            });
-
-            transporter.sendMail({
-              from: `"Board-ly" <admin@${EMAIL_DOMAIN_NAME}>`,
-              to: email,
-              subject: emailSubject,
-              text: emailText,
-              html: emailBody.toString(),
-            })
-            .then((info) => {
-              console.log('Message sent to %s:', email, info.messageId);
-            })
-            .catch((e: unknown) => {
-              console.error('Failed to send email to %s:', email, e);
-            });
-          }
-
-          // -- Send confirmation response to client
-          const resp : PostUserRouteOkEmailRes = ({
-            kind: 'email',
-            email,
-            message: 'Check your email to confirm account creation',
-          });
-
-          return res.status(201).json(resp);
-        } catch (e: unknown) {
-          if (IS_DEVELOPMENT) {
-            console.error('Unexpected server error:', e);
-          } else {
-            console.error('Unexpected server error');
-          }
-
-          return res.status(500).json({
-            message: "Unexpected server error",
+          transporter.sendMail({
+            from: `"Board-ly" <admin@${EMAIL_DOMAIN_NAME}>`,
+            to: email,
+            subject: emailSubject,
+            text: emailText,
+            html: emailBody.toString(),
+          })
+          .then((info) => {
+            console.log('Message sent to %s:', email, info.messageId);
+          })
+          .catch((e: unknown) => {
+            console.error('Failed to send email to %s:', email, e);
           });
         }
-      };// -- end handleCreateUser
 
-      return ({
-        handleConfirmUser,
-        handleCreateUser,
-      });
-    }
-    default:
-      throw new Error('Environment variable SKIP_EMAIL_VERIFICATION must be set to either "TRUE" or "FALSE".');
-  }// -- end switch (process.env.SKIP_EMAIL_VERIFICATION)
+        // -- Send confirmation response to client
+        const resp : PostUserRouteOkEmailRes = ({
+          kind: 'email',
+          email,
+          message: 'Check your email to confirm account creation',
+        });
+
+        return res.status(201).json(resp);
+      } catch (e: unknown) {
+        if (IS_DEVELOPMENT) {
+          console.error('Unexpected server error:', e);
+        } else {
+          console.error('Unexpected server error');
+        }
+
+        return res.status(500).json({
+          message: "Unexpected server error",
+        });
+      }
+    };// -- end handleCreateUser
+
+    return ({
+      handleConfirmUser,
+      handleCreateUser,
+    });
+  }
 })();
 
 interface PostConvertTempRouteBadRequestErrRes {
@@ -658,79 +677,204 @@ export const handleGetUserById = async (
 // Update one or more fields in the authenticated user's data.
 //
 // =============================================================================
+export const handlePatchOwnUserInitial = async (
+  req: AuthorizedRequest<{}, {}, PatchPermanentUserInitialReqBody>,
+  res: AuthorizedResponse,
+  targetUser: IPermanentUser,
+) => {
+  try {
+    const {
+      payload,
+    } = req.body;
+    const {
+      password,
+      ...payloadBase
+    } = payload;
+
+    if (SHOULD_SKIP_EMAIL_VERIFICATION || ! (payload.email || password)) {
+      // -- Just immediately update the user; no sensitive fields to update
+      const update = Object.fromEntries(
+        Object.entries(payload).filter(([_k, v]) => v)
+      );
+
+      targetUser.set(update);
+      const updatedUser = await targetUser.save();
+      const resp : PatchPermanentUserConfirmedResBody = ({
+        kind: 'confirmed',
+        payload: {
+          email: updatedUser.email,
+          username: updatedUser.username,
+        },
+      });
+
+      return res.status(201).json(resp);
+    } else {
+      const email = payload?.email ?? targetUser.email;
+      const passwordHashed : string | undefined = password ?
+        await bcrypt.hash(password, 10)
+        : undefined;
+
+      // -- Create a signed payload to allow the user to confirm the update via
+      // email
+      const payloadSignedData : PatchPermanentUserReqPayloadSigned = ({
+        ...payloadBase,
+        action: 'PATCH:/users',
+        userId: targetUser._id.toHexString(),
+        passwordHashed,
+      });
+      const payloadSigned : string = jwt.sign(
+        payloadSignedData,
+        EMAIL_VERIFICATION_SECRET,
+        {
+          algorithm: 'HS256',
+          expiresIn: EMAIL_VERIFICATION_EXPIRATION_SECS,
+        }
+      );
+      const emailBody = PatchAccountEmailTemplate({
+        domainName: DOMAIN_NAME,
+        username: targetUser.username,
+        expirationSecs: EMAIL_VERIFICATION_EXPIRATION_SECS,
+        payloadToken: payloadSigned,
+        payloadInitial: payload,
+      });
+
+      transporter.sendMail({
+        from: `"Board-ly" <admin@${EMAIL_DOMAIN_NAME}>`,
+        to: email,
+        subject: `Confirm your account update at ${DOMAIN_NAME}`,
+        // TODO: text version
+        html: emailBody.toString(),
+      })
+        .then((info) => {
+          console.log('Message sent to %s:', email, info.messageId);
+        })
+        .catch((e: unknown) => {
+          console.error('Failed to send email to %s:', email, e);
+        });
+
+      const resp : PatchPermanentUserPendingConfirmationResBody = ({
+        kind: 'pending_confirmation',
+        email,
+      });
+
+      return res.status(201).json(resp);
+    }
+  } catch (e: unknown) {
+    if (IS_DEVELOPMENT) {
+      console.error('Unexpected error on PATCH /users:', e);
+    } else {
+      console.error('Unexpected error on PATCH /users');
+    }
+
+    return res.status(500).json({
+      message: 'Internal server error',
+    });
+  }
+};// -- end handlePatchOwnUserInitial
+
+export const handlePatchOwnUserConfirm = async (
+  req: AuthorizedRequest<{}, {}, PatchPermanentUserConfirmReqBody>,
+  res: AuthorizedResponse,
+  targetUser: IPermanentUser,
+) => {
+  try {
+    const {
+      authUser,
+    } = res.locals;
+    const {
+      payload,
+    } = req.body;
+
+    const payloadData : unknown = jwt.verify(payload, EMAIL_VERIFICATION_SECRET);
+    if (! isPatchPermanentUserReqPayloadSigned(payloadData)) {
+      return res.status(400).json({
+        message: 'Invalid confirmation token',
+      });
+    }
+
+    if (authUser._id.toHexString() !== payloadData.userId) {
+      return res.status(403).json({
+        message: 'You are not authorized to perform this action',
+      });
+    }
+
+    const update = Object.fromEntries(
+      Object.entries(payloadData).filter(([_k, v]) => v)
+    );
+
+    console.log('!! PATCH update:', update);
+
+    targetUser.set(update);
+    const updatedUser = await targetUser.save();
+    const resp : PatchPermanentUserConfirmedResBody = ({
+      kind: 'confirmed',
+      payload: {
+        email: updatedUser.email,
+        username: updatedUser.username,
+      },
+    });
+
+    return res.status(201).json(resp);
+  } catch (e: unknown) {
+    if (e instanceof jwt.TokenExpiredError) {
+      return res.status(400).json({
+        message: 'Expired confirmation token',
+      });
+    } else if (e instanceof jwt.JsonWebTokenError) {
+      return res.status(400).json({
+        message: 'Invalid confirmation token',
+      });
+    } else {
+      return res.status(500).json({
+        message: 'Internal server error',
+      });
+    }
+  }
+};// -- end handlePatchOwnUserConfirm
+
 export const handlePatchOwnUser = async (
-  req: AuthorizedRequest<{}, any, PatchPermanentUserReqBody>,
+  req: AuthorizedRequest,
   res: AuthorizedResponse,
 ) => {
+  if (! isPatchPermanentUserReqBody(req.body)) {
+    return res.status(400).json({
+      message: 'Malformed request body',
+    });
+  }
   const {
     authUser,
   } = res.locals;
-  const patchData: Partial<PatchPermanentUserReqBody> = ({
-    ...req.body
-  });
-  const {
-    _id: userId,
-  } = authUser;
-  const resp = await getUserById(userId);
-  
-  switch (resp.status) {
-      case 'bad_request':
-        return res.status(400).json({ message: resp.message });
-      case 'not_found':
-        return res.status(404).json({ message: `User ${userId} not found` });
-      case 'ok':
-      {
-        const {
-          user,
-        } = resp;
-        
-        if (! user) {
-          return res.status(400).json({
-            message: `Could not find user with id ${userId}`
+
+  // -- Fetch the user from the database
+  const getUserResp = await getUserById(authUser._id);
+  let targetUser : IPermanentUser;
+
+  switch (getUserResp.status) {
+    case 'bad_request':
+      return res.status(500).json({
+        message: 'Internal server error',
+      });
+    case 'not_found':
+      return res.status(400).json({
+        message: 'User not found',
+      });
+    case 'ok':
+      switch (getUserResp.user.kind) {
+        case 'temp':
+          return res.status(403).json({
+            message: 'Temporary users may not edit their acccounts',
           });
-        } else if (! isIPermanentUser(user)) {
-          return res.status(400).json({
-            message: `User ${userId} is not permanent`
-          })
-        } else {
-          const origUser = user.toObject();
-          const patchUserRes = await patchUser(user, patchData);
-        
-          if (patchUserRes.type === 'error') {
-            return res.status(400).json({ message: patchUserRes.message });
-          } else {
-            // -- update user permissions if email has been changed
-            if (patchUserRes.data.email !== origUser.email) {
-              const usersWhiteboards = await Whiteboard.find({
-                'user_permissions.user': origUser._id,
-              });
+        case 'permanent':
+          targetUser = getUserResp.user;
+      }// -- end switch (getUserResp.user.kind)
+  }// -- end switch (getUserResp.status)
 
-              for (const whiteboard of usersWhiteboards) {
-                whiteboard.set(
-                  'user_permissions',
-                  whiteboard.user_permissions.map(perm => {
-                    if ((perm.type === 'user') && (perm.user.equals(origUser._id))) {
-                      return ({
-                        ...perm.toObject(),
-                        email: patchUserRes.data.email,
-                      });
-                    } else {
-                      return perm;
-                    }
-                  })
-                );
-
-                await whiteboard.save();
-              }// -- end for whiteboard
-            }
-
-            return res.status(201).json(patchUserRes.data.toSelfView());
-          }
-        }
-      }
-      default:
-        throw new Error(`Unhandled case: ${resp}`);
-  }
+  switch (req.body.kind) {
+    case 'initial':
+      return await handlePatchOwnUserInitial(req, res, targetUser);
+    case 'confirm':
+      return await handlePatchOwnUserConfirm(req, res, targetUser);
+  }// -- end switch (req.body.kind)
 };// -- end handlePatchOwnUser
 
 // === DELETE /users/me ========================================================

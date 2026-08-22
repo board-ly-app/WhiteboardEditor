@@ -61,7 +61,7 @@ export type IUser =
 // -- End IUser
 
 
-// === IPermanentUser================================================================
+// === IPermanentUser ===============================================================
 // 
 // Represents a registered user account with persistent identity and login credentials.
 //
@@ -495,14 +495,124 @@ export interface ConvertTempUserReqBody extends IPermanentUserModel {
 }
 
 // -- for PATCH
-export interface PatchPermanentUserData {
+export interface PatchPermanentUserReqPayloadBase {
   email?: string;
   username?: string;
+}
+
+export interface PatchPermanentUserReqPayloadInitial
+extends PatchPermanentUserReqPayloadBase {
   password?: string;
 }
 
-// -- (must be authorized)
-export type PatchPermanentUserReqBody = PatchPermanentUserData;
+export interface PatchPermanentUserReqPayloadSigned
+extends PatchPermanentUserReqPayloadBase {
+  action: 'PATCH:/users';
+  userId: string;
+  passwordHashed?: string;
+}
+
+export const isPatchPermanentUserReqPayloadBase = (
+  payload: unknown
+): payload is PatchPermanentUserReqPayloadBase => {
+  if (! payload) return false;
+  if (typeof payload !== 'object') return false;
+
+  // -- All other fields are optional; just check that they are the right type
+  if (('email' in payload) && (typeof payload.email !== 'string')) return false;
+  if (('username' in payload) && (typeof payload.username !== 'string')) return false;
+
+  return true;
+};// -- end isPatchPermanentUserReqPayload
+
+export const isPatchPermanentUserReqPayloadInitial = (
+  payload: unknown
+): payload is PatchPermanentUserReqPayloadInitial => {
+  if (! isPatchPermanentUserReqPayloadBase(payload)) return false;
+  if (('password' in payload) && (typeof payload.password !== 'string')) return false;
+
+  return true;
+};// -- end isPatchPermanentUserReqPayloadInitial
+
+export const isPatchPermanentUserReqPayloadSigned = (
+  payload: unknown
+): payload is PatchPermanentUserReqPayloadSigned => {
+  if (! isPatchPermanentUserReqPayloadBase(payload)) return false;
+  if (! ('action' in payload)) return false;
+  if (payload.action !== 'PATCH:/users') return false;
+  if (! ('userId' in payload)) return false;
+  if (typeof payload.userId !== 'string') return false;
+  if (! Types.ObjectId.isValid(payload.userId)) return false;
+  if (('passwordHashed' in payload) && (typeof payload.passwordHashed !== 'string')) return false;
+
+  return true;
+};// -- end isPatchPermanentUserReqPayloadSigned
+
+export interface PatchPermanentUserInitialReqBody {
+  kind: 'initial';
+  payload: PatchPermanentUserReqPayloadInitial;
+}
+
+export const isPatchPermanentUserInitialReqBody = (
+  body: unknown
+): body is PatchPermanentUserInitialReqBody => {
+  if (! body) return false;
+  if (typeof body !== 'object') return false;
+  if (! ('kind' in body)) return false;
+  if (body.kind !== 'initial') return false;
+  if (! ('payload' in body)) return false;
+  if (! isPatchPermanentUserReqPayloadInitial(body.payload)) return false;
+
+  return true;
+};// -- end isPatchPermanentUserInitialReqBody
+
+export interface PatchPermanentUserConfirmReqBody {
+  kind: 'confirm';
+  // -- payload is a signed JWT
+  payload: string;
+}
+
+export const isPatchPermanentUserConfirmReqBody = (
+  body: unknown
+): body is PatchPermanentUserConfirmReqBody => {
+  if (! body) return false;
+  if (typeof body !== 'object') return false;
+  if (! ('kind' in body)) return false;
+  if (body.kind !== 'confirm') return false;
+  if (! ('payload' in body)) return false;
+  if (typeof body.payload !== 'string') return false;
+
+  return true;
+};// -- end isPatchPermanentUserConfirmReqBody
+
+export type PatchPermanentUserReqBody =
+  | PatchPermanentUserInitialReqBody
+  | PatchPermanentUserConfirmReqBody
+;
+
+export const isPatchPermanentUserReqBody = (
+  body: unknown
+): body is PatchPermanentUserReqBody => {
+  return (
+    isPatchPermanentUserInitialReqBody(body)
+    || isPatchPermanentUserConfirmReqBody(body)
+  );
+};// -- end isPatchPermanentUserReqBody
+
+export interface PatchPermanentUserResPayload {
+  email: string;
+  username: string;
+}
+
+export interface PatchPermanentUserPendingConfirmationResBody {
+  kind: 'pending_confirmation';
+  email: string;
+}
+
+export interface PatchPermanentUserConfirmedResBody {
+  kind: 'confirmed';
+  payload: PatchPermanentUserResPayload;
+}
 
 // -- for PUT
 export type PutPermanentUserData = IPermanentUserDocument;

@@ -3,9 +3,6 @@ import {
   Types,
 } from "mongoose";
 
-// -- third-party imports
-import bcrypt from "bcrypt";
-
 // -- local imports
 import type {
   Result,
@@ -14,7 +11,6 @@ import type {
 
 import {
   type IUserType,
-  type PatchPermanentUserData,
   type IPermanentUser,
   User,
 } from "../models/User";
@@ -99,39 +95,6 @@ export interface PatchPermanentUserErrorResult {
 }
 
 export type PatchPermanentUserResult = PatchPermanentUserOkResult | PatchPermanentUserErrorResult;
-
-export const patchUser = async (
-  user: IPermanentUser,
-  patchData: PatchPermanentUserData
-): Promise<PatchPermanentUserResult> => {
-  try {
-    const patchDataLocal = { ...patchData };
-    const passwordHashed = patchDataLocal.password ? 
-      await bcrypt.hash(patchDataLocal.password, 10)
-    : user.passwordHashed;
-
-    if (patchDataLocal.password) {
-      delete patchDataLocal.password;
-    }
-
-    user.set({
-      ...patchDataLocal,
-      passwordHashed
-    });
-
-    const userModified = await user.save();
-
-    return ({
-      type: 'ok',
-      data: userModified,
-    });
-  } catch (err: any) {
-    return ({
-      type: 'error',
-      message: `${err}`
-    });
-  }
-};// -- end patchUser
 
 export const deleteUser = async (
   userId: Types.ObjectId
